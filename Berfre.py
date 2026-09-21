@@ -3,6 +3,12 @@ import os.path as path
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
 import datetime
+from sympy import true
+from diccionariotemp import ubicaciones, precios
+
+dicub = ubicaciones
+dicpre = precios
+
 
 # inicializa variable de tiempo
 fecha = datetime.date.today()
@@ -89,9 +95,9 @@ def total():
     hoja['H3'] = "Total"
     hoja['H3'].font = Font(bold=True)
 
-    for i in range(1, hoja2.max_row + 1):
-        bodega = hoja2.cell(row = i, column = 3).value
-        if bodega == "M501":
+    for i in range(2, hoja2.max_row + 1):
+        bodega = hoja2.cell(row = i, column = 1).value
+        if bodega != hoja2.cell(row = i - 1, column = 1).value:
             id = hoja2.cell(row = i, column = 1).value
             hoja.cell(row = x, column = 1, value = id)
             descripcion = hoja2.cell(row = i, column = 2).value
@@ -117,9 +123,60 @@ def total():
     mango.save(f"Prueba_de_planilla_stock_region.xlsx")
     return
 
+#Inventario de la bodega M501 con ubicacion
+def inventario(dicub):
+    # inicializa manejo de archivos
+    test = r"C:\Users\Anibal M\Desktop\practica 2\Practica-2\private\excel base\EXPORT.XLSX"
+    excel = openpyxl.load_workbook(test)
+    mango = openpyxl.Workbook()
+    hoja2 = excel.active
+    hoja = mango.active
+
+    #Variable que maneja la fila en la que se esta escribiendo
+    x = 4
+
+    #Diseño de las celdas
+    hoja.column_dimensions['A'].width = 20
+    hoja.column_dimensions['B'].width = 52
+    hoja.column_dimensions['C'].width = 20
+    hoja.column_dimensions['D'].width = 15
+    hoja.column_dimensions['E'].width = 15
+
+    #Titulo del documento
+    hoja['A1'] = "Almacen"
+    hoja['B1'] = "M501"
+
+    #Titlos de las columnas
+    hoja['A3'] = "Etiqueta de fila"
+    hoja['B3'] = "Descripcion del producto"
+    hoja['C3'] = "Ubicacion"
+    hoja['D3'] = "Libre utilización"
+    hoja['E3'] = "Existencia"
+
+    #Manejo de archivos
+    for i in range(1, hoja2.max_row + 1):
+        bodega = hoja2.cell(row = i, column = 3).value
+        if bodega == "M501":
+            id = hoja2.cell(row = i, column = 1).value
+            hoja.cell(row = x, column = 1, value = id)
+            descripcion = hoja2.cell(row = i, column = 2).value
+            hoja.cell(row = x, column = 2, value = descripcion)
+            if dicub.get(hoja2.cell(row = i, column = 1).value) != None:
+                ubicacion = dicub[hoja2.cell(row = i, column = 1).value]
+                hoja.cell(row = x, column = 3, value = ubicacion)
+            utilizacion = hoja2.cell(row = i, column = 4).value
+            hoja.cell(row = x, column = 4, value = utilizacion)
+            x += 1
+
+    print(f"i = {i} y x = {x}")
+    mango.save(f"Prueba_de_planilla_invetario.xlsx")
+    return
+
 #Selector de filtro
-z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n>> "))
+z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
 if z == 1:
     filtro1()
 if z == 2:
     total()
+if z == 3:
+    inventario(dicub)
