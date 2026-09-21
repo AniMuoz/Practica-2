@@ -20,4 +20,5 @@ ubicaciones = {
     20000014: "Ubicación 15",
     20000015: "Ubicación 16",
     20000040: "Ubicación 17",
+    20000041: "Ubicación 1",
 }

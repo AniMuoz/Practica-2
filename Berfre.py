@@ -42,6 +42,10 @@ def filtro1():
     hoja['B3'] = "Descripcion del producto"
     hoja['C3'] = "Libre utilización"
 
+    #Filtros para el archivo
+    hoja.auto_filter.ref = "A3:C3"
+    hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
+
     #Manejo de archivos
     for i in range(1, hoja2.max_row + 1):
         bodega = hoja2.cell(row = i, column = 3).value
@@ -94,6 +98,9 @@ def total():
     hoja['G3'] = "M505"
     hoja['H3'] = "Total"
     hoja['H3'].font = Font(bold=True)
+
+    #Filtros para el archivo
+    hoja.auto_filter.ref = "A3:H3"
 
     for i in range(2, hoja2.max_row + 1):
         bodega = hoja2.cell(row = i, column = 1).value
@@ -153,6 +160,10 @@ def inventario(dicub):
     hoja['D3'] = "Libre utilización"
     hoja['E3'] = "Existencia"
 
+    #Ordena la planilla por ubicacion
+    hoja.auto_filter.ref = "A3:E3"
+    hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
+
     #Manejo de archivos
     for i in range(1, hoja2.max_row + 1):
         bodega = hoja2.cell(row = i, column = 3).value
@@ -169,7 +180,14 @@ def inventario(dicub):
             x += 1
 
     print(f"i = {i} y x = {x}")
+    ordenador(mango, hoja)
     mango.save(f"Prueba_de_planilla_invetario.xlsx")
+    return
+
+def ordenador(mango, hoja):
+    #Ordena la planilla por ubicacion
+    data = []
+    
     return
 
 #Selector de filtro
