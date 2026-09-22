@@ -25,7 +25,7 @@ Berfre = Flask(__name__)
 @Berfre.route('/')
 def home():
     mi_variable = "¡Hola desde Python!"
-    return render_template('front.html', dato = mi_variable) and render_template('front.html', dia = dia)
+    return render_template('front.html', dato = mi_variable, dia = dia) 
 
 if __name__ == '__main__':
     Berfre.run(debug=True)
@@ -149,6 +149,7 @@ def total(ruta):
             hoja.cell(row = x, column = 6).border = bordes
             hoja.cell(row = x, column = 7).border = bordes
             bodega = hoja2.cell(row = i, column = 1).value
+
             if bodega != hoja2.cell(row = i - 1, column = 1).value:
                 id = hoja2.cell(row = i, column = 1).value
                 hoja.cell(row = x, column = 1, value = id).border = bordes
@@ -156,22 +157,28 @@ def total(ruta):
                 hoja.cell(row = x, column = 2, value = descripcion).border = bordes
                 M501 = hoja2.cell(row = i, column = 4).value
                 hoja.cell(row = x, column = 3, value = M501)
+
                 if hoja2.cell(row = i + 1, column = 3).value == "M502":
                     M502 = hoja2.cell(row = i + 1, column = 4).value
                     hoja.cell(row = x, column = 4, value = M502)
+
                 if hoja2.cell(row = i + 2, column = 3).value == "M503":
                     M503 = hoja2.cell(row = i + 2, column = 4).value
                     hoja.cell(row = x, column = 5, value = M503)
+
                 if hoja2.cell(row = i + 3, column = 3).value == "M504":
                     M504 = hoja2.cell(row = i + 3, column = 4).value
                     hoja.cell(row = x, column = 6, value = M504)
+
                 if hoja2.cell(row = i + 4, column = 3).value == "M505":
                     M505 = hoja2.cell(row = i + 4, column = 4).value
                     hoja.cell(row = x, column = 7, value = M505)
+
                 hoja.cell(row = x, column = 8, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
                 hoja.cell(row = x, column = 8).border = bordes
                 i = i + 4
                 x += 1
+                
     print(f"i = {i} y x = {x}")
     mango.save(f"Prueba_de_planilla_stock_region.xlsx")
     return
