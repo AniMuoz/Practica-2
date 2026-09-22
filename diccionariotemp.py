@@ -22,3 +22,7 @@ ubicaciones = {
     20000040: "Ubicación 17",
     20000041: "Ubicación 1",
 }
+
+material = {
+    
+}

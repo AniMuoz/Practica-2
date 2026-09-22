@@ -1,14 +1,16 @@
 import os
 import os.path as path
+import sys
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
 import datetime
 from sympy import true
-from diccionariotemp import ubicaciones, precios
+#from diccionariotemp import ubicaciones, precios, material
+import private.informacion_delicada.diccionario
 
-dicub = ubicaciones
-dicpre = precios
-
+dicub = private.informacion_delicada.diccionario.ubicaciones
+dicpre = private.informacion_delicada.diccionario.precios
+dicmat = private.informacion_delicada.diccionario.material
 
 # inicializa variable de tiempo
 fecha = datetime.date.today()
@@ -29,9 +31,25 @@ def filtro1():
     x = 4
 
     #Diseño de las celdas
+    bordes = Border(
+            bottom=Side(border_style="medium", color="000000"),
+            left=Side(border_style="thin"),
+            right=Side(border_style="thin"),
+            top=Side(border_style="thin")
+            )
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
+    hoja['A3'].border = bordes
+    hoja['B3'].border = bordes
+    hoja['C3'].border = bordes
+    hoja['A1'].border = bordes
+    hoja['B1'].border = bordes
+    hoja['A3'].font = Font(bold=True)
+    hoja['B3'].font = Font(bold=True)
+    hoja['C3'].font = Font(bold=True)
+    hoja['A1'].font = Font(bold=True, size=12)
+    hoja['B1'].font = Font(bold=True, size=12)
 
     #Titulo del documento
     hoja['A1'] = "Almacen"
@@ -50,13 +68,14 @@ def filtro1():
     for i in range(1, hoja2.max_row + 1):
         bodega = hoja2.cell(row = i, column = 3).value
         if bodega == "M501":
-            id = hoja2.cell(row = i, column = 1).value
-            hoja.cell(row = x, column = 1, value = id)
-            descripcion = hoja2.cell(row = i, column = 2).value
-            hoja.cell(row = x, column = 2, value = descripcion)
-            utilizacion = hoja2.cell(row = i, column = 4).value
-            hoja.cell(row = x, column = 3, value = utilizacion)
-            x += 1
+            if hoja2.cell(row = i, column = 2).value != "NULO":
+                id = hoja2.cell(row = i, column = 1).value
+                hoja.cell(row = x, column = 1, value = id).border = bordes
+                descripcion = hoja2.cell(row = i, column = 2).value
+                hoja.cell(row = x, column = 2, value = descripcion).border = bordes
+                utilizacion = hoja2.cell(row = i, column = 4).value
+                hoja.cell(row = x, column = 3, value = utilizacion).border = bordes
+                x += 1
 
     #hoja['A1'] = hoja2.cell(row = 1, column = 1).value
     #hoja['B3'] = 'EMPRESA: PRETORIANOS SEGURIDAD'
@@ -77,6 +96,12 @@ def total():
     x = 4
 
     #Diseño de las celdas
+    bordes = Border(
+            bottom=Side(border_style="medium", color="000000"),
+            left=Side(border_style="thin"),
+            right=Side(border_style="thin"),
+            top=Side(border_style="thin")
+            )
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 15
@@ -103,29 +128,36 @@ def total():
     hoja.auto_filter.ref = "A3:H3"
 
     for i in range(2, hoja2.max_row + 1):
-        bodega = hoja2.cell(row = i, column = 1).value
-        if bodega != hoja2.cell(row = i - 1, column = 1).value:
-            id = hoja2.cell(row = i, column = 1).value
-            hoja.cell(row = x, column = 1, value = id)
-            descripcion = hoja2.cell(row = i, column = 2).value
-            hoja.cell(row = x, column = 2, value = descripcion)
-            M501 = hoja2.cell(row = i, column = 4).value
-            hoja.cell(row = x, column = 3, value = M501)
-            if hoja2.cell(row = i + 1, column = 3).value == "M502":
-                M502 = hoja2.cell(row = i + 1, column = 4).value
-                hoja.cell(row = x, column = 4, value = M502)
-            if hoja2.cell(row = i + 2, column = 3).value == "M503":
-                M503 = hoja2.cell(row = i + 2, column = 4).value
-                hoja.cell(row = x, column = 5, value = M503)
-            if hoja2.cell(row = i + 3, column = 3).value == "M504":
-                M504 = hoja2.cell(row = i + 3, column = 4).value
-                hoja.cell(row = x, column = 6, value = M504)
-            if hoja2.cell(row = i + 4, column = 3).value == "M505":
-                M505 = hoja2.cell(row = i + 4, column = 4).value
-                hoja.cell(row = x, column = 7, value = M505)
-            hoja.cell(row = x, column = 8, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
-            i = i + 4
-            x += 1
+        if hoja2.cell(row = i, column = 2).value != "NULO":
+            hoja.cell(row = x, column = 3).border = bordes
+            hoja.cell(row = x, column = 4).border = bordes
+            hoja.cell(row = x, column = 5).border = bordes
+            hoja.cell(row = x, column = 6).border = bordes
+            hoja.cell(row = x, column = 7).border = bordes
+            bodega = hoja2.cell(row = i, column = 1).value
+            if bodega != hoja2.cell(row = i - 1, column = 1).value:
+                id = hoja2.cell(row = i, column = 1).value
+                hoja.cell(row = x, column = 1, value = id).border = bordes
+                descripcion = hoja2.cell(row = i, column = 2).value
+                hoja.cell(row = x, column = 2, value = descripcion).border = bordes
+                M501 = hoja2.cell(row = i, column = 4).value
+                hoja.cell(row = x, column = 3, value = M501)
+                if hoja2.cell(row = i + 1, column = 3).value == "M502":
+                    M502 = hoja2.cell(row = i + 1, column = 4).value
+                    hoja.cell(row = x, column = 4, value = M502)
+                if hoja2.cell(row = i + 2, column = 3).value == "M503":
+                    M503 = hoja2.cell(row = i + 2, column = 4).value
+                    hoja.cell(row = x, column = 5, value = M503)
+                if hoja2.cell(row = i + 3, column = 3).value == "M504":
+                    M504 = hoja2.cell(row = i + 3, column = 4).value
+                    hoja.cell(row = x, column = 6, value = M504)
+                if hoja2.cell(row = i + 4, column = 3).value == "M505":
+                    M505 = hoja2.cell(row = i + 4, column = 4).value
+                    hoja.cell(row = x, column = 7, value = M505)
+                hoja.cell(row = x, column = 8, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
+                hoja.cell(row = x, column = 8).border = bordes
+                i = i + 4
+                x += 1
     print(f"i = {i} y x = {x}")
     mango.save(f"Prueba_de_planilla_stock_region.xlsx")
     return
@@ -143,11 +175,31 @@ def inventario(dicub):
     x = 4
 
     #Diseño de las celdas
+    bordes = Border(
+        bottom=Side(border_style="medium", color="000000"),
+        left=Side(border_style="thin"),
+        right=Side(border_style="thin"),
+        top=Side(border_style="thin")
+        )
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
     hoja.column_dimensions['D'].width = 15
     hoja.column_dimensions['E'].width = 15
+    hoja['A3'].border = bordes
+    hoja['B3'].border = bordes
+    hoja['C3'].border = bordes
+    hoja['D3'].border = bordes
+    hoja['E3'].border = bordes
+    hoja['A1'].border = bordes
+    hoja['B1'].border = bordes
+    hoja['A3'].font = Font(bold=True)
+    hoja['B3'].font = Font(bold=True)
+    hoja['C3'].font = Font(bold=True)
+    hoja['D3'].font = Font(bold=True)
+    hoja['E3'].font = Font(bold=True)
+    hoja['A1'].font = Font(bold=True, size=12)
+    hoja['B1'].font = Font(bold=True, size=12)
 
     #Titulo del documento
     hoja['A1'] = "Almacen"
@@ -169,14 +221,17 @@ def inventario(dicub):
         bodega = hoja2.cell(row = i, column = 3).value
         if bodega == "M501":
             id = hoja2.cell(row = i, column = 1).value
-            hoja.cell(row = x, column = 1, value = id)
+            hoja.cell(row = x, column = 1, value = id).border = bordes
             descripcion = hoja2.cell(row = i, column = 2).value
-            hoja.cell(row = x, column = 2, value = descripcion)
+            hoja.cell(row = x, column = 2, value = descripcion).border = bordes
             if dicub.get(hoja2.cell(row = i, column = 1).value) != None:
                 ubicacion = dicub[hoja2.cell(row = i, column = 1).value]
-                hoja.cell(row = x, column = 3, value = ubicacion)
+                hoja.cell(row = x, column = 3, value = ubicacion).border = bordes
+            else:
+                hoja.cell(row = x, column = 3).border = bordes
             utilizacion = hoja2.cell(row = i, column = 4).value
-            hoja.cell(row = x, column = 4, value = utilizacion)
+            hoja.cell(row = x, column = 4, value = utilizacion).border = bordes
+            hoja.cell(row = x, column = 5).border = bordes
             x += 1
 
     print(f"i = {i} y x = {x}")
@@ -188,11 +243,11 @@ def var_ord(mango, hoja, i):
     if hoja.cell(row = i, column = 3).value is None or hoja.cell(row = i, column = 3).value == "":
             cont = 00
     else:
-        cont = int(hoja.cell(row = i, column = 3).value[-2:])
+        cont = int(hoja.cell(row = i, column = 3).value[:2])
     if hoja.cell(row = i + 1, column = 3).value is None or hoja.cell(row = i + 1, column = 3).value == "":
         comp = 00
     else:
-        comp = int(hoja.cell(row = i + 1, column = 3).value[-2:])
+        comp = int(hoja.cell(row = i + 1, column = 3).value[:2])
     return (cont, comp)
 
 def ordenador(mango, hoja):
@@ -202,8 +257,8 @@ def ordenador(mango, hoja):
         cont, comp = var_ord(mango, hoja, i)
         while cont < comp and i < hoja.max_row:
             if cont == 00:
-                print(f"cont = {cont} y comp = {comp}")
-                print(f"supreme victory {m}")
+                #print(f"cont = {cont} y comp = {comp}")
+                #print(f"supreme victory {m}")
                 op1 = hoja.cell(row = i, column = 1).value
                 op2 = hoja.cell(row = i, column = 2).value
                 op3 = hoja.cell(row = i, column = 3).value
@@ -223,8 +278,8 @@ def ordenador(mango, hoja):
                 hoja.cell(row = i + 1, column = 3, value = "")
                 hoja.cell(row = i + 1, column = 4, value = op4)
             else:
-                print(f"cont = {cont} y comp = {comp}")
-                print(f"supreme victory {m}")
+                #print(f"cont = {cont} y comp = {comp}")
+                #print(f"supreme victory {m}")
                 op1 = hoja.cell(row = i, column = 1).value
                 op2 = hoja.cell(row = i, column = 2).value
                 op3 = hoja.cell(row = i, column = 3).value
@@ -246,7 +301,7 @@ def ordenador(mango, hoja):
             if i > 4:
                 i -= 1
             cont, comp = var_ord(mango, hoja, i)
-            m += 1
+            #m += 1
     return
 
 #Selector de filtro
