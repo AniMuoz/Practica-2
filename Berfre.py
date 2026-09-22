@@ -184,10 +184,69 @@ def inventario(dicub):
     mango.save(f"Prueba_de_planilla_invetario.xlsx")
     return
 
+def var_ord(mango, hoja, i):
+    if hoja.cell(row = i, column = 3).value is None or hoja.cell(row = i, column = 3).value == "":
+            cont = 00
+    else:
+        cont = int(hoja.cell(row = i, column = 3).value[-2:])
+    if hoja.cell(row = i + 1, column = 3).value is None or hoja.cell(row = i + 1, column = 3).value == "":
+        comp = 00
+    else:
+        comp = int(hoja.cell(row = i + 1, column = 3).value[-2:])
+    return (cont, comp)
+
 def ordenador(mango, hoja):
+    m = 1
     #Ordena la planilla por ubicacion
-    data = []
-    
+    for i in range(4, hoja.max_row + 1):
+        cont, comp = var_ord(mango, hoja, i)
+        while cont < comp and i < hoja.max_row:
+            if cont == 00:
+                print(f"cont = {cont} y comp = {comp}")
+                print(f"supreme victory {m}")
+                op1 = hoja.cell(row = i, column = 1).value
+                op2 = hoja.cell(row = i, column = 2).value
+                op3 = hoja.cell(row = i, column = 3).value
+                op4 = hoja.cell(row = i, column = 4).value
+                op5 = hoja.cell(row = i + 1, column = 1).value
+                op6 = hoja.cell(row = i + 1, column = 2).value
+                op7 = hoja.cell(row = i + 1, column = 3).value
+                op8 = hoja.cell(row = i + 1, column = 4).value
+
+                hoja.cell(row = i, column = 1, value = op5)
+                hoja.cell(row = i, column = 2, value = op6)
+                hoja.cell(row = i, column = 3, value = op7)
+                hoja.cell(row = i, column = 4, value = op8)
+
+                hoja.cell(row = i + 1, column = 1, value = op1)
+                hoja.cell(row = i + 1, column = 2, value = op2)
+                hoja.cell(row = i + 1, column = 3, value = "")
+                hoja.cell(row = i + 1, column = 4, value = op4)
+            else:
+                print(f"cont = {cont} y comp = {comp}")
+                print(f"supreme victory {m}")
+                op1 = hoja.cell(row = i, column = 1).value
+                op2 = hoja.cell(row = i, column = 2).value
+                op3 = hoja.cell(row = i, column = 3).value
+                op4 = hoja.cell(row = i, column = 4).value
+                op5 = hoja.cell(row = i + 1, column = 1).value
+                op6 = hoja.cell(row = i + 1, column = 2).value
+                op7 = hoja.cell(row = i + 1, column = 3).value
+                op8 = hoja.cell(row = i + 1, column = 4).value
+
+                hoja.cell(row = i, column = 1, value = op5)
+                hoja.cell(row = i, column = 2, value = op6)
+                hoja.cell(row = i, column = 3, value = op7)
+                hoja.cell(row = i, column = 4, value = op8)
+
+                hoja.cell(row = i + 1, column = 1, value = op1)
+                hoja.cell(row = i + 1, column = 2, value = op2)
+                hoja.cell(row = i + 1, column = 3, value = op3)
+                hoja.cell(row = i + 1, column = 4, value = op4)
+            if i > 4:
+                i -= 1
+            cont, comp = var_ord(mango, hoja, i)
+            m += 1
     return
 
 #Selector de filtro
