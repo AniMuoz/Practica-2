@@ -1,6 +1,8 @@
 import os
 import os.path as path
+from pathlib import Path
 import sys
+from matplotlib.pylab import rint
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
 import datetime
@@ -8,21 +10,16 @@ from sympy import true
 #from diccionariotemp import ubicaciones, precios, material
 import private.informacion_delicada.diccionario
 
-dicub = private.informacion_delicada.diccionario.ubicaciones
-dicpre = private.informacion_delicada.diccionario.precios
-dicmat = private.informacion_delicada.diccionario.material
-
 # inicializa variable de tiempo
 fecha = datetime.date.today()
 dia = str(fecha.year) + str(fecha.month) + str(fecha.day)
 print("Codigo de dia: ", dia)
 
 #Funcion para realizar filtros y mostrar solo el stock de M501
-def filtro1():
+def filtro1(ruta):
     # inicializa manejo de archivos
     #test = input("Ingrese el nombre del archivo de recuperacion con su extencion ==> ")
-    test = r"C:\Users\Anibal M\Desktop\practica 2\Practica-2\private\excel base\EXPORT.XLSX"
-    excel = openpyxl.load_workbook(test)
+    excel = openpyxl.load_workbook(ruta)
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
@@ -84,10 +81,9 @@ def filtro1():
     return
 
 #Planilla todas la bodegas
-def total():
+def total(ruta):
     # inicializa manejo de archivos
-    test = r"C:\Users\Anibal M\Desktop\practica 2\Practica-2\private\excel base\EXPORT.XLSX"
-    excel = openpyxl.load_workbook(test)
+    excel = openpyxl.load_workbook(ruta)
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
@@ -163,10 +159,9 @@ def total():
     return
 
 #Inventario de la bodega M501 con ubicacion
-def inventario(dicub):
+def inventario(ruta, dicub):
     # inicializa manejo de archivos
-    test = r"C:\Users\Anibal M\Desktop\practica 2\Practica-2\private\excel base\EXPORT.XLSX"
-    excel = openpyxl.load_workbook(test)
+    excel = openpyxl.load_workbook(ruta)
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
@@ -217,109 +212,135 @@ def inventario(dicub):
     hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
 
     #Manejo de archivos
-    for i in range(1, hoja2.max_row + 1):
-        #if str(hoja2.cell(row = i, column = 1).value) in dicub:
-        #    print("paso1")
+    encabezados = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "Libre utilización", "Existencia"]
+    for col_idx, texto in enumerate(encabezados, start=1):
+        cell = hoja.cell(row=3, column=col_idx, value=texto)
+        cell.font = Font(bold=True)
+        cell.border = bordes
 
-        bodega = hoja2.cell(row = i, column = 3).value
-        if bodega == "M501":
-            if hoja2.cell(row = i, column = 2).value != "NULO":
-                id = hoja2.cell(row = i, column = 1).value
-                hoja.cell(row = x, column = 1, value = id).border = bordes
-                descripcion = hoja2.cell(row = i, column = 2).value
-                hoja.cell(row = x, column = 2, value = descripcion).border = bordes
+    # 3. Lectura y Filtrado en memoria
+    filas_filtradas = []
 
-                if str(hoja2.cell(row = i, column = 1).value) in dicub:
-                    #print("paso")
-                    if dicub[str(hoja2.cell(row = i, column = 1).value)] != None or dicub[str(hoja2.cell(row = i, column = 1).value)] != "":
-                        #print("jackpot")
-                        ubicacion = dicub[str(hoja2.cell(row = i, column = 1).value)]
-                        #print("ubicacion = ", ubicacion)
-                        hoja.cell(row = x, column = 3, value = ubicacion).border = bordes
-                else:
-                    hoja.cell(row = x, column = 3).border = bordes
+    # iter_rows es infinitamente más rápido que recorrer celda por celda
+    for row in hoja2.iter_rows(values_only=True):
+        if not row or len(row) < 4:
+            continue
+            
+        id_prod = row[0]          # Columna 1
+        descripcion = row[1]      # Columna 2
+        bodega = row[2]           # Columna 3
+        utilizacion = row[3]      # Columna 4
 
-                utilizacion = hoja2.cell(row = i, column = 4).value
-                hoja.cell(row = x, column = 4, value = utilizacion).border = bordes
-                hoja.cell(row = x, column = 5).border = bordes
-                x += 1
+        if bodega == "M501" and descripcion != "NULO":
+            # Buscar ubicación en el diccionario
+            id_str = str(id_prod)
+            ubicacion = ""
+            if id_str in dicub and dicub[id_str]:
+                ubicacion = dicub[id_str]
 
-    print(f"i = {i} y x = {x}")
-    ordenador(mango, hoja)
-    mango.save(f"Prueba_de_planilla_invetario.xlsx")
-    return
+            filas_filtradas.append({
+                'id': id_prod,
+                'descripcion': descripcion,
+                'ubicacion': ubicacion,
+                'utilizacion': utilizacion,
+                'existencia': None
+            })
 
-def var_ord(mango, hoja, i):
-    print("Trabajando, espere")
-    if hoja.cell(row = i, column = 3).value is None or hoja.cell(row = i, column = 3).value == "":
-            cont = 00
-    else:
-        cont = int(hoja.cell(row = i, column = 3).value[:2])
-    if hoja.cell(row = i + 1, column = 3).value is None or hoja.cell(row = i + 1, column = 3).value == "":
-        comp = 00
-    else:
-        comp = int(hoja.cell(row = i + 1, column = 3).value[:2])
-    return (cont, comp)
+    # 4. ORDENAMIENTO EN MEMORIA (Clave de la velocidad)
+    # Criterio: Extrae los 2 primeros caracteres si existen números, de lo contrario da prioridad 0 o valor por defecto
+    # 4. ORDENAMIENTO EN MEMORIA
+    def obtener_clave_ordenamiento(item):
+        ub = str(item['ubicacion']).strip() if item['ubicacion'] else ""
+        
+        # Si NO tiene ubicación (vacía o None)
+        if not ub:
+            # Devuelve (1, 0): El '1' la manda al final
+            return (1, 0)
+        
+        # Si SÍ tiene ubicación y empieza con al menos 2 dígitos
+        if len(ub) >= 2 and ub[:2].isdigit():
+            # Devuelve (0, número): El '0' la pone arriba, ordenada por su valor numérico
+            return (0, int(ub[:2]))
+        
+        # Si tiene texto pero no empieza con números (caso borde)
+        return (0, 999)
 
-def ordenador(mango, hoja):
-    m = 1
-    #Ordena la planilla por ubicacion
-    for i in range(4, hoja.max_row + 1):
-        cont, comp = var_ord(mango, hoja, i)
-        while cont < comp and i < hoja.max_row:
-            if cont == 00:
-                #print(f"cont = {cont} y comp = {comp}")
-                #print(f"supreme victory {m}")
-                op1 = hoja.cell(row = i, column = 1).value
-                op2 = hoja.cell(row = i, column = 2).value
-                op3 = hoja.cell(row = i, column = 3).value
-                op4 = hoja.cell(row = i, column = 4).value
-                op5 = hoja.cell(row = i + 1, column = 1).value
-                op6 = hoja.cell(row = i + 1, column = 2).value
-                op7 = hoja.cell(row = i + 1, column = 3).value
-                op8 = hoja.cell(row = i + 1, column = 4).value
+    # Ordenamos la lista en Python usando la tupla como prioridad
+    filas_filtradas.sort(key=obtener_clave_ordenamiento)
 
-                hoja.cell(row = i, column = 1, value = op5)
-                hoja.cell(row = i, column = 2, value = op6)
-                hoja.cell(row = i, column = 3, value = op7)
-                hoja.cell(row = i, column = 4, value = op8)
+    # 5. Escritura rápida en la hoja de destino
+    x = 4
+    for item in filas_filtradas:
+        hoja.cell(row=x, column=1, value=item['id']).border = bordes
+        hoja.cell(row=x, column=2, value=item['descripcion']).border = bordes
+        hoja.cell(row=x, column=3, value=item['ubicacion']).border = bordes
+        hoja.cell(row=x, column=4, value=item['utilizacion']).border = bordes
+        hoja.cell(row=x, column=5, value=item['existencia']).border = bordes
+        x += 1
 
-                hoja.cell(row = i + 1, column = 1, value = op1)
-                hoja.cell(row = i + 1, column = 2, value = op2)
-                hoja.cell(row = i + 1, column = 3, value = "")
-                hoja.cell(row = i + 1, column = 4, value = op4)
-            else:
-                #print(f"cont = {cont} y comp = {comp}")
-                #print(f"supreme victory {m}")
-                op1 = hoja.cell(row = i, column = 1).value
-                op2 = hoja.cell(row = i, column = 2).value
-                op3 = hoja.cell(row = i, column = 3).value
-                op4 = hoja.cell(row = i, column = 4).value
-                op5 = hoja.cell(row = i + 1, column = 1).value
-                op6 = hoja.cell(row = i + 1, column = 2).value
-                op7 = hoja.cell(row = i + 1, column = 3).value
-                op8 = hoja.cell(row = i + 1, column = 4).value
+    # Agregar Autofiltro visual
+    hoja.auto_filter.ref = f"A3:E{x-1}"
 
-                hoja.cell(row = i, column = 1, value = op5)
-                hoja.cell(row = i, column = 2, value = op6)
-                hoja.cell(row = i, column = 3, value = op7)
-                hoja.cell(row = i, column = 4, value = op8)
-
-                hoja.cell(row = i + 1, column = 1, value = op1)
-                hoja.cell(row = i + 1, column = 2, value = op2)
-                hoja.cell(row = i + 1, column = 3, value = op3)
-                hoja.cell(row = i + 1, column = 4, value = op4)
-            if i > 4:
-                i -= 1
-            cont, comp = var_ord(mango, hoja, i)
-            #m += 1
+    # Guardar archivo
+    mango.save("Prueba_de_planilla_invetario.xlsx")
+    print("¡Proceso completado con éxito!")
     return
 
 #Selector de filtro
+
+
+#while True:
+#    entrada = input("Introduce la ruta del archivo: ")
+#    ruta = Path(entrada)
+#    
+#    # Verificar si el archivo existe y es un archivo real (no una carpeta)
+#    if ruta.is_file():
+#        print("¡Archivo encontrado con éxito!")
+#        break
+#    else:
+#        print("Error: El archivo no existe o la ruta es inválida. Inténtalo de nuevo.\n")
+import tkinter as tk
+from tkinter import filedialog
+
+def pedir_archivo_visual():
+    # 1. Crear una ventana raíz oculta para que no aparezca una ventana vacía de fondo
+    root = tk.Tk()
+    root.withdraw()
+    
+    # 2. Forzar a que la ventana de selección aparezca al frente de todo
+    root.attributes('-topmost', True)
+    
+    # 3. Abrir el cuadro de diálogo para seleccionar el archivo
+    ruta_archivo = filedialog.askopenfilename(
+        title="Selecciona un archivo",
+        filetypes=[("Todos los archivos", "*.*"), ("Archivos de Texto", "*.txt"), ("Documentos PDF", "*.pdf")]
+    )
+    
+    # 4. Destruir la ventana raíz al terminar
+    root.destroy()
+    
+    return ruta_archivo
+
+# Ejecución del ejemplo
+ruta_seleccionada = pedir_archivo_visual()
+
+if ruta_seleccionada:
+    print(f"\nRuta seleccionada visualmente: {ruta_seleccionada}")
+else:
+    print("\nEl usuario canceló la selección.")
+
+
+# Aquí ya puedes trabajar de forma segura con tu archivo
+#print(f"Procesando: {ruta.name}")
+
+dicub = private.informacion_delicada.diccionario.ubicaciones
+dicpre = private.informacion_delicada.diccionario.precios
+dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
+
 z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
 if z == 1:
-    filtro1()
+    filtro1(ruta_seleccionada)
 if z == 2:
-    total()
+    total(ruta_seleccionada)
 if z == 3:
-    inventario(dicub)
+    inventario(ruta_seleccionada,dicub)
