@@ -178,7 +178,7 @@ def total(ruta):
                 hoja.cell(row = x, column = 8).border = bordes
                 i = i + 4
                 x += 1
-                
+
     print(f"i = {i} y x = {x}")
     mango.save(f"Prueba_de_planilla_stock_region.xlsx")
     return
