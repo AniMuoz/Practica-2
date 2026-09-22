@@ -15,6 +15,24 @@ fecha = datetime.date.today()
 dia = str(fecha.year) + str(fecha.month) + str(fecha.day)
 print("Codigo de dia: ", dia)
 
+#
+#PRUEBA DE FLASK
+#
+from flask import Flask, render_template
+
+Berfre = Flask(__name__)
+
+@Berfre.route('/')
+def home():
+    mi_variable = "¡Hola desde Python!"
+    return render_template('front.html', dato = mi_variable) and render_template('front.html', dia = dia)
+
+if __name__ == '__main__':
+    Berfre.run(debug=True)
+#
+#
+#
+
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
     # inicializa manejo de archivos
