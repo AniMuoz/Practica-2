@@ -218,21 +218,31 @@ def inventario(dicub):
 
     #Manejo de archivos
     for i in range(1, hoja2.max_row + 1):
+        #if str(hoja2.cell(row = i, column = 1).value) in dicub:
+        #    print("paso1")
+
         bodega = hoja2.cell(row = i, column = 3).value
         if bodega == "M501":
-            id = hoja2.cell(row = i, column = 1).value
-            hoja.cell(row = x, column = 1, value = id).border = bordes
-            descripcion = hoja2.cell(row = i, column = 2).value
-            hoja.cell(row = x, column = 2, value = descripcion).border = bordes
-            if dicub.get(hoja2.cell(row = i, column = 1).value) != None:
-                ubicacion = dicub[hoja2.cell(row = i, column = 1).value]
-                hoja.cell(row = x, column = 3, value = ubicacion).border = bordes
-            else:
-                hoja.cell(row = x, column = 3).border = bordes
-            utilizacion = hoja2.cell(row = i, column = 4).value
-            hoja.cell(row = x, column = 4, value = utilizacion).border = bordes
-            hoja.cell(row = x, column = 5).border = bordes
-            x += 1
+            if hoja2.cell(row = i, column = 2).value != "NULO":
+                id = hoja2.cell(row = i, column = 1).value
+                hoja.cell(row = x, column = 1, value = id).border = bordes
+                descripcion = hoja2.cell(row = i, column = 2).value
+                hoja.cell(row = x, column = 2, value = descripcion).border = bordes
+
+                if str(hoja2.cell(row = i, column = 1).value) in dicub:
+                    #print("paso")
+                    if dicub[str(hoja2.cell(row = i, column = 1).value)] != None or dicub[str(hoja2.cell(row = i, column = 1).value)] != "":
+                        #print("jackpot")
+                        ubicacion = dicub[str(hoja2.cell(row = i, column = 1).value)]
+                        #print("ubicacion = ", ubicacion)
+                        hoja.cell(row = x, column = 3, value = ubicacion).border = bordes
+                else:
+                    hoja.cell(row = x, column = 3).border = bordes
+
+                utilizacion = hoja2.cell(row = i, column = 4).value
+                hoja.cell(row = x, column = 4, value = utilizacion).border = bordes
+                hoja.cell(row = x, column = 5).border = bordes
+                x += 1
 
     print(f"i = {i} y x = {x}")
     ordenador(mango, hoja)
@@ -240,6 +250,7 @@ def inventario(dicub):
     return
 
 def var_ord(mango, hoja, i):
+    print("Trabajando, espere")
     if hoja.cell(row = i, column = 3).value is None or hoja.cell(row = i, column = 3).value == "":
             cont = 00
     else:
