@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Python y HTML</title>
+    <title>Ventas y Planillas Berfre</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon">
 </head>
 <body>
 
     <!-- 1. TÍTULOS -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo de mi página" width="150">
     <h1>{{ dato }}</h1>
     <h1>Pruebas iniciales de front end</h1>
     <h2>Codigo del dia {{ dia_hoy }}</h2>
@@ -52,6 +54,15 @@
             <strong>{{ alerta }}</strong>
         </p>
     {% endif %}
+
+    <div class="contenedor-botones">
+      <button class="bt" type="button" onclick="window.location.href='/'">Limpiar alerta</button>
+      <button class="bt" onclick="mostrarAlerta()">Añadir una venta</button>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
 
 <!-- JavaScript -->
 <script>

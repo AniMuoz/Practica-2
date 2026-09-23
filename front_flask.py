@@ -33,7 +33,7 @@ def stock_total():
     ruta = session.get('ruta') or request.args.get('ruta')
     if ruta:
         nombre_archivo, ruta_creacion = total(ruta)
-        session['alerta'] = f"archivo ({nombre_archivo}) creado en la ruta ({ruta_creacion})"
+        session['alerta'] = f"Archivo {nombre_archivo} creado en la ruta {ruta_creacion}"
     else:
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
     return redirect(url_for('home'))
