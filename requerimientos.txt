@@ -2,3 +2,7 @@ pip install flask
 pip install openpyxl
 pip install pyinstaller
 pip install sys
+
+pyinstaller --onefile --add-data "templates;templates" --add-data "static;static" --add-data "private;private"--add-data "Berfre.py;Berfre.py"  front_flask.py
+
+pyinstaller --onefile --icon=logo.ico --add-data "templates;templates" --add-data "static;static" --add-data "private;private"--add-data "Berfre.py;Berfre.py"  front_flask.py
