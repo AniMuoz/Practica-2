@@ -1,4 +1,5 @@
 from Berfre import dia, filtro1, inventario, total, pedir_archivo_visual
+import private.informacion_delicada.diccionario
 
 #
 #PRUEBA DE FLASK
@@ -48,16 +49,23 @@ def bodega():
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
     return redirect(url_for('home'))
 
-@front_flask.route('/inventario', methods=['GET'])
-def inventario():
+@front_flask.route('/inventario_lugar', methods=['GET'])
+def inventario_lugar():
     # Obtenemos la ruta desde la sesión (o desde el formulario si viene como parámetro)
     ruta = session.get('ruta') or request.args.get('ruta')
+    dicub, dicpre, dicmat = diccionarios(ruta)
     if ruta:
-        nombre_archivo, ruta_creacion = inventario(ruta)
+        nombre_archivo, ruta_creacion = inventario(ruta, dicub)
         session['alerta'] = f"Archivo {nombre_archivo} creado en la ruta {ruta_creacion}"
     else:
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
     return redirect(url_for('home'))
+
+def diccionarios(ruta):
+    dicub = private.informacion_delicada.diccionario.ubicaciones
+    dicpre = private.informacion_delicada.diccionario.precios
+    dicmat = private.informacion_delicada.diccionario.creardicmar(ruta)
+    return dicub, dicpre, dicmat
 
 #home()
 
