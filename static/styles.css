@@ -1,0 +1,14 @@
+.bt {
+    background-color: #007bff;
+    color: #ffffff;            /* Color del texto */
+    padding: 12px 24px;        /* Espaciado interno (arriba/abajo y lados) */
+    font-size: 16px;           /* Tamaño del texto */
+    border: none;              /* Elimina el borde predeterminado */
+    border-radius: 8px;        /* Redondea las esquinas */
+    cursor: pointer;           /* Cambia el cursor a una manita */
+    transition: background-color 0.3s ease; /* Suaviza los efectos */
+}
+
+.bt:hover {
+    background-color: #0056b3; /* Un tono más oscuro */
+}

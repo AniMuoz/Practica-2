@@ -1,18 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang = es>
 <head>
     <title>Python y HTML</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1>{{ dato }}</h1>
     <h1>Pruebas iniciales de front end</h1>
-    <h2>{{ dia }}</h2>
-    <button type="button" onclick="mostrarAlerta()">Haz clic</button>
+    <h2>{{ dia_hoy }}</h2>
+
+    <button class="bt" type="button" onclick="mostrarAlerta()">Haz clic</button>
+
+    <form action="/ruta" method="GET">
+        <button class="bt" type="submit">Presionar Botón</button>
+    </form>
+
+    <form action="/stock" method="GET">
+        <input type="hidden" name="ruta" value="{{ ruta }}">
+        <button class="bt" type="submit">Stock Total</button>
+    </form>
 
 <!-- El código de JavaScript que ejecuta la función -->
 <script>
   function mostrarAlerta() {
     alert("¡Hola! El botón funciona.");
+  }
+
+  function mostrarRuta() {
+    alert("La ruta es: {{ ruta }}");
   }
 </script>
 </body>

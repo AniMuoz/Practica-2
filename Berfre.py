@@ -18,20 +18,7 @@ print("Codigo de dia: ", dia)
 #
 #PRUEBA DE FLASK
 #
-from flask import Flask, render_template
 
-Berfre = Flask(__name__)
-
-@Berfre.route('/')
-def home():
-    mi_variable = "¡Hola desde Python!"
-    return render_template('front.html', dato = mi_variable, dia = dia) 
-
-if __name__ == '__main__':
-    Berfre.run(debug=True)
-#
-#
-#
 
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
@@ -346,26 +333,31 @@ def pedir_archivo_visual():
     
     return ruta_archivo
 
-# Ejecución del ejemplo
-ruta_seleccionada = pedir_archivo_visual()
+def main():
+    # Ejecución del ejemplo
+    ruta_seleccionada = pedir_archivo_visual()
 
-if ruta_seleccionada:
-    print(f"\nRuta seleccionada visualmente: {ruta_seleccionada}")
-else:
-    print("\nEl usuario canceló la selección.")
+    if ruta_seleccionada:
+        print(f"\nRuta seleccionada visualmente: {ruta_seleccionada}")
+    else:
+        print("\nEl usuario canceló la selección.")
 
 
-# Aquí ya puedes trabajar de forma segura con tu archivo
-#print(f"Procesando: {ruta.name}")
+    # Aquí ya puedes trabajar de forma segura con tu archivo
+    #print(f"Procesando: {ruta.name}")
 
-dicub = private.informacion_delicada.diccionario.ubicaciones
-dicpre = private.informacion_delicada.diccionario.precios
-dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
+    dicub = private.informacion_delicada.diccionario.ubicaciones
+    dicpre = private.informacion_delicada.diccionario.precios
+    dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
 
-z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
-if z == 1:
-    filtro1(ruta_seleccionada)
-if z == 2:
-    total(ruta_seleccionada)
-if z == 3:
-    inventario(ruta_seleccionada,dicub)
+    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
+    if z == 1:
+        filtro1(ruta_seleccionada)
+    if z == 2:
+        total(ruta_seleccionada)
+    if z == 3:
+        inventario(ruta_seleccionada,dicub)
+
+if __name__ == '__main__':
+    print("Esto solo se ejecutará si corres Berfre.py directamente")
+    main()
