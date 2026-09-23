@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Modificar Diccionarios - Berfre</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon">
+</head>
+<body>
+
+    <!-- CABECERA -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" width="120">
+    <h1>Modificar Diccionarios</h1>
+
+    <!-- SELECTOR DE DICCIONARIO -->
+    <div class="selector-dic">
+        {% for clave, etiqueta in dic_labels.items() %}
+        <a href="{{ url_for('diccionario_mod', dic=clave) }}"
+           class="bt-selector {{ 'bt-selector-activo' if clave == dic_nombre else '' }}">
+            {{ etiqueta }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top:10px;">
+        Diccionario de <span style="color:#2e7d70;">{{ dic_label }}</span>
+    </h2>
+
+    <!-- ALERTA -->
+    {% if alerta %}
+    <p class="alerta-info {{ 'alerta-error' if '⚠' in alerta or 'Error' in alerta else '' }}">
+        <strong>{{ alerta }}</strong>
+    </p>
+    {% endif %}
+
+    <!-- AVISO MATERIAL SIN RUTA -->
+    {% if material_sin_ruta %}
+    <p class="alerta-info alerta-error">
+        <strong>⚠ Para ver el diccionario de Materiales primero debes seleccionar un archivo Excel en la pantalla principal.</strong>
+    </p>
+    {% endif %}
+
+    <!-- BOTONES SUPERIORES -->
+    <div class="contenedor-botones" style="margin-bottom: 18px;">
+        <button class="bt-archivo" type="button" onclick="window.location.href='/'">← Volver al inicio</button>
+        <a href="{{ url_for('diccionario_exportar', dic=dic_nombre) }}" class="bt-descarga">⬇ Exportar a Excel</a>
+    </div>
+
+    <!-- BUSCADOR -->
+    <div class="buscador-contenedor">
+        <form action="{{ url_for('diccionario_mod') }}" method="GET"
+              style="display:flex; gap:8px; align-items:center;">
+            <input type="hidden" name="dic" value="{{ dic_nombre }}">
+            <input class="buscador-input" type="text" name="q" value="{{ busqueda }}"
+                   placeholder="Buscar por código o valor…" autofocus>
+            <button class="bt" type="submit">🔍 Buscar</button>
+            {% if busqueda %}
+            <a href="{{ url_for('diccionario_mod', dic=dic_nombre) }}" class="bt bt-limpiar">✕ Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- TABLA DE ENTRADAS -->
+    <div class="seccion-preview" style="margin-top: 16px;">
+        <div class="preview-header">
+            <h2 class="preview-titulo">
+                Entradas
+                {% if busqueda %}
+                <span style="font-size:0.85rem; color:#2e7d70;">(filtrado: "{{ busqueda }}")</span>
+                {% endif %}
+            </h2>
+            <p class="preview-contador">Total: <strong>{{ dic | length }}</strong> entradas</p>
+        </div>
+
+        <div class="tabla-contenedor">
+            <table class="tabla-preview" id="tabla-dic">
+                <thead>
+                    <tr>
+                        <th>Código (clave)</th>
+                        <th>Valor</th>
+                        <th style="text-align:center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for clave, valor in dic.items() %}
+                    <tr id="fila-{{ loop.index }}">
+                        <td class="celda-clave">{{ clave }}</td>
+                        <td class="celda-valor">{{ valor }}</td>
+                        <td class="celda-acciones">
+                            <button class="bt bt-editar"
+                                    onclick="activarEdicion('{{ loop.index }}', '{{ clave }}', {{ valor | tojson }})">
+                                ✏ Editar
+                            </button>
+                            <form action="{{ url_for('diccionario_eliminar') }}" method="POST"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar la clave {{ clave }}?');">
+                                <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+                                <input type="hidden" name="clave" value="{{ clave }}">
+                                <button class="bt bt-eliminar" type="submit">🗑 Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <!-- Fila de edición inline (oculta) -->
+                    <tr id="edicion-{{ loop.index }}" class="fila-edicion" style="display:none;">
+                        <td><strong>{{ clave }}</strong></td>
+                        <td>
+                            <input class="input-edicion" type="text"
+                                   id="valor-edit-{{ loop.index }}"
+                                   value="{{ valor }}"
+                                   placeholder="Nuevo valor">
+                        </td>
+                        <td class="celda-acciones">
+                            <form action="{{ url_for('diccionario_modificar') }}" method="POST"
+                                  id="form-edit-{{ loop.index }}" style="display:inline;">
+                                <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+                                <input type="hidden" name="clave" value="{{ clave }}">
+                                <input type="hidden" name="valor"
+                                       id="hidden-valor-{{ loop.index }}" value="{{ valor }}">
+                                <button class="bt bt-guardar" type="button"
+                                        onclick="guardarEdicion('{{ loop.index }}')">
+                                    💾 Guardar
+                                </button>
+                            </form>
+                            <button class="bt bt-cancelar"
+                                    onclick="cancelarEdicion('{{ loop.index }}')">
+                                ✕ Cancelar
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align:center; padding:20px; color:#666;">
+                            No se encontraron entradas{% if busqueda %} para "{{ busqueda }}"{% endif %}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- FORMULARIO AGREGAR ENTRADA -->
+    <div class="seccion-formulario">
+        <h2>➕ Agregar nueva entrada</h2>
+        <form action="{{ url_for('diccionario_agregar') }}" method="POST" class="form-agregar">
+            <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+            <div class="form-fila">
+                <label for="nueva-clave">Código:</label>
+                <input class="input-form" type="text" name="clave" id="nueva-clave"
+                       placeholder="Ej: 30000999" required>
+            </div>
+            <div class="form-fila">
+                <label for="nuevo-valor">Valor:</label>
+                <input class="input-form" type="text" name="valor" id="nuevo-valor"
+                       placeholder="Ej: 010S010H002">
+            </div>
+            <button class="bt bt-guardar" type="submit">➕ Agregar</button>
+        </form>
+    </div>
+
+    <!-- SECCIÓN IMPORTAR -->
+    <div class="seccion-formulario">
+        <h2>📥 Importar desde Excel</h2>
+        <p style="font-size:13px; color:#1a3c38;">
+            Columna <strong>A</strong> = códigos · Columna <strong>B</strong> = valores
+            (fila 1 = encabezados, ignorada).
+        </p>
+        <form action="{{ url_for('diccionario_importar') }}" method="POST"
+              enctype="multipart/form-data" class="form-agregar">
+            <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+            <div class="form-fila">
+                <label for="archivo-importar">Archivo .xlsx:</label>
+                <input type="file" name="archivo" id="archivo-importar" accept=".xlsx" required>
+            </div>
+            <button class="bt bt-guardar" type="submit">📥 Importar</button>
+        </form>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
+
+<!-- JavaScript -->
+<script>
+    function activarEdicion(idx, clave, valor) {
+        document.getElementById('fila-' + idx).style.display = 'none';
+        document.getElementById('edicion-' + idx).style.display = '';
+        var input = document.getElementById('valor-edit-' + idx);
+        input.value = valor;
+        input.focus();
+    }
+
+    function cancelarEdicion(idx) {
+        document.getElementById('fila-' + idx).style.display = '';
+        document.getElementById('edicion-' + idx).style.display = 'none';
+    }
+
+    function guardarEdicion(idx) {
+        document.getElementById('hidden-valor-' + idx).value =
+            document.getElementById('valor-edit-' + idx).value;
+        document.getElementById('form-edit-' + idx).submit();
+    }
+
+    // Enter guarda, Escape cancela en la fila de edición
+    document.querySelectorAll('.input-edicion').forEach(function(input) {
+        input.addEventListener('keydown', function(e) {
+            var idx = this.id.replace('valor-edit-', '');
+            if (e.key === 'Enter')   { e.preventDefault(); guardarEdicion(idx); }
+            if (e.key === 'Escape')  { cancelarEdicion(idx); }
+        });
+    });
+</script>
+</body>
+</html>

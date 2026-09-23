@@ -2,6 +2,7 @@ import os
 import os.path as path
 from pathlib import Path
 import sys
+import io
 from matplotlib.pylab import rint
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
@@ -428,6 +429,54 @@ def modificar_diccionarios(dic, name):
             j += 1
         excel.save(f"diccionario_{name}_exportado.xlsx")
     return
+
+# ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
+
+def dic_agregar(dic: dict, clave: str, valor: str) -> dict:
+    """Agrega o sobreescribe una clave en el diccionario."""
+    dic[clave] = valor
+    return dic
+
+def dic_modificar(dic: dict, clave: str, valor: str):
+    """Modifica el valor de una clave existente. Retorna el dict o None si la clave no existe."""
+    if clave not in dic:
+        return None
+    dic[clave] = valor
+    return dic
+
+def dic_eliminar(dic: dict, clave: str):
+    """Elimina una clave. Retorna el dict o None si la clave no existe."""
+    if clave not in dic:
+        return None
+    del dic[clave]
+    return dic
+
+def dic_exportar_bytes(dic: dict, name: str) -> io.BytesIO:
+    """Exporta el diccionario a un archivo Excel en memoria (BytesIO)."""
+    excel = openpyxl.Workbook()
+    hoja = excel.active
+    hoja['A1'] = "Codigo"
+    hoja['B1'] = name
+    for j, (clave, valor) in enumerate(dic.items(), start=2):
+        hoja.cell(row=j, column=1, value=clave)
+        hoja.cell(row=j, column=2, value=valor)
+    buffer = io.BytesIO()
+    excel.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+def dic_importar_excel(file_bytes: bytes) -> dict:
+    """Lee un xlsx (bytes) y retorna un dict {clave: valor} desde la fila 2 en adelante."""
+    buffer = io.BytesIO(file_bytes)
+    excel = openpyxl.load_workbook(buffer)
+    hoja = excel.active
+    resultado = {}
+    for i in range(2, hoja.max_row + 1):
+        clave = hoja.cell(row=i, column=1).value
+        valor = hoja.cell(row=i, column=2).value
+        if clave is not None:
+            resultado[str(clave)] = str(valor) if valor is not None else ""
+    return resultado
 
 #Seleccion de archivo visualmente
 def pedir_archivo_visual():

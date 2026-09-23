@@ -57,7 +57,10 @@
     <div class="contenedor-botones">
       <button class="bt" type="button" onclick="window.location.href='/'">Limpiar alerta</button>
       <button class="bt" onclick="mostrarAlerta()">Añadir una venta</button>
-      <button class="bt" onclick="mostrarAlerta()">Modificar diccionarios</button>
+      <form action="/diccionario_mod" method="GET">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="bt" type="submit">Modificar diccionarios</button>
+        </form>
     </div>
 
     <!-- 5. SECCIÓN DE PREVISUALIZACIÓN -->
