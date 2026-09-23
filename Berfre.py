@@ -22,6 +22,18 @@ print("Codigo de dia: ", dia)
 #PRUEBA DE FLASK
 #
 
+def maquillaje():
+    bordes = Border(
+            bottom=Side(border_style="medium", color="000000"),
+            left=Side(border_style="thin"),
+            right=Side(border_style="thin"),
+            top=Side(border_style="thin")
+            )
+    color = PatternFill(
+            start_color='a9e5e5', end_color='5CB800', fill_type='solid')
+    vacio = PatternFill(
+            start_color='f9e37c', end_color='5CB800', fill_type='solid')
+    return bordes, color, vacio
 
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
@@ -36,12 +48,8 @@ def filtro1(ruta):
     x = 4
 
     #Diseño de las celdas
-    bordes = Border(
-            bottom=Side(border_style="medium", color="000000"),
-            left=Side(border_style="thin"),
-            right=Side(border_style="thin"),
-            top=Side(border_style="thin")
-            )
+    bordes, color, vacio = maquillaje()
+
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
@@ -55,6 +63,11 @@ def filtro1(ruta):
     hoja['C3'].font = Font(bold=True)
     hoja['A1'].font = Font(bold=True, size=12)
     hoja['B1'].font = Font(bold=True, size=12)
+    hoja['A3'].fill = color
+    hoja['B3'].fill = color
+    hoja['C3'].fill = color
+    hoja['A1'].fill = color
+    hoja['B1'].fill = color
 
     #Titulo del documento
     hoja['A1'] = "Almacen"
@@ -119,12 +132,8 @@ def total(ruta):
     x = 4
 
     #Diseño de las celdas
-    bordes = Border(
-            bottom=Side(border_style="medium", color="000000"),
-            left=Side(border_style="thin"),
-            right=Side(border_style="thin"),
-            top=Side(border_style="thin")
-            )
+    bordes, color, vacio = maquillaje()
+
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 15
@@ -145,7 +154,36 @@ def total(ruta):
     hoja['F3'] = "M504"
     hoja['G3'] = "M505"
     hoja['H3'] = "Total"
+
+    #Diseño
+    hoja['A3'].font = Font(bold=True)
+    hoja['B3'].font = Font(bold=True)
+    hoja['C3'].font = Font(bold=True)
+    hoja['D3'].font = Font(bold=True)
+    hoja['E3'].font = Font(bold=True)
+    hoja['F3'].font = Font(bold=True)
+    hoja['G3'].font = Font(bold=True)
     hoja['H3'].font = Font(bold=True)
+    hoja['A1'].font = Font(bold=True)
+    hoja['A3'].fill = color
+    hoja['B3'].fill = color
+    hoja['C3'].fill = color
+    hoja['D3'].fill = color
+    hoja['E3'].fill = color
+    hoja['F3'].fill = color
+    hoja['G3'].fill = color
+    hoja['H3'].fill = color
+    hoja['A1'].fill = color
+    hoja['A3'].border = bordes
+    hoja['B3'].border = bordes
+    hoja['C3'].border = bordes
+    hoja['D3'].border = bordes
+    hoja['E3'].border = bordes
+    hoja['F3'].border = bordes
+    hoja['G3'].border = bordes
+    hoja['H3'].border = bordes
+    hoja['A1'].border = bordes
+    
 
     #Filtros para el archivo
     hoja.auto_filter.ref = "A3:H3"
@@ -186,6 +224,11 @@ def total(ruta):
                 hoja.cell(row = x, column = 8, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
                 hoja.cell(row = x, column = 8).border = bordes
                 i = i + 4
+                # Después de escribir los valores de las bodegas en la fila x:
+                for col_letra in ['C', 'D', 'E', 'F', 'G']:
+                    val = hoja[f'{col_letra}{x}'].value
+                    if val is None or val == "":
+                        hoja[f'{col_letra}{x}'].fill = vacio
                 x += 1
 
     print(f"i = {i} y x = {x}")
@@ -229,12 +272,8 @@ def inventario(ruta, dicub):
     x = 4
 
     #Diseño de las celdas
-    bordes = Border(
-        bottom=Side(border_style="medium", color="000000"),
-        left=Side(border_style="thin"),
-        right=Side(border_style="thin"),
-        top=Side(border_style="thin")
-        )
+    bordes, color, vacio = maquillaje()
+
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
@@ -254,6 +293,12 @@ def inventario(ruta, dicub):
     hoja['E3'].font = Font(bold=True)
     hoja['A1'].font = Font(bold=True, size=12)
     hoja['B1'].font = Font(bold=True, size=12)
+    hoja['A3'].fill = color
+    hoja['B3'].fill = color
+    hoja['C3'].fill = color
+    hoja['D3'].fill = color
+    hoja['A1'].fill = color
+    hoja['B1'].fill = color
 
     #Titulo del documento
     hoja['A1'] = "Almacen"
@@ -333,6 +378,8 @@ def inventario(ruta, dicub):
         hoja.cell(row=x, column=1, value=item['id']).border = bordes
         hoja.cell(row=x, column=2, value=item['descripcion']).border = bordes
         hoja.cell(row=x, column=3, value=item['ubicacion']).border = bordes
+        if hoja.cell(row=x, column= 3).value == "":
+            hoja[f'C{x}'].fill = vacio
         hoja.cell(row=x, column=4, value=item['utilizacion']).border = bordes
         hoja.cell(row=x, column=5, value=item['existencia']).border = bordes
         x += 1

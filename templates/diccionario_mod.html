@@ -71,7 +71,7 @@
             <p class="preview-contador">Total: <strong>{{ dic | length }}</strong> entradas</p>
         </div>
 
-        <div class="tabla-contenedor">
+        <div class="tabla-contenedor" id="contenedor-dic">
             <table class="tabla-preview" id="tabla-dic">
                 <thead>
                     <tr>
@@ -83,7 +83,7 @@
                 <tbody>
                     {% for clave, valor in dic.items() %}
                     <!-- Fila normal de visualización -->
-                    <tr id="fila-{{ loop.index }}">
+                    <tr id="fila-{{ loop.index }}" class="fila-dic-item">
                         <td class="celda-clave"><strong>{{ clave }}</strong></td>
                         <td class="celda-valor">{{ valor }}</td>
                         <td class="celda-acciones" style="text-align:center;">
@@ -128,6 +128,15 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="preview-info-barra">
+            <p class="preview-contador" id="contador-dic">
+                Mostrando <strong id="cant-visibles-dic">0</strong> de <strong>{{ dic | length }}</strong> entradas
+                <span id="hint-slider-dic" style="color: #1a3c38; font-style: italic; margin-left: 6px;">(desliza el slider hacia abajo para seguir viendo)</span>
+            </p>
+            <button id="bt-mas-dic" class="bt-cargar-mas" type="button" style="display:none;" onclick="cargarMasDic()">
+                ⬇ Cargar 50 entradas más
+            </button>
         </div>
     </div>
 
@@ -206,6 +215,65 @@
             }
         });
     });
+
+    // Control de visualización de 50 en 50 con slider hacia abajo
+    (function() {
+        var LOTE = 50;
+        var totalEntradas = {{ dic | length }};
+        var contenedor = document.getElementById('contenedor-dic');
+        var cantVisiblesSpan = document.getElementById('cant-visibles-dic');
+        var hintSpan = document.getElementById('hint-slider-dic');
+        var btMas = document.getElementById('bt-mas-dic');
+
+        if (!totalEntradas) return;
+
+        var visibles = Math.min(LOTE, totalEntradas);
+
+        // Ocultar entradas después de las primeras 50
+        for (var i = LOTE + 1; i <= totalEntradas; i++) {
+            var f = document.getElementById('fila-' + i);
+            if (f) f.style.display = 'none';
+        }
+
+        function actualizarEstado() {
+            if (cantVisiblesSpan) {
+                cantVisiblesSpan.textContent = visibles;
+            }
+            if (visibles >= totalEntradas) {
+                if (hintSpan) hintSpan.style.display = 'none';
+                if (btMas) btMas.style.display = 'none';
+            } else {
+                if (hintSpan) hintSpan.style.display = 'inline';
+                if (btMas) btMas.style.display = 'inline-block';
+            }
+        }
+
+        window.cargarMasDic = function() {
+            var siguienteLimite = Math.min(visibles + LOTE, totalEntradas);
+            for (var i = visibles + 1; i <= siguienteLimite; i++) {
+                var f = document.getElementById('fila-' + i);
+                if (f) f.style.display = '';
+            }
+            visibles = siguienteLimite;
+            actualizarEstado();
+        };
+
+        actualizarEstado();
+
+        // Evento al deslizar el slider vertical hacia abajo en el contenedor
+        if (contenedor) {
+            var cargando = false;
+            contenedor.addEventListener('scroll', function() {
+                if (visibles >= totalEntradas || cargando) return;
+                // Si el scroll llega cerca del fondo (a menos de 80px)
+                if (contenedor.scrollTop + contenedor.clientHeight >= contenedor.scrollHeight - 80) {
+                    cargando = true;
+                    cargarMasDic();
+                    setTimeout(function() { cargando = false; }, 100);
+                }
+            });
+        }
+    })();
 </script>
 </body>
 </html>

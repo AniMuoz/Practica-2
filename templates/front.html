@@ -30,21 +30,21 @@
 
     <!-- 4. BOTONES DE FUNCIONES (uno al lado del otro) -->
     <div class="contenedor-botones">
-        <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta</button>
+        <button class="bt_lim" type="button" onclick="window.location.href='/'">Limpiar pantalla</button>
 
         <form action="/stock/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
-            <button class="bt" type="submit">Stock Total</button>
+            <button class="bt" type="submit">Stock Regional</button>
         </form>
 
         <form action="/bodega/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
-            <button class="bt" type="submit">Bodega</button>
+            <button class="bt" type="submit">Stock en Bodega</button>
         </form>
 
         <form action="/inventario_lugar/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
-            <button class="bt" type="submit">Inventario por Lugar</button>
+            <button class="bt" type="submit">Planilla para inventario</button>
         </form>
     </div>
 
@@ -55,11 +55,11 @@
     {% endif %}
 
     <div class="contenedor-botones">
-      <button class="bt" type="button" onclick="window.location.href='/'">Limpiar alerta</button>
-      <button class="bt" onclick="mostrarAlerta()">Añadir una venta</button>
+      <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta (boton de testeo)</button>
+      <button class="bt" onclick="mostrarAlerta()">Añadir una venta (placeholder)</button>
       <form action="/diccionario_mod" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
-            <button class="bt" type="submit">Modificar diccionarios</button>
+            <button class="bt" type="submit">Vista de datos de materiales</button>
         </form>
     </div>
 
@@ -70,7 +70,7 @@
             <h2 class="preview-titulo">{{ preview_titulo }}</h2>
             <a href="{{ descarga_url }}" class="bt-descarga">⬇ Descargar planilla</a>
         </div>
-        <div class="tabla-contenedor">
+        <div class="tabla-contenedor" id="contenedor-preview">
             <table class="tabla-preview">
                 <thead>
                     <tr>
@@ -79,9 +79,9 @@
                         {% endfor %}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-preview">
                     {% for fila in preview_filas %}
-                    <tr>
+                    <tr class="fila-preview">
                         {% for celda in fila %}
                         <td>{{ celda if celda is not none else '' }}</td>
                         {% endfor %}
@@ -90,7 +90,15 @@
                 </tbody>
             </table>
         </div>
-        <p class="preview-contador">Total de filas: <strong>{{ preview_filas | length }}</strong></p>
+        <div class="preview-info-barra">
+            <p class="preview-contador" id="contador-preview">
+                Mostrando <strong id="cant-visibles-preview">0</strong> de <strong>{{ preview_filas | length }}</strong> filas
+                <span id="hint-slider-preview" style="color: #1a3c38; font-style: italic; margin-left: 6px;">(desliza el slider hacia abajo para seguir viendo)</span>
+            </p>
+            <button id="bt-mas-preview" class="bt-cargar-mas" type="button" style="display:none;" onclick="cargarMasPreview()">
+                ⬇ Cargar 50 filas más
+            </button>
+        </div>
     </div>
     {% endif %}
 
@@ -112,6 +120,64 @@
   {% if alerta %}
     alert({{ alerta | tojson }});
   {% endif %}
+
+  // Control de visualización: mostrar de a 50 elementos con slider hacia abajo
+  (function() {
+    var LOTE = 50;
+    var filas = document.querySelectorAll('.fila-preview');
+    var totalFilas = filas.length;
+    var contenedor = document.getElementById('contenedor-preview');
+    var cantVisiblesSpan = document.getElementById('cant-visibles-preview');
+    var hintSpan = document.getElementById('hint-slider-preview');
+    var btMas = document.getElementById('bt-mas-preview');
+
+    if (!totalFilas) return;
+
+    var visibles = Math.min(LOTE, totalFilas);
+
+    // Ocultar filas que exceden el lote inicial de 50
+    for (var i = LOTE; i < totalFilas; i++) {
+      filas[i].style.display = 'none';
+    }
+
+    function actualizarEstado() {
+      if (cantVisiblesSpan) {
+        cantVisiblesSpan.textContent = visibles;
+      }
+      if (visibles >= totalFilas) {
+        if (hintSpan) hintSpan.style.display = 'none';
+        if (btMas) btMas.style.display = 'none';
+      } else {
+        if (hintSpan) hintSpan.style.display = 'inline';
+        if (btMas) btMas.style.display = 'inline-block';
+      }
+    }
+
+    window.cargarMasPreview = function() {
+      var siguienteLimite = Math.min(visibles + LOTE, totalFilas);
+      for (var i = visibles; i < siguienteLimite; i++) {
+        filas[i].style.display = '';
+      }
+      visibles = siguienteLimite;
+      actualizarEstado();
+    };
+
+    actualizarEstado();
+
+    // Evento al deslizar el slider vertical hacia abajo en el contenedor
+    if (contenedor) {
+      var cargando = false;
+      contenedor.addEventListener('scroll', function() {
+        if (visibles >= totalFilas || cargando) return;
+        // Si el scroll llega cerca del final (a menos de 80px)
+        if (contenedor.scrollTop + contenedor.clientHeight >= contenedor.scrollHeight - 80) {
+          cargando = true;
+          cargarMasPreview();
+          setTimeout(function() { cargando = false; }, 100);
+        }
+      });
+    }
+  })();
 </script>
 </body>
 </html>
