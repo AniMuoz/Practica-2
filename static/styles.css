@@ -1,14 +1,115 @@
+/* ===== Importar fuente Berlin Sans FD desde Google Fonts (aproximación) ===== */
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;700&display=swap');
+
+/* ===== Fuente Berlin Sans FD local (si está disponible en el sistema) ===== */
+@font-face {
+    font-family: 'Berlin Sans FD';
+    src: local('Berlin Sans FD'), local('BerlinSansFD');
+}
+
+/* ===== Estilos globales del body ===== */
+body {
+    background-color: #7AB4AD;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+}
+
+/* ===== Títulos ===== */
+h1, h2 {
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    text-align: center;
+    color: #1a3c38;
+    margin: 8px 0;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.4rem;
+    font-weight: normal;
+}
+
+/* ===== Botón de seleccionar archivo ===== */
+.bt-archivo {
+    background-color: #2e7d70;
+    color: #ffffff;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 16px 0 8px 0;
+}
+
+.bt-archivo:hover {
+    background-color: #1f5c52;
+}
+
+/* ===== Sección de ruta del archivo ===== */
+.seccion-ruta {
+    text-align: center;
+    margin: 8px 0 20px 0;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+}
+
+.ruta-seleccionada {
+    color: #0d3b35;
+    font-size: 15px;
+}
+
+.sin-ruta {
+    color: #3a6b65;
+    font-size: 15px;
+    font-style: italic;
+}
+
+/* ===== Contenedor de botones de funciones (uno al lado del otro) ===== */
+.contenedor-botones {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+/* ===== Botones de funciones ===== */
 .bt {
-    background-color: #007bff;
-    color: #ffffff;            /* Color del texto */
-    padding: 12px 24px;        /* Espaciado interno (arriba/abajo y lados) */
-    font-size: 16px;           /* Tamaño del texto */
-    border: none;              /* Elimina el borde predeterminado */
-    border-radius: 8px;        /* Redondea las esquinas */
-    cursor: pointer;           /* Cambia el cursor a una manita */
-    transition: background-color 0.3s ease; /* Suaviza los efectos */
+    background-color: #00b3ff;
+    color: #ffffff;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
 .bt:hover {
-    background-color: #0056b3; /* Un tono más oscuro */
+    background-color: #0056b3;
+}
+
+/* ===== Alerta de información ===== */
+.alerta-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #bee5eb;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    text-align: center;
+    margin-top: 16px;
 }

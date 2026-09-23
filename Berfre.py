@@ -5,6 +5,8 @@ import sys
 from matplotlib.pylab import rint
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
+import tkinter as tk
+from tkinter import filedialog
 import datetime
 from sympy import true
 #from diccionariotemp import ubicaciones, precios, material
@@ -82,8 +84,10 @@ def filtro1(ruta):
     #hoja['A1'] = hoja2.cell(row = 1, column = 1).value
     #hoja['B3'] = 'EMPRESA: PRETORIANOS SEGURIDAD'
     print(f"i = {i} y x = {x}")
-    mango.save(f"Prueba_de_planilla_M501.xlsx")
-    return
+    nombre_archivo = "Prueba_de_planilla_M501.xlsx"
+    mango.save(nombre_archivo)
+    ruta_creacion = path.abspath(nombre_archivo)
+    return nombre_archivo, ruta_creacion
 
 #Planilla todas la bodegas
 def total(ruta):
@@ -167,8 +171,10 @@ def total(ruta):
                 x += 1
 
     print(f"i = {i} y x = {x}")
-    mango.save(f"Prueba_de_planilla_stock_region.xlsx")
-    return
+    nombre_archivo = "Prueba_de_planilla_stock_region.xlsx"
+    mango.save(nombre_archivo)
+    ruta_creacion = path.abspath(nombre_archivo)
+    return nombre_archivo, ruta_creacion
 
 #Inventario de la bodega M501 con ubicacion
 def inventario(ruta, dicub):
@@ -294,26 +300,13 @@ def inventario(ruta, dicub):
     hoja.auto_filter.ref = f"A3:E{x-1}"
 
     # Guardar archivo
-    mango.save("Prueba_de_planilla_invetario.xlsx")
+    nombre_archivo = "Prueba_de_planilla_invetario.xlsx"
+    mango.save(nombre_archivo)
+    ruta_creacion = path.abspath(nombre_archivo)
     print("¡Proceso completado con éxito!")
-    return
+    return nombre_archivo, ruta_creacion
 
-#Selector de filtro
-
-
-#while True:
-#    entrada = input("Introduce la ruta del archivo: ")
-#    ruta = Path(entrada)
-#    
-#    # Verificar si el archivo existe y es un archivo real (no una carpeta)
-#    if ruta.is_file():
-#        print("¡Archivo encontrado con éxito!")
-#        break
-#    else:
-#        print("Error: El archivo no existe o la ruta es inválida. Inténtalo de nuevo.\n")
-import tkinter as tk
-from tkinter import filedialog
-
+#Seleccion de archivo visualmente
 def pedir_archivo_visual():
     # 1. Crear una ventana raíz oculta para que no aparezca una ventana vacía de fondo
     root = tk.Tk()
@@ -333,6 +326,7 @@ def pedir_archivo_visual():
     
     return ruta_archivo
 
+#Selecciona que filtro se quiere usar y ejecuta la funcion correspondiente
 def main():
     # Ejecución del ejemplo
     ruta_seleccionada = pedir_archivo_visual()
@@ -342,10 +336,7 @@ def main():
     else:
         print("\nEl usuario canceló la selección.")
 
-
-    # Aquí ya puedes trabajar de forma segura con tu archivo
-    #print(f"Procesando: {ruta.name}")
-
+    #Se inicializan los diccionarios
     dicub = private.informacion_delicada.diccionario.ubicaciones
     dicpre = private.informacion_delicada.diccionario.precios
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)

@@ -1,34 +1,72 @@
 <!DOCTYPE html>
-<html lang = es>
+<html lang="es">
 <head>
     <title>Python y HTML</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+
+    <!-- 1. TÍTULOS -->
     <h1>{{ dato }}</h1>
     <h1>Pruebas iniciales de front end</h1>
-    <h2>{{ dia_hoy }}</h2>
+    <h2>Codigo del dia {{ dia_hoy }}</h2>
+    <a>Codigo del dia ==> año - mes - dia</a>
 
-    <button class="bt" type="button" onclick="mostrarAlerta()">Haz clic</button>
-
+    <!-- 2. BOTÓN DE ARCHIVO -->
     <form action="/ruta" method="GET">
-        <button class="bt" type="submit">Presionar Botón</button>
+        <button class="bt-archivo" type="submit">Seleccionar Archivo</button>
     </form>
 
-    <form action="/stock" method="GET">
-        <input type="hidden" name="ruta" value="{{ ruta }}">
-        <button class="bt" type="submit">Stock Total</button>
-    </form>
+    <!-- 3. SECCIÓN DE RUTA DE ARCHIVO -->
+    <div class="seccion-ruta">
+        {% if ruta %}
+            <p class="ruta-seleccionada"><strong>Archivo seleccionado:</strong> {{ ruta }}</p>
+        {% else %}
+            <p class="sin-ruta">Ningún archivo seleccionado.</p>
+        {% endif %}
+    </div>
 
-<!-- El código de JavaScript que ejecuta la función -->
+    <!-- 4. BOTONES DE FUNCIONES (uno al lado del otro) -->
+    <div class="contenedor-botones">
+        <!-- <button class="bt" type="button" onclick="mostrarAlerta()">Haz clic</button> -->
+        <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta</button>
+
+        <form action="/stock" method="GET">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="bt" type="submit">Stock Total</button>
+        </form>
+
+        <form action="/bodega" method="GET">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="bt" type="submit">Bodega</button>
+        </form>
+
+        <form action="/inventario" method="GET">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="bt" type="submit">Inventario</button>
+        </form>
+    </div>
+
+    {% if alerta %}
+        <p class="alerta-info">
+            <strong>{{ alerta }}</strong>
+        </p>
+    {% endif %}
+
+<!-- JavaScript -->
 <script>
   function mostrarAlerta() {
     alert("¡Hola! El botón funciona.");
   }
 
   function mostrarRuta() {
-    alert("La ruta es: {{ ruta }}");
+    var r = {{ ruta | tojson }};
+    alert(r ? "La ruta es: " + r : "No hay ninguna ruta seleccionada.");
   }
+
+  {% if alerta %}
+    alert({{ alerta | tojson }});
+  {% endif %}
 </script>
 </body>
 </html>
