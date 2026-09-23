@@ -30,20 +30,19 @@
 
     <!-- 4. BOTONES DE FUNCIONES (uno al lado del otro) -->
     <div class="contenedor-botones">
-        <!-- <button class="bt" type="button" onclick="mostrarAlerta()">Haz clic</button> -->
         <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta</button>
 
-        <form action="/stock" method="GET">
+        <form action="/stock/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
             <button class="bt" type="submit">Stock Total</button>
         </form>
 
-        <form action="/bodega" method="GET">
+        <form action="/bodega/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
             <button class="bt" type="submit">Bodega</button>
         </form>
 
-        <form action="/inventario_lugar" method="GET">
+        <form action="/inventario_lugar/preview" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
             <button class="bt" type="submit">Inventario por Lugar</button>
         </form>
@@ -60,6 +59,37 @@
       <button class="bt" onclick="mostrarAlerta()">Añadir una venta</button>
       <button class="bt" onclick="mostrarAlerta()">Modificar diccionarios</button>
     </div>
+
+    <!-- 5. SECCIÓN DE PREVISUALIZACIÓN -->
+    {% if preview_columnas %}
+    <div class="seccion-preview">
+        <div class="preview-header">
+            <h2 class="preview-titulo">{{ preview_titulo }}</h2>
+            <a href="{{ descarga_url }}" class="bt-descarga">⬇ Descargar planilla</a>
+        </div>
+        <div class="tabla-contenedor">
+            <table class="tabla-preview">
+                <thead>
+                    <tr>
+                        {% for col in preview_columnas %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in preview_filas %}
+                    <tr>
+                        {% for celda in fila %}
+                        <td>{{ celda if celda is not none else '' }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="preview-contador">Total de filas: <strong>{{ preview_filas | length }}</strong></p>
+    </div>
+    {% endif %}
 
     <div class="footer">
         <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>

@@ -1,12 +1,22 @@
-from Berfre import dia, filtro1, inventario, total, pedir_archivo_visual
+from Berfre import (dia, filtro1, filtro1_preview,
+                    inventario, inventario_preview,
+                    total, total_preview,
+                    pedir_archivo_visual)
 import private.informacion_delicada.diccionario
+import io
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
+import sys
+import os
+from flask import Flask
 
-#
-#PRUEBA DE FLASK
-#
-from flask import Flask, render_template, request, redirect, url_for, session
+# Detectar si se está ejecutando como un .exe compilado
+if getattr(sys, 'frozen', False):
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    front_flask = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    front_flask = Flask(__name__)
 
-front_flask = Flask(__name__)
 # Clave secreta requerida para que Flask pueda usar 'session'
 front_flask.secret_key = 'practica2_clave_secreta_desarrollo'
 
@@ -17,7 +27,7 @@ def home():
     ruta = session.get('ruta', '')
     # Obtenemos la alerta si existe y la eliminamos de la sesión para mostrarla solo una vez
     alerta = session.pop('alerta', None)
-    return render_template('front.html', dato=mi_variable, dia_hoy=dia, ruta=ruta, alerta=alerta) 
+    return render_template('front.html', dato=mi_variable, dia_hoy=dia, ruta=ruta, alerta=alerta)
 
 @front_flask.route('/ruta', methods=['GET'])
 def ruta():
@@ -27,39 +37,102 @@ def ruta():
         session['ruta'] = archivo_seleccionado
     return redirect(url_for('home'))
 
-@front_flask.route('/stock', methods=['GET'])
-def stock_total():
-    # Obtenemos la ruta desde la sesión (o desde el formulario si viene como parámetro)
-    ruta = session.get('ruta') or request.args.get('ruta')
-    if ruta:
-        nombre_archivo, ruta_creacion = total(ruta)
-        session['alerta'] = f"Archivo {nombre_archivo} creado en la ruta {ruta_creacion}"
-    else:
-        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
-    return redirect(url_for('home'))
+# ─── STOCK TOTAL ─────────────────────────────────────────────────────────────
 
-@front_flask.route('/bodega', methods=['GET'])
-def bodega():
-    # Obtenemos la ruta desde la sesión (o desde el formulario si viene como parámetro)
+@front_flask.route('/stock/preview', methods=['GET'])
+def stock_preview():
     ruta = session.get('ruta') or request.args.get('ruta')
-    if ruta:
-        nombre_archivo, ruta_creacion = filtro1(ruta)
-        session['alerta'] = f"Archivo {nombre_archivo} creado en la ruta {ruta_creacion}"
-    else:
+    if not ruta:
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
-    return redirect(url_for('home'))
+        return redirect(url_for('home'))
+    columnas, filas = total_preview(ruta)
+    return render_template('front.html',
+                           dato="¡Hola desde Python!",
+                           dia_hoy=dia,
+                           ruta=ruta,
+                           alerta=None,
+                           preview_titulo="Stock Total",
+                           preview_columnas=columnas,
+                           preview_filas=filas,
+                           descarga_url=url_for('stock_descargar'))
 
-@front_flask.route('/inventario_lugar', methods=['GET'])
-def inventario_lugar():
-    # Obtenemos la ruta desde la sesión (o desde el formulario si viene como parámetro)
+@front_flask.route('/stock/descargar', methods=['GET'])
+def stock_descargar():
     ruta = session.get('ruta') or request.args.get('ruta')
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
+    nombre_archivo, ruta_creacion = total(ruta)
+    return send_file(ruta_creacion,
+                     as_attachment=True,
+                     download_name=nombre_archivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# ─── BODEGA (M501) ───────────────────────────────────────────────────────────
+
+@front_flask.route('/bodega/preview', methods=['GET'])
+def bodega_preview():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
+    columnas, filas = filtro1_preview(ruta)
+    return render_template('front.html',
+                           dato="¡Hola desde Python!",
+                           dia_hoy=dia,
+                           ruta=ruta,
+                           alerta=None,
+                           preview_titulo="Bodega M501",
+                           preview_columnas=columnas,
+                           preview_filas=filas,
+                           descarga_url=url_for('bodega_descargar'))
+
+@front_flask.route('/bodega/descargar', methods=['GET'])
+def bodega_descargar():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
+    nombre_archivo, ruta_creacion = filtro1(ruta)
+    return send_file(ruta_creacion,
+                     as_attachment=True,
+                     download_name=nombre_archivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# ─── INVENTARIO POR LUGAR ─────────────────────────────────────────────────────
+
+@front_flask.route('/inventario_lugar/preview', methods=['GET'])
+def inventario_preview_route():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
     dicub, dicpre, dicmat = diccionarios(ruta)
-    if ruta:
-        nombre_archivo, ruta_creacion = inventario(ruta, dicub)
-        session['alerta'] = f"Archivo {nombre_archivo} creado en la ruta {ruta_creacion}"
-    else:
+    columnas, filas = inventario_preview(ruta, dicub)
+    return render_template('front.html',
+                           dato="¡Hola desde Python!",
+                           dia_hoy=dia,
+                           ruta=ruta,
+                           alerta=None,
+                           preview_titulo="Inventario por Lugar",
+                           preview_columnas=columnas,
+                           preview_filas=filas,
+                           descarga_url=url_for('inventario_descargar'))
+
+@front_flask.route('/inventario_lugar/descargar', methods=['GET'])
+def inventario_descargar():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    if not ruta:
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
-    return redirect(url_for('home'))
+        return redirect(url_for('home'))
+    dicub, dicpre, dicmat = diccionarios(ruta)
+    nombre_archivo, ruta_creacion = inventario(ruta, dicub)
+    return send_file(ruta_creacion,
+                     as_attachment=True,
+                     download_name=nombre_archivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# ─── UTILIDADES ───────────────────────────────────────────────────────────────
 
 def diccionarios(ruta):
     dicub = private.informacion_delicada.diccionario.ubicaciones
@@ -67,10 +140,8 @@ def diccionarios(ruta):
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta)
     return dicub, dicpre, dicmat
 
-#home()
-
 if __name__ == '__main__':
-    front_flask.run(debug=True)
+    front_flask.run(debug=True, port=5000)  
 #
 #
 #

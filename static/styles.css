@@ -113,3 +113,88 @@ h2 {
     text-align: center;
     margin-top: 16px;
 }
+
+/* ===== Sección de previsualización ===== */
+.seccion-preview {
+    width: 100%;
+    max-width: 1100px;
+    margin-top: 30px;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.preview-titulo {
+    margin: 0;
+    font-size: 1.3rem;
+    color: #1a3c38;
+}
+
+/* ===== Botón de descarga ===== */
+.bt-descarga {
+    display: inline-block;
+    background-color: #2e7d70;
+    color: #ffffff;
+    padding: 10px 22px;
+    font-size: 15px;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.bt-descarga:hover {
+    background-color: #1f5c52;
+}
+
+/* ===== Tabla de datos ===== */
+.tabla-contenedor {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tabla-preview {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    font-size: 14px;
+    background-color: #ffffff;
+}
+
+.tabla-preview thead tr {
+    background-color: #2e7d70;
+    color: #ffffff;
+    text-align: left;
+}
+
+.tabla-preview th,
+.tabla-preview td {
+    padding: 9px 14px;
+    border: 1px solid #c8e0dc;
+    white-space: nowrap;
+}
+
+.tabla-preview tbody tr:nth-child(even) {
+    background-color: #eaf4f2;
+}
+
+.tabla-preview tbody tr:hover {
+    background-color: #c2e0db;
+}
+
+/* ===== Contador de filas ===== */
+.preview-contador {
+    text-align: right;
+    font-size: 13px;
+    color: #2e7d70;
+    margin-top: 6px;
+}

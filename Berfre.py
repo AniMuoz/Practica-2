@@ -89,6 +89,23 @@ def filtro1(ruta):
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
 
+# Versión preview de filtro1: retorna columnas y filas como listas (sin guardar archivo)
+def filtro1_preview(ruta):
+    excel = openpyxl.load_workbook(ruta)
+    hoja2 = excel.active
+    columnas = ["Etiqueta de fila", "Descripcion del producto", "Libre utilización"]
+    filas = []
+    for i in range(1, hoja2.max_row + 1):
+        bodega = hoja2.cell(row=i, column=3).value
+        if bodega == "M501":
+            if hoja2.cell(row=i, column=2).value != "NULO":
+                filas.append([
+                    hoja2.cell(row=i, column=1).value,
+                    hoja2.cell(row=i, column=2).value,
+                    hoja2.cell(row=i, column=4).value,
+                ])
+    return columnas, filas
+
 #Planilla todas la bodegas
 def total(ruta):
     # inicializa manejo de archivos
@@ -175,6 +192,29 @@ def total(ruta):
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
+
+# Versión preview de total: retorna columnas y filas como listas (sin guardar archivo)
+def total_preview(ruta):
+    excel = openpyxl.load_workbook(ruta)
+    hoja2 = excel.active
+    columnas = ["Material", "Descripcion del producto", "M501", "M502", "M503", "M504", "M505", "Total"]
+    filas = []
+    for i in range(2, hoja2.max_row + 1):
+        if hoja2.cell(row=i, column=2).value != "NULO":
+            bodega = hoja2.cell(row=i, column=1).value
+            if bodega != hoja2.cell(row=i - 1, column=1).value:
+                M501 = hoja2.cell(row=i, column=4).value or 0
+                M502 = hoja2.cell(row=i+1, column=4).value if hoja2.cell(row=i+1, column=3).value == "M502" else 0
+                M503 = hoja2.cell(row=i+2, column=4).value if hoja2.cell(row=i+2, column=3).value == "M503" else 0
+                M504 = hoja2.cell(row=i+3, column=4).value if hoja2.cell(row=i+3, column=3).value == "M504" else 0
+                M505 = hoja2.cell(row=i+4, column=4).value if hoja2.cell(row=i+4, column=3).value == "M505" else 0
+                filas.append([
+                    hoja2.cell(row=i, column=1).value,
+                    hoja2.cell(row=i, column=2).value,
+                    M501, M502, M503, M504, M505,
+                    M501 + M502 + M503 + M504 + M505,
+                ])
+    return columnas, filas
 
 #Inventario de la bodega M501 con ubicacion
 def inventario(ruta, dicub):
@@ -306,6 +346,41 @@ def inventario(ruta, dicub):
     print("¡Proceso completado con éxito!")
     return nombre_archivo, ruta_creacion
 
+# Versión preview de inventario: retorna columnas y filas como listas (sin guardar archivo)
+def inventario_preview(ruta, dicub):
+    excel = openpyxl.load_workbook(ruta)
+    hoja2 = excel.active
+    columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "Libre utilización", "Existencia"]
+    filas_filtradas = []
+
+    for row in hoja2.iter_rows(values_only=True):
+        if not row or len(row) < 4:
+            continue
+        id_prod, descripcion, bodega, utilizacion = row[0], row[1], row[2], row[3]
+        if bodega == "M501" and descripcion != "NULO":
+            id_str = str(id_prod)
+            ubicacion = dicub.get(id_str, "") if id_str in dicub else ""
+            filas_filtradas.append({
+                'id': id_prod,
+                'descripcion': descripcion,
+                'ubicacion': ubicacion,
+                'utilizacion': utilizacion,
+                'existencia': None,
+            })
+
+    def obtener_clave_ordenamiento(item):
+        ub = str(item['ubicacion']).strip() if item['ubicacion'] else ""
+        if not ub:
+            return (1, 0)
+        if len(ub) >= 2 and ub[:2].isdigit():
+            return (0, int(ub[:2]))
+        return (0, 999)
+
+    filas_filtradas.sort(key=obtener_clave_ordenamiento)
+    filas = [[f['id'], f['descripcion'], f['ubicacion'], f['utilizacion'], f['existencia']]
+             for f in filas_filtradas]
+    return columnas, filas
+
 #Seleccion de archivo visualmente
 def pedir_archivo_visual():
     # 1. Crear una ventana raíz oculta para que no aparezca una ventana vacía de fondo
@@ -335,6 +410,7 @@ def main():
         print(f"\nRuta seleccionada visualmente: {ruta_seleccionada}")
     else:
         print("\nEl usuario canceló la selección.")
+        return
 
     #Se inicializan los diccionarios
     dicub = private.informacion_delicada.diccionario.ubicaciones
@@ -342,12 +418,22 @@ def main():
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
 
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
+
+    # Confirmación antes de generar el archivo
+    confirmar = input(f"¿Seguro que quieres generar el archivo para la opción {z}? (s/n): ").strip().lower()
+    if confirmar != 's':
+        print("Operación cancelada.")
+        return
+
     if z == 1:
-        filtro1(ruta_seleccionada)
+        nombre, ruta_out = filtro1(ruta_seleccionada)
+        print(f"Archivo generado: {nombre}\nUbicación: {ruta_out}")
     if z == 2:
-        total(ruta_seleccionada)
+        nombre, ruta_out = total(ruta_seleccionada)
+        print(f"Archivo generado: {nombre}\nUbicación: {ruta_out}")
     if z == 3:
-        inventario(ruta_seleccionada,dicub)
+        nombre, ruta_out = inventario(ruta_seleccionada, dicub)
+        print(f"Archivo generado: {nombre}\nUbicación: {ruta_out}")
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")

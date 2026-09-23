@@ -1,0 +1,4 @@
+pip install flask
+pip install openpyxl
+pip install pyinstaller
+pip install sys
