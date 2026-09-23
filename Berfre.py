@@ -381,6 +381,54 @@ def inventario_preview(ruta, dicub):
              for f in filas_filtradas]
     return columnas, filas
 
+def modificar_diccionarios(dic, name):
+    imp = int(input("Elije el numero de la opcion que quieres usar\n1.- Agregar un valor al diccionario\n2.- Modificar un valor del diccionario\n3.- Eliminar un valor del diccionario\n4.- Importar diccionario\n5.- Exportar diccionario\n>> "))
+    if imp == 1:
+        clave = input("Ingrese la clave que quiere agregar ==> ")
+        valor = input("Ingrese el valor que quiere agregar ==> ")
+        dic[clave] = valor
+    elif imp == 2:
+        clave = input("Ingrese la clave que quiere modificar ==> ")
+        if clave in dic:
+            valor = input("Ingrese el nuevo valor ==> ")
+            dic[clave] = valor
+        else:
+            print("La clave no existe en el diccionario.")
+    elif imp == 3:
+        clave = input("Ingrese la clave que quiere eliminar ==> ")
+        if clave in dic:
+            del dic[clave]
+        else:
+            print("La clave no existe en el diccionario.")
+    elif imp == 4:
+        archivo = pedir_archivo_visual()
+        try:
+            excel = openpyxl.load_workbook(archivo)
+            hoja = excel.active
+            for i in range(2, hoja.max_row + 1):
+                clave = str(hoja.cell(row=i, column=1).value)
+                valor = str(hoja.cell(row=i, column=2).value)
+                if clave is not None and valor is not None:
+                    dic[clave] = valor
+        except Exception as e:
+            print(f"Error al importar el diccionario: {e}")
+    elif imp == 5:
+        j = 2
+
+        excel = openpyxl.Workbook()
+        hoja = excel.active
+        hoja['A1'] = "Codigo"
+        hoja['B1'] = name
+        for i in dic.keys():
+            clave = i
+            valor = dic[i]
+            
+            hoja.cell(row=j, column=1).value = clave
+            hoja.cell(row=j, column=2).value = valor
+            j += 1
+        excel.save(f"diccionario_{name}_exportado.xlsx")
+    return
+
 #Seleccion de archivo visualmente
 def pedir_archivo_visual():
     # 1. Crear una ventana raíz oculta para que no aparezca una ventana vacía de fondo
@@ -417,7 +465,7 @@ def main():
     dicpre = private.informacion_delicada.diccionario.precios
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
 
-    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n>> "))
+    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n>> "))
 
     # Confirmación antes de generar el archivo
     confirmar = input(f"¿Seguro que quieres generar el archivo para la opción {z}? (s/n): ").strip().lower()
@@ -434,6 +482,12 @@ def main():
     if z == 3:
         nombre, ruta_out = inventario(ruta_seleccionada, dicub)
         print(f"Archivo generado: {nombre}\nUbicación: {ruta_out}")
+    if z == 4:
+        zan = int(input("Elije el numero de la opcion que quieres usar\n1.- Modificar diccionario de ubicaciones\n2.- Modificar diccionario de precios\n>> "))
+        if zan == 1:
+            modificar_diccionarios(dicub, "ubicaciones")
+        if zan == 2:
+            modificar_diccionarios(dicpre, "precios")
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
