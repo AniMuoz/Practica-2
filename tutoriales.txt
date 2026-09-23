@@ -1,0 +1,18 @@
+Archivo temporal que explica cada parte del programa, reemplazado por pestañas de tutorial en un futuro
+
+El primer paso siempre es cargar el archivo EXPORT.XLSX obtenido desde SAP, una vez cargado se le permitirá realizar las siguientes acciones
+
+Generar planilla de bodega 501:
+Muestra solamente el inventario de la bodega, solo muestra material y cantidad, ordenados en orden de los códigos de material, se puede usar filtro en la columna de material para quitar los 0
+
+Generar planilla de todas las bodegas:
+Muestra la cantidad de material que se encuentra en cada una de las bodegas (M501 - M505), mostrando a la vez el detalle del material, cuanta cantidad hay en cada bodega y el total en existencia entre todas las bodegas
+
+Generar planilla de inventario:
+Se genera la planilla de inventario mostrando material y su existencia y su ubicación, esto también genera una columna para que se pueda corroborar, siendo asi una planilla lista para hacer inventario
+
+Agregar una venta:
+Se toma de base un archivo de ventas (o se genera uno nuevo) y añade automáticamente las ventas de una orden de ventas
+
+Modificar diccionarios:
+Opción para modificar datos no estáticos como el lugar de un material o su precio, este cambio se puede hacer manual o importando un archivo Excel, tambinen se puede exportar este mismo archivo para poder usarlo en otro momento o dispositivo
