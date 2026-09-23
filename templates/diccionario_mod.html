@@ -75,24 +75,23 @@
             <table class="tabla-preview" id="tabla-dic">
                 <thead>
                     <tr>
-                        <th>Código (clave)</th>
-                        <th>Valor</th>
-                        <th style="text-align:center;">Acciones</th>
+                        <th style="width: 25%;">Código (clave)</th>
+                        <th style="width: 45%;">Valor</th>
+                        <th style="width: 30%; text-align:center;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for clave, valor in dic.items() %}
+                    <!-- Fila normal de visualización -->
                     <tr id="fila-{{ loop.index }}">
-                        <td class="celda-clave">{{ clave }}</td>
+                        <td class="celda-clave"><strong>{{ clave }}</strong></td>
                         <td class="celda-valor">{{ valor }}</td>
-                        <td class="celda-acciones">
-                            <button class="bt bt-editar"
-                                    onclick="activarEdicion('{{ loop.index }}', '{{ clave }}', {{ valor | tojson }})">
+                        <td class="celda-acciones" style="text-align:center;">
+                            <button class="bt bt-editar" type="button" onclick="activarEdicion('{{ loop.index }}')">
                                 ✏ Editar
                             </button>
-                            <form action="{{ url_for('diccionario_eliminar') }}" method="POST"
-                                  style="display:inline;"
-                                  onsubmit="return confirm('¿Eliminar la clave {{ clave }}?');">
+                            <form action="{{ url_for('diccionario_eliminar') }}" method="POST" style="display:inline; margin:0;"
+                                  onsubmit="return confirm('¿Seguro que deseas eliminar la clave {{ clave }}?');">
                                 <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
                                 <input type="hidden" name="clave" value="{{ clave }}">
                                 <button class="bt bt-eliminar" type="submit">🗑 Eliminar</button>
@@ -102,28 +101,22 @@
                     <!-- Fila de edición inline (oculta) -->
                     <tr id="edicion-{{ loop.index }}" class="fila-edicion" style="display:none;">
                         <td><strong>{{ clave }}</strong></td>
-                        <td>
-                            <input class="input-edicion" type="text"
-                                   id="valor-edit-{{ loop.index }}"
-                                   value="{{ valor }}"
-                                   placeholder="Nuevo valor">
-                        </td>
-                        <td class="celda-acciones">
+                        <td colspan="2">
                             <form action="{{ url_for('diccionario_modificar') }}" method="POST"
-                                  id="form-edit-{{ loop.index }}" style="display:inline;">
+                                  style="display:flex; gap:10px; align-items:center; width:100%; margin:0;">
                                 <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
                                 <input type="hidden" name="clave" value="{{ clave }}">
-                                <input type="hidden" name="valor"
-                                       id="hidden-valor-{{ loop.index }}" value="{{ valor }}">
-                                <button class="bt bt-guardar" type="button"
-                                        onclick="guardarEdicion('{{ loop.index }}')">
-                                    💾 Guardar
+                                <input class="input-edicion" type="text"
+                                       id="valor-edit-{{ loop.index }}"
+                                       name="valor"
+                                       value="{{ valor }}"
+                                       placeholder="Nuevo valor"
+                                       style="flex: 1;">
+                                <button class="bt bt-guardar" type="submit">💾 Guardar</button>
+                                <button class="bt bt-cancelar" type="button" onclick="cancelarEdicion('{{ loop.index }}')">
+                                    ✕ Cancelar
                                 </button>
                             </form>
-                            <button class="bt bt-cancelar"
-                                    onclick="cancelarEdicion('{{ loop.index }}')">
-                                ✕ Cancelar
-                            </button>
                         </td>
                     </tr>
                     {% else %}
@@ -181,31 +174,36 @@
 
 <!-- JavaScript -->
 <script>
-    function activarEdicion(idx, clave, valor) {
-        document.getElementById('fila-' + idx).style.display = 'none';
-        document.getElementById('edicion-' + idx).style.display = '';
-        var input = document.getElementById('valor-edit-' + idx);
-        input.value = valor;
-        input.focus();
+    function activarEdicion(idx) {
+        var fila = document.getElementById('fila-' + idx);
+        var edicion = document.getElementById('edicion-' + idx);
+        if (fila && edicion) {
+            fila.style.display = 'none';
+            edicion.style.display = 'table-row';
+            var input = document.getElementById('valor-edit-' + idx);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }
     }
 
     function cancelarEdicion(idx) {
-        document.getElementById('fila-' + idx).style.display = '';
-        document.getElementById('edicion-' + idx).style.display = 'none';
+        var fila = document.getElementById('fila-' + idx);
+        var edicion = document.getElementById('edicion-' + idx);
+        if (fila && edicion) {
+            fila.style.display = 'table-row';
+            edicion.style.display = 'none';
+        }
     }
 
-    function guardarEdicion(idx) {
-        document.getElementById('hidden-valor-' + idx).value =
-            document.getElementById('valor-edit-' + idx).value;
-        document.getElementById('form-edit-' + idx).submit();
-    }
-
-    // Enter guarda, Escape cancela en la fila de edición
+    // Escape cancela la edición en la fila activa
     document.querySelectorAll('.input-edicion').forEach(function(input) {
         input.addEventListener('keydown', function(e) {
-            var idx = this.id.replace('valor-edit-', '');
-            if (e.key === 'Enter')   { e.preventDefault(); guardarEdicion(idx); }
-            if (e.key === 'Escape')  { cancelarEdicion(idx); }
+            if (e.key === 'Escape') {
+                var idx = this.id.replace('valor-edit-', '');
+                cancelarEdicion(idx);
+            }
         });
     });
 </script>
