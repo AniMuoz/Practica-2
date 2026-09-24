@@ -512,6 +512,11 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
         #Ubicacion del material
         if str(hoja2.cell(row = j, column = 1).value) in dic_ub:
             hoja.cell(row = last_pos + 1, column = 4, value = dic_ub[str(hoja2.cell(row = j, column = 1).value)])
+        #stock M501
+        if str(hoja2.cell(row = j, column = 1)) in dic_sto:
+            hoja.cell(row = last_pos + 1, column = 5, value = (dic_sto[str(hoja2.cell(row = j, column = 1))]))
+        else:
+            hoja.cell(row = last_pos + 1, column = 5, value = 0)
         #Cantidad
         cant = hoja2.cell(row = j, column = 2).value
         hoja.cell(row = last_pos + 1, column = 7, value = cant)
@@ -635,8 +640,13 @@ def main():
     dicpre = private.informacion_delicada.diccionario.precios
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
     dicsto = private.informacion_delicada.diccionario.creardictotal(ruta_seleccionada)
+    dicalm = private.informacion_delicada.diccionario.almacenes
+    diccrit = private.informacion_delicada.diccionario.critico
+    diccom = private.informacion_delicada.diccionario.comprador
 
-    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n>> "))
+    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 515")
+
+    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n>> "))
 
     # Confirmación antes de generar el archivo
     confirmar = input(f"¿Seguro que quieres generar el archivo para la opción {z}? (s/n): ").strip().lower()
