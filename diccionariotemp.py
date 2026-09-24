@@ -26,3 +26,31 @@ ubicaciones = {
 material = {
     
 }
+
+almacenes = {
+
+}
+
+comprador = {
+
+}
+
+critico = {
+
+}
+
+total = {
+
+}
+
+def creardictotal(test):
+    import openpyxl
+    excel = openpyxl.load_workbook(test)
+    hoja = excel.active
+    for i in range(2, hoja.max_row + 1):
+        if str(hoja.cell(row=i, column=3).value).strip() == "M501" and hoja.cell(row=i, column=2).value != "NULO":
+            codigo = hoja.cell(row=i, column=1).value
+            dato = hoja.cell(row=i, column=4).value
+            if codigo is not None:
+                total[str(codigo)] = str(dato) if dato is not None else ""
+    return total

@@ -43,6 +43,13 @@
     <div class="contenedor-botones" style="margin-bottom: 18px;">
         <button class="bt-archivo" type="button" onclick="window.location.href='/'">← Volver al inicio</button>
         <a href="{{ url_for('diccionario_exportar', dic=dic_nombre) }}" class="bt-descarga">⬇ Exportar a Excel</a>
+        {% if dic_nombre in ['total', 'material'] %}
+        <form action="{{ url_for('diccionario_recargar') }}" method="POST" style="display:inline; margin:0;"
+              onsubmit="return confirm('¿Deseas recargar el diccionario {{ dic_label }} desde el archivo Excel?');">
+            <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+            <button class="bt" type="submit" title="Recarga datos desde el archivo Excel seleccionado o el archivo base EXPORT">🔄 Recargar desde Excel</button>
+        </form>
+        {% endif %}
     </div>
 
     <!-- BUSCADOR -->
@@ -162,10 +169,16 @@
     <!-- SECCIÓN IMPORTAR -->
     <div class="seccion-formulario">
         <h2>📥 Importar desde Excel</h2>
+        {% if dic_nombre == 'total' %}
+        <p style="font-size:13px; color:#1a3c38;">
+            Puedes subir un Excel con columnas <strong>A</strong> = Código y <strong>B</strong> = Valor, o bien el archivo <strong>EXPORT</strong> (Col A = Código, Col C = 'M501', Col D = Valor).
+        </p>
+        {% else %}
         <p style="font-size:13px; color:#1a3c38;">
             Columna <strong>A</strong> = códigos · Columna <strong>B</strong> = valores
             (fila 1 = encabezados, ignorada).
         </p>
+        {% endif %}
         <form action="{{ url_for('diccionario_importar') }}" method="POST"
               enctype="multipart/form-data" class="form-agregar">
             <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">

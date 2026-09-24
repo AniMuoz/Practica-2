@@ -478,7 +478,7 @@ def modificar_diccionarios(dic, name):
     return
 
 #Añadir ventas al excel de ventas
-def añadir_venta(dic_mat, dic_ub, dic_pre):
+def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
     cont = 10
     print("Elija la orden de venta que quiera cargar ")
     ruta_orden = pedir_archivo_visual()
@@ -516,8 +516,12 @@ def añadir_venta(dic_mat, dic_ub, dic_pre):
         cant = hoja2.cell(row = j, column = 2).value
         hoja.cell(row = last_pos + 1, column = 7, value = cant)
         #Entregar
-        if cant == 0:
-            print (9)
+        if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
+            hoja.cell(row = last_pos + 1, column = 8, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
+            infra = 1
+        else:
+            hoja.cell(row = last_pos + 1, column = 8, value = 0)
+            infra = 0
         #Precio
         if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
             precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
@@ -630,6 +634,7 @@ def main():
     dicub = private.informacion_delicada.diccionario.ubicaciones
     dicpre = private.informacion_delicada.diccionario.precios
     dicmat = private.informacion_delicada.diccionario.creardicmar(ruta_seleccionada)
+    dicsto = private.informacion_delicada.diccionario.creardictotal(ruta_seleccionada)
 
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n>> "))
 
@@ -655,7 +660,7 @@ def main():
         if zan == 2:
             modificar_diccionarios(dicpre, "precios")
     if z == 5:
-        añadir_venta(dicmat, dicub, dicpre, ruta)
+        añadir_venta(dicmat, dicub, dicpre, dicsto)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
