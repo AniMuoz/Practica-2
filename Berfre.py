@@ -183,7 +183,6 @@ def total(ruta):
     hoja['G3'].border = bordes
     hoja['H3'].border = bordes
     hoja['A1'].border = bordes
-    
 
     #Filtros para el archivo
     hoja.auto_filter.ref = "A3:H3"
@@ -429,6 +428,7 @@ def inventario_preview(ruta, dicub):
              for f in filas_filtradas]
     return columnas, filas
 
+#Funcion para editar diccionarios, añadiendo, eliminando y editando datos
 def modificar_diccionarios(dic, name):
     imp = int(input("Elije el numero de la opcion que quieres usar\n1.- Agregar un valor al diccionario\n2.- Modificar un valor del diccionario\n3.- Eliminar un valor del diccionario\n4.- Importar diccionario\n5.- Exportar diccionario\n>> "))
     if imp == 1:
@@ -475,6 +475,76 @@ def modificar_diccionarios(dic, name):
             hoja.cell(row=j, column=2).value = valor
             j += 1
         excel.save(f"diccionario_{name}_exportado.xlsx")
+    return
+
+#Añadir ventas al excel de ventas
+def añadir_venta(dic_mat, dic_ub, dic_pre):
+    cont = 10
+    print("Elija la orden de venta que quiera cargar ")
+    ruta_orden = pedir_archivo_visual()
+    excel = openpyxl.load_workbook(ruta_orden)
+    op = int(input("¿Quiere cargar una pagina de ventas o prefiere crear una nueva?\n1.- Cargar archivo xlsx existente\n2.- Crear nuevo archivo de ventas\n>> "))
+    if op < 1 or op > 2:
+        print("Una pega...")
+        return
+    if op == 1:
+        ruta_arch = pedir_archivo_visual()
+        mango = openpyxl.load_workbook(ruta_arch)
+        hoja = mango.active
+    else:
+        mango = openpyxl.Workbook()
+        hoja = mango.active
+        last_pos = 1
+        encabezado_ventas(hoja, last_pos)
+    hoja2 = excel.active
+    for i in range(1, hoja.max_row + 1):
+        if hoja.cell(row = i, column = 1).value == "Pos":
+            #print ("new")
+            last_pos = i
+    for j in range(2, hoja2.max_row + 1):
+        #ID
+        hoja.cell(row = last_pos + 1, column = 1, value = cont)
+        #Codigo de material
+        hoja.cell(row = last_pos + 1, column = 2, value = hoja2.cell(row = j, column = 1).value)
+        #Descripcion del material
+        if str(hoja2.cell(row = j, column = 1).value) in dic_mat:
+            hoja.cell(row = last_pos + 1, column = 3, value = dic_mat[str(hoja2.cell(row = j, column = 1).value)])
+        #Ubicacion del material
+        if str(hoja2.cell(row = j, column = 1).value) in dic_ub:
+            hoja.cell(row = last_pos + 1, column = 4, value = dic_ub[str(hoja2.cell(row = j, column = 1).value)])
+        #Cantidad
+        cant = hoja2.cell(row = j, column = 2).value
+        hoja.cell(row = last_pos + 1, column = 7, value = cant)
+        #Entregar
+        if cant == 0:
+            print (9)
+        #Precio
+        if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
+            precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
+            hoja.cell(row = last_pos + 1, column = 15, value = precio)
+        else:
+            precio = 0
+        #Precio total
+        hoja.cell(row = last_pos + 1, column = 16, value = (cant * precio))
+        last_pos += 1
+        cont += 10
+    encabezado_ventas(hoja, last_pos + 1)
+    mango.save(f"prueba_venta.xlsx")
+    return
+
+def encabezado_ventas(hoja, last_pos):
+    amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M505",	"Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
+    gris = ["Pos",	"Codigo",	"SOLICITUD",	"COMPARA CODIGO",	"COMPARA CANT"]
+
+    for i in range(0, len(amarillo)):
+        hoja.cell(row = last_pos, column = i + 1, value = amarillo[i]).fill = PatternFill(
+                                                        start_color='ffff00', end_color='5CB800', fill_type='solid')
+        #hoja.cell(row = last_pos, column = i + 1).fill = PatternFill(
+        #                                                start_color='ffff00', end_color='5CB800', fill_type='solid')
+    i += 2
+    for j in range(0, len(gris)):
+        hoja.cell(row = last_pos, column = i, value = gris[j])
+        i += 1
     return
 
 # ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
@@ -584,6 +654,8 @@ def main():
             modificar_diccionarios(dicub, "ubicaciones")
         if zan == 2:
             modificar_diccionarios(dicpre, "precios")
+    if z == 5:
+        añadir_venta(dicmat, dicub, dicpre, ruta)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
