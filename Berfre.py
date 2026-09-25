@@ -517,6 +517,8 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
             hoja.cell(row = last_pos + 1, column = 5, value = (dic_sto[str(hoja2.cell(row = j, column = 1))]))
         else:
             hoja.cell(row = last_pos + 1, column = 5, value = 0)
+        #Stock M501
+
         #Cantidad
         cant = hoja2.cell(row = j, column = 2).value
         hoja.cell(row = last_pos + 1, column = 7, value = cant)
@@ -527,6 +529,21 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
         else:
             hoja.cell(row = last_pos + 1, column = 8, value = 0)
             infra = 0
+        #Peso y tiras
+        #Columna 9 y 10 se añaden datos manualmente, se rellena con 0 mientras tanto
+        hoja.cell(row = last_pos + 1, column = 9, value = 0)
+        hoja.cell(row = last_pos + 1, column = 10, value = 0)
+        #Diferencia
+        hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(hoja.cell(row = last_pos + 1, column = 8))))
+        #Verdadero o falso
+        if hoja.cell(row = last_pos + 1, column = 8) == hoja.cell(row = last_pos + 1, column = 7):
+            hoja.cell(row = last_pos + 1, column = 12, value = "VERDADERO")
+        else:
+            hoja.cell(row = last_pos + 1, column = 12, value = "FALSO")
+        #Kg por unidad y peso total
+        #Columnas 13 y 14 se rellenan manualmente por ahora, se rellena con 0
+        hoja.cell(row = last_pos + 1, column = 13, value = 0)
+        hoja.cell(row = last_pos + 1, column = 14, value = 0)
         #Precio
         if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
             precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
@@ -548,8 +565,6 @@ def encabezado_ventas(hoja, last_pos):
     for i in range(0, len(amarillo)):
         hoja.cell(row = last_pos, column = i + 1, value = amarillo[i]).fill = PatternFill(
                                                         start_color='ffff00', end_color='5CB800', fill_type='solid')
-        #hoja.cell(row = last_pos, column = i + 1).fill = PatternFill(
-        #                                                start_color='ffff00', end_color='5CB800', fill_type='solid')
     i += 2
     for j in range(0, len(gris)):
         hoja.cell(row = last_pos, column = i, value = gris[j])
@@ -644,7 +659,7 @@ def main():
     diccrit = private.informacion_delicada.diccionario.critico
     diccom = private.informacion_delicada.diccionario.comprador
 
-    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 515")
+    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 531")
 
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n>> "))
 

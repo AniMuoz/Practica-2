@@ -5,4 +5,6 @@ modificar diccionarios -> los diccionarios de precios y lugares son datos que se
 color -> dar las opciones de generar una planilla sin color o con colores variados según se requiera
 
 
-diccionarios -> que se llenen con los Excel oficiales que se mandan sin que tengan que hacer ninguna modificacion
+diccionarios -> que se llenen con los Excel oficiales que se mandan sin que tengan que hacer ninguna modificación
+
+reservas -> una forma fácil para que vean si el stock en el almacen es suficiente para satisfacer la reserva
