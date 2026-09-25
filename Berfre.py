@@ -479,6 +479,7 @@ def modificar_diccionarios(dic, name):
 
 #Añadir ventas al excel de ventas
 def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
+    last_pos = 0
     export = openpyxl.load_workbook(ruta)
     temp = export.active
     #diccionarios para el stock
@@ -542,12 +543,13 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         codcomp = "n/a"
     else:
         codcomp = int(input("Introduzca numero de venta\n>> "))
-    #Llenar archivo
+    #Encontrar el final del archivo
     for i in range(1, hoja.max_row + 1):
         if hoja.cell(row = i, column = 1).value == "Pos":
             #print ("new")
             last_pos = i
     j = 0
+    #Llenar archivo
     for r in range(3, hoja2.max_row + 1):
         j += r
         #itereador
@@ -573,36 +575,36 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         if str(hoja2.cell(row = j, column = 1).value) in dic_ub:
             hoja.cell(row = last_pos + 1, column = 4, value = dic_ub[str(hoja2.cell(row = j, column = 1).value)])
         #stock M501
-        if str(hoja2.cell(row = j, column = 1)) in dic_sto:
-            hoja.cell(row = last_pos + 1, column = 5, value = (dic_sto[str(hoja2.cell(row = j, column = 1))]))
+        if str(hoja2.cell(row = j, column = 1).value) in M501:
+            hoja.cell(row = last_pos + 1, column = 5, value = (M501[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 5, value = 0)
         #Stock M502
-        if str(hoja2.cell(row = j, column = 1)) in M502:
-            hoja.cell(row = last_pos + 1, column = 6, value = (M502[str(hoja2.cell(row = j, column = 1))]))
+        if str(hoja2.cell(row = j, column = 1).value) in M502:
+            hoja.cell(row = last_pos + 1, column = 6, value = (M502[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 6, value = 0)
         #Stock M503
-        if str(hoja2.cell(row = j, column = 1)) in M503:
-            hoja.cell(row = last_pos + 1, column = 7, value = (M503[str(hoja2.cell(row = j, column = 1))]))
+        if str(hoja2.cell(row = j, column = 1).value) in M503:
+            hoja.cell(row = last_pos + 1, column = 7, value = (M503[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 7, value = 0)
         #Stock M504
-        if str(hoja2.cell(row = j, column = 1)) in M504:
-            hoja.cell(row = last_pos + 1, column = 8, value = (M504[str(hoja2.cell(row = j, column = 1))]))
+        if str(hoja2.cell(row = j, column = 1).value) in M504:
+            hoja.cell(row = last_pos + 1, column = 8, value = (M504[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 8, value = 0)
         #Stock M505
-        if str(hoja2.cell(row = j, column = 1)) in M505:
-            hoja.cell(row = last_pos + 1, column = 9, value = (M505[str(hoja2.cell(row = j, column = 1))]))
+        if str(hoja2.cell(row = j, column = 1).value) in M505:
+            hoja.cell(row = last_pos + 1, column = 9, value = (M505[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 9, value = 0)
         #Cantidad
         hoja.cell(row = last_pos + 1, column = 10, value = cant)
         #Entregar
-        if hoja2.cell(row = j, column = 1).value in dic_sto:
-            if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
-                hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
+        if str(hoja2.cell(row = j, column = 1).value) in M501:
+            if cant <= int(M501[str(hoja2.cell(row = j, column = 1).value)]):
+                hoja.cell(row = last_pos + 1, column = 11, value = cant)
                 infra = 1
             else:
                 hoja.cell(row = last_pos + 1, column = 11, value = 0)
@@ -616,7 +618,6 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #hoja.cell(row = last_pos + 1, column = 12, value = 0)
         hoja.cell(row = last_pos + 1, column = 13, value = 0)
         #Diferencia
-        print(j)
         hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - int(cant)))
         #Verdadero o falso
         if hoja.cell(row = last_pos + 1, column = 11) == hoja.cell(row = last_pos + 1, column = 10):
@@ -649,7 +650,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #Estado
 
         #Fecha
-        hoja.cell(row = last_pos + 1, column = 25, value = f"{str(fecha.day)}/{str(fecha.month)}/{str(fecha.year)}")
+        hoja.cell(row = last_pos + 1, column = 27, value = f"{str(fecha.day)}/{str(fecha.month)}/{str(fecha.year)}")
         #Contadores para iterar
         last_pos += 1
         cont += 10
