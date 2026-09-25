@@ -527,8 +527,9 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         print(f"{l}.-{dic_comp[clave]}")
         ite.append(dic_comp[clave])
         l += 1
+    print(f"{l}.- n/a")
     sell = int(input("¿Quien compra?\n>> "))
-    if sell > (len(ite) + 1) or sell < (len(ite) - 1):
+    while sell > (len(ite) + 1) or sell < (len(ite) - 1):
         sell = int(input("Elija una opcion valida\n¿Quien compra?\n>> "))
     #Tipo de movimiento
     mov_tip = int(input("¿Que tipo es?\n1.- Venta\n2.- Traspaso\n>> "))
@@ -546,7 +547,21 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         if hoja.cell(row = i, column = 1).value == "Pos":
             #print ("new")
             last_pos = i
-    for j in range(2, hoja2.max_row + 1):
+    j = 0
+    for r in range(3, hoja2.max_row + 1):
+        j += r
+        #itereador
+        cant = hoja2.cell(row = j, column = 4).value
+        while cant is None or cant == 0:
+            j += 1
+            if j < hoja2.max_row:
+                cant = hoja2.cell(row = j, column = 4).value
+            else:
+                break
+        if j >= hoja2.max_row:
+            break
+        if hoja.cell(row = last_pos, column = 2).value == hoja2.cell(row = j, column = 1).value:
+            j += 1
         #ID
         hoja.cell(row = last_pos + 1, column = 1, value = cont)
         #Codigo de material
@@ -583,7 +598,6 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         else:
             hoja.cell(row = last_pos + 1, column = 9, value = 0)
         #Cantidad
-        cant = hoja2.cell(row = j, column = 2).value
         hoja.cell(row = last_pos + 1, column = 10, value = cant)
         #Entregar
         if hoja2.cell(row = j, column = 1).value in dic_sto:
@@ -597,11 +611,13 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
             hoja.cell(row = last_pos + 1, column = 11, value = 0)
             infra = 0
         #Peso y tiras
-        #Columna 12 y 13 se añaden datos manualmente, se rellena con 0 mientras tanto
-        hoja.cell(row = last_pos + 1, column = 12, value = 0)
+        hoja.cell(row = last_pos + 1, column = 12, value = (hoja2.cell(row = j, column = 3).value))
+        #Columna 13 se añaden datos manualmente, se rellena con 0 mientras tanto
+        #hoja.cell(row = last_pos + 1, column = 12, value = 0)
         hoja.cell(row = last_pos + 1, column = 13, value = 0)
         #Diferencia
-        hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - cant))
+        print(j)
+        hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - int(cant)))
         #Verdadero o falso
         if hoja.cell(row = last_pos + 1, column = 11) == hoja.cell(row = last_pos + 1, column = 10):
             hoja.cell(row = last_pos + 1, column = 15, value = "VERDADERO")
@@ -620,7 +636,10 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #Precio total
         hoja.cell(row = last_pos + 1, column = 19, value = (cant * precio))
         #Comprador
-        hoja.cell(row = last_pos + 1, column = 20, value = (ite[sell - 1]))
+        if sell <= (len(ite) - 1):
+            hoja.cell(row = last_pos + 1, column = 20, value = (ite[sell - 1]))
+        else:
+            hoja.cell(row = last_pos + 1, column = 20, value = "n/a")
         #Movimiento
         hoja.cell(row = last_pos + 1, column = 21, value = mov)
         #Almacen
@@ -721,6 +740,7 @@ def pedir_archivo_visual():
 
 #Selecciona que filtro se quiere usar y ejecuta la funcion correspondiente
 def main():
+        
     # Ejecución del ejemplo
     ruta_seleccionada = pedir_archivo_visual()
 
