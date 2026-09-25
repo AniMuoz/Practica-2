@@ -541,46 +541,58 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
         else:
             hoja.cell(row = last_pos + 1, column = 5, value = 0)
         #Stock M502
-
+        if str(hoja2.cell(row = j, column = 1)) in M502:
+            hoja.cell(row = last_pos + 1, column = 6, value = (M502[str(hoja2.cell(row = j, column = 1))]))
+        else:
+            hoja.cell(row = last_pos + 1, column = 6, value = 0)
         #Stock M503
-
+        if str(hoja2.cell(row = j, column = 1)) in M503:
+            hoja.cell(row = last_pos + 1, column = 7, value = (M503[str(hoja2.cell(row = j, column = 1))]))
+        else:
+            hoja.cell(row = last_pos + 1, column = 7, value = 0)
         #Stock M504
-
-        #Stock M505
-
-        #Cantidad
-        cant = hoja2.cell(row = j, column = 2).value
-        hoja.cell(row = last_pos + 1, column = 7, value = cant)
-        #Entregar
-        if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
-            hoja.cell(row = last_pos + 1, column = 8, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
-            infra = 1
+        if str(hoja2.cell(row = j, column = 1)) in M504:
+            hoja.cell(row = last_pos + 1, column = 8, value = (M504[str(hoja2.cell(row = j, column = 1))]))
         else:
             hoja.cell(row = last_pos + 1, column = 8, value = 0)
+        #Stock M505
+        if str(hoja2.cell(row = j, column = 1)) in M505:
+            hoja.cell(row = last_pos + 1, column = 9, value = (M505[str(hoja2.cell(row = j, column = 1))]))
+        else:
+            hoja.cell(row = last_pos + 1, column = 9, value = 0)
+        #Cantidad
+        cant = hoja2.cell(row = j, column = 2).value
+        hoja.cell(row = last_pos + 1, column = 10, value = cant)
+        #Entregar
+        if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
+            hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
+            infra = 1
+        else:
+            hoja.cell(row = last_pos + 1, column = 11, value = 0)
             infra = 0
         #Peso y tiras
-        #Columna 9 y 10 se añaden datos manualmente, se rellena con 0 mientras tanto
-        hoja.cell(row = last_pos + 1, column = 9, value = 0)
-        hoja.cell(row = last_pos + 1, column = 10, value = 0)
-        #Diferencia
-        hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(hoja.cell(row = last_pos + 1, column = 8))))
-        #Verdadero o falso
-        if hoja.cell(row = last_pos + 1, column = 8) == hoja.cell(row = last_pos + 1, column = 7):
-            hoja.cell(row = last_pos + 1, column = 12, value = "VERDADERO")
-        else:
-            hoja.cell(row = last_pos + 1, column = 12, value = "FALSO")
-        #Kg por unidad y peso total
-        #Columnas 13 y 14 se rellenan manualmente por ahora, se rellena con 0
+        #Columna 12 y 13 se añaden datos manualmente, se rellena con 0 mientras tanto
+        hoja.cell(row = last_pos + 1, column = 12, value = 0)
         hoja.cell(row = last_pos + 1, column = 13, value = 0)
-        hoja.cell(row = last_pos + 1, column = 14, value = 0)
+        #Diferencia
+        hoja.cell(row = last_pos + 1, column = 14, value = (cant - int(hoja.cell(row = last_pos + 1, column = 11).value)))
+        #Verdadero o falso
+        if hoja.cell(row = last_pos + 1, column = 11) == hoja.cell(row = last_pos + 1, column = 10):
+            hoja.cell(row = last_pos + 1, column = 15, value = "VERDADERO")
+        else:
+            hoja.cell(row = last_pos + 1, column = 15, value = "FALSO")
+        #Kg por unidad y peso total
+        #Columnas 16 y 17 se rellenan manualmente por ahora, se rellena con 0
+        hoja.cell(row = last_pos + 1, column = 16, value = 0)
+        hoja.cell(row = last_pos + 1, column = 17, value = 0)
         #Precio
         if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
             precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
-            hoja.cell(row = last_pos + 1, column = 15, value = precio)
+            hoja.cell(row = last_pos + 1, column = 18, value = precio)
         else:
             precio = 0
         #Precio total
-        hoja.cell(row = last_pos + 1, column = 16, value = (cant * precio))
+        hoja.cell(row = last_pos + 1, column = 19, value = (cant * precio))
         last_pos += 1
         cont += 10
     encabezado_ventas(hoja, last_pos + 1)
