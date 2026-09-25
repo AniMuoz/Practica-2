@@ -478,7 +478,30 @@ def modificar_diccionarios(dic, name):
     return
 
 #Añadir ventas al excel de ventas
-def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
+def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
+    export = openpyxl.load_workbook(ruta)
+    temp = export.active
+    #diccionarios para el stock
+    M501 = {}
+    for p in  range(2, temp.max_row + 1):
+        if temp.cell(row = p, column = 3).value == "M501":
+            M501[str(temp.cell(row = p, column = 1).value)] = temp.cell(row = p, column = 4).value
+    M502 = {}
+    for p in  range(2, temp.max_row + 1):
+        if temp.cell(row = p, column = 3).value == "M502":
+            M502[str(temp.cell(row = p, column = 1).value)] = temp.cell(row = p, column = 4).value
+    M503 = {}
+    for p in  range(2, temp.max_row + 1):
+        if temp.cell(row = p, column = 3).value == "M503":
+            M503[str(temp.cell(row = p, column = 1).value)] = temp.cell(row = p, column = 4).value
+    M504 = {}
+    for p in  range(2, temp.max_row + 1):
+        if temp.cell(row = p, column = 3).value == "M504":
+            M504[str(temp.cell(row = p, column = 1).value)] = temp.cell(row = p, column = 4).value
+    M505 = {}
+    for p in  range(2, temp.max_row + 1):
+        if temp.cell(row = p, column = 3).value == "M505":
+            M505[str(temp.cell(row = p, column = 1).value)] = temp.cell(row = p, column = 4).value
     cont = 10
     print("Elija la orden de venta que quiera cargar ")
     ruta_orden = pedir_archivo_visual()
@@ -517,7 +540,13 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
             hoja.cell(row = last_pos + 1, column = 5, value = (dic_sto[str(hoja2.cell(row = j, column = 1))]))
         else:
             hoja.cell(row = last_pos + 1, column = 5, value = 0)
-        #Stock M501
+        #Stock M502
+
+        #Stock M503
+
+        #Stock M504
+
+        #Stock M505
 
         #Cantidad
         cant = hoja2.cell(row = j, column = 2).value
@@ -559,7 +588,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto):
     return
 
 def encabezado_ventas(hoja, last_pos):
-    amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M505",	"Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
+    amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505", "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
     gris = ["Pos",	"Codigo",	"SOLICITUD",	"COMPARA CODIGO",	"COMPARA CANT"]
 
     for i in range(0, len(amarillo)):
@@ -685,7 +714,7 @@ def main():
         if zan == 2:
             modificar_diccionarios(dicpre, "precios")
     if z == 5:
-        añadir_venta(dicmat, dicub, dicpre, dicsto)
+        añadir_venta(dicmat, dicub, dicpre, dicsto, ruta_seleccionada)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
