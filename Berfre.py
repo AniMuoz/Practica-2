@@ -478,7 +478,7 @@ def modificar_diccionarios(dic, name):
     return
 
 #Añadir ventas al excel de ventas
-def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
+def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
     export = openpyxl.load_workbook(ruta)
     temp = export.active
     #diccionarios para el stock
@@ -520,6 +520,28 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
         last_pos = 1
         encabezado_ventas(hoja, last_pos)
     hoja2 = excel.active
+    #Elegir comprador
+    l = 1
+    ite = []
+    for clave in dic_comp:
+        print(f"{l}.-{dic_comp[clave]}")
+        ite.append(dic_comp[clave])
+        l += 1
+    sell = int(input("¿Quien compra?\n>> "))
+    if sell > (len(ite) + 1) or sell < (len(ite) - 1):
+        sell = int(input("Elija una opcion valida\n¿Quien compra?\n>> "))
+    #Tipo de movimiento
+    mov_tip = int(input("¿Que tipo es?\n1.- Venta\n2.- Traspaso\n>> "))
+    if mov_tip == 1:
+        mov = "VENTA"
+    if mov_tip == 2:
+        mov = "TRASPASO"
+    #Numero de venta
+    if mov == "TRASPASO":
+        codcomp = "n/a"
+    else:
+        codcomp = int(input("Introduzca numero de venta\n>> "))
+    #Llenar archivo
     for i in range(1, hoja.max_row + 1):
         if hoja.cell(row = i, column = 1).value == "Pos":
             #print ("new")
@@ -564,9 +586,13 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
         cant = hoja2.cell(row = j, column = 2).value
         hoja.cell(row = last_pos + 1, column = 10, value = cant)
         #Entregar
-        if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
-            hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
-            infra = 1
+        if hoja2.cell(row = j, column = 1).value in dic_sto:
+            if cant >= int(dic_sto[str(hoja2.cell(row = j, column = 1).value)]):
+                hoja.cell(row = last_pos + 1, column = 11, value = (cant - int(dic_sto[str(hoja2.cell(row = j, column = 1).value)])))
+                infra = 1
+            else:
+                hoja.cell(row = last_pos + 1, column = 11, value = 0)
+                infra = 0
         else:
             hoja.cell(row = last_pos + 1, column = 11, value = 0)
             infra = 0
@@ -575,7 +601,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
         hoja.cell(row = last_pos + 1, column = 12, value = 0)
         hoja.cell(row = last_pos + 1, column = 13, value = 0)
         #Diferencia
-        hoja.cell(row = last_pos + 1, column = 14, value = (cant - int(hoja.cell(row = last_pos + 1, column = 11).value)))
+        hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - cant))
         #Verdadero o falso
         if hoja.cell(row = last_pos + 1, column = 11) == hoja.cell(row = last_pos + 1, column = 10):
             hoja.cell(row = last_pos + 1, column = 15, value = "VERDADERO")
@@ -593,6 +619,19 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
             precio = 0
         #Precio total
         hoja.cell(row = last_pos + 1, column = 19, value = (cant * precio))
+        #Comprador
+        hoja.cell(row = last_pos + 1, column = 20, value = (ite[sell - 1]))
+        #Movimiento
+        hoja.cell(row = last_pos + 1, column = 21, value = mov)
+        #Almacen
+
+        #N° de ventas
+        hoja.cell(row = last_pos + 1, column = 23, value = codcomp)
+        #Estado
+
+        #Fecha
+        hoja.cell(row = last_pos + 1, column = 25, value = f"{str(fecha.day)}/{str(fecha.month)}/{str(fecha.year)}")
+        #Contadores para iterar
         last_pos += 1
         cont += 10
     encabezado_ventas(hoja, last_pos + 1)
@@ -600,7 +639,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, ruta):
     return
 
 def encabezado_ventas(hoja, last_pos):
-    amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505", "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
+    amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505", "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Comprador" ,"Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
     gris = ["Pos",	"Codigo",	"SOLICITUD",	"COMPARA CODIGO",	"COMPARA CANT"]
 
     for i in range(0, len(amarillo)):
@@ -726,7 +765,7 @@ def main():
         if zan == 2:
             modificar_diccionarios(dicpre, "precios")
     if z == 5:
-        añadir_venta(dicmat, dicub, dicpre, dicsto, ruta_seleccionada)
+        añadir_venta(dicmat, dicub, dicpre, dicsto, diccom, ruta_seleccionada)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
