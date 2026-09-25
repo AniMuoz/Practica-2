@@ -571,13 +571,13 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
     hoja.column_dimensions['A'].width = 5
     hoja.column_dimensions['C'].width = 50
     hoja.column_dimensions['D'].width = 12
-    hoja.column_dimensions['E'].width = 6
-    hoja.column_dimensions['F'].width = 6
-    hoja.column_dimensions['G'].width = 6
-    hoja.column_dimensions['H'].width = 6
-    hoja.column_dimensions['I'].width = 6
-    hoja.column_dimensions['J'].width = 6
-    hoja.column_dimensions['K'].width = 6
+    hoja.column_dimensions['E'].width = 7
+    hoja.column_dimensions['F'].width = 7
+    hoja.column_dimensions['G'].width = 7
+    hoja.column_dimensions['H'].width = 7
+    hoja.column_dimensions['I'].width = 7
+    hoja.column_dimensions['J'].width = 7
+    hoja.column_dimensions['K'].width = 7
     hoja.column_dimensions['L'].width = 4
     hoja.column_dimensions['M'].width = 4
     hoja.column_dimensions['N'].width = 6
@@ -689,11 +689,11 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #Precio
         if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
             precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
-            hoja.cell(row = last_pos + 1, column = 18, value = precio)
+            hoja.cell(row = last_pos + 1, column = 18, value = int(precio))
         else:
             precio = 0
         #Precio total
-        hoja.cell(row = last_pos + 1, column = 19, value = (cant * precio))
+        hoja.cell(row = last_pos + 1, column = 19, value = (int(cant) * int(precio)))
         #Comprador
         if sell <= (len(ite) - 1):
             hoja.cell(row = last_pos + 1, column = 20, value = (ite[sell - 1]))
@@ -734,6 +734,14 @@ def encabezado_ventas(hoja, last_pos):
     for j in range(0, len(gris)):
         hoja.cell(row = last_pos, column = i, value = gris[j])
         i += 1
+    return
+
+#Funcion para corroborar stock en orden de reserva
+def cont_reserva():
+    #El fin de esta funcion es tomar un archivo de reserva y avise el stock disponible de cada uno
+    #Descubrir como leer y rescatar informacion de un PDF
+    #Compararla con el stock y de un aviso articulo a articulo para saber que se tiene y que no
+    print("ola, funcion en desarrollo")
     return
 
 # ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
@@ -825,7 +833,7 @@ def main():
     diccrit = private.informacion_delicada.diccionario.critico
     diccom = private.informacion_delicada.diccionario.comprador
 
-    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 531")
+    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
 
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n>> "))
 
