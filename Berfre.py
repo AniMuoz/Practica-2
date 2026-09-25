@@ -296,6 +296,7 @@ def inventario(ruta, dicub):
     hoja['B3'].fill = color
     hoja['C3'].fill = color
     hoja['D3'].fill = color
+    hoja['E3'].fill = color
     hoja['A1'].fill = color
     hoja['B1'].fill = color
 
@@ -479,6 +480,7 @@ def modificar_diccionarios(dic, name):
 
 #Añadir ventas al excel de ventas
 def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
+    bordes, color, vacio = maquillaje()
     last_pos = 0
     export = openpyxl.load_workbook(ruta)
     temp = export.active
@@ -520,6 +522,9 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         hoja = mango.active
         last_pos = 1
         encabezado_ventas(hoja, last_pos)
+        for q in range(1, hoja.max_column + 1):
+            hoja.cell(row = 1, column = q).border = bordes
+            hoja.cell(row = 1, column = q).font = Font(bold = true)
     hoja2 = excel.active
     #Elegir comprador
     l = 1
@@ -549,9 +554,49 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
             #print ("new")
             last_pos = i
     j = 0
+    #Diseño del archivo
+    hoja.column_dimensions['A'].width = 5
+    hoja.column_dimensions['C'].width = 50
+    hoja.column_dimensions['D'].width = 12
+    hoja.column_dimensions['E'].width = 6
+    hoja.column_dimensions['F'].width = 6
+    hoja.column_dimensions['G'].width = 6
+    hoja.column_dimensions['H'].width = 6
+    hoja.column_dimensions['I'].width = 6
+    hoja.column_dimensions['J'].width = 6
+    hoja.column_dimensions['K'].width = 6
+    hoja.column_dimensions['L'].width = 4
+    hoja.column_dimensions['M'].width = 4
+    hoja.column_dimensions['N'].width = 6
+    hoja.column_dimensions['O'].width = 11
+    hoja.column_dimensions['P'].width = 6
+    hoja.column_dimensions['Q'].width = 6
+    hoja.column_dimensions['R'].width = 7
+    hoja.column_dimensions['S'].width = 9
+    hoja.column_dimensions['T'].width = 12
+    hoja.column_dimensions['U'].width = 9
+    hoja.column_dimensions['V'].width = 6
+    hoja.column_dimensions['W'].width = 7
+    hoja.column_dimensions['X'].width = 8
+    hoja.column_dimensions['Y'].width = 8
+    hoja.column_dimensions['Z'].width = 13
+    hoja.column_dimensions['AA'].width = 10
+    hoja.column_dimensions['AB'].width = 9
+    hoja.column_dimensions['AC'].width = 9
+    hoja.column_dimensions['AD'].width = 9
+    hoja.column_dimensions['AE'].width = 35
+    hoja.column_dimensions['AF'].width = 5
+    hoja.column_dimensions['AH'].width = 10
+    hoja.column_dimensions['AI'].width = 18
+    hoja.column_dimensions['AJ'].width = 18
+    #Filtros para el archivo
+    hoja.auto_filter.ref = "A1:AJ1"
     #Llenar archivo
     for r in range(3, hoja2.max_row + 1):
         j += r
+        for q in range(1, hoja.max_column + 1):
+            hoja.cell(row = last_pos + 1, column = q).border = bordes
+            hoja.cell(row = last_pos + 1, column = q).font = Font(bold = true)
         #itereador
         cant = hoja2.cell(row = j, column = 4).value
         while cant is None or cant == 0:
@@ -620,7 +665,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #Diferencia
         hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - int(cant)))
         #Verdadero o falso
-        if hoja.cell(row = last_pos + 1, column = 11) == hoja.cell(row = last_pos + 1, column = 10):
+        if hoja.cell(row = last_pos + 1, column = 11).value == hoja.cell(row = last_pos + 1, column = 10).value:
             hoja.cell(row = last_pos + 1, column = 15, value = "VERDADERO")
         else:
             hoja.cell(row = last_pos + 1, column = 15, value = "FALSO")
@@ -651,10 +696,17 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
 
         #Fecha
         hoja.cell(row = last_pos + 1, column = 27, value = f"{str(fecha.day)}/{str(fecha.month)}/{str(fecha.year)}")
+        #Comparar codigos
+        hoja[f'AI{last_pos + 1}'] = f"=AG{last_pos + 1} =B{last_pos + 1}"
+        #comparar cantidad
+        hoja[f'AJ{last_pos + 1}'] = f"=AH{last_pos + 1} =X{last_pos + 1}"
         #Contadores para iterar
         last_pos += 1
         cont += 10
     encabezado_ventas(hoja, last_pos + 1)
+    for q in range(1, hoja.max_column + 1):
+        hoja.cell(row = last_pos + 1, column = q).border = bordes
+        hoja.cell(row = last_pos + 1, column = q).font = Font(bold = true)
     mango.save(f"prueba_venta.xlsx")
     return
 
