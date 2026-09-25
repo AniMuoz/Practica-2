@@ -278,11 +278,13 @@ def inventario(ruta, dicub):
     hoja.column_dimensions['C'].width = 20
     hoja.column_dimensions['D'].width = 15
     hoja.column_dimensions['E'].width = 15
+    hoja.column_dimensions['F'].width = 25
     hoja['A3'].border = bordes
     hoja['B3'].border = bordes
     hoja['C3'].border = bordes
     hoja['D3'].border = bordes
     hoja['E3'].border = bordes
+    hoja['F3'].border = bordes
     hoja['A1'].border = bordes
     hoja['B1'].border = bordes
     hoja['A3'].font = Font(bold=True)
@@ -290,6 +292,7 @@ def inventario(ruta, dicub):
     hoja['C3'].font = Font(bold=True)
     hoja['D3'].font = Font(bold=True)
     hoja['E3'].font = Font(bold=True)
+    hoja['F3'].font = Font(bold=True)
     hoja['A1'].font = Font(bold=True, size=12)
     hoja['B1'].font = Font(bold=True, size=12)
     hoja['A3'].fill = color
@@ -297,6 +300,7 @@ def inventario(ruta, dicub):
     hoja['C3'].fill = color
     hoja['D3'].fill = color
     hoja['E3'].fill = color
+    hoja['F3'].fill = color
     hoja['A1'].fill = color
     hoja['B1'].fill = color
 
@@ -308,15 +312,16 @@ def inventario(ruta, dicub):
     hoja['A3'] = "Etiqueta de fila"
     hoja['B3'] = "Descripcion del producto"
     hoja['C3'] = "Ubicacion"
-    hoja['D3'] = "Libre utilización"
-    hoja['E3'] = "Existencia"
+    hoja['D3'] = "sub-ubicacion"
+    hoja['E3'] = "Libre utilización"
+    hoja['F3'] = "Existencia"
 
     #Ordena la planilla por ubicacion
-    hoja.auto_filter.ref = "A3:E3"
+    hoja.auto_filter.ref = "A3:F3"
     hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
 
     #Manejo de archivos
-    encabezados = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "Libre utilización", "Existencia"]
+    encabezados = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"]
     for col_idx, texto in enumerate(encabezados, start=1):
         cell = hoja.cell(row=3, column=col_idx, value=texto)
         cell.font = Font(bold=True)
@@ -342,10 +347,13 @@ def inventario(ruta, dicub):
             if id_str in dicub and dicub[id_str]:
                 ubicacion = dicub[id_str]
 
+            sub_ubicacion = str(ubicacion).strip()[:4] if ubicacion else ""
+
             filas_filtradas.append({
                 'id': id_prod,
                 'descripcion': descripcion,
                 'ubicacion': ubicacion,
+                'sub_ubicacion': sub_ubicacion,
                 'utilizacion': utilizacion,
                 'existencia': None
             })
@@ -380,12 +388,15 @@ def inventario(ruta, dicub):
         hoja.cell(row=x, column=3, value=item['ubicacion']).border = bordes
         if hoja.cell(row=x, column= 3).value == "":
             hoja[f'C{x}'].fill = vacio
-        hoja.cell(row=x, column=4, value=item['utilizacion']).border = bordes
-        hoja.cell(row=x, column=5, value=item['existencia']).border = bordes
+        hoja.cell(row=x, column=4, value=item['sub_ubicacion']).border = bordes
+        if hoja.cell(row=x, column= 4).value == "":
+            hoja[f'D{x}'].fill = vacio
+        hoja.cell(row=x, column=5, value=item['utilizacion']).border = bordes
+        hoja.cell(row=x, column=6, value=item['existencia']).border = bordes
         x += 1
 
     # Agregar Autofiltro visual
-    hoja.auto_filter.ref = f"A3:E{x-1}"
+    hoja.auto_filter.ref = f"A3:F{x-1}"
 
     # Guardar archivo
     nombre_archivo = "Prueba_de_planilla_invetario.xlsx"
@@ -398,7 +409,7 @@ def inventario(ruta, dicub):
 def inventario_preview(ruta, dicub):
     excel = openpyxl.load_workbook(ruta)
     hoja2 = excel.active
-    columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "Libre utilización", "Existencia"]
+    columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"]
     filas_filtradas = []
 
     for row in hoja2.iter_rows(values_only=True):
@@ -408,10 +419,12 @@ def inventario_preview(ruta, dicub):
         if bodega == "M501" and descripcion != "NULO":
             id_str = str(id_prod)
             ubicacion = dicub.get(id_str, "") if id_str in dicub else ""
+            sub_ubicacion = str(ubicacion).strip()[:4] if ubicacion else ""
             filas_filtradas.append({
                 'id': id_prod,
                 'descripcion': descripcion,
                 'ubicacion': ubicacion,
+                'sub_ubicacion': sub_ubicacion,
                 'utilizacion': utilizacion,
                 'existencia': None,
             })
@@ -425,7 +438,7 @@ def inventario_preview(ruta, dicub):
         return (0, 999)
 
     filas_filtradas.sort(key=obtener_clave_ordenamiento)
-    filas = [[f['id'], f['descripcion'], f['ubicacion'], f['utilizacion'], f['existencia']]
+    filas = [[f['id'], f['descripcion'], f['ubicacion'], f['sub_ubicacion'], f['utilizacion'], f['existencia']]
              for f in filas_filtradas]
     return columnas, filas
 
