@@ -53,7 +53,7 @@ def filtro1(ruta):
     x = 4
 
     #Diseño de las celdas
-    bordes, color, vacio = maquillaje()
+    bordes, color, vacio, ding, zero = maquillaje()
 
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
@@ -98,6 +98,12 @@ def filtro1(ruta):
                 hoja.cell(row = x, column = 2, value = descripcion).border = bordes
                 utilizacion = hoja2.cell(row = i, column = 4).value
                 hoja.cell(row = x, column = 3, value = utilizacion).border = bordes
+                if hoja.cell(row = x, column = 3).value == 0 or hoja.cell(row = x, column = 3).value == "0" :
+                    hoja[f"C{x}"].fill = zero
+                elif hoja.cell(row = x, column = 3).value == "          ":
+                    hoja[f"C{x}"].fill = vacio
+                else:
+                    hoja[f"C{x}"].fill = ding
                 x += 1
 
     #hoja['A1'] = hoja2.cell(row = 1, column = 1).value
@@ -137,7 +143,7 @@ def total(ruta):
     x = 4
 
     #Diseño de las celdas
-    bordes, color, vacio = maquillaje()
+    bordes, color, vacio, ding, zero = maquillaje()
 
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
@@ -229,10 +235,14 @@ def total(ruta):
                 hoja.cell(row = x, column = 8).border = bordes
                 i = i + 4
                 # Después de escribir los valores de las bodegas en la fila x:
-                for col_letra in ['C', 'D', 'E', 'F', 'G']:
+                for col_letra in ['C', 'D', 'E', 'F', 'G', 'H']:
                     val = hoja[f'{col_letra}{x}'].value
-                    if val is None or val == "":
+                    if val is None or val == "" or val == "          ":
                         hoja[f'{col_letra}{x}'].fill = vacio
+                    elif val == "0" or val == 0:
+                        hoja[f'{col_letra}{x}'].fill = zero
+                    else:
+                        hoja[f'{col_letra}{x}'].fill = ding
                 x += 1
 
     print(f"i = {i} y x = {x}")
@@ -276,7 +286,7 @@ def inventario(ruta, dicub):
     x = 4
 
     #Diseño de las celdas
-    bordes, color, vacio = maquillaje()
+    bordes, color, vacio, ding, zero = maquillaje()
 
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
@@ -498,7 +508,7 @@ def modificar_diccionarios(dic, name):
 
 #Añadir ventas al excel de ventas
 def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
-    bordes, color, vacio = maquillaje()
+    bordes, color, vacio, ding, zero = maquillaje()
     last_pos = 0
     export = openpyxl.load_workbook(ruta)
     temp = export.active

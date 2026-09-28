@@ -323,7 +323,7 @@ def stock_det_preview():
                            preview_titulo="Stock Total",
                            preview_columnas=columnas,
                            preview_filas=filas,
-                           descarga_url=url_for('stockdet_descargar'))
+                           descarga_url=url_for('stock_det_descargar'))
 
 @front_flask.route('/stockdet/descargar', methods=['GET'])
 def stock_det_descargar():
