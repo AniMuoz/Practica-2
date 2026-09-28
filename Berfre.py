@@ -745,11 +745,10 @@ def cont_reserva(dic_sto, dic_mat, dic_ub):
     ub = []
     res = []
     sto = []
-    #El fin de esta funcion es tomar un archivo de reserva y avise el stock disponible de cada uno
-    #Descubrir como leer y rescatar informacion de un PDF
-    #Archivo que tomar en cuenta en private
-    #Compararla con el stock y de un aviso articulo a articulo para saber que se tiene y que no
-    #Seguir el lunes
+    cont = []
+    fa = 0
+    ar = 0
+    test = 0
     #Cargar archivo
     ruta_reserva = pedir_archivo_visual()
     lector = PdfReader(ruta_reserva)
@@ -762,12 +761,6 @@ def cont_reserva(dic_sto, dic_mat, dic_ub):
     # Obtener el número total de páginas
     total_paginas = len(lector.pages)
     print(f"El documento tiene {total_paginas} páginas.\n")
-
-    # Iterar por cada página y extraer el texto
-    #for indice, pagina in enumerate(lector.pages):
-    #    texto = pagina.extract_text()
-    #    print(f"--- Página {indice + 1} ---")
-    #    print(texto)
     
     for num_pagina, pagina in enumerate(lector.pages, start=1):
         texto_pagina = pagina.extract_text()
@@ -781,40 +774,73 @@ def cont_reserva(dic_sto, dic_mat, dic_ub):
         for num_linea, linea in enumerate(lineas, start=1):
         # .strip() elimina espacios en blanco innecesarios al inicio y final
             linea_limpia = linea.strip()
-        
         # Omitir líneas vacías si las hay
             if linea_limpia:
-                #print(f"Línea {num_linea}: {linea_limpia}")
-                if linea_limpia[:2] == "00":
-                    #print("AQUI")
-                    tomar = linea_limpia.split(" ")
-                    num.append(tomar[1])
-                    des.append(dic_mat[tomar[1]])
-                    sto.append(dic_sto[tomar[1]])
-                    #print(tomar[1])
-                    if tomar[1] in dic_ub:
-                        ub.append(dic_ub[tomar[1]])
-                        #print(f"Descripcion: {dic_mat[tomar[1]]} cant {dic_sto[tomar[1]]} en {dic_ub[tomar[1]]}")
-                    else:
-                        ub.append("No se encontro ubicación")
-                        #print(f"Descripcion: {dic_mat[tomar[1]]} cant {dic_sto[tomar[1]]} sin ubicacion encontrada")
-                cant = linea_limpia.split(",")
-                if len(cant) == 2:
-                    if cant[1] == "000":
-                        res.append(cant[0])
-                        #print(cant[0])
+                #Rescata datos de ordener horizontales
+                if ver == 1:
+                    #print(linea_limpia)
+                    if linea_limpia[:11] == "Reserva No.":
+                        tom = linea_limpia.split(".")
+                        tom2 = tom[1].split(" ")
+                        orden.append(tom2[1])
+                    if linea_limpia[:2] == "00":
+                        tomar = linea_limpia.split(" ")
+                        num.append(tomar[1])
+                        des.append(dic_mat[tomar[1]])
+                        sto.append(dic_sto[tomar[1]])
+                        if tomar[1] in dic_ub:
+                            ub.append(dic_ub[tomar[1]])
+                        else:
+                            ub.append("No se encontro ubicación")
+                    cant = linea_limpia.split(",")
+                    if len(cant) == 2:
+                        if cant[1] == "000":
+                            res.append(cant[0])
+                    cont.append(num_pagina)
+                #rescata datos de ordenes verticales
+                elif ver == 2:
+                    if linea_limpia[:5] == "Orden":
+                        tom = linea_limpia.split("          ")
+                        tom2 = tom[1].split(" ")
+                        orden.append(tom2[0])
+                    if linea_limpia[:8] == "Material":
+                        take = linea_limpia.split("    ")
+                        tomar = take[1].split(" ")
+                        num.append(tomar[0])
+                        des.append(dic_mat[tomar[0]])
+                        sto.append(dic_sto[tomar[0]])
+                        if tomar[0] in dic_ub:
+                            ub.append(dic_ub[tomar[0]])
+                        else:
+                            ub.append("No se encontro ubicación")
+                        res.append(tomar[1])
+                        fa += 1
+                    cont.append(fa)
+        #Mostrar resultados
+        if ver == 1:
+            print("-"*50)
+            print(f"N° de orden {orden[num_pagina - 1]}")
+            for i in range(0, len(num)):
+                if int(res[ar]) <= int(sto[ar]):
+                    estado = "Disponible"
+                else:
+                    estado = "No disponoble"
+                print("N° Codigo Descripcion reserva stock ubicacion Estado")
+                print(f"{i + 1}.- | {num[ar]} | {des[ar]} | {res[ar]} | {sto[ar]} | {ub[ar]} | {estado}")
+                ar += 1
+                test += 1
+                if test == len(num):
+                    break
     #Mostrar resultados
-    for i in range(0, len(num)):
-        if int(res[i]) <= int(sto[i]):
-            estado = "Disponible"
-        else:
-            estado = "No disponoble"
-        print("N° Codigo Descripcion reserva stock ubicacion Estado")
-        print(f"{i + 1}.- | {num[i]} | {des[i]} | {res[i]} | {sto[i]} | {ub[i]} | {estado}")
-    #excel = openpyxl.load_workbook(ruta_reserva)
-    #hoja = excel.active
-    #ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
-    print("ola, funcion en desarrollo")
+    if ver == 2:
+        print(f"N° de orden {orden[0]}")
+        for i in range(0, len(num)):
+            if int(res[i]) <= int(sto[i]):
+                estado = "Disponible"
+            else:
+                estado = "No disponoble"
+            print("N° Codigo Descripcion reserva stock ubicacion Estado")
+            print(f"{i + 1}.- | {num[i]} | {des[i]} | {res[i]} | {sto[i]} | {ub[i]} | {estado}")
     return
 
 def detector_numerico(linea):
