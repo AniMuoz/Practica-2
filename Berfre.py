@@ -6,6 +6,7 @@ import io
 from matplotlib.pylab import rint
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle
+from pypdf import PdfReader
 import tkinter as tk
 from tkinter import filedialog
 import datetime
@@ -737,12 +738,91 @@ def encabezado_ventas(hoja, last_pos):
     return
 
 #Funcion para corroborar stock en orden de reserva
-def cont_reserva():
+def cont_reserva(dic_sto, dic_mat, dic_ub):
+    orden = []
+    num = []
+    des = []
+    ub = []
+    res = []
+    sto = []
     #El fin de esta funcion es tomar un archivo de reserva y avise el stock disponible de cada uno
     #Descubrir como leer y rescatar informacion de un PDF
+    #Archivo que tomar en cuenta en private
     #Compararla con el stock y de un aviso articulo a articulo para saber que se tiene y que no
+    #Seguir el lunes
+    #Cargar archivo
+    ruta_reserva = pedir_archivo_visual()
+    lector = PdfReader(ruta_reserva)
+
+    ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
+    while ver > 2 or ver < 1:
+        print("una pega")
+        ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
+
+    # Obtener el número total de páginas
+    total_paginas = len(lector.pages)
+    print(f"El documento tiene {total_paginas} páginas.\n")
+
+    # Iterar por cada página y extraer el texto
+    #for indice, pagina in enumerate(lector.pages):
+    #    texto = pagina.extract_text()
+    #    print(f"--- Página {indice + 1} ---")
+    #    print(texto)
+    
+    for num_pagina, pagina in enumerate(lector.pages, start=1):
+        texto_pagina = pagina.extract_text()
+    
+    # Dividir el texto de la página en líneas independientes
+        lineas = texto_pagina.splitlines()
+    
+        #print(f"=== Leyendo Página {num_pagina} ===")
+    
+    # Procesar cada línea una por una
+        for num_linea, linea in enumerate(lineas, start=1):
+        # .strip() elimina espacios en blanco innecesarios al inicio y final
+            linea_limpia = linea.strip()
+        
+        # Omitir líneas vacías si las hay
+            if linea_limpia:
+                #print(f"Línea {num_linea}: {linea_limpia}")
+                if linea_limpia[:2] == "00":
+                    #print("AQUI")
+                    tomar = linea_limpia.split(" ")
+                    num.append(tomar[1])
+                    des.append(dic_mat[tomar[1]])
+                    sto.append(dic_sto[tomar[1]])
+                    #print(tomar[1])
+                    if tomar[1] in dic_ub:
+                        ub.append(dic_ub[tomar[1]])
+                        #print(f"Descripcion: {dic_mat[tomar[1]]} cant {dic_sto[tomar[1]]} en {dic_ub[tomar[1]]}")
+                    else:
+                        ub.append("No se encontro ubicación")
+                        #print(f"Descripcion: {dic_mat[tomar[1]]} cant {dic_sto[tomar[1]]} sin ubicacion encontrada")
+                cant = linea_limpia.split(",")
+                if len(cant) == 2:
+                    if cant[1] == "000":
+                        res.append(cant[0])
+                        #print(cant[0])
+    #Mostrar resultados
+    for i in range(0, len(num)):
+        if int(res[i]) <= int(sto[i]):
+            estado = "Disponible"
+        else:
+            estado = "No disponoble"
+        print("N° Codigo Descripcion reserva stock ubicacion Estado")
+        print(f"{i + 1}.- | {num[i]} | {des[i]} | {res[i]} | {sto[i]} | {ub[i]} | {estado}")
+    #excel = openpyxl.load_workbook(ruta_reserva)
+    #hoja = excel.active
+    #ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
     print("ola, funcion en desarrollo")
     return
+
+def detector_numerico(linea):
+    try:
+        float(linea)
+        return True
+    except ValueError:
+        return False
 
 # ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
 
@@ -835,7 +915,7 @@ def main():
 
     print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
 
-    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n>> "))
+    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n6.- Verificar stock de una reserva\n>> "))
 
     # Confirmación antes de generar el archivo
     confirmar = input(f"¿Seguro que quieres generar el archivo para la opción {z}? (s/n): ").strip().lower()
@@ -860,6 +940,8 @@ def main():
             modificar_diccionarios(dicpre, "precios")
     if z == 5:
         añadir_venta(dicmat, dicub, dicpre, dicsto, diccom, ruta_seleccionada)
+    if z == 6:
+        cont_reserva(dicsto, dicmat, dicub)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")
