@@ -34,7 +34,11 @@ def maquillaje():
             start_color='a9e5e5', end_color='5CB800', fill_type='solid')
     vacio = PatternFill(
             start_color='f9e37c', end_color='5CB800', fill_type='solid')
-    return bordes, color, vacio
+    ding = PatternFill(
+            start_color='73C883', end_color='5CB800', fill_type='solid')
+    zero = PatternFill(
+            start_color='D3D3D3', end_color='5CB800', fill_type='solid')
+    return bordes, color, vacio, ding, zero
 
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
@@ -809,7 +813,7 @@ def cont_reserva(dic_sto, dic_mat, dic_ub):
                         num.append(tomar[0])
                         des.append(dic_mat[tomar[0]])
                         sto.append(dic_sto[tomar[0]])
-                        if tomar[0] in dic_ub:
+                        if tomar[0] in dic_ub and dic_ub[tomar[0]] != "          ":
                             ub.append(dic_ub[tomar[0]])
                         else:
                             ub.append("No se encontro ubicación")
@@ -843,12 +847,196 @@ def cont_reserva(dic_sto, dic_mat, dic_ub):
             print(f"{i + 1}.- | {num[i]} | {des[i]} | {res[i]} | {sto[i]} | {ub[i]} | {estado}")
     return
 
+#Detecta que si un valor es numerico o no
 def detector_numerico(linea):
     try:
         float(linea)
         return True
     except ValueError:
         return False
+
+#Muestra una tabla mas detallada de stock en todas las bodegas
+def stock_detallado(ruta, dic_ub, dic_pre):
+    # inicializa manejo de archivos
+    excel = openpyxl.load_workbook(ruta)
+    mango = openpyxl.Workbook()
+    hoja2 = excel.active
+    hoja = mango.active
+
+    #Variable que maneja la fila en la que se esta escribiendo
+    x = 4
+
+    #Diseño de las celdas
+    bordes, color, vacio, ding, zero = maquillaje()
+
+    hoja.column_dimensions['A'].width = 15
+    hoja.column_dimensions['B'].width = 10
+    hoja.column_dimensions['C'].width = 52
+    hoja.column_dimensions['D'].width = 8
+    hoja.column_dimensions['E'].width = 15
+    hoja.column_dimensions['F'].width = 30
+    hoja.column_dimensions['G'].width = 8
+    hoja.column_dimensions['H'].width = 8
+    hoja.column_dimensions['I'].width = 8
+    hoja.column_dimensions['J'].width = 8
+    hoja.column_dimensions['K'].width = 10
+    hoja.column_dimensions['L'].width = 18
+    hoja.column_dimensions['M'].width = 15
+    hoja.column_dimensions['N'].width = 15
+    hoja.column_dimensions['O'].width = 15
+    hoja.column_dimensions['P'].width = 18
+
+    #Titulo del documento
+    hoja['A1'] = "Stock detallado"
+    
+    #Titlos de las columnas
+    hoja['A3'] = "Ubicación"
+    hoja['B3'] = "Codigo"
+    hoja['C3'] = "Descripción"
+    hoja['D3'] = "M501"
+    hoja['E3'] = "Precio x Unidad"
+    hoja['F3'] = "Clasificación"
+    hoja['G3'] = "M502"
+    hoja['H3'] = "M503"
+    hoja['I3'] = "M504"
+    hoja['J3'] = "M505"
+    hoja['K3'] = "Total"
+    hoja['L3'] = "Cons.Prom.Mensual"
+    hoja['M3'] = "STOCK CRITICO"
+    hoja['N3'] = "Stock Max"
+    hoja['O3'] = "INDICADOR"
+    hoja['P3'] = "Cambio de ubicación"
+
+    #Diseño
+    hoja['A3'].font = Font(bold=True)
+    hoja['B3'].font = Font(bold=True)
+    hoja['C3'].font = Font(bold=True)
+    hoja['D3'].font = Font(bold=True)
+    hoja['E3'].font = Font(bold=True)
+    hoja['F3'].font = Font(bold=True)
+    hoja['G3'].font = Font(bold=True)
+    hoja['H3'].font = Font(bold=True)
+    hoja['I3'].font = Font(bold=True)
+    hoja['J3'].font = Font(bold=True)
+    hoja['K3'].font = Font(bold=True)
+    hoja['L3'].font = Font(bold=True)
+    hoja['M3'].font = Font(bold=True)
+    hoja['N3'].font = Font(bold=True)
+    hoja['O3'].font = Font(bold=True)
+    hoja['P3'].font = Font(bold=True)
+    hoja['A1'].font = Font(bold=True)
+    hoja['A3'].fill = color
+    hoja['B3'].fill = color
+    hoja['C3'].fill = color
+    hoja['D3'].fill = color
+    hoja['E3'].fill = color
+    hoja['F3'].fill = color
+    hoja['G3'].fill = color
+    hoja['H3'].fill = color
+    hoja['I3'].fill = color
+    hoja['J3'].fill = color
+    hoja['K3'].fill = color
+    hoja['L3'].fill = color
+    hoja['M3'].fill = color
+    hoja['N3'].fill = color
+    hoja['O3'].fill = color
+    hoja['P3'].fill = color
+    hoja['A1'].fill = color
+    hoja['A3'].border = bordes
+    hoja['B3'].border = bordes
+    hoja['C3'].border = bordes
+    hoja['D3'].border = bordes
+    hoja['E3'].border = bordes
+    hoja['F3'].border = bordes
+    hoja['G3'].border = bordes
+    hoja['H3'].border = bordes
+    hoja['I3'].border = bordes
+    hoja['J3'].border = bordes
+    hoja['K3'].border = bordes
+    hoja['L3'].border = bordes
+    hoja['M3'].border = bordes
+    hoja['N3'].border = bordes
+    hoja['O3'].border = bordes
+    hoja['P3'].border = bordes
+    hoja['A1'].border = bordes
+
+    #Filtros para el archivo
+    hoja.auto_filter.ref = "A3:P3"
+
+    for i in range(2, hoja2.max_row + 1):
+        if hoja2.cell(row = i, column = 2).value != "NULO":
+            hoja.cell(row = x, column = 1).border = bordes
+            hoja.cell(row = x, column = 2).border = bordes
+            hoja.cell(row = x, column = 3).border = bordes
+            hoja.cell(row = x, column = 4).border = bordes
+            hoja.cell(row = x, column = 5).border = bordes
+            hoja.cell(row = x, column = 6).border = bordes
+            hoja.cell(row = x, column = 7).border = bordes
+            hoja.cell(row = x, column = 8).border = bordes
+            hoja.cell(row = x, column = 9).border = bordes
+            hoja.cell(row = x, column = 10).border = bordes
+            hoja.cell(row = x, column = 11).border = bordes
+            hoja.cell(row = x, column = 12).border = bordes
+            hoja.cell(row = x, column = 13).border = bordes
+            hoja.cell(row = x, column = 14).border = bordes
+            hoja.cell(row = x, column = 15).border = bordes
+            hoja.cell(row = x, column = 16).border = bordes
+            bodega = hoja2.cell(row = i, column = 1).value
+
+            if bodega != hoja2.cell(row = i - 1, column = 1).value:
+                id = hoja2.cell(row = i, column = 1).value
+                hoja.cell(row = x, column = 2, value = id)
+                if str(id) in dic_ub:
+                    hoja.cell(row = x, column = 1, value = dic_ub[str(id)])
+                descripcion = hoja2.cell(row = i, column = 2).value
+                hoja.cell(row = x, column = 3, value = descripcion)
+                M501 = hoja2.cell(row = i, column = 4).value
+                hoja.cell(row = x, column = 4, value = M501)
+                if str(id) in dic_pre:
+                    hoja.cell(row = x, column = 5, value = f"${dic_pre[str(id)]}")
+                else:
+                    hoja.cell(row = x, column = 5, value = "Sin precio")
+
+                if hoja2.cell(row = i + 1, column = 3).value == "M502":
+                    M502 = hoja2.cell(row = i + 1, column = 4).value
+                    hoja.cell(row = x, column = 7, value = M502)
+
+                if hoja2.cell(row = i + 2, column = 3).value == "M503":
+                    M503 = hoja2.cell(row = i + 2, column = 4).value
+                    hoja.cell(row = x, column = 8, value = M503)
+
+                if hoja2.cell(row = i + 3, column = 3).value == "M504":
+                    M504 = hoja2.cell(row = i + 3, column = 4).value
+                    hoja.cell(row = x, column = 9, value = M504)
+
+                if hoja2.cell(row = i + 4, column = 3).value == "M505":
+                    M505 = hoja2.cell(row = i + 4, column = 4).value
+                    hoja.cell(row = x, column = 10, value = M505)
+
+                hoja.cell(row = x, column = 11, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
+                i = i + 4
+                # Después de escribir los valores de las bodegas en la fila x:
+                for col_letra2 in ['D', 'G', 'H', 'I', 'J', 'K']:
+                    val2 = hoja[f'{col_letra2}{x}'].value
+                    if val2 != None and val2 != "" and val2 != 0 and val2 != "0":
+                        hoja[f'{col_letra2}{x}'].fill = ding
+
+                for col_letra in ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
+                    val = hoja[f'{col_letra}{x}'].value
+                    if val is None or val == "" or val == "          " or val == "Sin precio":
+                        hoja[f'{col_letra}{x}'].fill = vacio
+
+                for col_letra3 in ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']:
+                    val3 = hoja[f'{col_letra3}{x}'].value
+                    if val3 == 0:
+                        hoja[f'{col_letra3}{x}'].fill = zero
+                x += 1
+
+    print(f"i = {i} y x = {x}")
+    nombre_archivo = "Prueba_de_stock_detallado.xlsx"
+    mango.save(nombre_archivo)
+    ruta_creacion = path.abspath(nombre_archivo)
+    return nombre_archivo, ruta_creacion
 
 # ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
 
@@ -941,7 +1129,7 @@ def main():
 
     print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
 
-    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n6.- Verificar stock de una reserva\n>> "))
+    z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n6.- Verificar stock de una reserva\n7.- Planilla de stock detallada\n>> "))
 
     # Confirmación antes de generar el archivo
     confirmar = input(f"¿Seguro que quieres generar el archivo para la opción {z}? (s/n): ").strip().lower()
@@ -968,6 +1156,8 @@ def main():
         añadir_venta(dicmat, dicub, dicpre, dicsto, diccom, ruta_seleccionada)
     if z == 6:
         cont_reserva(dicsto, dicmat, dicub)
+    if z == 7:
+        stock_detallado(ruta_seleccionada, dicub, dicpre)
 
 if __name__ == '__main__':
     print("Esto solo se ejecutará si corres Berfre.py directamente")

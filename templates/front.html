@@ -3,7 +3,7 @@
 <head>
     <title>Ventas y Planillas Berfre</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}" type="image/x-icon">
 </head>
 <body>
 
@@ -56,6 +56,7 @@
 
     <div class="contenedor-botones">
       <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta (boton de testeo)</button>
+      <button class="bt" onclick="mostrarAlerta()">Stock detallado (placeholder)</button>
       <button class="bt" onclick="mostrarAlerta()">Añadir una venta (placeholder)</button>
       <button class="bt" onclick="mostrarAlerta()">Revisar stock de reserva (placeholder)</button>
       <form action="/diccionario_mod" method="GET">
