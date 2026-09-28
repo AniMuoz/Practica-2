@@ -320,7 +320,7 @@ def stock_det_preview():
                            dia_hoy=dia,
                            ruta=ruta,
                            alerta=None,
-                           preview_titulo="Stock Total",
+                           preview_titulo="Stock Total Detallado",
                            preview_columnas=columnas,
                            preview_filas=filas,
                            descarga_url=url_for('stock_det_descargar'))

@@ -1026,7 +1026,7 @@ def stock_detallado(ruta, dic_ub, dic_pre):
                 hoja.cell(row = x, column = 11, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
                 i = i + 4
                 # Después de escribir los valores de las bodegas en la fila x:
-                for col_letra2 in ['D', 'G', 'H', 'I', 'J', 'K']:
+                for col_letra2 in ['D', 'E', 'G', 'H', 'I', 'J', 'K']:
                     val2 = hoja[f'{col_letra2}{x}'].value
                     if val2 != None and val2 != "" and val2 != 0 and val2 != "0":
                         hoja[f'{col_letra2}{x}'].fill = ding
