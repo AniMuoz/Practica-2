@@ -1038,6 +1038,41 @@ def stock_detallado(ruta, dic_ub, dic_pre):
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
 
+# Versión preview de total: retorna columnas y filas como listas (sin guardar archivo)
+def stock_detallado_preview(ruta, dic_ub, dic_pre):
+    excel = openpyxl.load_workbook(ruta)
+    hoja2 = excel.active
+
+    columnas = ["Ubicación","Codigo","Descripción","M501","Precio x Unidad","M502","M503","M504","M505","Total"]
+    filas = []
+    for i in range(2, hoja2.max_row + 1):
+        if hoja2.cell(row=i, column=2).value != "NULO":
+            id = hoja2.cell(row = i, column = 1).value
+            if str(id) in dic_ub and dic_ub[str(id)] != "          ":
+                ubicacion = dic_ub[str(id)]
+            else:
+                ubicacion = "Sin ubicación"
+            if str(id) in dic_pre:
+                precio = f"${dic_pre[str(id)]}"
+            else:
+                precio = "Sin precio"
+            bodega = hoja2.cell(row=i, column=1).value
+            if bodega != hoja2.cell(row=i - 1, column=1).value:
+                M501 = hoja2.cell(row=i, column=4).value or 0
+                M502 = hoja2.cell(row=i+1, column=4).value if hoja2.cell(row=i+1, column=3).value == "M502" else 0
+                M503 = hoja2.cell(row=i+2, column=4).value if hoja2.cell(row=i+2, column=3).value == "M503" else 0
+                M504 = hoja2.cell(row=i+3, column=4).value if hoja2.cell(row=i+3, column=3).value == "M504" else 0
+                M505 = hoja2.cell(row=i+4, column=4).value if hoja2.cell(row=i+4, column=3).value == "M505" else 0
+                filas.append([
+                    ubicacion,
+                    hoja2.cell(row=i, column=1).value,
+                    hoja2.cell(row=i, column=2).value,
+                    M501,  precio,
+                    M502, M503, M504, M505,
+                    M501 + M502 + M503 + M504 + M505,
+                ])
+    return columnas, filas
+
 # ─── HELPERS PARA FLASK (sin input()) ────────────────────────────────────────
 
 def dic_agregar(dic: dict, clave: str, valor: str) -> dict:

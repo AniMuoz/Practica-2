@@ -4,7 +4,8 @@ from Berfre import (dia, filtro1, filtro1_preview,
                     pedir_archivo_visual,
                     modificar_diccionarios,
                     dic_agregar, dic_modificar, dic_eliminar,
-                    dic_exportar_bytes, dic_importar_excel)
+                    dic_exportar_bytes, dic_importar_excel,
+                    stock_detallado_preview, stock_detallado)
 import private.informacion_delicada.diccionario
 import io
 import json
@@ -299,6 +300,39 @@ def stock_descargar():
         session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
         return redirect(url_for('home'))
     nombre_archivo, ruta_creacion = berfre_total(ruta)
+    return send_file(ruta_creacion,
+                     as_attachment=True,
+                     download_name=nombre_archivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# ─── STOCK TOTAL DETALLE ─────────────────────────────────────────────────────────────
+
+@front_flask.route('/stockdet/preview', methods=['GET'])
+def stock_det_preview():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    ubi, pre, mat = diccionarios(ruta)
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
+    columnas, filas = stock_detallado_preview(ruta, ubi, pre)
+    return render_template('front.html',
+                           dato="¡Hola desde Python!",
+                           dia_hoy=dia,
+                           ruta=ruta,
+                           alerta=None,
+                           preview_titulo="Stock Total",
+                           preview_columnas=columnas,
+                           preview_filas=filas,
+                           descarga_url=url_for('stockdet_descargar'))
+
+@front_flask.route('/stockdet/descargar', methods=['GET'])
+def stock_det_descargar():
+    ruta = session.get('ruta') or request.args.get('ruta')
+    ubi, pre, mat = diccionarios(ruta)
+    if not ruta:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo."
+        return redirect(url_for('home'))
+    nombre_archivo, ruta_creacion = stock_detallado(ruta, ubi, pre)
     return send_file(ruta_creacion,
                      as_attachment=True,
                      download_name=nombre_archivo,

@@ -56,7 +56,10 @@
 
     <div class="contenedor-botones">
       <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta (boton de testeo)</button>
-      <button class="bt" onclick="mostrarAlerta()">Stock detallado (placeholder)</button>
+      <form action="/stockdet/preview" method="GET">
+          <input type="hidden" name="ruta" value="{{ ruta }}">
+          <button class="bt" type="submit">Stock detallado</button>
+      </form>
       <button class="bt" onclick="mostrarAlerta()">Añadir una venta (placeholder)</button>
       <button class="bt" onclick="mostrarAlerta()">Revisar stock de reserva (placeholder)</button>
       <form action="/diccionario_mod" method="GET">
