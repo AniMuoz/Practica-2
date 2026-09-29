@@ -9,8 +9,11 @@ from Berfre import (dia, filtro1, filtro1_preview,
                     cont_reserva, cont_reserva_preview)
 import private.informacion_delicada.diccionario
 import io
+import webbrowser
+from threading import Timer
 import json
 import os
+import signal
 import openpyxl
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, send_file)
@@ -274,6 +277,16 @@ def ruta():
     if archivo_seleccionado:
         session['ruta'] = archivo_seleccionado
     return redirect(url_for('home'))
+
+def abrir_navegador():
+    # Reemplaza con el puerto que uses en tu app
+    webbrowser.open_new("http://127.0.0.1:5000")
+
+@front_flask.route('/apagar')
+def apagar():
+    # Envía una señal al propio proceso para cerrarse inmediatamente
+    os.kill(os.getpid(), signal.SIGINT)
+    return "La aplicación se ha cerrado. Ya puedes cerrar esta pestaña."
 
 # ─── STOCK TOTAL ─────────────────────────────────────────────────────────────
 
@@ -707,4 +720,5 @@ def ver_tarjetas():
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
+    Timer(1, abrir_navegador).start()
     front_flask.run(debug=True, port=5000)

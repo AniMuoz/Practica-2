@@ -56,6 +56,23 @@ h2 {
     background-color: #1f5c52;
 }
 
+.bt-apagar {
+    background-color: #eb1010;
+    color: #ffffff;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-family: 'Berlin Sans FD', 'Josefin Sans', 'Trebuchet MS', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 16px 0 8px 0;
+}
+
+.bt-apagar:hover {
+    background-color: #bc0707;
+}
+
 /* ===== Sección de ruta del archivo ===== */
 .seccion-ruta {
     text-align: center;
