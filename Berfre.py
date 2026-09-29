@@ -19,9 +19,6 @@ fecha = datetime.date.today()
 dia = str(fecha.year) + str(fecha.month) + str(fecha.day)
 print("Codigo de dia: ", dia)
 dia = f"{str(fecha.day)} / {str(fecha.month)} / {str(fecha.year)}"
-#
-#PRUEBA DE FLASK
-#
 
 def maquillaje():
     bordes = Border(
@@ -43,7 +40,6 @@ def maquillaje():
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
     # inicializa manejo de archivos
-    #test = input("Ingrese el nombre del archivo de recuperacion con su extencion ==> ")
     excel = openpyxl.load_workbook(ruta)
     mango = openpyxl.Workbook()
     hoja2 = excel.active
@@ -58,7 +54,7 @@ def filtro1(ruta):
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
-
+    #Propagar el diseño
     col = ['A', 'B', 'C']
     for i in col:
         hoja[f'{i}3'].font = Font(bold=True)
@@ -138,10 +134,8 @@ def total(ruta):
 
     #Variable que maneja la fila en la que se esta escribiendo
     x = 4
-
     #Diseño de las celdas
     bordes, color, vacio, ding, zero = maquillaje()
-
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 15
@@ -152,7 +146,6 @@ def total(ruta):
 
     #Titulo del documento
     hoja['A1'] = "Stock por bodega"
-    
     #Titlos de las columnas
     hoja['A3'] = "Material"
     hoja['B3'] = "Descripcion del producto"
@@ -172,10 +165,10 @@ def total(ruta):
     hoja['A1'].font = Font(bold=True)
     hoja['A1'].fill = color
     hoja['A1'].border = bordes
-
     #Filtros para el archivo
     hoja.auto_filter.ref = "A3:H3"
 
+    #Recorrer documento a rescatar informacion
     for i in range(2, hoja2.max_row + 1):
         if hoja2.cell(row = i, column = 2).value != "NULO":
             hoja.cell(row = x, column = 3).border = bordes
@@ -262,10 +255,8 @@ def inventario(ruta, dicub):
 
     #Variable que maneja la fila en la que se esta escribiendo
     x = 4
-
     #Diseño de las celdas
     bordes, color, vacio, ding, zero = maquillaje()
-
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
@@ -287,7 +278,6 @@ def inventario(ruta, dicub):
     #Titulo del documento
     hoja['A1'] = "Almacen"
     hoja['B1'] = "M501"
-
     #Titlos de las columnas
     hoja['A3'] = "Etiqueta de fila"
     hoja['B3'] = "Descripcion del producto"
@@ -295,26 +285,21 @@ def inventario(ruta, dicub):
     hoja['D3'] = "sub-ubicacion"
     hoja['E3'] = "Libre utilización"
     hoja['F3'] = "Existencia"
-
     #Ordena la planilla por ubicacion
     hoja.auto_filter.ref = "A3:F3"
     hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
-
     #Manejo de archivos
     encabezados = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"]
     for col_idx, texto in enumerate(encabezados, start=1):
         cell = hoja.cell(row=3, column=col_idx, value=texto)
         cell.font = Font(bold=True)
         cell.border = bordes
-
     # 3. Lectura y Filtrado en memoria
     filas_filtradas = []
-
     # iter_rows es infinitamente más rápido que recorrer celda por celda
     for row in hoja2.iter_rows(values_only=True):
         if not row or len(row) < 4:
             continue
-            
         id_prod = row[0]          # Columna 1
         descripcion = row[1]      # Columna 2
         bodega = row[2]           # Columna 3
@@ -326,9 +311,7 @@ def inventario(ruta, dicub):
             ubicacion = ""
             if id_str in dicub and dicub[id_str]:
                 ubicacion = dicub[id_str]
-
             sub_ubicacion = str(ubicacion).strip()[:4] if ubicacion else ""
-
             filas_filtradas.append({
                 'id': id_prod,
                 'descripcion': descripcion,
@@ -343,23 +326,18 @@ def inventario(ruta, dicub):
     # 4. ORDENAMIENTO EN MEMORIA
     def obtener_clave_ordenamiento(item):
         ub = str(item['ubicacion']).strip() if item['ubicacion'] else ""
-        
         # Si NO tiene ubicación (vacía o None)
         if not ub:
             # Devuelve (1, 0): El '1' la manda al final
             return (1, 0)
-        
         # Si SÍ tiene ubicación y empieza con al menos 2 dígitos
         if len(ub) >= 2 and ub[:2].isdigit():
             # Devuelve (0, número): El '0' la pone arriba, ordenada por su valor numérico
             return (0, int(ub[:2]))
-        
         # Si tiene texto pero no empieza con números (caso borde)
         return (0, 999)
-
     # Ordenamos la lista en Python usando la tupla como prioridad
     filas_filtradas.sort(key=obtener_clave_ordenamiento)
-
     # 5. Escritura rápida en la hoja de destino
     x = 4
     for item in filas_filtradas:
@@ -374,10 +352,8 @@ def inventario(ruta, dicub):
         hoja.cell(row=x, column=5, value=item['utilizacion']).border = bordes
         hoja.cell(row=x, column=6, value=item['existencia']).border = bordes
         x += 1
-
     # Agregar Autofiltro visual
     hoja.auto_filter.ref = f"A3:F{x-1}"
-
     # Guardar archivo
     nombre_archivo = "Planilla de invetario M501.xlsx"
     mango.save(nombre_archivo)
@@ -391,7 +367,6 @@ def inventario_preview(ruta, dicub):
     hoja2 = excel.active
     columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"]
     filas_filtradas = []
-
     for row in hoja2.iter_rows(values_only=True):
         if not row or len(row) < 4:
             continue
@@ -456,7 +431,6 @@ def modificar_diccionarios(dic, name):
             print(f"Error al importar el diccionario: {e}")
     elif imp == 5:
         j = 2
-
         excel = openpyxl.Workbook()
         hoja = excel.active
         hoja['A1'] = "Codigo"
@@ -464,7 +438,6 @@ def modificar_diccionarios(dic, name):
         for i in dic.keys():
             clave = i
             valor = dic[i]
-            
             hoja.cell(row=j, column=1).value = clave
             hoja.cell(row=j, column=2).value = valor
             j += 1
@@ -719,7 +692,6 @@ def encabezado_ventas(hoja, last_pos):
 #Funcion para corroborar stock en orden de reserva
 def cont_reserva_preview(ruta_reserva, dic_sto, dic_mat, dic_ub, ver=None):
     lector = PdfReader(ruta_reserva)
-
     # Si no se especifica orientación, autodetectar examinando el texto
     if not ver or ver not in (1, 2, 'horizontal', 'vertical'):
         texto_completo = ""
@@ -733,7 +705,6 @@ def cont_reserva_preview(ruta_reserva, dic_sto, dic_mat, dic_ub, ver=None):
         ver = 1
     else:
         ver = 2
-
     orden = []
     num = []
     des = []
@@ -741,7 +712,6 @@ def cont_reserva_preview(ruta_reserva, dic_sto, dic_mat, dic_ub, ver=None):
     res = []
     sto = []
     num_orden_item = []
-
     for num_pagina, pagina in enumerate(lector.pages, start=1):
         texto_pagina = pagina.extract_text()
         lineas = texto_pagina.splitlines()
@@ -827,12 +797,11 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
     print("N° | N° Orden | Codigo | Descripcion | reserva | stock | ubicacion | Estado")
     for f in filas:
         print(f"{f[0]}.- | {f[1]} | {f[2]} | {f[3]} | {f[4]} | {f[5]} | {f[6]} | {f[7]}")
-
     # Generar archivo Excel descargable
     mango = openpyxl.Workbook()
     hoja = mango.active
+    #Diseño
     bordes, color, vacio, ding, zero = maquillaje()
-
     hoja.column_dimensions['A'].width = 8
     hoja.column_dimensions['B'].width = 18
     hoja.column_dimensions['C'].width = 15
@@ -841,24 +810,17 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
     hoja.column_dimensions['F'].width = 12
     hoja.column_dimensions['G'].width = 25
     hoja.column_dimensions['H'].width = 16
-
     hoja['A1'] = "Revisión Stock de Reserva"
     hoja.merge_cells('A1:B1')
     hoja['A1'].font = Font(bold=True, size=12)
     hoja['A1'].fill = color
-    #hoja['B1'].fill = color
     hoja['A1'].border = bordes
-    #hoja['B1'].border = Border(
-    #        bottom=Side(border_style="medium", color="000000"),
-    #        right=Side(border_style="thin"),
-    #        )
 
     for c_idx, col_name in enumerate(columnas, start=1):
         cell = hoja.cell(row=3, column=c_idx, value=col_name)
         cell.font = Font(bold=True)
         cell.fill = color
         cell.border = bordes
-
     x = 4
     for fila in filas:
         for c_idx, val in enumerate(fila, start=1):
@@ -870,9 +832,7 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
                 else:
                     cell.fill = vacio
         x += 1
-
     hoja.auto_filter.ref = f"A3:H{x - 1}"
-
     nombre_archivo = "Revision_stock_reserva.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
@@ -893,13 +853,10 @@ def stock_detallado(ruta, dic_ub, dic_pre):
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
-
     #Variable que maneja la fila en la que se esta escribiendo
     x = 4
-
     #Diseño de las celdas
     bordes, color, vacio, ding, zero = maquillaje()
-
     hoja.column_dimensions['A'].width = 15
     hoja.column_dimensions['B'].width = 10
     hoja.column_dimensions['C'].width = 52
@@ -919,7 +876,6 @@ def stock_detallado(ruta, dic_ub, dic_pre):
 
     #Titulo del documento
     hoja['A1'] = "Stock detallado"
-    
     #Titlos de las columnas
     hoja['A3'] = "Ubicación"
     hoja['B3'] = "Codigo"
@@ -947,7 +903,6 @@ def stock_detallado(ruta, dic_ub, dic_pre):
     hoja['A1'].font = Font(bold=True)
     hoja['A1'].fill = color
     hoja['A1'].border = bordes
-
     #Filtros para el archivo
     hoja.auto_filter.ref = "A3:P3"
 
@@ -984,42 +939,34 @@ def stock_detallado(ruta, dic_ub, dic_pre):
                     hoja.cell(row = x, column = 5, value = f"${dic_pre[str(id)]}")
                 else:
                     hoja.cell(row = x, column = 5, value = "Sin precio")
-
                 if hoja2.cell(row = i + 1, column = 3).value == "M502":
                     M502 = hoja2.cell(row = i + 1, column = 4).value
                     hoja.cell(row = x, column = 7, value = M502)
-
                 if hoja2.cell(row = i + 2, column = 3).value == "M503":
                     M503 = hoja2.cell(row = i + 2, column = 4).value
                     hoja.cell(row = x, column = 8, value = M503)
-
                 if hoja2.cell(row = i + 3, column = 3).value == "M504":
                     M504 = hoja2.cell(row = i + 3, column = 4).value
                     hoja.cell(row = x, column = 9, value = M504)
-
                 if hoja2.cell(row = i + 4, column = 3).value == "M505":
                     M505 = hoja2.cell(row = i + 4, column = 4).value
                     hoja.cell(row = x, column = 10, value = M505)
-
                 hoja.cell(row = x, column = 11, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
                 i = i + 4
-                # Después de escribir los valores de las bodegas en la fila x:
+                # Diseño condicional
                 for col_letra2 in ['D', 'E', 'G', 'H', 'I', 'J', 'K']:
                     val2 = hoja[f'{col_letra2}{x}'].value
                     if val2 != None and val2 != "" and val2 != 0 and val2 != "0":
                         hoja[f'{col_letra2}{x}'].fill = ding
-
                 for col_letra in ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
                     val = hoja[f'{col_letra}{x}'].value
                     if val is None or val == "" or val == "          " or val == "Sin precio":
                         hoja[f'{col_letra}{x}'].fill = vacio
-
                 for col_letra3 in ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']:
                     val3 = hoja[f'{col_letra3}{x}'].value
                     if val3 == 0:
                         hoja[f'{col_letra3}{x}'].fill = zero
                 x += 1
-
     print(f"i = {i} y x = {x}")
     nombre_archivo = "Prueba_de_stock_detallado.xlsx"
     mango.save(nombre_archivo)
@@ -1030,7 +977,6 @@ def stock_detallado(ruta, dic_ub, dic_pre):
 def stock_detallado_preview(ruta, dic_ub, dic_pre):
     excel = openpyxl.load_workbook(ruta)
     hoja2 = excel.active
-
     columnas = ["Ubicación","Codigo","Descripción","M501","Precio x Unidad","M502","M503","M504","M505","Total"]
     filas = []
     for i in range(2, hoja2.max_row + 1):
@@ -1114,33 +1060,26 @@ def pedir_archivo_visual():
     # 1. Crear una ventana raíz oculta para que no aparezca una ventana vacía de fondo
     root = tk.Tk()
     root.withdraw()
-    
     # 2. Forzar a que la ventana de selección aparezca al frente de todo
     root.attributes('-topmost', True)
-    
     # 3. Abrir el cuadro de diálogo para seleccionar el archivo
     ruta_archivo = filedialog.askopenfilename(
         title="Selecciona un archivo",
         filetypes=[("Todos los archivos", "*.*"), ("Archivos de Texto", "*.txt"), ("Documentos PDF", "*.pdf")]
     )
-    
     # 4. Destruir la ventana raíz al terminar
     root.destroy()
-    
     return ruta_archivo
 
 #Selecciona que filtro se quiere usar y ejecuta la funcion correspondiente
 def main():
-        
     # Ejecución del ejemplo
     ruta_seleccionada = pedir_archivo_visual()
-
     if ruta_seleccionada:
         print(f"\nRuta seleccionada visualmente: {ruta_seleccionada}")
     else:
         print("\nEl usuario canceló la selección.")
         return
-
     #Se inicializan los diccionarios
     dicub = private.informacion_delicada.diccionario.ubicaciones
     dicpre = private.informacion_delicada.diccionario.precios
@@ -1150,8 +1089,6 @@ def main():
     diccrit = private.informacion_delicada.diccionario.critico
     diccom = private.informacion_delicada.diccionario.comprador
 
-    #print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
-
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n6.- Verificar stock de una reserva\n7.- Planilla de stock detallada\n>> "))
 
     # Confirmación antes de generar el archivo
@@ -1159,7 +1096,6 @@ def main():
     if confirmar != 's':
         print("Operación cancelada.")
         return
-
     if z == 1:
         nombre, ruta_out = filtro1(ruta_seleccionada)
         print(f"Archivo generado: {nombre}\nUbicación: {ruta_out}")

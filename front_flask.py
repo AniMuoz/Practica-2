@@ -482,6 +482,10 @@ def reserva_reseleccionar():
     # Redirigir de nuevo a la vista previa para que vuelva a pedir el archivo
     return redirect(url_for('reserva_preview'))
 
+# ─── AÑADIR VENTAS ───────────────────────────────────────────────────────────
+
+
+
 # ─── DICCIONARIOS (editables por el frontend) ────────────────────────────────
 
 def _dic_importar_excel_flexible(file_bytes: bytes, nombre: str) -> dict:
@@ -721,4 +725,5 @@ def ver_tarjetas():
 
 if __name__ == '__main__':
     Timer(1, abrir_navegador).start()
-    front_flask.run(debug=False, port=5000)
+    #Cambiar a False cuando se haga una build
+    front_flask.run(debug=True, port=5000)
