@@ -11,6 +11,10 @@
     <img src="{{ url_for('static', filename='logo.ico') }}" alt="Logo" width="120">
     <h1>Modificar Datos</h1>
 
+    <a href="{{ url_for('ver_tarjetas') }}" style="position: fixed; top: 15px; left: 15px; z-index: 9999;">
+        <button class="bt" type="button">Ir a Tutoriales</button>
+    </a>
+
     <!-- SELECTOR DE DICCIONARIO -->
     <div class="selector-dic">
         {% for clave, etiqueta in dic_labels.items() %}

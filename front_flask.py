@@ -671,19 +671,29 @@ def ver_tarjetas():
             "imagen": "static/tutorial2.png"
         },
         {
-            "titulo": "Paso 3: Reserva",
+            "titulo": "Paso 3: Tabla",
+            "descripcion": "La previsualización de la tabla permite ver los datos que contendra la tabla antes de descargar una planilla excel, carga datos en bloques de 50",
+            "imagen": "static/tutorial7.png"
+        },
+        {
+            "titulo": "Paso 4: Reserva",
             "descripcion": "Al presionar el boton de Revisar stock de reserva te pedira subir una reserva, esto comparará el stock de la bodega segun EXPORT y la reserva, pudiendo descargar una planilla con los datos comparados",
             "imagen": "static/tutorial3.png"
         },
         {
-            "titulo": "Paso 4: Añadir venta",
+            "titulo": "Paso 5: Añadir venta",
             "descripcion": "Trabajando en ello.",
             "imagen": "static/tutorial4.jpg"
         },
         {
-            "titulo": "Paso 5: Modificar informacion de material",
-            "descripcion": "Gran parte de la informacion escencial de los materiales se guardan en esta seccion, puedes importar datos completos, exportarlos, o puedes modificar datos especificos de cada lista",
+            "titulo": "Paso 6: Modificar informacion de material",
+            "descripcion": "Gran parte de la informacion escencial de los materiales se guardan en esta seccion, puedes modificar datos especificos de cada lista y exportarlos para compartirlos",
             "imagen": "static/tutorial5.png"
+        },
+        {
+            "titulo": "Paso 7: Importar y añadir material",
+            "descripcion": "En esta sección, abajo de la tabla, esta la opcoin de añadir un dato nuevo a una seccion de materiales, o subir un archivo para modificar multiples materiales, tambien esta la opcion de subir archivos oficiales",
+            "imagen": "static/tutorial6.png"
         },
         #{
         #    "titulo": "Paso : ",
