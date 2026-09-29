@@ -6,8 +6,10 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}" type="image/x-icon">
 </head>
 <body>
-    <a href="{{ url_for('ver_tarjetas') }}">
-        <button class="bt" type="button">Ir a Tarjetas</button>
+    <!-- Agrega esta estructura en tu plantilla HTML principales -->
+    <!-- Botón en esquina superior izquierda absoluta/fija -->
+    <a href="{{ url_for('ver_tarjetas') }}" style="position: fixed; top: 15px; left: 15px; z-index: 9999;">
+        <button class="bt" type="button">Ir a Tutoriales</button>
     </a>
     
     <!-- 1. TÍTULOS -->

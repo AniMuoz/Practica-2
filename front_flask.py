@@ -684,7 +684,12 @@ def ver_tarjetas():
             "titulo": "Paso 5: Modificar informacion de material",
             "descripcion": "Gran parte de la informacion escencial de los materiales se guardan en esta seccion, puedes importar datos completos, exportarlos, o puedes modificar datos especificos de cada lista",
             "imagen": "static/tutorial5.png"
-        }
+        },
+        #{
+        #    "titulo": "Paso : ",
+        #    "descripcion": "",
+        #    "imagen": "static/tutorial.png"
+        #}
     ]
     
     return render_template('tarjetas.html', tarjetas=tarjetas_data)
