@@ -14,3 +14,4 @@ mapa interactivo??? -> realizar una forma visual de ver la bodega desde el compu
 pedirle a antigravity:
 conectar correctamente las funciones añadir_venta y cont reserva
 Añadir botón para limpiar la ruta del export
+se pega el programa al bajar por primera vez en las tablas preview

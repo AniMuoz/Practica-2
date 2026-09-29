@@ -696,7 +696,7 @@ def ver_tarjetas():
         {
             "titulo": "Paso 5: Añadir venta",
             "descripcion": "Trabajando en ello.",
-            "imagen": "static/tutorial4.jpg"
+            "imagen": "static/tutorial1.jpg" #cambiar imagen al completar
         },
         {
             "titulo": "Paso 6: Modificar informacion de material",

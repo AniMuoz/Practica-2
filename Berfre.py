@@ -843,14 +843,15 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
     hoja.column_dimensions['H'].width = 16
 
     hoja['A1'] = "Revisión Stock de Reserva"
+    hoja.merge_cells('A1:B1')
     hoja['A1'].font = Font(bold=True, size=12)
     hoja['A1'].fill = color
-    hoja['B1'].fill = color
+    #hoja['B1'].fill = color
     hoja['A1'].border = bordes
-    hoja['B1'].border = Border(
-            bottom=Side(border_style="medium", color="000000"),
-            right=Side(border_style="thin"),
-            )
+    #hoja['B1'].border = Border(
+    #        bottom=Side(border_style="medium", color="000000"),
+    #        right=Side(border_style="thin"),
+    #        )
 
     for c_idx, col_name in enumerate(columnas, start=1):
         cell = hoja.cell(row=3, column=c_idx, value=col_name)
