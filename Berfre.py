@@ -58,20 +58,17 @@ def filtro1(ruta):
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
-    hoja['A3'].border = bordes
-    hoja['B3'].border = bordes
-    hoja['C3'].border = bordes
+
+    col = ['A', 'B', 'C']
+    for i in col:
+        hoja[f'{i}3'].font = Font(bold=True)
+        hoja[f'{i}3'].border = bordes
+        hoja[f'{i}3'].fill = color
+    hoja['A1'].font = Font(bold=True, size=12)
+    hoja['A1'].fill = color
     hoja['A1'].border = bordes
     hoja['B1'].border = bordes
-    hoja['A3'].font = Font(bold=True)
-    hoja['B3'].font = Font(bold=True)
-    hoja['C3'].font = Font(bold=True)
-    hoja['A1'].font = Font(bold=True, size=12)
     hoja['B1'].font = Font(bold=True, size=12)
-    hoja['A3'].fill = color
-    hoja['B3'].fill = color
-    hoja['C3'].fill = color
-    hoja['A1'].fill = color
     hoja['B1'].fill = color
 
     #Titulo del documento
@@ -167,32 +164,13 @@ def total(ruta):
     hoja['H3'] = "Total"
 
     #Diseño
-    hoja['A3'].font = Font(bold=True)
-    hoja['B3'].font = Font(bold=True)
-    hoja['C3'].font = Font(bold=True)
-    hoja['D3'].font = Font(bold=True)
-    hoja['E3'].font = Font(bold=True)
-    hoja['F3'].font = Font(bold=True)
-    hoja['G3'].font = Font(bold=True)
-    hoja['H3'].font = Font(bold=True)
+    col = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    for i in col:
+        hoja[f'{i}3'].font = Font(bold=True)
+        hoja[f'{i}3'].border = bordes
+        hoja[f'{i}3'].fill = color
     hoja['A1'].font = Font(bold=True)
-    hoja['A3'].fill = color
-    hoja['B3'].fill = color
-    hoja['C3'].fill = color
-    hoja['D3'].fill = color
-    hoja['E3'].fill = color
-    hoja['F3'].fill = color
-    hoja['G3'].fill = color
-    hoja['H3'].fill = color
     hoja['A1'].fill = color
-    hoja['A3'].border = bordes
-    hoja['B3'].border = bordes
-    hoja['C3'].border = bordes
-    hoja['D3'].border = bordes
-    hoja['E3'].border = bordes
-    hoja['F3'].border = bordes
-    hoja['G3'].border = bordes
-    hoja['H3'].border = bordes
     hoja['A1'].border = bordes
 
     #Filtros para el archivo
@@ -294,29 +272,16 @@ def inventario(ruta, dicub):
     hoja.column_dimensions['D'].width = 15
     hoja.column_dimensions['E'].width = 15
     hoja.column_dimensions['F'].width = 25
-    hoja['A3'].border = bordes
-    hoja['B3'].border = bordes
-    hoja['C3'].border = bordes
-    hoja['D3'].border = bordes
-    hoja['E3'].border = bordes
-    hoja['F3'].border = bordes
+    col = ['A', 'B', 'C', 'D', 'E', 'F']
+    for i in col:
+        hoja[f'{i}3'].font = Font(bold=True)
+        hoja[f'{i}3'].border = bordes
+        hoja[f'{i}3'].fill = color
+    hoja['A1'].font = Font(bold=True, size= 12)
+    hoja['A1'].fill = color
     hoja['A1'].border = bordes
     hoja['B1'].border = bordes
-    hoja['A3'].font = Font(bold=True)
-    hoja['B3'].font = Font(bold=True)
-    hoja['C3'].font = Font(bold=True)
-    hoja['D3'].font = Font(bold=True)
-    hoja['E3'].font = Font(bold=True)
-    hoja['F3'].font = Font(bold=True)
-    hoja['A1'].font = Font(bold=True, size=12)
     hoja['B1'].font = Font(bold=True, size=12)
-    hoja['A3'].fill = color
-    hoja['B3'].fill = color
-    hoja['C3'].fill = color
-    hoja['D3'].fill = color
-    hoja['E3'].fill = color
-    hoja['F3'].fill = color
-    hoja['A1'].fill = color
     hoja['B1'].fill = color
 
     #Titulo del documento
@@ -752,110 +717,165 @@ def encabezado_ventas(hoja, last_pos):
     return
 
 #Funcion para corroborar stock en orden de reserva
-def cont_reserva(dic_sto, dic_mat, dic_ub):
+def cont_reserva_preview(ruta_reserva, dic_sto, dic_mat, dic_ub, ver=None):
+    lector = PdfReader(ruta_reserva)
+
+    # Si no se especifica orientación, autodetectar examinando el texto
+    if not ver or ver not in (1, 2, 'horizontal', 'vertical'):
+        texto_completo = ""
+        for p in lector.pages:
+            texto_completo += p.extract_text() + "\n"
+        if "Reserva No." in texto_completo:
+            ver = 1
+        else:
+            ver = 2
+    elif ver in (1, 'horizontal'):
+        ver = 1
+    else:
+        ver = 2
+
     orden = []
     num = []
     des = []
     ub = []
     res = []
     sto = []
-    cont = []
-    fa = 0
-    ar = 0
-    test = 0
-    #Cargar archivo
-    ruta_reserva = pedir_archivo_visual()
-    lector = PdfReader(ruta_reserva)
+    num_orden_item = []
 
-    ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
-    while ver > 2 or ver < 1:
-        print("una pega")
-        ver = int(input("La reserva es horizontal o vertical?\n1.- Horizontal\n2.- Vertical\n>> "))
-
-    # Obtener el número total de páginas
-    total_paginas = len(lector.pages)
-    print(f"El documento tiene {total_paginas} páginas.\n")
-    
     for num_pagina, pagina in enumerate(lector.pages, start=1):
         texto_pagina = pagina.extract_text()
-    
-    # Dividir el texto de la página en líneas independientes
         lineas = texto_pagina.splitlines()
-    
-        #print(f"=== Leyendo Página {num_pagina} ===")
-    
-    # Procesar cada línea una por una
+        orden_pagina = None
         for num_linea, linea in enumerate(lineas, start=1):
-        # .strip() elimina espacios en blanco innecesarios al inicio y final
             linea_limpia = linea.strip()
-        # Omitir líneas vacías si las hay
             if linea_limpia:
-                #Rescata datos de ordener horizontales
+                # Rescata datos de ordenes horizontales
                 if ver == 1:
-                    #print(linea_limpia)
                     if linea_limpia[:11] == "Reserva No.":
                         tom = linea_limpia.split(".")
                         tom2 = tom[1].split(" ")
+                        orden_pagina = tom2[1]
                         orden.append(tom2[1])
                     if linea_limpia[:2] == "00":
                         tomar = linea_limpia.split(" ")
-                        num.append(tomar[1])
-                        des.append(dic_mat[tomar[1]])
-                        sto.append(dic_sto[tomar[1]])
-                        if tomar[1] in dic_ub:
-                            ub.append(dic_ub[tomar[1]])
+                        cod = tomar[1]
+                        num.append(cod)
+                        des.append(dic_mat.get(cod, "Sin descripción"))
+                        sto_val = dic_sto.get(cod, 0)
+                        sto.append(sto_val if sto_val is not None else 0)
+                        if cod in dic_ub and dic_ub[cod] != "          ":
+                            ub.append(dic_ub[cod])
                         else:
                             ub.append("No se encontro ubicación")
+                        num_orden_item.append(orden_pagina)
                     cant = linea_limpia.split(",")
                     if len(cant) == 2:
                         if cant[1] == "000":
                             res.append(cant[0])
-                    cont.append(num_pagina)
-                #rescata datos de ordenes verticales
+                # Rescata datos de ordenes verticales
                 elif ver == 2:
                     if linea_limpia[:5] == "Orden":
                         tom = linea_limpia.split("          ")
-                        tom2 = tom[1].split(" ")
-                        orden.append(tom2[0])
+                        if len(tom) > 1:
+                            tom2 = tom[1].split(" ")
+                            orden_pagina = tom2[0]
+                            orden.append(tom2[0])
                     if linea_limpia[:8] == "Material":
                         take = linea_limpia.split("    ")
-                        tomar = take[1].split(" ")
-                        num.append(tomar[0])
-                        des.append(dic_mat[tomar[0]])
-                        sto.append(dic_sto[tomar[0]])
-                        if tomar[0] in dic_ub and dic_ub[tomar[0]] != "          ":
-                            ub.append(dic_ub[tomar[0]])
-                        else:
-                            ub.append("No se encontro ubicación")
-                        res.append(tomar[1])
-                        fa += 1
-                    cont.append(fa)
-        #Mostrar resultados
-        if ver == 1:
-            print("-"*50)
-            print(f"N° de orden {orden[num_pagina - 1]}")
-            for i in range(0, len(num)):
-                if int(res[ar]) <= int(sto[ar]):
-                    estado = "Disponible"
+                        if len(take) > 1:
+                            tomar = take[1].split(" ")
+                            cod = tomar[0]
+                            num.append(cod)
+                            des.append(dic_mat.get(cod, "Sin descripción"))
+                            sto_val = dic_sto.get(cod, 0)
+                            sto.append(sto_val if sto_val is not None else 0)
+                            if cod in dic_ub and dic_ub[cod] != "          ":
+                                ub.append(dic_ub[cod])
+                            else:
+                                ub.append("No se encontro ubicación")
+                            res.append(tomar[1])
+                            num_orden_item.append(orden[0] if orden else "")
+
+    columnas = ["N°", "N° Orden", "Código", "Descripción", "Reserva", "Stock", "Ubicación", "Estado"]
+    filas = []
+    for i in range(len(num)):
+        ord_val = num_orden_item[i] if i < len(num_orden_item) and num_orden_item[i] else (orden[0] if orden else "")
+        raw_res = res[i] if i < len(res) else 0
+        raw_sto = sto[i] if i < len(sto) else 0
+        try:
+            val_res = int(raw_res)
+        except (ValueError, TypeError):
+            val_res = 0
+        try:
+            val_sto = int(raw_sto)
+        except (ValueError, TypeError):
+            val_sto = 0
+        estado = "Disponible" if val_res <= val_sto else "No disponible"
+        filas.append([i + 1, ord_val, num[i], des[i], val_res, val_sto, ub[i], estado])
+    return columnas, filas
+
+def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
+    # Si no se pasó ruta, solicitarla interactivamente
+    if not ruta_reserva:
+        ruta_reserva = pedir_archivo_visual()
+    if not ruta_reserva:
+        return None, None
+
+    columnas, filas = cont_reserva_preview(ruta_reserva, dic_sto, dic_mat, dic_ub)
+
+    # Mostrar en consola para compatibilidad con CLI
+    print("N° | N° Orden | Codigo | Descripcion | reserva | stock | ubicacion | Estado")
+    for f in filas:
+        print(f"{f[0]}.- | {f[1]} | {f[2]} | {f[3]} | {f[4]} | {f[5]} | {f[6]} | {f[7]}")
+
+    # Generar archivo Excel descargable
+    mango = openpyxl.Workbook()
+    hoja = mango.active
+    bordes, color, vacio, ding, zero = maquillaje()
+
+    hoja.column_dimensions['A'].width = 8
+    hoja.column_dimensions['B'].width = 18
+    hoja.column_dimensions['C'].width = 15
+    hoja.column_dimensions['D'].width = 52
+    hoja.column_dimensions['E'].width = 12
+    hoja.column_dimensions['F'].width = 12
+    hoja.column_dimensions['G'].width = 25
+    hoja.column_dimensions['H'].width = 16
+
+    hoja['A1'] = "Revisión Stock de Reserva"
+    hoja['A1'].font = Font(bold=True, size=12)
+    hoja['A1'].fill = color
+    hoja['B1'].fill = color
+    hoja['A1'].border = bordes
+    hoja['B1'].border = Border(
+            bottom=Side(border_style="medium", color="000000"),
+            right=Side(border_style="thin"),
+            )
+
+    for c_idx, col_name in enumerate(columnas, start=1):
+        cell = hoja.cell(row=3, column=c_idx, value=col_name)
+        cell.font = Font(bold=True)
+        cell.fill = color
+        cell.border = bordes
+
+    x = 4
+    for fila in filas:
+        for c_idx, val in enumerate(fila, start=1):
+            cell = hoja.cell(row=x, column=c_idx, value=val)
+            cell.border = bordes
+            if c_idx == 8: # Columna Estado
+                if val == "Disponible":
+                    cell.fill = ding
                 else:
-                    estado = "No disponoble"
-                print("N° Codigo Descripcion reserva stock ubicacion Estado")
-                print(f"{i + 1}.- | {num[ar]} | {des[ar]} | {res[ar]} | {sto[ar]} | {ub[ar]} | {estado}")
-                ar += 1
-                test += 1
-                if test == len(num):
-                    break
-    #Mostrar resultados
-    if ver == 2:
-        print(f"N° de orden {orden[0]}")
-        for i in range(0, len(num)):
-            if int(res[i]) <= int(sto[i]):
-                estado = "Disponible"
-            else:
-                estado = "No disponoble"
-            print("N° Codigo Descripcion reserva stock ubicacion Estado")
-            print(f"{i + 1}.- | {num[i]} | {des[i]} | {res[i]} | {sto[i]} | {ub[i]} | {estado}")
-    return
+                    cell.fill = vacio
+        x += 1
+
+    hoja.auto_filter.ref = f"A3:H{x - 1}"
+
+    nombre_archivo = "Revision_stock_reserva.xlsx"
+    mango.save(nombre_archivo)
+    ruta_creacion = path.abspath(nombre_archivo)
+    return nombre_archivo, ruta_creacion
 
 #Detecta que si un valor es numerico o no
 def detector_numerico(linea):
@@ -918,56 +938,13 @@ def stock_detallado(ruta, dic_ub, dic_pre):
     hoja['P3'] = "Cambio de ubicación"
 
     #Diseño
-    hoja['A3'].font = Font(bold=True)
-    hoja['B3'].font = Font(bold=True)
-    hoja['C3'].font = Font(bold=True)
-    hoja['D3'].font = Font(bold=True)
-    hoja['E3'].font = Font(bold=True)
-    hoja['F3'].font = Font(bold=True)
-    hoja['G3'].font = Font(bold=True)
-    hoja['H3'].font = Font(bold=True)
-    hoja['I3'].font = Font(bold=True)
-    hoja['J3'].font = Font(bold=True)
-    hoja['K3'].font = Font(bold=True)
-    hoja['L3'].font = Font(bold=True)
-    hoja['M3'].font = Font(bold=True)
-    hoja['N3'].font = Font(bold=True)
-    hoja['O3'].font = Font(bold=True)
-    hoja['P3'].font = Font(bold=True)
+    col = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']
+    for i in col:
+        hoja[f'{i}3'].font = Font(bold=True)
+        hoja[f'{i}3'].border = bordes
+        hoja[f'{i}3'].fill = color
     hoja['A1'].font = Font(bold=True)
-    hoja['A3'].fill = color
-    hoja['B3'].fill = color
-    hoja['C3'].fill = color
-    hoja['D3'].fill = color
-    hoja['E3'].fill = color
-    hoja['F3'].fill = color
-    hoja['G3'].fill = color
-    hoja['H3'].fill = color
-    hoja['I3'].fill = color
-    hoja['J3'].fill = color
-    hoja['K3'].fill = color
-    hoja['L3'].fill = color
-    hoja['M3'].fill = color
-    hoja['N3'].fill = color
-    hoja['O3'].fill = color
-    hoja['P3'].fill = color
     hoja['A1'].fill = color
-    hoja['A3'].border = bordes
-    hoja['B3'].border = bordes
-    hoja['C3'].border = bordes
-    hoja['D3'].border = bordes
-    hoja['E3'].border = bordes
-    hoja['F3'].border = bordes
-    hoja['G3'].border = bordes
-    hoja['H3'].border = bordes
-    hoja['I3'].border = bordes
-    hoja['J3'].border = bordes
-    hoja['K3'].border = bordes
-    hoja['L3'].border = bordes
-    hoja['M3'].border = bordes
-    hoja['N3'].border = bordes
-    hoja['O3'].border = bordes
-    hoja['P3'].border = bordes
     hoja['A1'].border = bordes
 
     #Filtros para el archivo
@@ -1172,7 +1149,7 @@ def main():
     diccrit = private.informacion_delicada.diccionario.critico
     diccom = private.informacion_delicada.diccionario.comprador
 
-    print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
+    #print("RECUERDA QUE ESTAS TRABAJANDO EN LA LINEA 741")
 
     z = int(input("Elije el numero de la opcion que quieres usar\n1.- Filtro para solo M501\n2.- Filtro stock total\n3.- Planilla de inventario\n4.- Modificar diccionarios\n5.- Añadir una venta\n6.- Verificar stock de una reserva\n7.- Planilla de stock detallada\n>> "))
 

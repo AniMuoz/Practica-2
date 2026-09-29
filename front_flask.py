@@ -5,7 +5,8 @@ from Berfre import (dia, filtro1, filtro1_preview,
                     modificar_diccionarios,
                     dic_agregar, dic_modificar, dic_eliminar,
                     dic_exportar_bytes, dic_importar_excel,
-                    stock_detallado_preview, stock_detallado)
+                    stock_detallado_preview, stock_detallado,
+                    cont_reserva, cont_reserva_preview)
 import private.informacion_delicada.diccionario
 import io
 import json
@@ -401,6 +402,72 @@ def inventario_descargar():
                      as_attachment=True,
                      download_name=nombre_archivo,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# ─── REVISIÓN DE STOCK DE RESERVA ───────────────────────────────────────────
+
+@front_flask.route('/reserva/preview', methods=['GET'])
+def reserva_preview():
+    # Obtener archivo de reserva (o pedirlo visualmente si no hay uno en sesión)
+    ruta_reserva = session.get('ruta_reserva')
+    if not ruta_reserva or not os.path.exists(ruta_reserva) or not ruta_reserva.lower().endswith('.pdf'):
+        archivo = pedir_archivo_visual()
+        if archivo:
+            ruta_reserva = archivo
+            session['ruta_reserva'] = archivo
+
+    if not ruta_reserva or not os.path.exists(ruta_reserva):
+        session['alerta'] = "Advertencia: Debes seleccionar un archivo PDF de orden de reserva."
+        return redirect(url_for('home'))
+
+    # Obtener diccionarios necesarios
+    ruta_excel = session.get('ruta')
+    dicub, dicpre, dicmat = diccionarios(ruta_excel)
+    dicsto = _obtener_diccionario('total', ruta_excel)
+
+    try:
+        columnas, filas = cont_reserva_preview(ruta_reserva, dicsto, dicmat, dicub)
+    except Exception as e:
+        session['alerta'] = f"Error al procesar la reserva PDF: {e}"
+        return redirect(url_for('home'))
+
+    return render_template('front.html',
+                           dato="¡Hola desde Python!",
+                           dia_hoy=dia,
+                           ruta=ruta_excel or ruta_reserva,
+                           alerta=None,
+                           preview_titulo="Revisión de Stock de Reserva",
+                           preview_columnas=columnas,
+                           preview_filas=filas,
+                           descarga_url=url_for('reserva_descargar'))
+
+@front_flask.route('/reserva/descargar', methods=['GET'])
+def reserva_descargar():
+    ruta_reserva = session.get('ruta_reserva')
+    if not ruta_reserva or not os.path.exists(ruta_reserva):
+        session['alerta'] = "Advertencia: Primero debes revisar una orden de reserva."
+        return redirect(url_for('home'))
+
+    ruta_excel = session.get('ruta')
+    dicub, dicpre, dicmat = diccionarios(ruta_excel)
+    dicsto = _obtener_diccionario('total', ruta_excel)
+
+    nombre_archivo, ruta_creacion = cont_reserva(dicsto, dicmat, dicub, ruta_reserva=ruta_reserva)
+    if not ruta_creacion or not os.path.exists(ruta_creacion):
+        session['alerta'] = "Error al generar el archivo de reserva."
+        return redirect(url_for('home'))
+
+    return send_file(ruta_creacion,
+                     as_attachment=True,
+                     download_name=nombre_archivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@front_flask.route('/reserva/reseleccionar', methods=['GET'])
+def reserva_reseleccionar():
+    # Eliminar la ruta guardada para forzar una nueva selección
+    session.pop('ruta_reserva', None)
+    
+    # Redirigir de nuevo a la vista previa para que vuelva a pedir el archivo
+    return redirect(url_for('reserva_preview'))
 
 # ─── DICCIONARIOS (editables por el frontend) ────────────────────────────────
 

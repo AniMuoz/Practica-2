@@ -61,7 +61,12 @@
           <button class="bt" type="submit">Stock detallado</button>
       </form>
       <button class="bt" onclick="mostrarAlerta()">Añadir una venta (placeholder)</button>
-      <button class="bt" onclick="mostrarAlerta()">Revisar stock de reserva (placeholder)</button>
+      <form action="/reserva/preview" method="GET">
+          <button class="bt" type="submit">Revisar stock de reserva</button>
+      </form>
+      <a href="{{ url_for('reserva_reseleccionar') }}">
+        <button class="bt bt-warning" type="button">Cambiar / Reseleccionar archivo</button>
+      </a>
       <form action="/diccionario_mod" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
             <button class="bt" type="submit">Vista de datos de materiales</button>
