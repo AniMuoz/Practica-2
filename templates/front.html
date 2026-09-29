@@ -55,7 +55,7 @@
     {% endif %}
 
     <div class="contenedor-botones">
-      <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta (boton de testeo)</button>
+      <!-- <button class="bt" type="button" onclick="mostrarRuta()">Ver Ruta (boton de testeo)</button> -->
       <form action="/stockdet/preview" method="GET">
           <input type="hidden" name="ruta" value="{{ ruta }}">
           <button class="bt" type="submit">Stock detallado</button>
@@ -64,13 +64,16 @@
       <form action="/reserva/preview" method="GET">
           <button class="bt" type="submit">Revisar stock de reserva</button>
       </form>
-      <a href="{{ url_for('reserva_reseleccionar') }}">
-        <button class="bt bt-warning" type="button">Cambiar / Reseleccionar archivo</button>
-      </a>
       <form action="/diccionario_mod" method="GET">
             <input type="hidden" name="ruta" value="{{ ruta }}">
             <button class="bt" type="submit">Vista de datos de materiales</button>
         </form>
+      {% if session.get('ruta_reserva') %}
+        <p>Archivo actual: <strong>{{ session['ruta_reserva'] }}</strong></p>
+        <a href="{{ url_for('reserva_reseleccionar') }}">
+            <button class="bt-archivo" type="button">Cambiar archivo PDF</button>
+        </a>
+      {% endif %}
     </div>
 
     <!-- 5. SECCIÓN DE PREVISUALIZACIÓN -->
