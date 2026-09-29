@@ -263,7 +263,7 @@ def diccionarios(ruta):
 
 @front_flask.route('/')
 def home():
-    mi_variable = "¡Hola desde Python!"
+    mi_variable = "¡Hola!"
     ruta = session.get('ruta', '')
     alerta = session.pop('alerta', None)
     return render_template('front.html', dato=mi_variable, dia_hoy=dia, ruta=ruta, alerta=alerta)
@@ -285,7 +285,7 @@ def stock_preview():
         return redirect(url_for('home'))
     columnas, filas = total_preview(ruta)
     return render_template('front.html',
-                           dato="¡Hola desde Python!",
+                           #dato="¡Hola desde Python!",
                            dia_hoy=dia,
                            ruta=ruta,
                            alerta=None,
@@ -317,7 +317,7 @@ def stock_det_preview():
         return redirect(url_for('home'))
     columnas, filas = stock_detallado_preview(ruta, ubi, pre)
     return render_template('front.html',
-                           dato="¡Hola desde Python!",
+                           #dato="¡Hola desde Python!",
                            dia_hoy=dia,
                            ruta=ruta,
                            alerta=None,
@@ -349,7 +349,7 @@ def bodega_preview():
         return redirect(url_for('home'))
     columnas, filas = filtro1_preview(ruta)
     return render_template('front.html',
-                           dato="¡Hola desde Python!",
+                           #dato="¡Hola desde Python!",
                            dia_hoy=dia,
                            ruta=ruta,
                            alerta=None,
@@ -381,7 +381,7 @@ def inventario_preview_route():
     dicub, dicpre, dicmat = diccionarios(ruta)
     columnas, filas = inventario_preview(ruta, dicub)
     return render_template('front.html',
-                           dato="¡Hola desde Python!",
+                           #dato="¡Hola desde Python!",
                            dia_hoy=dia,
                            ruta=ruta,
                            alerta=None,
@@ -431,7 +431,7 @@ def reserva_preview():
         return redirect(url_for('home'))
 
     return render_template('front.html',
-                           dato="¡Hola desde Python!",
+                           #dato="¡Hola desde Python!",
                            dia_hoy=dia,
                            ruta=ruta_excel or ruta_reserva,
                            alerta=None,
@@ -651,6 +651,43 @@ def diccionario_recargar():
         session['alerta'] = f"Error al recargar {nombre}: {e}"
 
     return redirect(url_for('diccionario_mod', dic=nombre))
+
+# ────────────────────────────  TUTORIAL  ──────────────────────────────
+
+from flask import render_template
+
+@front_flask.route('/tarjetas', methods=['GET'])
+def ver_tarjetas():
+    # Definimos la lista con la información de las 5 tarjetas
+    tarjetas_data = [
+        {
+            "titulo": "Paso 1: Cargar EXPORT",
+            "descripcion": "Presionando el boton te permite cargar el archivo EXPORT.xlsx que permitira al programa generar lo que necesites",
+            "imagen": "static/tutorial1.png"
+        },
+        {
+            "titulo": "Paso 2: Utilizacion",
+            "descripcion": "Los botones presentados generaran una vista previa a la planilla que se generara, presionando Descargar planilla se descargar el excel correspondiente",
+            "imagen": "static/tutorial2.png"
+        },
+        {
+            "titulo": "Paso 3: Reserva",
+            "descripcion": "Al presionar el boton de Revisar stock de reserva te pedira subir una reserva, esto comparará el stock de la bodega segun EXPORT y la reserva, pudiendo descargar una planilla con los datos comparados",
+            "imagen": "static/tutorial3.png"
+        },
+        {
+            "titulo": "Paso 4: Añadir venta",
+            "descripcion": "Trabajando en ello.",
+            "imagen": "static/tutorial4.jpg"
+        },
+        {
+            "titulo": "Paso 5: Modificar informacion de material",
+            "descripcion": "Gran parte de la informacion escencial de los materiales se guardan en esta seccion, puedes importar datos completos, exportarlos, o puedes modificar datos especificos de cada lista",
+            "imagen": "static/tutorial5.png"
+        }
+    ]
+    
+    return render_template('tarjetas.html', tarjetas=tarjetas_data)
 
 # ─────────────────────────────────────────────────────────────────────────────
 

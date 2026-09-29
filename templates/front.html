@@ -6,14 +6,18 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}" type="image/x-icon">
 </head>
 <body>
-
+    <a href="{{ url_for('ver_tarjetas') }}">
+        <button class="bt" type="button">Ir a Tarjetas</button>
+    </a>
+    
     <!-- 1. TÍTULOS -->
     <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo de mi página" width="150">
     <h1>{{ dato }}</h1>
-    <h1>Pruebas iniciales de front end</h1>
-    <h2>Codigo del dia {{ dia_hoy }}</h2>
-    <a>Codigo del dia ==> año - mes - dia</a>
-
+    <h1>Sistema Berfre</h1>
+    {% if request.path == '/' %}
+        <h2>Hoy es {{ dia_hoy }}</h2>
+    {% endif %}
+    
     <!-- 2. BOTÓN DE ARCHIVO -->
     <form action="/ruta" method="GET">
         <button class="bt-archivo" type="submit">Seleccionar Archivo</button>
@@ -60,7 +64,7 @@
           <input type="hidden" name="ruta" value="{{ ruta }}">
           <button class="bt" type="submit">Stock detallado</button>
       </form>
-      <button class="bt" onclick="mostrarAlerta()">Añadir una venta (placeholder)</button>
+      <button class="bt" onclick="mostrarAlerta()">Añadir una venta (sin terminar)</button>
       <form action="/reserva/preview" method="GET">
           <button class="bt" type="submit">Revisar stock de reserva</button>
       </form>

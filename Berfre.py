@@ -18,7 +18,7 @@ import private.informacion_delicada.diccionario
 fecha = datetime.date.today()
 dia = str(fecha.year) + str(fecha.month) + str(fecha.day)
 print("Codigo de dia: ", dia)
-
+dia = f"{str(fecha.day)} / {str(fecha.month)} / {str(fecha.year)}"
 #
 #PRUEBA DE FLASK
 #
@@ -106,7 +106,7 @@ def filtro1(ruta):
     #hoja['A1'] = hoja2.cell(row = 1, column = 1).value
     #hoja['B3'] = 'EMPRESA: PRETORIANOS SEGURIDAD'
     print(f"i = {i} y x = {x}")
-    nombre_archivo = "Prueba_de_planilla_M501.xlsx"
+    nombre_archivo = "Planilla M501.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -224,7 +224,7 @@ def total(ruta):
                 x += 1
 
     print(f"i = {i} y x = {x}")
-    nombre_archivo = "Prueba_de_planilla_stock_region.xlsx"
+    nombre_archivo = "Planilla stock regional.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -379,7 +379,7 @@ def inventario(ruta, dicub):
     hoja.auto_filter.ref = f"A3:F{x-1}"
 
     # Guardar archivo
-    nombre_archivo = "Prueba_de_planilla_invetario.xlsx"
+    nombre_archivo = "Planilla de invetario M501.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     print("¡Proceso completado con éxito!")
