@@ -38,16 +38,20 @@ export default function App() {
     if (soloConPrecio) {
       lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
     }
-    if (orden === "codigo") {
+    if (orden === "codigo" || orden === "codigo-asc") {
+      const sentido = orden === "codigo" ? -1 : 1;
       lista = [...lista].sort((a, b) => {
         const na = Number(a.Codigo);
         const nb = Number(b.Codigo);
-        if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
-        return String(b.Codigo).localeCompare(String(a.Codigo), "es", { numeric: true });
+        const comparado = Number.isFinite(na) && Number.isFinite(nb)
+          ? na - nb
+          : String(a.Codigo).localeCompare(String(b.Codigo), "es", { numeric: true });
+        return comparado * sentido;
       });
-    } else if (orden === "descripcion") {
+    } else if (orden === "descripcion" || orden === "descripcion-desc") {
+      const sentido = orden === "descripcion" ? 1 : -1;
       lista = [...lista].sort((a, b) =>
-        String(a.Descripcion ?? "").localeCompare(String(b.Descripcion ?? ""), "es", { sensitivity: "base" })
+        String(a.Descripcion ?? "").localeCompare(String(b.Descripcion ?? ""), "es", { sensitivity: "base" }) * sentido
       );
     }
     return lista;
@@ -194,10 +198,28 @@ export default function App() {
                 <input
                   type="radio"
                   name="orden"
+                  checked={orden === "codigo-asc"}
+                  onChange={() => setOrden("codigo-asc")}
+                />
+                Ordenar códigos de menor a mayor
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="radio"
+                  name="orden"
                   checked={orden === "descripcion"}
                   onChange={() => setOrden("descripcion")}
                 />
                 Ordenar descripciones alfabéticamente
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="radio"
+                  name="orden"
+                  checked={orden === "descripcion-desc"}
+                  onChange={() => setOrden("descripcion-desc")}
+                />
+                Ordenar descripciones alfabéticamente al revés
               </label>
               <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
                 Sub-ubicación
