@@ -12,6 +12,12 @@ export default function Admin() {
   const [datos, setDatos] = useState({});
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [archivo, setArchivo] = useState(null);
+  const [importando, setImportando] = useState(false);
+  const [avisoCarga, setAvisoCarga] = useState("");
+  const [modoCarga, setModoCarga] = useState("completa");
+  const [columnaCarga, setColumnaCarga] = useState("");
+  const [columnasDestino, setColumnasDestino] = useState([]);
 
   useEffect(() => {
     if (!autorizado) return;
@@ -20,6 +26,11 @@ export default function Admin() {
       .then((data) => {
         const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
         setColumnas(lista);
+        const destino = (data.columnas || []).filter(
+          (columna) => !["Codigo", "Inventario", "Comentario"].includes(columna)
+        );
+        setColumnasDestino(destino);
+        setColumnaCarga((actual) => (destino.includes(actual) ? actual : destino[0] || ""));
         const vacios = {};
         lista.forEach((columna) => {
           vacios[columna] = "";
@@ -79,6 +90,97 @@ export default function Admin() {
             Entrar
           </button>
           {aviso && <p style={{ margin: 0 }}>{aviso}</p>}
+        </form>
+      )}
+      {autorizado && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!archivo) {
+              setAvisoCarga("Elegí un archivo .xlsx.");
+              return;
+            }
+            if (modoCarga === "dos-columnas" && !columnaCarga) {
+              setAvisoCarga("Elegí la columna que va a llenar la planilla.");
+              return;
+            }
+            setAvisoCarga("");
+            setImportando(true);
+            const cuerpo = new FormData();
+            cuerpo.append("clave", clave);
+            cuerpo.append("modo", modoCarga);
+            if (modoCarga === "dos-columnas") cuerpo.append("columna", columnaCarga);
+            cuerpo.append("archivo", archivo);
+            fetch("/api/tabla/excel", { method: "POST", body: cuerpo })
+              .then(async (res) => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "No se pudo importar.");
+                setArchivo(null);
+                event.target.reset();
+                setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados.`);
+              })
+              .catch((err) => setAvisoCarga(err.message))
+              .finally(() => setImportando(false));
+          }}
+          style={{
+            background: "#fff",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <strong style={{ fontSize: 14 }}>Carga masiva</strong>
+          <select
+            aria-label="Tipo de planilla"
+            value={modoCarga}
+            onChange={(event) => setModoCarga(event.target.value)}
+            style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+          >
+            <option value="completa">Planilla completa</option>
+            <option value="sap">Planilla EXPORT SAP</option>
+            <option value="ubicaciones">Planilla de ubicaciones</option>
+            <option value="precios">Planilla de precios</option>
+            <option value="dos-columnas">Planilla de 2 columnas</option>
+          </select>
+          {modoCarga === "dos-columnas" && (
+            <select
+              aria-label="Columna a llenar"
+              value={columnaCarga}
+              onChange={(event) => setColumnaCarga(event.target.value)}
+              style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+            >
+              {columnasDestino.map((columna) => (
+                <option key={columna} value={columna}>
+                  {columna}
+                </option>
+              ))}
+            </select>
+          )}
+          <input
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(event) => setArchivo(event.target.files?.[0] || null)}
+          />
+          <button
+            type="submit"
+            disabled={importando}
+            style={{
+              padding: "8px 14px",
+              border: 0,
+              borderRadius: 6,
+              background: "#111827",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {importando ? "Importando..." : "Importar planilla"}
+          </button>
+          {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
         </form>
       )}
       {autorizado && (

@@ -3,10 +3,20 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
+
+const uploadPlanilla = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const nombre = file.originalname.toLowerCase();
+    if (nombre.endsWith(".xlsx")) cb(null, true);
+    else cb(new Error("Solo se aceptan archivos .xlsx."));
+  },
+});
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -53,6 +63,30 @@ app.get("/api/tabla", (_req, res) => {
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer la tabla." });
   }
+});
+
+app.post("/api/tabla/excel", (req, res) => {
+  uploadPlanilla.single("archivo")(req, res, (errorCarga) => {
+    if (errorCarga) {
+      res.status(400).json({ error: errorCarga.message });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "Falta el archivo .xlsx." });
+      return;
+    }
+    try {
+      const modo = req.body.modo || "completa";
+      if (modo !== "completa") {
+        res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
+        return;
+      }
+      const resultado = importarPlanilla(req.body.clave, req.file.buffer);
+      res.json(resultado);
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });
+    }
+  });
 });
 
 app.post("/api/material", (req, res) => {

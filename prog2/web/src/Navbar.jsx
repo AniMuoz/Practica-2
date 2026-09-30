@@ -43,7 +43,7 @@ export default function Navbar() {
           navigate(`/${encodeURIComponent(buscado)}`);
         }}
         className="barra-buscar"
-        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "1 1 220px", minWidth: 0 }}
+        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0 }}
       >
         <input
           value={codigo}

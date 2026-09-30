@@ -259,6 +259,94 @@ function agregarMaterial(clave, datos) {
   return buscarMaterial(codigoNuevo);
 }
 
+function importarPlanilla(clave, buffer) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+
+  const libroEntrada = XLSX.read(buffer, { type: "buffer" });
+  const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
+  if (!hojaEntrada) {
+    const error = new Error("El archivo no tiene hojas.");
+    error.status = 400;
+    throw error;
+  }
+  const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
+  const encabezados = (matrizEntrada[0] || []).map((nombre) => String(nombre).trim()).filter(Boolean);
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  let columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  for (const extra of ["Rombo", "QR"]) {
+    if (!columnas.includes(extra)) columnas.push(extra);
+  }
+  matriz[0] = columnas;
+
+  const faltan = columnas.filter((columna) => !encabezados.includes(columna));
+  const sobran = encabezados.filter((columna) => !columnas.includes(columna));
+  if (faltan.length || sobran.length) {
+    const partes = [];
+    if (faltan.length) partes.push(`faltan: ${faltan.join(", ")}`);
+    if (sobran.length) partes.push(`no corresponden: ${sobran.join(", ")}`);
+    const error = new Error(`El formato no coincide con la planilla (${partes.join("; ")}).`);
+    error.status = 400;
+    throw error;
+  }
+
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const indicePorNombre = Object.fromEntries(encabezados.map((nombre, indice) => [nombre, indice]));
+  let agregados = 0;
+  let actualizados = 0;
+
+  matrizEntrada.slice(1).forEach((fila, desplazamiento) => {
+    const numero = desplazamiento + 2;
+    const vacia = encabezados.every((nombre) => String(fila[indicePorNombre[nombre]] ?? "").trim() === "");
+    if (vacia) return;
+
+    const codigoNuevo = String(fila[indicePorNombre.Codigo] ?? "").trim();
+    if (!codigoNuevo) {
+      const error = new Error(`La fila ${numero} no tiene código.`);
+      error.status = 400;
+      throw error;
+    }
+    const inventarioTexto = String(fila[indicePorNombre.Inventario] ?? "").trim();
+    if (inventarioTexto !== "" && !/^-?\d+$/.test(inventarioTexto)) {
+      const error = new Error(`Inventario de la fila ${numero} debe ser un número entero.`);
+      error.status = 400;
+      throw error;
+    }
+
+    const indiceExistente = matriz.findIndex(
+      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigoNuevo
+    );
+    const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
+    const filaNueva = columnas.map((columna, indice) => {
+      if (columna === "Codigo") return codigoNuevo;
+      if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
+      const valor = fila[indicePorNombre[columna]];
+      if ((columna === "Rombo" || columna === "QR") && String(valor ?? "").trim() === "") {
+        return filaPrevia[indice] ?? "";
+      }
+      return valor ?? "";
+    });
+    if (indiceExistente >= 0) {
+      matriz[indiceExistente] = filaNueva;
+      actualizados += 1;
+    } else {
+      matriz.push(filaNueva);
+      agregados += 1;
+    }
+  });
+
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
+  XLSX.writeFile(libro, archivo);
+  return { agregados, actualizados };
+}
+
 function columnaExcel(indice) {
   let nombre = "";
   let n = indice + 1;
@@ -310,4 +398,5 @@ module.exports = {
   guardarImagen,
   exportarTabla,
   agregarMaterial,
+  importarPlanilla,
 };
