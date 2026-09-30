@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
@@ -19,6 +20,10 @@ function leerTabla() {
   const columnas = matriz[0].map((nombre, indice) =>
     String(nombre || `Columna ${indice + 1}`)
   );
+
+  for (const extra of ["Rombo", "QR"]) {
+    if (!columnas.includes(extra)) columnas.push(extra);
+  }
 
   const filas = matriz.slice(1).map((fila) => {
     const registro = {};
@@ -74,4 +79,114 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
   return buscarMaterial(codigo);
 }
 
-module.exports = { leerTabla, buscarMaterial, actualizarMaterial };
+const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR"]);
+const CLAVE_DATOS = "Berfre2026";
+
+function actualizarDatos(codigo, clave, datos) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+  if (!datos || typeof datos !== "object") {
+    const error = new Error("No hay datos para guardar.");
+    error.status = 400;
+    throw error;
+  }
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const hoja = libro.Sheets[nombreHoja];
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  if (indiceCodigo < 0) {
+    const error = new Error("La tabla no tiene la columna Codigo.");
+    error.status = 500;
+    throw error;
+  }
+
+  const indiceFila = matriz.findIndex(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
+  );
+  if (indiceFila < 0) return null;
+
+  columnas.forEach((columna, indice) => {
+    if (COLUMNAS_BLOQUEADAS.has(columna) || !(columna in datos)) return;
+    matriz[indiceFila][indice] = datos[columna] ?? "";
+  });
+
+  const codigoNuevo = String(matriz[indiceFila][indiceCodigo] ?? "").trim();
+  if (!codigoNuevo) {
+    const error = new Error("El código no puede quedar vacío.");
+    error.status = 400;
+    throw error;
+  }
+  const duplicado = matriz.some(
+    (fila, indice) =>
+      indice > 0 && indice !== indiceFila && String(fila[indiceCodigo]) === codigoNuevo
+  );
+  if (duplicado) {
+    const error = new Error("Ya existe un material con ese código.");
+    error.status = 400;
+    throw error;
+  }
+
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
+  XLSX.writeFile(libro, archivo);
+  return buscarMaterial(codigoNuevo);
+}
+
+function guardarImagen(codigo, campo, nombreArchivo, clave) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+  if (campo !== "Rombo" && campo !== "QR") {
+    const error = new Error("La imagen debe ser Rombo o QR.");
+    error.status = 400;
+    throw error;
+  }
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const hoja = libro.Sheets[nombreHoja];
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  let columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  if (indiceCodigo < 0) {
+    const error = new Error("La tabla no tiene la columna Codigo.");
+    error.status = 500;
+    throw error;
+  }
+
+  if (!columnas.includes(campo)) {
+    columnas.push(campo);
+    matriz[0] = columnas;
+    for (let i = 1; i < matriz.length; i += 1) {
+      matriz[i][columnas.length - 1] = matriz[i][columnas.length - 1] ?? "";
+    }
+  }
+
+  const indiceFila = matriz.findIndex(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
+  );
+  if (indiceFila < 0) return null;
+
+  const indiceCampo = columnas.indexOf(campo);
+  const anterior = String(matriz[indiceFila][indiceCampo] ?? "");
+  if (!nombreArchivo && /\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
+    const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
+    if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+  }
+
+  matriz[indiceFila][indiceCampo] = nombreArchivo || "";
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
+  XLSX.writeFile(libro, archivo);
+  return buscarMaterial(codigo);
+}
+
+module.exports = { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen };
