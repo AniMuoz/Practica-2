@@ -930,4 +930,4 @@ def ver_tarjetas():
 if __name__ == '__main__':
     Timer(1, abrir_navegador).start()
     #Cambiar a False cuando se haga una build
-    front_flask.run(debug=True, port=5000)
+    front_flask.run(debug=False, port=5000)
