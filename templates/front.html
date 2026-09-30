@@ -103,13 +103,6 @@
                     </tr>
                 </thead>
                 <tbody id="tbody-preview">
-                    {% for fila in preview_filas %}
-                    <tr class="fila-preview">
-                        {% for celda in fila %}
-                        <td>{{ celda if celda is not none else '' }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -126,7 +119,7 @@
     {% endif %}
 
     <div class="footer">
-        <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
 
 <!-- JavaScript -->
@@ -144,23 +137,41 @@
     alert({{ alerta | tojson }});
   {% endif %}
 
-  // Control de visualización: mostrar de a 50 elementos con slider hacia abajo
+  // Control de visualización: renderizado dinámico bajo demanda de a 50 filas
   (function() {
     var LOTE = 50;
-    var filas = document.querySelectorAll('.fila-preview');
-    var totalFilas = filas.length;
+    {% if preview_filas %}
+    var todasLasFilas = {{ preview_filas | tojson }};
+    {% else %}
+    var todasLasFilas = [];
+    {% endif %}
+    var totalFilas = todasLasFilas.length;
+    var tbody = document.getElementById('tbody-preview');
     var contenedor = document.getElementById('contenedor-preview');
     var cantVisiblesSpan = document.getElementById('cant-visibles-preview');
     var hintSpan = document.getElementById('hint-slider-preview');
     var btMas = document.getElementById('bt-mas-preview');
 
-    if (!totalFilas) return;
+    if (!tbody || !totalFilas) return;
 
-    var visibles = Math.min(LOTE, totalFilas);
+    var visibles = 0;
 
-    // Ocultar filas que exceden el lote inicial de 50
-    for (var i = LOTE; i < totalFilas; i++) {
-      filas[i].style.display = 'none';
+    function renderizarLote(hasta) {
+      var fragment = document.createDocumentFragment();
+      for (var i = visibles; i < hasta; i++) {
+        var filaData = todasLasFilas[i];
+        var tr = document.createElement('tr');
+        tr.className = 'fila-preview';
+        for (var j = 0; j < filaData.length; j++) {
+          var td = document.createElement('td');
+          td.textContent = (filaData[j] !== null && filaData[j] !== undefined) ? filaData[j] : '';
+          tr.appendChild(td);
+        }
+        fragment.appendChild(tr);
+      }
+      tbody.appendChild(fragment);
+      visibles = hasta;
+      actualizarEstado();
     }
 
     function actualizarEstado() {
@@ -177,15 +188,13 @@
     }
 
     window.cargarMasPreview = function() {
+      if (visibles >= totalFilas) return;
       var siguienteLimite = Math.min(visibles + LOTE, totalFilas);
-      for (var i = visibles; i < siguienteLimite; i++) {
-        filas[i].style.display = '';
-      }
-      visibles = siguienteLimite;
-      actualizarEstado();
+      renderizarLote(siguienteLimite);
     };
 
-    actualizarEstado();
+    // Renderizar primer lote
+    window.cargarMasPreview();
 
     // Evento al deslizar el slider vertical hacia abajo en el contenedor
     if (contenedor) {
@@ -195,7 +204,7 @@
         // Si el scroll llega cerca del final (a menos de 80px)
         if (contenedor.scrollTop + contenedor.clientHeight >= contenedor.scrollHeight - 80) {
           cargando = true;
-          cargarMasPreview();
+          window.cargarMasPreview();
           setTimeout(function() { cargando = false; }, 100);
         }
       });

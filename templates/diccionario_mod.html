@@ -94,52 +94,14 @@
                         <th style="width: 30%; text-align:center;">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for clave, valor in dic.items() %}
-                    <!-- Fila normal de visualización -->
-                    <tr id="fila-{{ loop.index }}" class="fila-dic-item">
-                        <td class="celda-clave"><strong>{{ clave }}</strong></td>
-                        <td class="celda-valor">{{ valor }}</td>
-                        <td class="celda-acciones" style="text-align:center;">
-                            <button class="bt bt-editar" type="button" onclick="activarEdicion('{{ loop.index }}')">
-                                ✏ Editar
-                            </button>
-                            <form action="{{ url_for('diccionario_eliminar') }}" method="POST" style="display:inline; margin:0;"
-                                  onsubmit="return confirm('¿Seguro que deseas eliminar la clave {{ clave }}?');">
-                                <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
-                                <input type="hidden" name="clave" value="{{ clave }}">
-                                <button class="bt bt-eliminar" type="submit">🗑 Eliminar</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <!-- Fila de edición inline (oculta) -->
-                    <tr id="edicion-{{ loop.index }}" class="fila-edicion" style="display:none;">
-                        <td><strong>{{ clave }}</strong></td>
-                        <td colspan="2">
-                            <form action="{{ url_for('diccionario_modificar') }}" method="POST"
-                                  style="display:flex; gap:10px; align-items:center; width:100%; margin:0;">
-                                <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
-                                <input type="hidden" name="clave" value="{{ clave }}">
-                                <input class="input-edicion" type="text"
-                                       id="valor-edit-{{ loop.index }}"
-                                       name="valor"
-                                       value="{{ valor }}"
-                                       placeholder="Nuevo valor"
-                                       style="flex: 1;">
-                                <button class="bt bt-guardar" type="submit">💾 Guardar</button>
-                                <button class="bt bt-cancelar" type="button" onclick="cancelarEdicion('{{ loop.index }}')">
-                                    ✕ Cancelar
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
+                <tbody id="tbody-dic">
+                    {% if not dic %}
                     <tr>
                         <td colspan="3" style="text-align:center; padding:20px; color:#666;">
                             No se encontraron entradas{% if busqueda %} para "{{ busqueda }}"{% endif %}.
                         </td>
                     </tr>
-                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -226,7 +188,7 @@
 
 
     <div class="footer">
-        <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
 
 <!-- JavaScript -->
@@ -254,33 +216,178 @@
         }
     }
 
-    // Escape cancela la edición en la fila activa
-    document.querySelectorAll('.input-edicion').forEach(function(input) {
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                var idx = this.id.replace('valor-edit-', '');
-                cancelarEdicion(idx);
-            }
-        });
-    });
-
-    // Control de visualización de 50 en 50 con slider hacia abajo
+    // Control de visualización dinámico de 50 en 50 con slider hacia abajo
     (function() {
         var LOTE = 50;
-        var totalEntradas = {{ dic | length }};
+        var dicObj = {{ dic | tojson }};
+        var entradas = Object.entries(dicObj);
+        var totalEntradas = entradas.length;
+        var tbody = document.getElementById('tbody-dic');
         var contenedor = document.getElementById('contenedor-dic');
         var cantVisiblesSpan = document.getElementById('cant-visibles-dic');
         var hintSpan = document.getElementById('hint-slider-dic');
         var btMas = document.getElementById('bt-mas-dic');
+        var dicNombre = {{ dic_nombre | tojson }};
+        var urlEliminar = {{ url_for('diccionario_eliminar') | tojson }};
+        var urlModificar = {{ url_for('diccionario_modificar') | tojson }};
 
-        if (!totalEntradas) return;
+        if (!tbody || !totalEntradas) return;
 
-        var visibles = Math.min(LOTE, totalEntradas);
+        var visibles = 0;
 
-        // Ocultar entradas después de las primeras 50
-        for (var i = LOTE + 1; i <= totalEntradas; i++) {
-            var f = document.getElementById('fila-' + i);
-            if (f) f.style.display = 'none';
+        function renderizarLote(hasta) {
+            var fragment = document.createDocumentFragment();
+            for (var i = visibles; i < hasta; i++) {
+                var par = entradas[i];
+                var clave = par[0];
+                var valor = par[1];
+                var idx = i + 1;
+
+                // Fila normal
+                var trNormal = document.createElement('tr');
+                trNormal.id = 'fila-' + idx;
+                trNormal.className = 'fila-dic-item';
+
+                var tdClave = document.createElement('td');
+                tdClave.className = 'celda-clave';
+                var strongClave = document.createElement('strong');
+                strongClave.textContent = clave;
+                tdClave.appendChild(strongClave);
+
+                var tdValor = document.createElement('td');
+                tdValor.className = 'celda-valor';
+                tdValor.textContent = valor;
+
+                var tdAcciones = document.createElement('td');
+                tdAcciones.className = 'celda-acciones';
+                tdAcciones.style.textAlign = 'center';
+
+                var btnEditar = document.createElement('button');
+                btnEditar.className = 'bt bt-editar';
+                btnEditar.type = 'button';
+                btnEditar.textContent = '✏ Editar';
+                (function(currentIdx) {
+                    btnEditar.onclick = function() { activarEdicion(currentIdx); };
+                })(idx);
+
+                var formEliminar = document.createElement('form');
+                formEliminar.action = urlEliminar;
+                formEliminar.method = 'POST';
+                formEliminar.style.display = 'inline';
+                formEliminar.style.margin = '0';
+                (function(currentClave) {
+                    formEliminar.onsubmit = function() {
+                        return confirm('¿Seguro que deseas eliminar la clave ' + currentClave + '?');
+                    };
+                })(clave);
+
+                var inNom = document.createElement('input');
+                inNom.type = 'hidden';
+                inNom.name = 'dic_nombre';
+                inNom.value = dicNombre;
+
+                var inClave = document.createElement('input');
+                inClave.type = 'hidden';
+                inClave.name = 'clave';
+                inClave.value = clave;
+
+                var btnEliminar = document.createElement('button');
+                btnEliminar.className = 'bt bt-eliminar';
+                btnEliminar.type = 'submit';
+                btnEliminar.textContent = '🗑 Eliminar';
+
+                formEliminar.appendChild(inNom);
+                formEliminar.appendChild(inClave);
+                formEliminar.appendChild(btnEliminar);
+
+                tdAcciones.appendChild(btnEditar);
+                tdAcciones.appendChild(document.createTextNode(' '));
+                tdAcciones.appendChild(formEliminar);
+
+                trNormal.appendChild(tdClave);
+                trNormal.appendChild(tdValor);
+                trNormal.appendChild(tdAcciones);
+
+                // Fila de edición
+                var trEdicion = document.createElement('tr');
+                trEdicion.id = 'edicion-' + idx;
+                trEdicion.className = 'fila-edicion';
+                trEdicion.style.display = 'none';
+
+                var tdEdClave = document.createElement('td');
+                var strongEdClave = document.createElement('strong');
+                strongEdClave.textContent = clave;
+                tdEdClave.appendChild(strongEdClave);
+
+                var tdEdForm = document.createElement('td');
+                tdEdForm.colSpan = 2;
+
+                var formMod = document.createElement('form');
+                formMod.action = urlModificar;
+                formMod.method = 'POST';
+                formMod.style.display = 'flex';
+                formMod.style.gap = '10px';
+                formMod.style.alignItems = 'center';
+                formMod.style.width = '100%';
+                formMod.style.margin = '0';
+
+                var inModNom = document.createElement('input');
+                inModNom.type = 'hidden';
+                inModNom.name = 'dic_nombre';
+                inModNom.value = dicNombre;
+
+                var inModClave = document.createElement('input');
+                inModClave.type = 'hidden';
+                inModClave.name = 'clave';
+                inModClave.value = clave;
+
+                var inModValor = document.createElement('input');
+                inModValor.className = 'input-edicion';
+                inModValor.type = 'text';
+                inModValor.id = 'valor-edit-' + idx;
+                inModValor.name = 'valor';
+                inModValor.value = valor;
+                inModValor.placeholder = 'Nuevo valor';
+                inModValor.style.flex = '1';
+
+                (function(currentIdx) {
+                    inModValor.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            cancelarEdicion(currentIdx);
+                        }
+                    });
+                })(idx);
+
+                var btnGuardar = document.createElement('button');
+                btnGuardar.className = 'bt bt-guardar';
+                btnGuardar.type = 'submit';
+                btnGuardar.textContent = '💾 Guardar';
+
+                var btnCancelar = document.createElement('button');
+                btnCancelar.className = 'bt bt-cancelar';
+                btnCancelar.type = 'button';
+                btnCancelar.textContent = '✕ Cancelar';
+                (function(currentIdx) {
+                    btnCancelar.onclick = function() { cancelarEdicion(currentIdx); };
+                })(idx);
+
+                formMod.appendChild(inModNom);
+                formMod.appendChild(inModClave);
+                formMod.appendChild(inModValor);
+                formMod.appendChild(btnGuardar);
+                formMod.appendChild(btnCancelar);
+
+                tdEdForm.appendChild(formMod);
+                trEdicion.appendChild(tdEdClave);
+                trEdicion.appendChild(tdEdForm);
+
+                fragment.appendChild(trNormal);
+                fragment.appendChild(trEdicion);
+            }
+
+            tbody.appendChild(fragment);
+            visibles = hasta;
+            actualizarEstado();
         }
 
         function actualizarEstado() {
@@ -297,16 +404,13 @@
         }
 
         window.cargarMasDic = function() {
+            if (visibles >= totalEntradas) return;
             var siguienteLimite = Math.min(visibles + LOTE, totalEntradas);
-            for (var i = visibles + 1; i <= siguienteLimite; i++) {
-                var f = document.getElementById('fila-' + i);
-                if (f) f.style.display = '';
-            }
-            visibles = siguienteLimite;
-            actualizarEstado();
+            renderizarLote(siguienteLimite);
         };
 
-        actualizarEstado();
+        // Renderizar primer lote
+        window.cargarMasDic();
 
         // Evento al deslizar el slider vertical hacia abajo en el contenedor
         if (contenedor) {
@@ -316,7 +420,7 @@
                 // Si el scroll llega cerca del fondo (a menos de 80px)
                 if (contenedor.scrollTop + contenedor.clientHeight >= contenedor.scrollHeight - 80) {
                     cargando = true;
-                    cargarMasDic();
+                    window.cargarMasDic();
                     setTimeout(function() { cargando = false; }, 100);
                 }
             });

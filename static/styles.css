@@ -198,6 +198,7 @@ h2 {
     background-color: #ffffff;
     scrollbar-width: thin;
     scrollbar-color: #2e7d70 #eaf4f2;
+    contain: paint layout;
 }
 
 /* Slider / barra de desplazamiento vertical personalizada */
