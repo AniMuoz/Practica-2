@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -77,11 +77,16 @@ app.post("/api/tabla/excel", (req, res) => {
     }
     try {
       const modo = req.body.modo || "completa";
-      if (modo !== "completa") {
+      let resultado;
+      if (modo === "completa") resultado = importarPlanilla(req.body.clave, req.file.buffer);
+      else if (modo === "sap") resultado = importarSap(req.body.clave, req.file.buffer);
+      else if (modo === "precios") resultado = importarPrecios(req.body.clave, req.file.buffer);
+      else if (modo === "ubicaciones") resultado = importarUbicaciones(req.body.clave, req.file.buffer);
+      else if (modo === "dos-columnas") resultado = importarDosColumnas(req.body.clave, req.file.buffer, req.body.columna);
+      else {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;
       }
-      const resultado = importarPlanilla(req.body.clave, req.file.buffer);
       res.json(resultado);
     } catch (error) {
       res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });

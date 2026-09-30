@@ -117,7 +117,8 @@ export default function Admin() {
                 if (!res.ok) throw new Error(data.error || "No se pudo importar.");
                 setArchivo(null);
                 event.target.reset();
-                setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados.`);
+                const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
+                setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`);
               })
               .catch((err) => setAvisoCarga(err.message))
               .finally(() => setImportando(false));
