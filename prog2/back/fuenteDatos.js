@@ -83,7 +83,7 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
 const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR"]);
 const CLAVE_DATOS = "Berfre2026";
 
-function actualizarDatos(codigo, clave, datos) {
+function actualizarDatos(codigo, clave, datos, reemplazar) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -128,10 +128,17 @@ function actualizarDatos(codigo, clave, datos) {
     (fila, indice) =>
       indice > 0 && indice !== indiceFila && String(fila[indiceCodigo]) === codigoNuevo
   );
-  if (duplicado) {
+  if (duplicado && !reemplazar) {
     const error = new Error("Ya existe un material con ese código.");
-    error.status = 400;
+    error.status = 409;
     throw error;
+  }
+  if (duplicado && reemplazar) {
+    for (let indice = matriz.length - 1; indice > 0; indice -= 1) {
+      if (indice !== indiceFila && String(matriz[indice][indiceCodigo]) === codigoNuevo) {
+        matriz.splice(indice, 1);
+      }
+    }
   }
 
   libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
@@ -231,25 +238,22 @@ function agregarMaterial(clave, datos) {
     error.status = 500;
     throw error;
   }
-  const duplicado = matriz.some(
+  const indiceExistente = matriz.findIndex(
     (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === codigoNuevo
   );
-  if (duplicado) {
-    const error = new Error("Ya existe un material con ese código.");
-    error.status = 400;
-    throw error;
-  }
+  const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
 
-  const filaNueva = columnas.map((columna) => {
+  const filaNueva = columnas.map((columna, indice) => {
     if (columna === "Codigo") return codigoNuevo;
     if (columna === "Inventario") {
       const valor = String(datos.Inventario ?? "").trim();
       return valor === "" ? "" : Number(valor);
     }
-    if (columna === "Rombo" || columna === "QR") return "";
+    if (columna === "Rombo" || columna === "QR") return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";
   });
-  matriz.push(filaNueva);
+  if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
+  else matriz.push(filaNueva);
   libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
   XLSX.writeFile(libro, archivo);
   return buscarMaterial(codigoNuevo);

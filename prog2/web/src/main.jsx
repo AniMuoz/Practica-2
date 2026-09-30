@@ -1,9 +1,15 @@
 import { StrictMode } from "react";
+import logo from "../logo/logo.ico";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Admin from "./Admin.jsx";
 import App from "./App.jsx";
 import Detalle from "./Detalle.jsx";
+
+const icono = document.createElement("link");
+icono.rel = "icon";
+icono.href = logo;
+document.head.appendChild(icono);
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

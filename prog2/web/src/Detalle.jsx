@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 
@@ -19,6 +19,9 @@ export default function Detalle() {
   const [datos, setDatos] = useState({});
   const [avisoDatos, setAvisoDatos] = useState("");
   const [guardandoDatos, setGuardandoDatos] = useState(false);
+  const [advertenciaCodigo, setAdvertenciaCodigo] = useState(false);
+  const [pulsado, setPulsado] = useState(0);
+  const pulso = useRef(null);
 
   useEffect(() => {
     setCargando(true);
@@ -42,6 +45,57 @@ export default function Detalle() {
   const soloLectura = columnas.filter(
     (columna) => !["Inventario", "Comentario", "Rombo", "QR"].includes(columna)
   );
+
+  function guardarDatos(reemplazar) {
+    setAvisoDatos("");
+    setGuardandoDatos(true);
+    fetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave, datos, reemplazar }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.status === 409) {
+          setAdvertenciaCodigo(true);
+          return;
+        }
+        if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
+        setFila(data.fila);
+        setColumnas(data.columnas || []);
+        setEditando(false);
+        setClave("");
+        setAdvertenciaCodigo(false);
+        setAvisoDatos("Datos del material guardados.");
+        const codigoNuevo = String(data.fila.Codigo);
+        if (codigoNuevo !== String(codigo)) {
+          navigate(`/${encodeURIComponent(codigoNuevo)}`, { replace: true });
+        }
+      })
+      .catch((err) => setAvisoDatos(err.message))
+      .finally(() => setGuardandoDatos(false));
+  }
+
+  function soltarAdvertencia() {
+    clearInterval(pulso.current);
+    setPulsado(0);
+  }
+
+  function mantenerAdvertencia() {
+    const inicio = Date.now();
+    clearInterval(pulso.current);
+    pulso.current = setInterval(() => {
+      const avance = Date.now() - inicio;
+      if (avance >= 3000) {
+        clearInterval(pulso.current);
+        setPulsado(0);
+        setAdvertenciaCodigo(false);
+        guardarDatos(true);
+        return;
+      }
+      setPulsado(avance / 3000);
+    }, 50);
+  }
 
   function subirImagen(campo, archivo) {
     if (!archivo) return;
@@ -307,30 +361,7 @@ export default function Detalle() {
                 <button
                   type="button"
                   disabled={guardandoDatos}
-                  onClick={() => {
-                    setAvisoDatos("");
-                    setGuardandoDatos(true);
-                    fetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ clave, datos }),
-                    })
-                      .then(async (res) => {
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
-                        setFila(data.fila);
-                        setColumnas(data.columnas || []);
-                        setEditando(false);
-                        setClave("");
-                        setAvisoDatos("Datos del material guardados.");
-                        const codigoNuevo = String(data.fila.Codigo);
-                        if (codigoNuevo !== String(codigo)) {
-                          navigate(`/${encodeURIComponent(codigoNuevo)}`, { replace: true });
-                        }
-                      })
-                      .catch((err) => setAvisoDatos(err.message))
-                      .finally(() => setGuardandoDatos(false));
-                  }}
+                  onClick={() => guardarDatos(false)}
                   style={{
                     padding: "8px 14px",
                     border: 0,
@@ -425,6 +456,64 @@ export default function Detalle() {
               {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
             </div>
           </form>
+        </div>
+      )}
+      {advertenciaCodigo && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+          }}
+        >
+          <div style={{ background: "#fff", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Ese código ya existe</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Si continúas, los datos de este material reemplazan al que ya tiene ese código. Mantén
+              pulsado el botón 3 segundos para pasar.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                onPointerDown={mantenerAdvertencia}
+                onPointerUp={soltarAdvertencia}
+                onPointerLeave={soltarAdvertencia}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: `linear-gradient(90deg, #b45309 ${pulsado * 100}%, #111827 ${pulsado * 100}%)`,
+                  color: "#fff",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Mantener 3 segundos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soltarAdvertencia();
+                  setAdvertenciaCodigo(false);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "1px solid #d0d5dd",
+                  borderRadius: 6,
+                  background: "#fff",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar y volver a editar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

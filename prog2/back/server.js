@@ -95,7 +95,12 @@ app.put("/api/material/:codigo", (req, res) => {
 
 app.put("/api/material/:codigo/datos", (req, res) => {
   try {
-    const resultado = actualizarDatos(req.params.codigo, req.body.clave, req.body.datos);
+    const resultado = actualizarDatos(
+      req.params.codigo,
+      req.body.clave,
+      req.body.datos,
+      req.body.reemplazar === true
+    );
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;

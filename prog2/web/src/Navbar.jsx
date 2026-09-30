@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import logo from "../logo/logo.ico";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -17,8 +18,20 @@ export default function Navbar() {
         borderRadius: 8,
       }}
     >
-      <Link to="/" style={{ color: "#111", textDecoration: "none", fontSize: 20, fontWeight: 700 }}>
-        Inventario
+      <Link
+        to="/"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          color: "#111",
+          textDecoration: "none",
+          fontSize: 20,
+          fontWeight: 700,
+        }}
+      >
+        <img src={logo} alt="" width={28} height={28} />
+        Inventario M501
       </Link>
       <form
         onSubmit={(event) => {
