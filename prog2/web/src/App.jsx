@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 
@@ -8,6 +8,54 @@ export default function App() {
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [pagina, setPagina] = useState(0);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [orden, setOrden] = useState("");
+  const [subUbicacion, setSubUbicacion] = useState("");
+  const [stockMinimo, setStockMinimo] = useState("");
+  const [soloConPrecio, setSoloConPrecio] = useState(false);
+  const tamano = 100;
+
+  const subUbicaciones = useMemo(() => {
+    const valores = new Set(
+      filas.map((fila) => String(fila["Sub-ubicación"] ?? "").trim()).filter(Boolean)
+    );
+    return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+  }, [filas]);
+
+  const visibles = useMemo(() => {
+    let lista = filas;
+    if (subUbicacion) {
+      lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
+    }
+    if (stockMinimo.trim() !== "") {
+      const minimo = Number(stockMinimo);
+      lista = lista.filter((fila) => {
+        const stock = Number(String(fila.Stock ?? "").trim());
+        return Number.isFinite(stock) && stock >= minimo;
+      });
+    }
+    if (soloConPrecio) {
+      lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
+    }
+    if (orden === "codigo") {
+      lista = [...lista].sort((a, b) => {
+        const na = Number(a.Codigo);
+        const nb = Number(b.Codigo);
+        if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
+        return String(b.Codigo).localeCompare(String(a.Codigo), "es", { numeric: true });
+      });
+    } else if (orden === "descripcion") {
+      lista = [...lista].sort((a, b) =>
+        String(a.Descripcion ?? "").localeCompare(String(b.Descripcion ?? ""), "es", { sensitivity: "base" })
+      );
+    }
+    return lista;
+  }, [filas, orden, subUbicacion, stockMinimo, soloConPrecio]);
+
+  useEffect(() => {
+    setPagina(0);
+  }, [orden, subUbicacion, stockMinimo, soloConPrecio]);
 
   useEffect(() => {
     fetch("/api/tabla")
@@ -22,6 +70,52 @@ export default function App() {
       .catch(() => setError("No se pudo cargar la tabla."))
       .finally(() => setCargando(false));
   }, []);
+
+  const alFinal = (pagina + 1) * tamano >= visibles.length;
+  const rango =
+    visibles.length === 0
+      ? "0 de 0"
+      : `${pagina * tamano + 1}–${Math.min((pagina + 1) * tamano, visibles.length)} de ${visibles.length}`;
+
+  function paginacion() {
+    return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
+      <button
+        type="button"
+        disabled={pagina === 0}
+        onClick={() => setPagina((actual) => actual - 1)}
+        style={{
+          padding: "6px 12px",
+          border: 0,
+          borderRadius: 6,
+          background: pagina === 0 ? "#e5e7eb" : "#111827",
+          color: pagina === 0 ? "#6b7280" : "#fff",
+          fontSize: 14,
+          cursor: pagina === 0 ? "default" : "pointer",
+        }}
+      >
+        Anterior
+      </button>
+      <span style={{ fontSize: 14 }}>{rango}</span>
+      <button
+        type="button"
+        disabled={alFinal}
+        onClick={() => setPagina((actual) => actual + 1)}
+        style={{
+          padding: "6px 12px",
+          border: 0,
+          borderRadius: 6,
+          background: alFinal ? "#e5e7eb" : "#111827",
+          color: alFinal ? "#6b7280" : "#fff",
+          fontSize: 14,
+          cursor: alFinal ? "default" : "pointer",
+        }}
+      >
+        Siguiente
+      </button>
+    </div>
+    );
+  }
 
   return (
     <main
@@ -50,11 +144,128 @@ export default function App() {
       >
         Descargar planilla
       </a>
+      {!cargando && !error && filas.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            onClick={() => setFiltrosAbiertos((abierto) => !abierto)}
+            style={{
+              padding: "8px 14px",
+              border: 0,
+              borderRadius: 6,
+              background: "#111827",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
+          </button>
+          {filtrosAbiertos && (
+            <div
+              style={{
+                marginTop: 10,
+                background: "#fff",
+                borderRadius: 8,
+                padding: 16,
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="radio"
+                  name="orden"
+                  checked={orden === ""}
+                  onChange={() => setOrden("")}
+                />
+                Sin orden extra
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="radio"
+                  name="orden"
+                  checked={orden === "codigo"}
+                  onChange={() => setOrden("codigo")}
+                />
+                Ordenar códigos de mayor a menor
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="radio"
+                  name="orden"
+                  checked={orden === "descripcion"}
+                  onChange={() => setOrden("descripcion")}
+                />
+                Ordenar descripciones alfabéticamente
+              </label>
+              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
+                Sub-ubicación
+                <select
+                  value={subUbicacion}
+                  onChange={(event) => setSubUbicacion(event.target.value)}
+                  style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                >
+                  <option value="">Todas</option>
+                  {subUbicaciones.map((valor) => (
+                    <option key={valor} value={valor}>
+                      {valor}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
+                Stock igual o mayor a
+                <input
+                  inputMode="decimal"
+                  value={stockMinimo}
+                  placeholder="Cualquier stock"
+                  onChange={(event) => {
+                    const valor = event.target.value;
+                    if (valor === "" || /^-?\d*\.?\d*$/.test(valor)) setStockMinimo(valor);
+                  }}
+                  style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={soloConPrecio}
+                  onChange={(event) => setSoloConPrecio(event.target.checked)}
+                />
+                Mostrar solo materiales con precio
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrden("");
+                  setSubUbicacion("");
+                  setStockMinimo("");
+                  setSoloConPrecio(false);
+                }}
+                style={{
+                  justifySelf: "start",
+                  padding: "8px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#e5e7eb",
+                  color: "#111827",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {cargando && <p>Cargando tabla...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}
       {!cargando && !error && filas.length > 0 && (
         <div className="tabla-inventario" style={{ overflowX: "auto", background: "#fff", borderRadius: 8 }}>
+          {paginacion()}
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
             <thead>
               <tr>
@@ -75,7 +286,7 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila) => (
+              {visibles.slice(pagina * tamano, pagina * tamano + tamano).map((fila) => (
                 <tr
                   key={fila.Codigo}
                   onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}
@@ -97,6 +308,7 @@ export default function App() {
               ))}
             </tbody>
           </table>
+          {paginacion()}
         </div>
       )}
     </main>
