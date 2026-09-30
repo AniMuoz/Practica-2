@@ -38,4 +38,40 @@ function buscarMaterial(codigo) {
   return { columnas, fila };
 }
 
-module.exports = { leerTabla, buscarMaterial };
+function actualizarMaterial(codigo, { inventario, comentario }) {
+  if (!/^-?\d+$/.test(String(inventario).trim())) {
+    const error = new Error("Inventario debe ser un número entero.");
+    error.status = 400;
+    throw error;
+  }
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const hoja = libro.Sheets[nombreHoja];
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const indiceInventario = columnas.indexOf("Inventario");
+  const indiceComentario = columnas.indexOf("Comentario");
+
+  if (indiceCodigo < 0 || indiceInventario < 0 || indiceComentario < 0) {
+    const error = new Error("La tabla no tiene las columnas esperadas.");
+    error.status = 500;
+    throw error;
+  }
+
+  const indiceFila = matriz.findIndex(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
+  );
+  if (indiceFila < 0) return null;
+
+  matriz[indiceFila][indiceInventario] = Number(String(inventario).trim());
+  matriz[indiceFila][indiceComentario] = String(comentario ?? "");
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
+  XLSX.writeFile(libro, archivo);
+
+  return buscarMaterial(codigo);
+}
+
+module.exports = { leerTabla, buscarMaterial, actualizarMaterial };

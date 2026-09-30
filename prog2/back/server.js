@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { leerTabla, buscarMaterial } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial } = require("./fuenteDatos");
 
 const app = express();
 const PORT = 3001;
@@ -30,6 +30,22 @@ app.get("/api/material/:codigo", (req, res) => {
     res.json({ columnas, fila });
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer el material." });
+  }
+});
+
+app.put("/api/material/:codigo", (req, res) => {
+  try {
+    const resultado = actualizarMaterial(req.params.codigo, {
+      inventario: req.body.inventario,
+      comentario: req.body.comentario,
+    });
+    if (!resultado) {
+      res.status(404).json({ error: "Material no encontrado." });
+      return;
+    }
+    res.json(resultado);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo guardar." });
   }
 });
 
