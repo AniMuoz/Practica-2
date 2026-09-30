@@ -538,6 +538,9 @@ export default function Detalle() {
           </div>
         </div>
       )}
+      <div class="footer">
+        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
     </main>
   );
 }

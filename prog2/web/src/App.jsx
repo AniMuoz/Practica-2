@@ -14,6 +14,7 @@ export default function App() {
   const [subUbicacion, setSubUbicacion] = useState("");
   const [stockMinimo, setStockMinimo] = useState("");
   const [soloConPrecio, setSoloConPrecio] = useState(false);
+  const [soloConUbicacion, setSoloConUbicacion] = useState(false);
   const tamano = 100;
 
   const subUbicaciones = useMemo(() => {
@@ -38,6 +39,9 @@ export default function App() {
     if (soloConPrecio) {
       lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
     }
+    if (soloConUbicacion) {
+      lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
+    }
     if (orden === "codigo" || orden === "codigo-asc") {
       const sentido = orden === "codigo" ? -1 : 1;
       lista = [...lista].sort((a, b) => {
@@ -55,11 +59,11 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, subUbicacion, stockMinimo, soloConPrecio]);
+  }, [filas, orden, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, subUbicacion, stockMinimo, soloConPrecio]);
+  }, [orden, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
 
   useEffect(() => {
     fetch("/api/tabla")
@@ -257,6 +261,14 @@ export default function App() {
                 />
                 Mostrar solo materiales con precio
               </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={soloConUbicacion}
+                  onChange={(event) => setSoloConUbicacion(event.target.checked)}
+                />
+                Mostrar solo materiales con ubicación
+              </label>
               <button
                 type="button"
                 onClick={() => {
@@ -264,6 +276,7 @@ export default function App() {
                   setSubUbicacion("");
                   setStockMinimo("");
                   setSoloConPrecio(false);
+                  setSoloConUbicacion(false);
                 }}
                 style={{
                   justifySelf: "start",
@@ -333,6 +346,9 @@ export default function App() {
           {paginacion()}
         </div>
       )}
+      <div class="footer">
+        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
     </main>
   );
 }

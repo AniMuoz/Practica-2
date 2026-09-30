@@ -1,0 +1,8 @@
+En detalles del material poner
+limpiar inventario y comentario
+poder hacer grande la imagen de rombo y QR
+
+En tabla de inventario poner
+botón para limpiar todos los inventarios y comentarios
+
+mostrar el avance para ver que rumbo tomar
