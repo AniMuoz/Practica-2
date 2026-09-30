@@ -21,23 +21,37 @@ select {
 
 @media (max-width: 800px) {
   .barra {
-    flex-direction: column !important;
-    align-items: stretch !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .barra > a:first-child {
+    flex: 1;
+    font-size: 17px !important;
+  }
+
+  .barra-admin {
+    order: 2;
+    padding: 6px 12px !important;
   }
 
   .barra-buscar {
+    order: 3;
     margin-left: 0 !important;
     width: 100%;
-    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    flex-direction: row !important;
   }
 
   .barra-buscar input {
     min-width: 0 !important;
-    width: 100%;
-  }
-
-  .barra-admin {
-    text-align: center;
+    width: auto;
+    flex: 1;
+    padding: 6px 10px !important;
   }
 
   .pagina-material {
