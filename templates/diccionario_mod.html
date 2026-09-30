@@ -183,7 +183,6 @@
         {% else %}
         <p style="font-size:13px; color:#1a3c38;">
             Columna <strong>A</strong> = códigos · Columna <strong>B</strong> = valores
-            (fila 1 = encabezados, ignorada).
         </p>
         {% endif %}
         <form action="{{ url_for('diccionario_importar') }}" method="POST"
@@ -196,6 +195,35 @@
             <button class="bt bt-guardar" type="submit">📥 Importar</button>
         </form>
     </div>
+
+    {% if dic_nombre in ['precios', 'ubicaciones'] %}
+    <!-- SECCIÓN IMPORTAR ARCHIVO OFICIAL -->
+    <div class="seccion-formulario">
+        <h2>📋 Importar desde archivo oficial SAP</h2>
+        {% if dic_nombre == 'precios' %}
+        <p style="font-size:13px; color:#1a3c38;">
+            Sube el archivo oficial de precios exportado desde SAP.<br>
+            Formato esperado: Col <strong>A</strong> = Código material · Col <strong>D</strong> = Nuevo precio.
+        </p>
+        {% else %}
+        <p style="font-size:13px; color:#1a3c38;">
+            Sube el archivo oficial de ubicaciones exportado desde SAP<br>
+            Formato esperado: Col <strong>A</strong> = Código material · Col <strong>C</strong> = Almacén · Col <strong>D</strong> = Ubicación.
+        </p>
+        {% endif %}
+        <form action="{{ url_for('diccionario_importar_oficial') }}" method="POST"
+              enctype="multipart/form-data" class="form-agregar"
+              onsubmit="return confirm('¿Confirmas la importación desde el archivo oficial? Esto actualizará las entradas existentes.');">
+            <input type="hidden" name="dic_nombre" value="{{ dic_nombre }}">
+            <div class="form-fila">
+                <label for="archivo-oficial">Archivo oficial .xlsx:</label>
+                <input type="file" name="archivo_oficial" id="archivo-oficial" accept=".xlsx" required>
+            </div>
+            <button class="bt bt-guardar" type="submit">📋 Importar archivo oficial</button>
+        </form>
+    </div>
+    {% endif %}
+
 
     <div class="footer">
         <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>

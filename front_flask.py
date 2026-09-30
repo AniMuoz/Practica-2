@@ -614,6 +614,121 @@ def _dic_importar_excel_flexible(file_bytes: bytes, nombre: str) -> dict:
     return resultado
 
 
+# ─── PARSEO DE ARCHIVOS OFICIALES ────────────────────────────────────────────
+
+def _parsear_archivo_oficial_precios(file_bytes: bytes) -> dict:
+    """
+    Extrae el diccionario de precios desde el archivo oficial de SAP.
+
+    Formato esperado del archivo oficial de precios:
+        Fila 1 (encabezado, se ignora):
+            Col A = 'Material'
+            Col B = 'Texto breve de material'
+            Col C = 'UM'
+            Col D = 'Nuevos precios'
+            Col E = 'Valido Hasta'
+        Filas siguientes (datos):
+            Col A = Código de material  →  clave del diccionario
+            Col D = Precio (numérico)   →  valor del diccionario
+
+    TODO: Ajusta aquí la lógica de extracción según el formato real
+          del archivo oficial que recibes (columnas, filtros, formato del precio, etc.)
+    """
+    buffer = io.BytesIO(file_bytes)
+    excel = openpyxl.load_workbook(buffer)
+    hoja = excel.active
+    resultado = {}
+
+    # TODO: implementar lógica real de extracción
+    # Ejemplo de estructura base (ajustar columnas/filtros según necesidad):
+    for i in range(2, hoja.max_row + 1):
+        codigo = hoja.cell(row=i, column=1).value   # Col A: código material
+        precio  = hoja.cell(row=i, column=4).value  # Col D: nuevo precio
+        if codigo is not None:
+            resultado[str(codigo)] = str(precio) if precio is not None else ""
+
+    return resultado
+
+
+def _parsear_archivo_oficial_ubicaciones(file_bytes: bytes) -> dict:
+    """
+    Extrae el diccionario de ubicaciones desde el archivo oficial de SAP.
+
+    Formato esperado del archivo oficial de ubicaciones:
+        Fila 1 (encabezado, se ignora):
+            Col A = 'MARD.MATNR  Número de material'
+            Col B = 'MARD.WERKS  Centro'
+            Col C = 'MARD.LGORT  Almacén'
+            Col D = 'MARD.LGPBE  Ubicación'
+            (Cols E en adelante: fórmulas/datos auxiliares, se ignoran)
+        Filas siguientes (datos):
+            Col A = Código de material  →  clave del diccionario
+            Col C = Almacén (ej. 'M501')
+            Col D = Ubicación            →  valor del diccionario
+
+    TODO: Ajusta aquí los filtros necesarios, por ejemplo:
+          - Filtrar solo filas donde Col C == 'M501'
+          - Decidir qué hacer si un mismo código tiene múltiples ubicaciones
+          - Ignorar filas con ubicación vacía o '99ZZ99ZZ99'
+
+    """
+    buffer = io.BytesIO(file_bytes)
+    excel = openpyxl.load_workbook(buffer)
+    hoja = excel.active
+    resultado = {}
+
+    # TODO: implementar lógica real de extracción
+    # Ejemplo de estructura base (ajustar filtros según necesidad):
+    for i in range(2, hoja.max_row + 1):
+        codigo   = hoja.cell(row=i, column=1).value  # Col A: código material
+        almacen  = hoja.cell(row=i, column=3).value  # Col C: almacén
+        ubicacion = hoja.cell(row=i, column=4).value  # Col D: ubicación
+        if str(almacen) == 'M501' and codigo is not None:
+            resultado[str(codigo)] = str(ubicacion) if ubicacion is not None else ""
+
+    return resultado
+
+
+@front_flask.route('/diccionario_mod/importar_oficial', methods=['POST'])
+def diccionario_importar_oficial():
+    """
+    Recibe un archivo oficial (de SAP u otro sistema) y lo parsea
+    usando la función específica para el diccionario seleccionado.
+    Solo está disponible para 'precios' y 'ubicaciones'.
+    """
+    nombre = _validar_nombre(request.form.get('dic_nombre', 'ubicaciones'))
+    archivo = request.files.get('archivo_oficial')
+
+    if nombre not in ('precios', 'ubicaciones'):
+        session['alerta'] = "⚠ La importación de archivo oficial solo aplica a Precios y Ubicaciones."
+        return redirect(url_for('diccionario_mod', dic=nombre))
+
+    if not archivo or archivo.filename == '':
+        session['alerta'] = "Error: no se seleccionó ningún archivo oficial."
+        return redirect(url_for('diccionario_mod', dic=nombre))
+
+    try:
+        file_bytes = archivo.read()
+        if nombre == 'precios':
+            nuevas = _parsear_archivo_oficial_precios(file_bytes)
+        else:  # ubicaciones
+            nuevas = _parsear_archivo_oficial_ubicaciones(file_bytes)
+
+        if not nuevas:
+            session['alerta'] = "⚠ El archivo oficial no retornó ningún dato. Revisa la función de parseo."
+            return redirect(url_for('diccionario_mod', dic=nombre))
+
+        ruta_excel = session.get('ruta')
+        dic = _obtener_diccionario(nombre)
+        dic.update(nuevas)
+        _guardar_en_diccionario_py()
+        session['alerta'] = f"✔ Importación oficial exitosa: {len(nuevas)} entradas cargadas en {nombre}."
+    except Exception as e:
+        session['alerta'] = f"Error al importar archivo oficial: {e}"
+
+    return redirect(url_for('diccionario_mod', dic=nombre))
+
+
 @front_flask.route('/diccionario_mod', methods=['GET'])
 def diccionario_mod():
     nombre = _validar_nombre(request.args.get('dic', 'ubicaciones'))
