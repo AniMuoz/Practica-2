@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Admin from "./Admin.jsx";
 import App from "./App.jsx";
 import Detalle from "./Detalle.jsx";
+import "./movil.css";
 
 const icono = document.createElement("link");
 icono.rel = "icon";

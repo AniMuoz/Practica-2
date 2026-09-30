@@ -22,6 +22,14 @@ export default function Detalle() {
   const [advertenciaCodigo, setAdvertenciaCodigo] = useState(false);
   const [pulsado, setPulsado] = useState(0);
   const pulso = useRef(null);
+  const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
+
+  useEffect(() => {
+    const consulta = window.matchMedia("(max-width: 800px)");
+    const alCambiar = () => setMovil(consulta.matches);
+    consulta.addEventListener("change", alCambiar);
+    return () => consulta.removeEventListener("change", alCambiar);
+  }, []);
 
   useEffect(() => {
     setCargando(true);
@@ -120,14 +128,16 @@ export default function Detalle() {
 
   return (
     <main
+      className="pagina-material"
       style={{
-        height: "100vh",
+        height: movil ? "auto" : "100vh",
+        minHeight: "100vh",
         boxSizing: "border-box",
         margin: 0,
         padding: 16,
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflow: movil ? "visible" : "hidden",
         fontFamily: "Segoe UI, sans-serif",
         background: "#f4f6f8",
         color: "#111111",
@@ -138,13 +148,22 @@ export default function Detalle() {
       {cargando && <p>Cargando detalle...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && fila && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div
+          className="imagenes-material"
+          style={{
+            display: "grid",
+            gridTemplateColumns: movil ? "1fr" : "1fr 1fr",
+            gap: 16,
+            marginBottom: 16,
+          }}
+        >
           {["Rombo", "QR"].map((campo) => {
             const valor = fila[campo];
             const esImagen = typeof valor === "string" && /\.(png|jpe?g|webp|gif)$/i.test(valor);
             return (
               <section
                 key={campo}
+                className="tarjeta-imagen"
                 style={{
                   background: "#fff",
                   borderRadius: 8,
@@ -156,6 +175,7 @@ export default function Detalle() {
                 }}
               >
                 <div
+                  className="marco-imagen"
                   style={{
                     width: 160,
                     height: 160,
@@ -233,11 +253,12 @@ export default function Detalle() {
       )}
       {!cargando && !error && fila && (
         <div
+          className="cuerpo-material"
           style={{
-            flex: 1,
+            flex: movil ? "none" : 1,
             minHeight: 0,
             display: "grid",
-            gridTemplateColumns: "1.4fr 1fr",
+            gridTemplateColumns: movil ? "1fr" : "1.4fr 1fr",
             gap: 16,
           }}
         >
@@ -319,10 +340,11 @@ export default function Detalle() {
               </form>
             )}
             <dl
+              className="datos-material"
               style={{
                 margin: 0,
                 display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gridTemplateColumns: movil ? "1fr 1fr" : "repeat(3, minmax(0, 1fr))",
                 gap: 10,
                 alignContent: "start",
                 overflow: "auto",
@@ -428,7 +450,7 @@ export default function Detalle() {
                 onChange={(event) => setComentario(event.target.value)}
                 style={{
                   flex: 1,
-                  minHeight: 0,
+                  minHeight: movil ? 140 : 0,
                   padding: "8px 12px",
                   border: "1px solid #d0d5dd",
                   borderRadius: 6,

@@ -100,6 +100,7 @@ export default function Admin() {
               .catch((err) => setAviso(err.message))
               .finally(() => setGuardando(false));
           }}
+          className="form-admin"
           style={{
             background: "#fff",
             borderRadius: 8,

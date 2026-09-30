@@ -54,7 +54,7 @@ export default function App() {
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}
       {!cargando && !error && filas.length > 0 && (
-        <div style={{ overflowX: "auto", background: "#fff", borderRadius: 8 }}>
+        <div className="tabla-inventario" style={{ overflowX: "auto", background: "#fff", borderRadius: 8 }}>
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
             <thead>
               <tr>

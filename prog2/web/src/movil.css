@@ -1,0 +1,74 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+input,
+textarea,
+button,
+select {
+  max-width: 100%;
+}
+
+@media (max-width: 800px) {
+  .barra {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .barra-buscar {
+    margin-left: 0 !important;
+    width: 100%;
+    flex-direction: column !important;
+  }
+
+  .barra-buscar input {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .barra-admin {
+    text-align: center;
+  }
+
+  .pagina-material {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .imagenes-material,
+  .cuerpo-material {
+    grid-template-columns: 1fr !important;
+  }
+
+  .tarjeta-imagen {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+  }
+
+  .marco-imagen {
+    width: min(160px, 70vw) !important;
+    height: min(160px, 70vw) !important;
+  }
+
+  .datos-material {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-admin {
+    grid-template-columns: 1fr !important;
+  }
+
+  .tabla-inventario {
+    max-width: 100%;
+  }
+}

@@ -8,10 +8,12 @@ export default function Navbar() {
 
   return (
     <header
+      className="barra"
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 16,
+        flexWrap: "wrap",
+        gap: 12,
         marginBottom: 16,
         padding: "10px 14px",
         background: "#fff",
@@ -40,7 +42,8 @@ export default function Navbar() {
           if (!buscado) return;
           navigate(`/${encodeURIComponent(buscado)}`);
         }}
-        style={{ display: "flex", gap: 8, marginLeft: "auto" }}
+        className="barra-buscar"
+        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "1 1 220px", minWidth: 0 }}
       >
         <input
           value={codigo}
@@ -72,6 +75,7 @@ export default function Navbar() {
       </form>
       <Link
         to="/admin"
+        className="barra-admin"
         style={{
           padding: "8px 14px",
           borderRadius: 6,
