@@ -21,20 +21,14 @@ print("Codigo de dia: ", dia)
 dia = f"{str(fecha.day)} / {str(fecha.month)} / {str(fecha.year)}"
 
 def maquillaje():
-    bordes = Border(
-            bottom=Side(border_style="medium", color="000000"),
-            left=Side(border_style="thin"),
-            right=Side(border_style="thin"),
-            top=Side(border_style="thin")
-            )
-    color = PatternFill(
-            start_color='a9e5e5', end_color='5CB800', fill_type='solid')
-    vacio = PatternFill(
-            start_color='f9e37c', end_color='5CB800', fill_type='solid')
-    ding = PatternFill(
-            start_color='73C883', end_color='5CB800', fill_type='solid')
-    zero = PatternFill(
-            start_color='D3D3D3', end_color='5CB800', fill_type='solid')
+    bordes = Border(bottom=Side(border_style="medium", color="000000"),
+                    left=Side(border_style="thin"),
+                    right=Side(border_style="thin"),
+                    top=Side(border_style="thin"))
+    color = PatternFill(start_color='a9e5e5', end_color='5CB800', fill_type='solid')
+    vacio = PatternFill(start_color='f9e37c', end_color='5CB800', fill_type='solid')
+    ding = PatternFill(start_color='73C883', end_color='5CB800', fill_type='solid')
+    zero = PatternFill(start_color='D3D3D3', end_color='5CB800', fill_type='solid')
     return bordes, color, vacio, ding, zero
 
 #Funcion para realizar filtros y mostrar solo el stock de M501
@@ -44,13 +38,10 @@ def filtro1(ruta):
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
-
     #Variable que maneja la fila en la que se esta escribiendo
     x = 4
-
     #Diseño de las celdas
     bordes, color, vacio, ding, zero = maquillaje()
-
     hoja.column_dimensions['A'].width = 20
     hoja.column_dimensions['B'].width = 52
     hoja.column_dimensions['C'].width = 20
@@ -66,16 +57,13 @@ def filtro1(ruta):
     hoja['B1'].border = bordes
     hoja['B1'].font = Font(bold=True, size=12)
     hoja['B1'].fill = color
-
     #Titulo del documento
     hoja['A1'] = "Almacen"
     hoja['B1'] = "M501"
-
     #Titlos de las columnas
     hoja['A3'] = "Etiqueta de fila"
     hoja['B3'] = "Descripcion del producto"
     hoja['C3'] = "Libre utilización"
-
     #Filtros para el archivo
     hoja.auto_filter.ref = "A3:C3"
     hoja.auto_filter.add_sort_condition("C4:C" + str(hoja.max_row))
@@ -99,10 +87,8 @@ def filtro1(ruta):
                     hoja[f"C{x}"].fill = ding
                 x += 1
 
-    #hoja['A1'] = hoja2.cell(row = 1, column = 1).value
-    #hoja['B3'] = 'EMPRESA: PRETORIANOS SEGURIDAD'
     print(f"i = {i} y x = {x}")
-    nombre_archivo = "Planilla M501.xlsx"
+    nombre_archivo = "PLANILLA M501.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -131,7 +117,6 @@ def total(ruta):
     mango = openpyxl.Workbook()
     hoja2 = excel.active
     hoja = mango.active
-
     #Variable que maneja la fila en la que se esta escribiendo
     x = 4
     #Diseño de las celdas
@@ -143,7 +128,6 @@ def total(ruta):
     hoja.column_dimensions['E'].width = 15
     hoja.column_dimensions['F'].width = 15
     hoja.column_dimensions['G'].width = 15
-
     #Titulo del documento
     hoja['A1'] = "Stock por bodega"
     #Titlos de las columnas
@@ -155,7 +139,6 @@ def total(ruta):
     hoja['F3'] = "M504"
     hoja['G3'] = "M505"
     hoja['H3'] = "Total"
-
     #Diseño
     col = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     for i in col:
@@ -185,23 +168,18 @@ def total(ruta):
                 hoja.cell(row = x, column = 2, value = descripcion).border = bordes
                 M501 = hoja2.cell(row = i, column = 4).value
                 hoja.cell(row = x, column = 3, value = M501)
-
                 if hoja2.cell(row = i + 1, column = 3).value == "M502":
                     M502 = hoja2.cell(row = i + 1, column = 4).value
                     hoja.cell(row = x, column = 4, value = M502)
-
                 if hoja2.cell(row = i + 2, column = 3).value == "M503":
                     M503 = hoja2.cell(row = i + 2, column = 4).value
                     hoja.cell(row = x, column = 5, value = M503)
-
                 if hoja2.cell(row = i + 3, column = 3).value == "M504":
                     M504 = hoja2.cell(row = i + 3, column = 4).value
                     hoja.cell(row = x, column = 6, value = M504)
-
                 if hoja2.cell(row = i + 4, column = 3).value == "M505":
                     M505 = hoja2.cell(row = i + 4, column = 4).value
                     hoja.cell(row = x, column = 7, value = M505)
-
                 hoja.cell(row = x, column = 8, value = M501 + M502 + M503 + M504 + M505).font = Font(bold=True)
                 hoja.cell(row = x, column = 8).border = bordes
                 i = i + 4
@@ -215,9 +193,8 @@ def total(ruta):
                     else:
                         hoja[f'{col_letra}{x}'].fill = ding
                 x += 1
-
     print(f"i = {i} y x = {x}")
-    nombre_archivo = "Planilla stock regional.xlsx"
+    nombre_archivo = "PLANILLA STOCK REGIONAL.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -274,7 +251,6 @@ def inventario(ruta, dicub):
     hoja['B1'].border = bordes
     hoja['B1'].font = Font(bold=True, size=12)
     hoja['B1'].fill = color
-
     #Titulo del documento
     hoja['A1'] = "Almacen"
     hoja['B1'] = "M501"
@@ -355,7 +331,7 @@ def inventario(ruta, dicub):
     # Agregar Autofiltro visual
     hoja.auto_filter.ref = f"A3:F{x-1}"
     # Guardar archivo
-    nombre_archivo = "Planilla de invetario M501.xlsx"
+    nombre_archivo = "PLANILLA DE INVENTARIO M501.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     print("¡Proceso completado con éxito!")
@@ -590,6 +566,11 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
             hoja.cell(row = last_pos + 1, column = 5, value = (M501[str(hoja2.cell(row = j, column = 1).value)]))
         else:
             hoja.cell(row = last_pos + 1, column = 5, value = 0)
+
+        if hoja.cell(row = last_pos + 1, column = 5).value == 0 or hoja.cell(row = last_pos + 1, column = 5).value == "0":
+            hoja.cell(row = last_pos + 1, column = 5).font = Font(color="FF0000", bold = True)
+        else:
+            hoja.cell(row = last_pos + 1, column = 5).font = Font(color="7CC8FF", bold = True)
         #Stock M502
         if str(hoja2.cell(row = j, column = 1).value) in M502:
             hoja.cell(row = last_pos + 1, column = 6, value = (M502[str(hoja2.cell(row = j, column = 1).value)]))
@@ -607,9 +588,9 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
             hoja.cell(row = last_pos + 1, column = 8, value = 0)
         #Stock M505
         if str(hoja2.cell(row = j, column = 1).value) in M505:
-            hoja.cell(row = last_pos + 1, column = 9, value = (M505[str(hoja2.cell(row = j, column = 1).value)]))
+            hoja.cell(row = last_pos + 1, column = 9, value = (M505[str(hoja2.cell(row = j, column = 1).value)])).font = Font(color="FF0000", bold = True)
         else:
-            hoja.cell(row = last_pos + 1, column = 9, value = 0)
+            hoja.cell(row = last_pos + 1, column = 9, value = 0).font = Font(color="FF0000", bold = True)
         #Cantidad
         hoja.cell(row = last_pos + 1, column = 10, value = cant)
         #Entregar
@@ -620,13 +601,20 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
             else:
                 hoja.cell(row = last_pos + 1, column = 11, value = 0)
                 infra = 0
+                if str(hoja2.cell(row = j, column = 1).value) in M501 and M505[str(hoja2.cell(row = j, column = 1).value)] > M501[str(hoja2.cell(row = j, column = 1).value)]:
+                    hoja.cell(row=last_pos + 1, column=4, value="CONCON")
+                    for k in range(1, hoja.max_column + 1):
+                        hoja.cell(row = last_pos + 1, column = k).font = Font(color="FF0000", bold = True)
+                if str(hoja2.cell(row = j, column = 1).value) in M501 and M505[str(hoja2.cell(row = j, column = 1).value)] == M501[str(hoja2.cell(row = j, column = 1).value)] and M501[str(hoja2.cell(row = j, column = 1).value)] == 0:
+                    for k in range(1, hoja.max_column + 1):
+                        hoja.cell(row = last_pos + 1, column = k).font = Font(color="FF0000", bold = True)
+                    
         else:
             hoja.cell(row = last_pos + 1, column = 11, value = 0)
             infra = 0
         #Peso y tiras
         hoja.cell(row = last_pos + 1, column = 12, value = (hoja2.cell(row = j, column = 3).value))
-        #Columna 13 se añaden datos manualmente, se rellena con 0 mientras tanto
-        #hoja.cell(row = last_pos + 1, column = 12, value = 0)
+        #Se rellena manuelmanete, se rellena mientras con 0
         hoja.cell(row = last_pos + 1, column = 13, value = 0)
         #Diferencia
         hoja.cell(row = last_pos + 1, column = 14, value = (int(hoja.cell(row = last_pos + 1, column = 5).value) - int(cant)))
@@ -638,7 +626,8 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
         #Kg por unidad y peso total
         #Columnas 16 y 17 se rellenan manualmente por ahora, se rellena con 0
         hoja.cell(row = last_pos + 1, column = 16, value = 0)
-        hoja.cell(row = last_pos + 1, column = 17, value = 0)
+        hoja[f'Q{last_pos + 1}'] = f"=P{last_pos + 1}  * J{last_pos + 1}"
+        #hoja.cell(row = last_pos + 1, column = 17, value = 0)
         #Precio
         if str(hoja2.cell(row = j, column = 1).value) in dic_pre:
             precio = dic_pre[str(hoja2.cell(row = j, column = 1).value)]
@@ -658,10 +647,14 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
 
         #N° de ventas
         hoja.cell(row = last_pos + 1, column = 23, value = codcomp)
-        #Estado
-
+        #Cant GD
+        hoja[f'X{last_pos + 1}'] = f"=K{last_pos + 1}"
+        #
+        hoja[f'AB{last_pos + 1}'] = f"=X{last_pos + 1} - J{last_pos + 1}"
         #Fecha
         hoja.cell(row = last_pos + 1, column = 27, value = f"{str(fecha.day)}/{str(fecha.month)}/{str(fecha.year)}")
+        #ID 2
+        hoja.cell(row = last_pos + 1, column = 32, value = cont)
         #Comparar codigos
         hoja[f'AI{last_pos + 1}'] = f"=AG{last_pos + 1} =B{last_pos + 1}"
         #comparar cantidad
@@ -673,7 +666,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
     for q in range(1, hoja.max_column + 1):
         hoja.cell(row = last_pos + 1, column = q).border = bordes
         hoja.cell(row = last_pos + 1, column = q).font = Font(bold = true)
-    mango.save(f"prueba_venta.xlsx")
+    mango.save(f"VENTAS {fecha.year}.xlsx")
     return
 
 def encabezado_ventas(hoja, last_pos):
@@ -833,7 +826,7 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
                     cell.fill = vacio
         x += 1
     hoja.auto_filter.ref = f"A3:H{x - 1}"
-    nombre_archivo = "Revision_stock_reserva.xlsx"
+    nombre_archivo = "Revision stock en reserva.xlsx"
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
