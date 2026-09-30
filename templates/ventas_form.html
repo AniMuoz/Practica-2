@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Añadir Venta – Sistema Berfre</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}" type="image/x-icon">
+    <style>
+        /* Estilos específicos del formulario de ventas */
+        .form-ventas {
+            max-width: 640px;
+            margin: 30px auto;
+            background: #f0fafa;
+            border: 2px solid #a9e5e5;
+            border-radius: 10px;
+            padding: 28px 36px;
+        }
+        .form-ventas h2 {
+            color: #1a3c38;
+            margin-bottom: 20px;
+        }
+        .form-grupo {
+            margin-bottom: 18px;
+        }
+        .form-grupo label {
+            display: block;
+            font-weight: bold;
+            color: #1a3c38;
+            margin-bottom: 6px;
+        }
+        .form-grupo input[type="file"],
+        .form-grupo select,
+        .form-grupo input[type="number"],
+        .form-grupo input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #a9e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+            box-sizing: border-box;
+        }
+        .form-grupo .hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .form-ventas .bt-procesar {
+            background: #1a3c38;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 10px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        .form-ventas .bt-procesar:hover {
+            background: #2e6b60;
+        }
+        #campo-cod-venta {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botón volver y cerrar -->
+    <a href="{{ url_for('home') }}" style="position: fixed; top: 15px; left: 15px; z-index: 9999;">
+        <button class="bt" type="button">← Volver al inicio</button>
+    </a>
+    <a href="/apagar" style="position: fixed; top: 1px; left: 1280px; z-index: 9999;">
+        <button class="bt-apagar">Cerrar Aplicación</button>
+    </a>
+
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" width="120" style="display:block; margin: 20px auto 0;">
+    <h1 style="text-align:center; color:#1a3c38;">Añadir Venta</h1>
+
+    {% if alerta %}
+    <p class="alerta-info" style="text-align:center;"><strong>{{ alerta }}</strong></p>
+    {% endif %}
+
+    <div class="form-ventas">
+        <h2>📋 Datos de la orden</h2>
+
+        <form action="{{ url_for('ventas_procesar') }}" method="POST" enctype="multipart/form-data">
+
+            <!-- Orden de venta (obligatorio) -->
+            <div class="form-grupo">
+                <label for="orden_venta">Archivo de orden de venta <span style="color:red">*</span></label>
+                <input type="file" id="orden_venta" name="orden_venta" accept=".xlsx,.xls" required>
+                <p class="hint">Archivo Excel con los ítems de la orden</p>
+            </div>
+
+            <!-- Archivo de ventas existente (opcional) -->
+            <div class="form-grupo">
+                <label for="archivo_ventas">Archivo de ventas existente (opcional)</label>
+                <input type="file" id="archivo_ventas" name="archivo_ventas" accept=".xlsx,.xls">
+                <p class="hint">Si ya tienes un libro de ventas donde acumular, súbelo aquí. Si lo dejas vacío, se creará uno nuevo</p>
+            </div>
+
+            <!-- Comprador -->
+            <div class="form-grupo">
+                <label for="comprador">Comprador</label>
+                <select id="comprador" name="comprador">
+                    {% for nombre in compradores %}
+                    <option value="{{ loop.index }}">{{ nombre }}</option>
+                    {% endfor %}
+                    <option value="{{ compradores | length + 1 }}">n/a</option>
+                </select>
+            </div>
+
+            <!-- Tipo de movimiento -->
+            <div class="form-grupo">
+                <label for="mov_tipo">Tipo de movimiento</label>
+                <select id="mov_tipo" name="mov_tipo" onchange="toggleCodVenta(this.value)">
+                    <option value="1">Venta</option>
+                    <option value="2">Traspaso</option>
+                </select>
+            </div>
+
+            <!-- Número de venta (se oculta si es Traspaso) -->
+            <div class="form-grupo" id="campo-cod-venta">
+                <label for="cod_venta">Número de venta</label>
+                <input type="text" id="cod_venta" name="cod_venta" placeholder="Ej: 12345">
+                <p class="hint">Déjalo vacío o escribe «n/a» si no aplica</p>
+            </div>
+
+            <button type="submit" class="bt-procesar">⚙ Procesar y descargar Excel</button>
+        </form>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
+
+<script>
+    function toggleCodVenta(valor) {
+        var campo = document.getElementById('campo-cod-venta');
+        campo.style.display = (valor === '2') ? 'none' : 'block';
+    }
+</script>
+</body>
+</html>

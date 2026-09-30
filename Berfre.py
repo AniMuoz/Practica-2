@@ -669,6 +669,207 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
     mango.save(f"VENTAS {fecha.year}.xlsx")
     return
 
+def añadir_venta_web(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp,
+                      ruta_export: str,
+                      orden_bytes: bytes,
+                      comprador_idx: int,
+                      mov_tipo: int,
+                      cod_venta,
+                      archivo_ventas_bytes: bytes = None) -> tuple:
+    """
+    Versión sin input() de añadir_venta, compatible con Flask.
+
+    Parámetros:
+        dic_mat          – dict material
+        dic_ub           – dict ubicaciones
+        dic_pre          – dict precios
+        dic_sto          – dict stock (total M501)
+        dic_comp         – dict compradores {clave: nombre}
+        ruta_export      – ruta al archivo EXPORT.xlsx (para leer stock de bodegas)
+        orden_bytes      – bytes del archivo de orden de venta (.xlsx)
+        comprador_idx    – índice 1-based del comprador en dic_comp (o len+1 para n/a)
+        mov_tipo         – 1=VENTA, 2=TRASPASO
+        cod_venta        – número de venta (o "n/a" si traspaso)
+        archivo_ventas_bytes – bytes del archivo de ventas existente (None = crear nuevo)
+
+    Retorna: (BytesIO, nombre_archivo)
+    """
+    bordes, color, vacio, ding, zero = maquillaje()
+    last_pos = 0
+
+    # ── Leer stock por bodega desde EXPORT ──────────────────────────────────
+    export = openpyxl.load_workbook(ruta_export)
+    temp = export.active
+    M501, M502, M503, M504, M505 = {}, {}, {}, {}, {}
+    for p in range(2, temp.max_row + 1):
+        cod = str(temp.cell(row=p, column=1).value)
+        bod = temp.cell(row=p, column=3).value
+        val = temp.cell(row=p, column=4).value
+        if bod == "M501":
+            M501[cod] = val
+        elif bod == "M502":
+            M502[cod] = val
+        elif bod == "M503":
+            M503[cod] = val
+        elif bod == "M504":
+            M504[cod] = val
+        elif bod == "M505":
+            M505[cod] = val
+
+    # ── Cargar la orden de venta (desde bytes) ───────────────────────────────
+    excel = openpyxl.load_workbook(io.BytesIO(orden_bytes))
+    hoja2 = excel.active
+
+    # ── Cargar o crear el libro de ventas ────────────────────────────────────
+    if archivo_ventas_bytes:
+        mango = openpyxl.load_workbook(io.BytesIO(archivo_ventas_bytes))
+        hoja = mango.active
+    else:
+        mango = openpyxl.Workbook()
+        hoja = mango.active
+        last_pos = 1
+        encabezado_ventas(hoja, last_pos)
+        for q in range(1, hoja.max_column + 1):
+            hoja.cell(row=1, column=q).border = bordes
+            hoja.cell(row=1, column=q).font = Font(bold=True)
+
+    # ── Resolver comprador ───────────────────────────────────────────────────
+    ite = list(dic_comp.values())
+    mov = "VENTA" if mov_tipo == 1 else "TRASPASO"
+    codcomp = "n/a" if mov == "TRASPASO" else cod_venta
+
+    # ── Encontrar el final del archivo de ventas ─────────────────────────────
+    for i in range(1, hoja.max_row + 1):
+        if hoja.cell(row=i, column=1).value == "Pos":
+            last_pos = i
+
+    cont = 10
+
+    # ── Dimensiones de columnas ──────────────────────────────────────────────
+    anchos = {
+        'A': 5, 'C': 50, 'D': 12, 'E': 7, 'F': 7, 'G': 7, 'H': 7,
+        'I': 7, 'J': 7, 'K': 7, 'L': 4, 'M': 4, 'N': 6, 'O': 11,
+        'P': 6, 'Q': 6, 'R': 7, 'S': 9, 'T': 12, 'U': 9, 'V': 6,
+        'W': 7, 'X': 8, 'Y': 8, 'Z': 13, 'AA': 10, 'AB': 9,
+        'AC': 9, 'AD': 9, 'AE': 35, 'AF': 5, 'AH': 10, 'AI': 18, 'AJ': 18,
+    }
+    for col_letra, ancho in anchos.items():
+        hoja.column_dimensions[col_letra].width = ancho
+    hoja.auto_filter.ref = "A1:AJ1"
+
+    # ── Llenar filas ─────────────────────────────────────────────────────────
+    j = 0
+    for r in range(3, hoja2.max_row + 1):
+        j += r
+        for q in range(1, hoja.max_column + 1):
+            hoja.cell(row=last_pos + 1, column=q).border = bordes
+            hoja.cell(row=last_pos + 1, column=q).font = Font(bold=True)
+
+        cant = hoja2.cell(row=j, column=4).value
+        while cant is None or cant == 0:
+            j += 1
+            if j < hoja2.max_row:
+                cant = hoja2.cell(row=j, column=4).value
+            else:
+                break
+        if j >= hoja2.max_row:
+            break
+        if hoja.cell(row=last_pos, column=2).value == hoja2.cell(row=j, column=1).value:
+            j += 1
+
+        cod_mat = str(hoja2.cell(row=j, column=1).value)
+
+        # Pos
+        hoja.cell(row=last_pos + 1, column=1, value=cont)
+        # Codigo
+        hoja.cell(row=last_pos + 1, column=2, value=hoja2.cell(row=j, column=1).value)
+        # Descripcion
+        if cod_mat in dic_mat:
+            hoja.cell(row=last_pos + 1, column=3, value=dic_mat[cod_mat])
+        # Ubicacion
+        if cod_mat in dic_ub:
+            hoja.cell(row=last_pos + 1, column=4, value=dic_ub[cod_mat])
+        # Stock M501–M505
+        hoja.cell(row=last_pos + 1, column=5, value=M501.get(cod_mat, 0))
+        if hoja.cell(row=last_pos + 1, column=5).value == 0:
+            hoja.cell(row=last_pos + 1, column=5).font = Font(color="FF0000", bold=True)
+        else:
+            hoja.cell(row=last_pos + 1, column=5).font = Font(color="7CC8FF", bold=True)
+        hoja.cell(row=last_pos + 1, column=6, value=M502.get(cod_mat, 0))
+        hoja.cell(row=last_pos + 1, column=7, value=M503.get(cod_mat, 0))
+        hoja.cell(row=last_pos + 1, column=8, value=M504.get(cod_mat, 0))
+        hoja.cell(row=last_pos + 1, column=9, value=M505.get(cod_mat, 0))
+        # Cantidad
+        hoja.cell(row=last_pos + 1, column=10, value=cant)
+        # Entregar
+        stock_m501 = M501.get(cod_mat, 0) or 0
+        if cod_mat in M501:
+            if cant <= int(stock_m501):
+                hoja.cell(row=last_pos + 1, column=11, value=cant)
+            else:
+                hoja.cell(row=last_pos + 1, column=11, value=0)
+                if cod_mat in M501 and cod_mat in M505 and M505.get(cod_mat, 0) > M501.get(cod_mat, 0):
+                    hoja.cell(row=last_pos + 1, column=4, value="CONCON")
+                    for k in range(1, hoja.max_column + 1):
+                        hoja.cell(row=last_pos + 1, column=k).font = Font(color="FF0000", bold=True)
+                elif cod_mat in M501 and M505.get(cod_mat, 0) == M501.get(cod_mat, 0) == 0:
+                    for k in range(1, hoja.max_column + 1):
+                        hoja.cell(row=last_pos + 1, column=k).font = Font(color="FF0000", bold=True)
+        else:
+            hoja.cell(row=last_pos + 1, column=11, value=0)
+        # Peso/tiras
+        hoja.cell(row=last_pos + 1, column=12, value=hoja2.cell(row=j, column=3).value)
+        hoja.cell(row=last_pos + 1, column=13, value=0)
+        # Diferencia
+        hoja.cell(row=last_pos + 1, column=14,
+                  value=int(hoja.cell(row=last_pos + 1, column=5).value or 0) - int(cant))
+        # Verdadero/Falso
+        if hoja.cell(row=last_pos + 1, column=11).value == hoja.cell(row=last_pos + 1, column=10).value:
+            hoja.cell(row=last_pos + 1, column=15, value="VERDADERO")
+        else:
+            hoja.cell(row=last_pos + 1, column=15, value="FALSO")
+        # Kg x U y fórmulas
+        hoja.cell(row=last_pos + 1, column=16, value=0)
+        hoja[f'Q{last_pos + 1}'] = f"=P{last_pos + 1}*J{last_pos + 1}"
+        # Precio
+        precio = int(dic_pre.get(cod_mat, 0) or 0)
+        hoja.cell(row=last_pos + 1, column=18, value=precio)
+        hoja.cell(row=last_pos + 1, column=19, value=int(cant) * precio)
+        # Comprador
+        if comprador_idx <= len(ite):
+            hoja.cell(row=last_pos + 1, column=20, value=ite[comprador_idx - 1])
+        else:
+            hoja.cell(row=last_pos + 1, column=20, value="n/a")
+        # Movimiento y N° venta
+        hoja.cell(row=last_pos + 1, column=21, value=mov)
+        hoja.cell(row=last_pos + 1, column=23, value=codcomp)
+        # Fórmulas GD
+        hoja[f'X{last_pos + 1}'] = f"=K{last_pos + 1}"
+        hoja[f'AB{last_pos + 1}'] = f"=X{last_pos + 1}-J{last_pos + 1}"
+        # Fecha
+        hoja.cell(row=last_pos + 1, column=27,
+                  value=f"{fecha.day}/{fecha.month}/{fecha.year}")
+        # ID 2
+        hoja.cell(row=last_pos + 1, column=32, value=cont)
+        # Comparaciones
+        hoja[f'AI{last_pos + 1}'] = f"=AG{last_pos + 1}=B{last_pos + 1}"
+        hoja[f'AJ{last_pos + 1}'] = f"=AH{last_pos + 1}=X{last_pos + 1}"
+
+        last_pos += 1
+        cont += 10
+
+    encabezado_ventas(hoja, last_pos + 1)
+    for q in range(1, hoja.max_column + 1):
+        hoja.cell(row=last_pos + 1, column=q).border = bordes
+        hoja.cell(row=last_pos + 1, column=q).font = Font(bold=True)
+
+    buffer = io.BytesIO()
+    mango.save(buffer)
+    buffer.seek(0)
+    nombre_archivo = f"VENTAS {fecha.year}.xlsx"
+    return buffer, nombre_archivo
+
+
 def encabezado_ventas(hoja, last_pos):
     amarillo = ["Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505", "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD", "Comprador" ,"Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval",	"Estado", "Fecha", "Dif.Pend",	"GD Esval",	"Fecha", "Observacion"]
     gris = ["Pos",	"Codigo",	"SOLICITUD",	"COMPARA CODIGO",	"COMPARA CANT"]

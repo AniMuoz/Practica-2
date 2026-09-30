@@ -68,7 +68,9 @@
           <input type="hidden" name="ruta" value="{{ ruta }}">
           <button class="bt" type="submit">Stock detallado</button>
       </form>
-      <button class="bt" onclick="mostrarAlerta()">Añadir una venta (sin terminar)</button>
+      <form action="/ventas/form" method="GET">
+          <button class="bt" type="submit">Añadir una venta</button>
+      </form>
       <form action="/reserva/preview" method="GET">
           <button class="bt" type="submit">Revisar stock de reserva</button>
       </form>

@@ -6,7 +6,8 @@ from Berfre import (dia, filtro1, filtro1_preview,
                     dic_agregar, dic_modificar, dic_eliminar,
                     dic_exportar_bytes, dic_importar_excel,
                     stock_detallado_preview, stock_detallado,
-                    cont_reserva, cont_reserva_preview)
+                    cont_reserva, cont_reserva_preview,
+                    añadir_venta_web)
 import private.informacion_delicada.diccionario
 import io
 import webbrowser
@@ -484,7 +485,95 @@ def reserva_reseleccionar():
 
 # ─── AÑADIR VENTAS ───────────────────────────────────────────────────────────
 
+@front_flask.route('/ventas/form', methods=['GET'])
+def ventas_form():
+    """Muestra el formulario para cargar una orden de venta."""
+    ruta_excel = session.get('ruta')
+    if not ruta_excel:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo EXPORT."
+        return redirect(url_for('home'))
 
+    alerta = session.pop('alerta', None)
+    # Obtener lista de compradores para mostrar en el formulario
+    dic_comp = _obtener_diccionario('comprador')
+    compradores = list(dic_comp.values())
+
+    return render_template('ventas_form.html',
+                           dia_hoy=dia,
+                           ruta=ruta_excel,
+                           alerta=alerta,
+                           compradores=compradores)
+
+
+@front_flask.route('/ventas/procesar', methods=['POST'])
+def ventas_procesar():
+    """
+    Recibe el formulario de ventas, procesa la orden con añadir_venta_web
+    y devuelve el archivo Excel generado como descarga directa.
+    """
+    ruta_excel = session.get('ruta')
+    if not ruta_excel:
+        session['alerta'] = "Advertencia: Primero debes seleccionar un archivo EXPORT."
+        return redirect(url_for('home'))
+
+    # ── Archivos subidos ─────────────────────────────────────────────────────
+    orden_file = request.files.get('orden_venta')
+    ventas_file = request.files.get('archivo_ventas')  # opcional
+
+    if not orden_file or orden_file.filename == '':
+        session['alerta'] = "Error: debes subir el archivo de orden de venta (.xlsx)."
+        return redirect(url_for('ventas_form'))
+
+    orden_bytes = orden_file.read()
+    archivo_ventas_bytes = ventas_file.read() if ventas_file and ventas_file.filename != '' else None
+
+    # ── Parámetros del formulario ────────────────────────────────────────────
+    try:
+        comprador_idx = int(request.form.get('comprador', 1))
+    except (ValueError, TypeError):
+        comprador_idx = 1
+
+    try:
+        mov_tipo = int(request.form.get('mov_tipo', 1))
+    except (ValueError, TypeError):
+        mov_tipo = 1
+
+    cod_venta_raw = request.form.get('cod_venta', 'n/a').strip()
+    try:
+        cod_venta = int(cod_venta_raw)
+    except (ValueError, TypeError):
+        cod_venta = cod_venta_raw if cod_venta_raw else 'n/a'
+
+    # ── Obtener diccionarios ─────────────────────────────────────────────────
+    dicub, dicpre, dicmat = diccionarios(ruta_excel)
+    dicsto  = _obtener_diccionario('total', ruta_excel)
+    dic_comp = _obtener_diccionario('comprador')
+
+    # ── Procesar ─────────────────────────────────────────────────────────────
+    try:
+        buffer, nombre_archivo = añadir_venta_web(
+            dic_mat=dicmat,
+            dic_ub=dicub,
+            dic_pre=dicpre,
+            dic_sto=dicsto,
+            dic_comp=dic_comp,
+            ruta_export=ruta_excel,
+            orden_bytes=orden_bytes,
+            comprador_idx=comprador_idx,
+            mov_tipo=mov_tipo,
+            cod_venta=cod_venta,
+            archivo_ventas_bytes=archivo_ventas_bytes,
+        )
+    except Exception as e:
+        session['alerta'] = f"Error al procesar la venta: {e}"
+        return redirect(url_for('ventas_form'))
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=nombre_archivo,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
 
 # ─── DICCIONARIOS (editables por el frontend) ────────────────────────────────
 
@@ -699,8 +788,8 @@ def ver_tarjetas():
         },
         {
             "titulo": "Paso 5: Añadir venta",
-            "descripcion": "Trabajando en ello.",
-            "imagen": "static/tutorial1.jpg" #cambiar imagen al completar
+            "descripcion": "Suba el archivo de la orden de venta, opcionalmente puede subir una planilla creada anteriormente, indique el vendedor, tipo de accion (venta o traspaso) y si la accion es venta, indique su numero de venta",
+            "imagen": "static/tutorial4.png"
         },
         {
             "titulo": "Paso 6: Modificar informacion de material",
