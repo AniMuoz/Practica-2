@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import Navbar from "./Navbar.jsx";
 
 export default function Detalle() {
   const { codigo } = useParams();
@@ -69,7 +70,7 @@ export default function Detalle() {
         height: "100vh",
         boxSizing: "border-box",
         margin: 0,
-        padding: "16px 20px",
+        padding: 16,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -78,12 +79,8 @@ export default function Detalle() {
         color: "#111111",
       }}
     >
-      <header style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 12 }}>
-        <h1 style={{ margin: 0, fontSize: 22 }}>Material {codigo}</h1>
-        <Link to="/" style={{ color: "#1d4ed8", textDecoration: "none", fontSize: 14 }}>
-          Volver al inventario
-        </Link>
-      </header>
+      <Navbar />
+      <h1 style={{ margin: "0 0 12px", fontSize: 20 }}>Material {codigo}</h1>
       {cargando && <p>Cargando detalle...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && fila && (

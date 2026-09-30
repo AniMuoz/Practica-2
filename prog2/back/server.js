@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -36,11 +36,31 @@ app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
 });
 
+app.get("/api/tabla/excel", async (_req, res) => {
+  try {
+    const buffer = await exportarTabla();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo generar la planilla." });
+  }
+});
+
 app.get("/api/tabla", (_req, res) => {
   try {
     res.json(leerTabla());
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer la tabla." });
+  }
+});
+
+app.post("/api/material", (req, res) => {
+  try {
+    const resultado = agregarMaterial(req.body.clave, req.body.datos);
+    res.status(201).json(resultado);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo agregar el material." });
   }
 });
 

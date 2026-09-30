@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "./Navbar.jsx";
 
 export default function App() {
   const navigate = useNavigate();
-  const [codigo, setCodigo] = useState("");
   const [columnas, setColumnas] = useState([]);
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState("");
@@ -28,50 +28,28 @@ export default function App() {
       style={{
         minHeight: "100vh",
         margin: 0,
-        padding: "32px 24px",
+        padding: 16,
         fontFamily: "Segoe UI, sans-serif",
         background: "#f4f6f8",
         color: "#111111",
       }}
     >
-      <h1 style={{ margin: "0 0 20px", fontSize: 24 }}>Inventario</h1>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          const buscado = codigo.trim();
-          if (!buscado) return;
-          navigate(`/${encodeURIComponent(buscado)}`);
+      <Navbar />
+      <a
+        href="/api/tabla/excel"
+        style={{
+          display: "inline-block",
+          marginBottom: 16,
+          padding: "8px 14px",
+          borderRadius: 6,
+          background: "#0f766e",
+          color: "#fff",
+          fontSize: 14,
+          textDecoration: "none",
         }}
-        style={{ display: "flex", gap: 8, marginBottom: 20 }}
       >
-        <input
-          value={codigo}
-          onChange={(event) => setCodigo(event.target.value)}
-          placeholder="Código de material"
-          aria-label="Código de material"
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #d0d5dd",
-            borderRadius: 6,
-            fontSize: 14,
-            minWidth: 220,
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: "8px 14px",
-            border: 0,
-            borderRadius: 6,
-            background: "#1d4ed8",
-            color: "#fff",
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          Buscar
-        </button>
-      </form>
+        Descargar planilla
+      </a>
       {cargando && <p>Cargando tabla...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}

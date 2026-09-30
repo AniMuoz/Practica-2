@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
 
 /**
  * Origen actual de la tabla. Cuando el Excel se reemplace por una base
@@ -189,4 +190,120 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
   return buscarMaterial(codigo);
 }
 
-module.exports = { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen };
+function agregarMaterial(clave, datos) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+  if (!datos || typeof datos !== "object") {
+    const error = new Error("No hay datos para guardar.");
+    error.status = 400;
+    throw error;
+  }
+
+  const codigoNuevo = String(datos.Codigo ?? "").trim();
+  if (!codigoNuevo) {
+    const error = new Error("El código no puede quedar vacío.");
+    error.status = 400;
+    throw error;
+  }
+  if (String(datos.Inventario ?? "").trim() !== "" && !/^-?\d+$/.test(String(datos.Inventario).trim())) {
+    const error = new Error("Inventario debe ser un número entero.");
+    error.status = 400;
+    throw error;
+  }
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const hoja = libro.Sheets[nombreHoja];
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  let columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  for (const extra of ["Rombo", "QR"]) {
+    if (!columnas.includes(extra)) columnas.push(extra);
+  }
+  matriz[0] = columnas;
+
+  const indiceCodigo = columnas.indexOf("Codigo");
+  if (indiceCodigo < 0) {
+    const error = new Error("La tabla no tiene la columna Codigo.");
+    error.status = 500;
+    throw error;
+  }
+  const duplicado = matriz.some(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === codigoNuevo
+  );
+  if (duplicado) {
+    const error = new Error("Ya existe un material con ese código.");
+    error.status = 400;
+    throw error;
+  }
+
+  const filaNueva = columnas.map((columna) => {
+    if (columna === "Codigo") return codigoNuevo;
+    if (columna === "Inventario") {
+      const valor = String(datos.Inventario ?? "").trim();
+      return valor === "" ? "" : Number(valor);
+    }
+    if (columna === "Rombo" || columna === "QR") return "";
+    return datos[columna] ?? "";
+  });
+  matriz.push(filaNueva);
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(matriz);
+  XLSX.writeFile(libro, archivo);
+  return buscarMaterial(codigoNuevo);
+}
+
+function columnaExcel(indice) {
+  let nombre = "";
+  let n = indice + 1;
+  while (n > 0) {
+    const resto = (n - 1) % 26;
+    nombre = String.fromCharCode(65 + resto) + nombre;
+    n = Math.floor((n - 1) / 26);
+  }
+  return nombre;
+}
+
+async function exportarTabla() {
+  const { columnas, filas } = leerTabla();
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Inventario");
+  hoja.addRow(columnas);
+  filas.forEach((fila) => {
+    hoja.addRow(columnas.map((columna) => fila[columna] ?? ""));
+  });
+
+  const encabezado = hoja.getRow(1);
+  encabezado.font = { bold: true };
+  encabezado.eachCell((celda) => {
+    celda.font = { bold: true };
+    celda.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFA9E5E5" },
+    };
+  });
+
+  if (columnas.length > 0) {
+    const ultima = columnaExcel(columnas.length - 1);
+    const ultimaFila = Math.max(filas.length + 1, 1);
+    hoja.autoFilter = `A1:${ultima}${ultimaFila}`;
+    columnas.forEach((columna, indice) => {
+      hoja.getColumn(indice + 1).width = Math.max(String(columna).length + 2, 14);
+    });
+  }
+
+  return libro.xlsx.writeBuffer();
+}
+
+module.exports = {
+  leerTabla,
+  buscarMaterial,
+  actualizarMaterial,
+  actualizarDatos,
+  guardarImagen,
+  exportarTabla,
+  agregarMaterial,
+};
