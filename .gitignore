@@ -3,6 +3,7 @@ private/*
 !private/informes/.gitignore
 
 *.xlsx
+*zip
 
 node_modules/
 
