@@ -739,6 +739,357 @@ function columnaExcel(indice) {
   return nombre;
 }
 
+function stockEnBodega() {
+  const { filas } = leerTabla();
+  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Libre utilización"];
+  const resultado = filas
+    .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
+    .map((fila) => [fila.Codigo ?? "", fila.Descripcion ?? "", valorStock(fila.Stock) ?? ""]);
+  return { columnas, filas: resultado };
+}
+
+async function exportarStockBodega() {
+  const { columnas, filas } = stockEnBodega();
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("M501");
+  hoja.getColumn(1).width = 20;
+  hoja.getColumn(2).width = 52;
+  hoja.getColumn(3).width = 20;
+
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+
+  hoja.getCell("A1").value = "Almacen";
+  hoja.getCell("B1").value = "M501";
+  ["A1", "B1"].forEach((ref) => {
+    const celda = hoja.getCell(ref);
+    celda.font = { bold: true, size: 12 };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 1);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 1);
+      celda.value = valor ?? "";
+      celda.border = borde;
+    });
+    const libre = hoja.getCell(numero, 3);
+    const valor = libre.value;
+    let color = "FF73C883";
+    if (valor === 0 || valor === "0") color = "FFD3D3D3";
+    else if (valor === "          ") color = "FFF9E37C";
+    libre.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+  });
+
+  const ultima = Math.max(filas.length + 3, 3);
+  hoja.autoFilter = `A3:C${ultima}`;
+  return libro.xlsx.writeBuffer();
+}
+
+function valorStock(valor) {
+  const texto = String(valor ?? "").trim();
+  if (texto === "") return null;
+  const numero = Number(texto);
+  if (Number.isFinite(numero) && String(numero) === texto) return numero;
+  return valor;
+}
+
+function filasConBodegas() {
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const { matriz } = leerMatriz(libro);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  return sinFilasVacias(matriz).slice(1).map((fila) => {
+    const registro = {};
+    columnas.forEach((columna, indice) => {
+      registro[columna] = fila[indice] ?? "";
+    });
+    return registro;
+  });
+}
+
+function stockRegional() {
+  const filas = filasConBodegas();
+  const columnas = ["Material", "Descripcion del producto", "M501", "M502", "M503", "M504", "M505", "Total"];
+  const resultado = filas
+    .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
+    .map((fila) => {
+      const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
+      const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
+      return [fila.Codigo ?? "", fila.Descripcion ?? "", ...cantidades, total];
+    });
+  return { columnas, filas: resultado };
+}
+
+async function exportarStockRegional() {
+  const { columnas, filas } = stockRegional();
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Stock regional");
+  hoja.getColumn(1).width = 20;
+  hoja.getColumn(2).width = 52;
+  for (let indice = 3; indice <= 8; indice += 1) hoja.getColumn(indice).width = 15;
+
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+
+  const titulo = hoja.getCell("A1");
+  titulo.value = "Stock por bodega";
+  titulo.font = { bold: true };
+  titulo.fill = encabezado;
+  titulo.border = borde;
+
+  columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 1);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 1);
+      celda.value = valor ?? "";
+      celda.border = borde;
+      if (columna < 2) return;
+      if (columna === 7) celda.font = { bold: true };
+      let color = "FF73C883";
+      if (valor == null || valor === "" || valor === "          ") color = "FFF9E37C";
+      else if (valor === 0 || valor === "0") color = "FFD3D3D3";
+      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+    });
+  });
+
+  const ultima = Math.max(filas.length + 3, 3);
+  hoja.autoFilter = `A3:H${ultima}`;
+  return libro.xlsx.writeBuffer();
+}
+
+function claveUbicacion(ubicacion) {
+  const ub = String(ubicacion ?? "").trim();
+  if (!ub) return [1, 0];
+  if (ub.length >= 2 && /^\d{2}/.test(ub.slice(0, 2))) return [0, Number(ub.slice(0, 2))];
+  return [0, 999];
+}
+
+function planillaInventario() {
+  const { filas } = leerTabla();
+  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"];
+  const resultado = filas
+    .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
+    .map((fila) => [
+      fila.Codigo ?? "",
+      fila.Descripcion ?? "",
+      fila["Ubicación"] ?? "",
+      fila["Sub-ubicación"] ?? "",
+      valorStock(fila.Stock) ?? "",
+      "",
+    ])
+    .sort((a, b) => {
+      const [grupoA, numeroA] = claveUbicacion(a[2]);
+      const [grupoB, numeroB] = claveUbicacion(b[2]);
+      return grupoA - grupoB || numeroA - numeroB;
+    });
+  return { columnas, filas: resultado };
+}
+
+async function exportarPlanillaInventario() {
+  const { columnas, filas } = planillaInventario();
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Inventario");
+  hoja.getColumn(1).width = 20;
+  hoja.getColumn(2).width = 52;
+  hoja.getColumn(3).width = 20;
+  hoja.getColumn(4).width = 15;
+  hoja.getColumn(5).width = 15;
+  hoja.getColumn(6).width = 25;
+
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+  const vacio = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF9E37C" },
+  };
+
+  ["A1", "B1"].forEach((ref) => {
+    const celda = hoja.getCell(ref);
+    celda.font = { bold: true, size: 12 };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+  hoja.getCell("A1").value = "Almacen";
+  hoja.getCell("B1").value = "M501";
+
+  columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 1);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 1);
+      celda.value = valor ?? "";
+      celda.border = borde;
+      if ((columna === 2 || columna === 3) && String(valor ?? "").trim() === "") celda.fill = vacio;
+    });
+  });
+
+  const ultima = Math.max(filas.length + 3, 3);
+  hoja.autoFilter = `A3:F${ultima}`;
+  return libro.xlsx.writeBuffer();
+}
+
+function stockDetallado() {
+  const filas = filasConBodegas();
+  const columnas = [
+    "Ubicación",
+    "Codigo",
+    "Descripción",
+    "M501",
+    "Precio x Unidad",
+    "Clasificación",
+    "M502",
+    "M503",
+    "M504",
+    "M505",
+    "Total",
+    "Cons.Prom.Mensual",
+    "STOCK CRITICO",
+    "Stock Max",
+    "INDICADOR",
+    "Cambio de ubicación",
+  ];
+  const resultado = filas
+    .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
+    .map((fila) => {
+      const ubicacion = String(fila["Ubicación"] ?? "").trim();
+      const precioTexto = String(fila.Precio ?? "").trim();
+      const precio = precioTexto === "" ? "Sin precio" : `$${precioTexto}`;
+      const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
+      const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
+      return [
+        ubicacion === "" || ubicacion === "          " ? "" : fila["Ubicación"],
+        fila.Codigo ?? "",
+        fila.Descripcion ?? "",
+        cantidades[0],
+        precio,
+        "",
+        cantidades[1],
+        cantidades[2],
+        cantidades[3],
+        cantidades[4],
+        total,
+        "",
+        fila["Stock critico"] ?? "",
+        "",
+        "",
+        "",
+      ];
+    });
+  return { columnas, filas: resultado };
+}
+
+function colorStockDetallado(valor) {
+  if (valor === 0 || valor === "0") return "FFD3D3D3";
+  if (valor == null || valor === "" || valor === "          " || valor === "Sin precio") return "FFF9E37C";
+  return "FF73C883";
+}
+
+async function exportarStockDetallado() {
+  const { columnas, filas } = stockDetallado();
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Stock detallado");
+  const anchos = [15, 10, 52, 8, 15, 30, 8, 8, 8, 8, 10, 18, 15, 15, 15, 18];
+  anchos.forEach((ancho, indice) => {
+    hoja.getColumn(indice + 1).width = ancho;
+  });
+
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+  const titulo = hoja.getCell("A1");
+  titulo.value = "Stock detallado";
+  titulo.font = { bold: true };
+  titulo.fill = encabezado;
+  titulo.border = borde;
+
+  const coloreadas = new Set([0, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 1);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 1);
+      celda.value = valor ?? "";
+      celda.border = borde;
+      if (columna === 10) celda.font = { bold: true };
+      if (!coloreadas.has(columna)) return;
+      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorStockDetallado(valor) } };
+    });
+  });
+
+  const ultima = Math.max(filas.length + 3, 3);
+  hoja.autoFilter = `A3:P${ultima}`;
+  return libro.xlsx.writeBuffer();
+}
+
 async function exportarTabla() {
   const { columnas, filas } = leerTabla();
   const libro = new ExcelJS.Workbook();
@@ -784,4 +1135,12 @@ module.exports = {
   importarPrecios,
   importarUbicaciones,
   importarDosColumnas,
+  stockEnBodega,
+  exportarStockBodega,
+  stockRegional,
+  exportarStockRegional,
+  planillaInventario,
+  exportarPlanillaInventario,
+  stockDetallado,
+  exportarStockDetallado,
 };

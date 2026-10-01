@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -54,6 +54,82 @@ app.get("/api/tabla/excel", async (_req, res) => {
     res.send(Buffer.from(buffer));
   } catch (error) {
     res.status(500).json({ error: "No se pudo generar la planilla." });
+  }
+});
+
+app.get("/api/bodega", (_req, res) => {
+  try {
+    res.json(stockEnBodega());
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer el stock de bodega." });
+  }
+});
+
+app.get("/api/bodega/excel", async (_req, res) => {
+  try {
+    const buffer = await exportarStockBodega();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20M501.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
+  }
+});
+
+app.get("/api/regional", (_req, res) => {
+  try {
+    res.json(stockRegional());
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer el stock regional." });
+  }
+});
+
+app.get("/api/regional/excel", async (_req, res) => {
+  try {
+    const buffer = await exportarStockRegional();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo generar la planilla regional." });
+  }
+});
+
+app.get("/api/inventario", (_req, res) => {
+  try {
+    res.json(planillaInventario());
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer la planilla de inventario." });
+  }
+});
+
+app.get("/api/inventario/excel", async (_req, res) => {
+  try {
+    const buffer = await exportarPlanillaInventario();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo generar la planilla de inventario." });
+  }
+});
+
+app.get("/api/stock-detallado", (_req, res) => {
+  try {
+    res.json(stockDetallado());
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer el stock detallado." });
+  }
+});
+
+app.get("/api/stock-detallado/excel", async (_req, res) => {
+  try {
+    const buffer = await exportarStockDetallado();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=Prueba_de_stock_detallado.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo generar el stock detallado." });
   }
 });
 
