@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -137,6 +137,28 @@ app.get("/api/inventario/excel", async (req, res) => {
     res.send(Buffer.from(buffer));
   } catch (error) {
     res.status(500).json({ error: "No se pudo generar la planilla de inventario." });
+  }
+});
+
+app.get("/api/inventario-bodega", (_req, res) => {
+  try {
+    const { bodegas } = planillaInventarioPorBodega();
+    res.json({ bodegas });
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer el inventario por bodega." });
+  }
+});
+
+app.get("/api/inventario-bodega/excel", async (req, res) => {
+  try {
+    const codigo = String(req.query.bodega ?? "").trim();
+    const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores));
+    const nombre = `PLANILLA DE INVENTARIO ${codigo}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo generar la planilla de la bodega." });
   }
 });
 

@@ -21,6 +21,21 @@ export default function App() {
   const [limpiando, setLimpiando] = useState(false);
   const tamano = 100;
 
+  function colorInventario(columna, fila) {
+    if (columna !== "Inventario" && columna !== "Comentario") return undefined;
+    if (String(fila.Comentario ?? "").trim() !== "") return "#EFA94A";
+    const inventario = String(fila.Inventario ?? "").trim();
+    if (inventario === "") return undefined;
+    const stock = String(fila.Stock ?? "").trim();
+    const iguales =
+      stock !== "" &&
+      inventario !== "" &&
+      Number(stock) === Number(inventario) &&
+      Number.isFinite(Number(stock)) &&
+      Number.isFinite(Number(inventario));
+    return iguales ? "#5DBB63" : "#FF0000";
+  }
+
   const bodegas = useMemo(() => {
     const valores = new Set(
       filas
@@ -407,6 +422,7 @@ export default function App() {
                         padding: "8px 12px",
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
+                        background: colores ? colorInventario(columna, fila) : undefined,
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}

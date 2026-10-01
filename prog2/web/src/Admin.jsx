@@ -9,7 +9,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { colores, oscuro } = useColoresPlanilla();
   const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
-  const excel = (ruta) => (colores ? ruta : `${ruta}?colores=0`);
+  const excel = (ruta) => (colores ? ruta : `${ruta}${ruta.includes("?") ? "&" : "?"}colores=0`);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -36,6 +36,10 @@ export default function Admin() {
   const [inventario, setInventario] = useState({ columnas: [], filas: [] });
   const [cargandoInventario, setCargandoInventario] = useState(false);
   const [avisoInventario, setAvisoInventario] = useState("");
+  const [mostrarInventarioBodega, setMostrarInventarioBodega] = useState(false);
+  const [bodegasInventario, setBodegasInventario] = useState([]);
+  const [cargandoInventarioBodega, setCargandoInventarioBodega] = useState(false);
+  const [avisoInventarioBodega, setAvisoInventarioBodega] = useState("");
   const [mostrarDetallado, setMostrarDetallado] = useState(false);
   const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
@@ -112,6 +116,7 @@ export default function Admin() {
     if (!ok.has("bodega")) setMostrarBodega(false);
     if (!ok.has("regional")) setMostrarRegional(false);
     if (!ok.has("inventario")) setMostrarInventario(false);
+    if (!ok.has("inventarioBodega")) setMostrarInventarioBodega(false);
     if (!ok.has("detallado")) setMostrarDetallado(false);
     if (!ok.has("reserva")) setMostrarReserva(false);
     if (!ok.has("ventas")) setMostrarVentas(false);
@@ -207,6 +212,7 @@ export default function Admin() {
             "Stock en bodega",
             "Stock regional",
             "Planilla de inventario",
+            "Inventario por bodega",
             "Stock detallado",
             "Revisar stock de reserva",
             "Planilla de ventas",
@@ -218,6 +224,7 @@ export default function Admin() {
               (nombre === "Stock en bodega" && mostrarBodega) ||
               (nombre === "Stock regional" && mostrarRegional) ||
               (nombre === "Planilla de inventario" && mostrarInventario) ||
+              (nombre === "Inventario por bodega" && mostrarInventarioBodega) ||
               (nombre === "Stock detallado" && mostrarDetallado) ||
               (nombre === "Revisar stock de reserva" && mostrarReserva) ||
               (nombre === "Editar contratistas" && mostrarContratistas) ||
@@ -260,6 +267,23 @@ export default function Admin() {
                       cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
                     }
                     setMostrarInventario(abrir);
+                  }
+                  if (nombre === "Inventario por bodega") {
+                    const abrir = !mostrarInventarioBodega;
+                    if (abrir) {
+                      cerrarPaneles(["inventarioBodega"]);
+                      setCargandoInventarioBodega(true);
+                      setAvisoInventarioBodega("");
+                      fetch("/api/inventario-bodega", { cache: "no-store" })
+                        .then(async (res) => {
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
+                          setBodegasInventario(data.bodegas || []);
+                        })
+                        .catch((err) => setAvisoInventarioBodega(err.message))
+                        .finally(() => setCargandoInventarioBodega(false));
+                    }
+                    setMostrarInventarioBodega(abrir);
                   }
                   if (nombre === "Stock detallado") {
                     const abrir = !mostrarDetallado;
@@ -646,6 +670,43 @@ export default function Admin() {
                 </tbody>
               </table>
               {inventario.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay materiales para inventariar.</p>}
+            </div>
+          )}
+        </section>
+      )}
+      {autorizado && mostrarInventarioBodega && (
+        <section
+          style={{
+            background: "var(--superficie)",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Inventario por bodega</h2>
+          {cargandoInventarioBodega && <p style={{ margin: 0 }}>Cargando bodegas...</p>}
+          {avisoInventarioBodega && <p style={{ margin: 0 }}>{avisoInventarioBodega}</p>}
+          {!cargandoInventarioBodega && !avisoInventarioBodega && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {bodegasInventario.map((bodegaItem) => (
+                <div key={bodegaItem.codigo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <span>Bodega {bodegaItem.codigo} ({bodegaItem.cantidad} materiales)</span>
+                  <a
+                    href={excel(`/api/inventario-bodega/excel?bodega=${encodeURIComponent(bodegaItem.codigo)}`)}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 6,
+                      background: "var(--boton)",
+                      color: "var(--sobre)",
+                      fontSize: 14,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Descargar planilla
+                  </a>
+                </div>
+              ))}
+              {bodegasInventario.length === 0 && <p style={{ margin: 0 }}>No hay bodegas para inventariar.</p>}
             </div>
           )}
         </section>

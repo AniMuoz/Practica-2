@@ -452,10 +452,14 @@ export default function Detalle() {
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, flex: 1, minHeight: 0 }}>
-              Comentario
+              <span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                Comentario
+                <span>{comentario.length}/50</span>
+              </span>
               <textarea
                 value={comentario}
-                onChange={(event) => setComentario(event.target.value)}
+                maxLength={50}
+                onChange={(event) => setComentario(event.target.value.slice(0, 50))}
                 style={{
                   flex: 1,
                   minHeight: movil ? 140 : 0,
@@ -470,7 +474,7 @@ export default function Detalle() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button
                 type="submit"
-                disabled={guardando || !/^-?\d+$/.test(inventario)}
+                disabled={guardando}
                 style={{
                   padding: "8px 14px",
                   border: 0,

@@ -113,7 +113,14 @@ function buscarMaterial(codigo) {
 }
 
 function actualizarMaterial(codigo, { inventario, comentario }) {
-  if (!/^-?\d+$/.test(String(inventario).trim())) {
+  const textoInventario = String(inventario ?? "").trim();
+  const textoComentario = String(comentario ?? "");
+  if (textoComentario.length > 50) {
+    const error = new Error("El comentario admite como máximo 50 caracteres.");
+    error.status = 400;
+    throw error;
+  }
+  if (textoInventario !== "" && !/^-?\d+$/.test(textoInventario)) {
     const error = new Error("Inventario debe ser un número entero.");
     error.status = 400;
     throw error;
@@ -140,8 +147,10 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
   );
   if (indiceFila < 0) return null;
 
-  matriz[indiceFila][indiceInventario] = Number(String(inventario).trim());
-  matriz[indiceFila][indiceComentario] = String(comentario ?? "");
+  if (textoInventario !== "") {
+    matriz[indiceFila][indiceInventario] = Number(textoInventario);
+  }
+  matriz[indiceFila][indiceComentario] = textoComentario;
   libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
   XLSX.writeFile(libro, archivo);
 
@@ -954,8 +963,30 @@ function planillaInventario() {
   return { columnas, filas: resultado };
 }
 
-async function exportarPlanillaInventario(colores = true) {
+function codigoBodega(ubicacion) {
+  const ub = String(ubicacion ?? "").trim();
+  if (/^\d{2}/.test(ub)) return ub.slice(0, 2);
+  return "Sin bodega";
+}
+
+function planillaInventarioPorBodega() {
   const { columnas, filas } = planillaInventario();
+  const grupos = new Map();
+  filas.forEach((fila) => {
+    const codigo = codigoBodega(fila[2]);
+    if (!grupos.has(codigo)) grupos.set(codigo, []);
+    grupos.get(codigo).push(fila);
+  });
+  const bodegas = [...grupos.keys()].sort((a, b) => {
+    const numeroA = /^\d+$/.test(a) ? Number(a) : 9999;
+    const numeroB = /^\d+$/.test(b) ? Number(b) : 9999;
+    return numeroA - numeroB || a.localeCompare(b);
+  }).map((codigo) => ({ codigo, cantidad: grupos.get(codigo).length }));
+  return { columnas, grupos, bodegas };
+}
+
+async function armarPlanillaInventario(filas, almacen, colores = true) {
+  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"];
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
   hoja.getColumn(1).width = 20;
@@ -989,7 +1020,7 @@ async function exportarPlanillaInventario(colores = true) {
     celda.border = borde;
   });
   hoja.getCell("A1").value = "Almacen";
-  hoja.getCell("B1").value = "M501";
+  hoja.getCell("B1").value = almacen;
 
   columnas.forEach((nombre, indice) => {
     const celda = hoja.getCell(3, indice + 1);
@@ -1012,6 +1043,22 @@ async function exportarPlanillaInventario(colores = true) {
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:F${ultima}`;
   return libro.xlsx.writeBuffer();
+}
+
+async function exportarPlanillaInventario(colores = true) {
+  const { filas } = planillaInventario();
+  return armarPlanillaInventario(filas, "M501", colores);
+}
+
+async function exportarInventarioBodega(codigo, colores = true) {
+  const { grupos } = planillaInventarioPorBodega();
+  const filas = grupos.get(String(codigo));
+  if (!filas) {
+    const error = new Error("No hay materiales para esa bodega.");
+    error.status = 404;
+    throw error;
+  }
+  return armarPlanillaInventario(filas, String(codigo), colores);
 }
 
 function stockDetallado() {
@@ -1123,24 +1170,57 @@ async function exportarStockDetallado(colores = true) {
 }
 
 async function exportarTabla(colores = true) {
-  const { columnas, filas } = leerTabla();
+  const tabla = leerTabla();
+  const columnas = tabla.columnas.filter((columna) => columna !== "Rombo" && columna !== "QR");
+  const filas = tabla.filas;
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
   hoja.addRow(columnas);
+  const indiceInventario = columnas.indexOf("Inventario");
+  const indiceComentario = columnas.indexOf("Comentario");
+  const hasta = indiceComentario >= 0 ? indiceComentario + 1 : columnas.length;
   filas.forEach((fila) => {
-    hoja.addRow(columnas.map((columna) => fila[columna] ?? ""));
+    const filaHoja = hoja.addRow(columnas.map((columna) => fila[columna] ?? ""));
+    if (String(fila.Codigo ?? "").trim() !== "") {
+      for (let columna = 1; columna <= hasta; columna += 1) {
+        filaHoja.getCell(columna).border = borde;
+      }
+    }
+    if (indiceInventario < 0 || indiceComentario < 0) return;
+    const comentario = String(fila.Comentario ?? "").trim();
+    const stock = String(fila.Stock ?? "").trim();
+    const inventario = String(fila.Inventario ?? "").trim();
+    if (comentario === "" && inventario === "") return;
+    const iguales =
+      stock !== "" &&
+      inventario !== "" &&
+      Number(stock) === Number(inventario) &&
+      Number.isFinite(Number(stock)) &&
+      Number.isFinite(Number(inventario));
+    const color = comentario !== "" ? "FFEFA94A" : iguales ? "FF5DBB63" : "FFFF0000";
+    const relleno = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+    pintar(filaHoja.getCell(indiceInventario + 1), relleno, colores);
+    pintar(filaHoja.getCell(indiceComentario + 1), relleno, colores);
   });
 
   const encabezado = hoja.getRow(1);
   encabezado.font = { bold: true };
-  encabezado.eachCell((celda) => {
+  for (let columna = 1; columna <= (indiceComentario >= 0 ? indiceComentario + 1 : columnas.length); columna += 1) {
+    const celda = encabezado.getCell(columna);
     celda.font = { bold: true };
+    celda.border = borde;
     pintar(celda, {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFA9E5E5" },
     }, colores);
-  });
+  }
 
   if (columnas.length > 0) {
     const ultima = columnaExcel(columnas.length - 1);
@@ -1563,7 +1643,9 @@ module.exports = {
   stockRegional,
   exportarStockRegional,
   planillaInventario,
+  planillaInventarioPorBodega,
   exportarPlanillaInventario,
+  exportarInventarioBodega,
   stockDetallado,
   exportarStockDetallado,
   armarReserva,
