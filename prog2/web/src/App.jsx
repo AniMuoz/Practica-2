@@ -25,7 +25,7 @@ export default function App() {
   }, [filas]);
 
   const visibles = useMemo(() => {
-    let lista = filas;
+    let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
     if (subUbicacion) {
       lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
     }
@@ -79,6 +79,7 @@ export default function App() {
       .finally(() => setCargando(false));
   }, []);
 
+  const columnasTabla = columnas.filter((columna) => columna !== "Rombo" && columna !== "QR");
   const alFinal = (pagina + 1) * tamano >= visibles.length;
   const rango =
     visibles.length === 0
@@ -304,7 +305,7 @@ export default function App() {
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
             <thead>
               <tr>
-                {columnas.map((columna) => (
+                {columnasTabla.map((columna) => (
                   <th
                     key={columna}
                     style={{
@@ -327,7 +328,7 @@ export default function App() {
                   onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}
                   style={{ cursor: "pointer" }}
                 >
-                  {columnas.map((columna) => (
+                  {columnasTabla.map((columna) => (
                     <td
                       key={columna}
                       style={{
@@ -346,7 +347,7 @@ export default function App() {
           {paginacion()}
         </div>
       )}
-      <div class="footer">
+      <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
     </main>

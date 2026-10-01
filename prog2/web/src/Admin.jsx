@@ -18,6 +18,8 @@ export default function Admin() {
   const [modoCarga, setModoCarga] = useState("completa");
   const [columnaCarga, setColumnaCarga] = useState("");
   const [columnasDestino, setColumnasDestino] = useState([]);
+  const [mostrarCarga, setMostrarCarga] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
   useEffect(() => {
     if (!autorizado) return;
@@ -93,6 +95,44 @@ export default function Admin() {
         </form>
       )}
       {autorizado && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          {[
+            "Añadir un dato",
+            "Carga de datos",
+            "Stock en bodega",
+            "Stock regional",
+            "Planilla de inventario",
+            "Revisar stock de reserva",
+            "Planilla de ventas",
+          ].map((nombre) => {
+            const activo =
+              (nombre === "Carga de datos" && mostrarCarga) ||
+              (nombre === "Añadir un dato" && mostrarFormulario);
+            return (
+              <button
+                key={nombre}
+                type="button"
+                onClick={() => {
+                  if (nombre === "Carga de datos") setMostrarCarga((actual) => !actual);
+                  if (nombre === "Añadir un dato") setMostrarFormulario((actual) => !actual);
+                }}
+                style={{
+                  padding: "8px 14px",
+                  border: activo ? "1px solid #1d4ed8" : "1px solid #d0d5dd",
+                  borderRadius: 6,
+                  background: activo ? "#1d4ed8" : "#fff",
+                  color: activo ? "#fff" : "#111827",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                {nombre}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {autorizado && mostrarCarga && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -184,7 +224,7 @@ export default function Admin() {
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
         </form>
       )}
-      {autorizado && (
+      {autorizado && mostrarFormulario && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -253,7 +293,7 @@ export default function Admin() {
           </div>
         </form>
       )}
-      <div class="footer">
+      <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
     </main>

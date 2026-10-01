@@ -7,6 +7,7 @@ export default function Detalle() {
   const navigate = useNavigate();
   const [columnas, setColumnas] = useState([]);
   const [fila, setFila] = useState(null);
+  const [bodegas, setBodegas] = useState([]);
   const [inventario, setInventario] = useState("");
   const [comentario, setComentario] = useState("");
   const [error, setError] = useState("");
@@ -43,6 +44,7 @@ export default function Detalle() {
       .then((data) => {
         setColumnas(data.columnas || []);
         setFila(data.fila);
+        setBodegas(data.bodegas || []);
         setInventario(data.fila.Inventario == null ? "" : String(data.fila.Inventario));
         setComentario(data.fila.Comentario == null ? "" : String(data.fila.Comentario));
       })
@@ -339,6 +341,12 @@ export default function Detalle() {
                 </button>
               </form>
             )}
+            {(String(fila.Stock ?? "").trim() === "" || Number(String(fila.Stock ?? "").trim()) === 0) && bodegas.length > 0 && (
+              <p style={{ margin: 0, fontSize: 14 }}>
+                Stock por bodega:{" "}
+                {bodegas.map((item) => `${item.bodega}: ${item.stock}`).join(" · ")}
+              </p>
+            )}
             <dl
               className="datos-material"
               style={{
@@ -538,7 +546,7 @@ export default function Detalle() {
           </div>
         </div>
       )}
-      <div class="footer">
+      <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
     </main>

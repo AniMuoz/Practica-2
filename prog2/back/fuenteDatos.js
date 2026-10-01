@@ -3,6 +3,34 @@ const path = require("path");
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
 
+const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
+const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
+const COLUMNAS_OCULTAS = new Set(BODEGAS_EXTRA);
+const COLUMNAS_EXTRA = ["Rombo", "QR", ...BODEGAS_EXTRA];
+const COLUMNA_STOCK_CRITICO = "Stock critico";
+
+function conStockCritico(matriz) {
+  if (matriz.length === 0) return matriz;
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  if (columnas.includes(COLUMNA_STOCK_CRITICO)) return matriz;
+  const indiceRombo = columnas.indexOf("Rombo");
+  const indice = indiceRombo >= 0 ? indiceRombo : columnas.length;
+  return matriz.map((fila, numero) => {
+    const copia = [...(fila || [])];
+    while (copia.length < columnas.length) copia.push("");
+    copia.splice(indice, 0, numero === 0 ? COLUMNA_STOCK_CRITICO : "");
+    return copia;
+  });
+}
+
+function leerMatriz(libro) {
+  const nombreHoja = libro.SheetNames[0];
+  const matriz = conStockCritico(
+    XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })
+  );
+  return { nombreHoja, matriz };
+}
+
 /**
  * Origen actual de la tabla. Cuando el Excel se reemplace por una base
  * de datos, solo hay que cambiar esta función: el resto de la API sigue
@@ -20,8 +48,16 @@ function sinFilasVacias(matriz) {
 function leerTabla() {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
-  const hoja = libro.Sheets[libro.SheetNames[0]];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const { nombreHoja, matriz } = leerMatriz(libro);
+  const encabezadoGuardado = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })[0] || [];
+  if (!encabezadoGuardado.map((nombre) => String(nombre)).includes(COLUMNA_STOCK_CRITICO)) {
+    libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
+    try {
+      XLSX.writeFile(libro, archivo);
+    } catch {
+      // Si el Excel está abierto, la columna igual se usa en memoria.
+    }
+  }
 
   if (matriz.length === 0) {
     return { columnas: [], filas: [] };
@@ -31,26 +67,49 @@ function leerTabla() {
     String(nombre || `Columna ${indice + 1}`)
   );
 
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
 
+  const visibles = columnas.filter((columna) => !COLUMNAS_OCULTAS.has(columna));
+
   const filas = sinFilasVacias(matriz).slice(1).map((fila) => {
     const registro = {};
-    columnas.forEach((columna, indice) => {
-      registro[columna] = fila[indice] ?? "";
+    visibles.forEach((columna) => {
+      registro[columna] = fila[columnas.indexOf(columna)] ?? "";
     });
     return registro;
   });
 
-  return { columnas, filas };
+  return { columnas: visibles, filas };
+}
+
+function stockPorBodega(codigo) {
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const { matriz } = leerMatriz(libro);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const fila = matriz.find(
+    (item, indice) => indice > 0 && String(item[indiceCodigo]) === String(codigo)
+  );
+  if (!fila) return [];
+
+  const bodegas = [["M501", columnas.indexOf("Stock")], ...BODEGAS_EXTRA.map((nombre) => [nombre, columnas.indexOf(nombre)])];
+  return bodegas
+    .filter(([, indice]) => indice >= 0 && String(fila[indice] ?? "").trim() !== "")
+    .map(([bodega, indice]) => ({ bodega, stock: fila[indice] }));
 }
 
 function buscarMaterial(codigo) {
   const { columnas, filas } = leerTabla();
   const buscado = String(codigo);
   const fila = filas.find((item) => String(item.Codigo) === buscado) || null;
-  return { columnas, fila };
+  const textoStock = fila == null ? "" : String(fila.Stock ?? "").trim();
+  const stockCero = textoStock !== "" && Number(textoStock) === 0;
+  const sinStock = fila != null && (textoStock === "" || stockCero);
+  const bodegas = sinStock ? stockPorBodega(buscado) : [];
+  return { columnas, fila, bodegas: stockCero ? bodegas.filter((item) => item.bodega !== "M501") : bodegas };
 }
 
 function actualizarMaterial(codigo, { inventario, comentario }) {
@@ -64,7 +123,7 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
   const hoja = libro.Sheets[nombreHoja];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   const indiceInventario = columnas.indexOf("Inventario");
@@ -108,7 +167,7 @@ function actualizarDatos(codigo, clave, datos, reemplazar) {
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
   const hoja = libro.Sheets[nombreHoja];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   if (indiceCodigo < 0) {
@@ -171,7 +230,7 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
   const hoja = libro.Sheets[nombreHoja];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   if (indiceCodigo < 0) {
@@ -234,9 +293,9 @@ function agregarMaterial(clave, datos) {
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
   const hoja = libro.Sheets[nombreHoja];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;
@@ -288,9 +347,9 @@ function importarPlanilla(clave, buffer) {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
-  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;
@@ -375,9 +434,9 @@ function importarSap(clave, buffer) {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
-  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;
@@ -402,7 +461,7 @@ function importarSap(clave, buffer) {
     const planta = String(fila[2] ?? "").trim();
     const stock = fila[3] ?? "";
     if (!codigo && planta === "" && String(descripcion).trim() === "" && String(stock).trim() === "") return;
-    if (planta !== "M501") {
+    if (!BODEGAS_EXPORT.includes(planta)) {
       omitidos += 1;
       return;
     }
@@ -412,12 +471,13 @@ function importarSap(clave, buffer) {
       throw error;
     }
 
+    const indiceBodega = planta === "M501" ? indiceStock : columnas.indexOf(planta);
     const indiceExistente = matriz.findIndex(
       (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigo
     );
     if (indiceExistente >= 0) {
-      matriz[indiceExistente][indiceDescripcion] = descripcion;
-      matriz[indiceExistente][indiceStock] = stock;
+      if (planta === "M501") matriz[indiceExistente][indiceDescripcion] = descripcion;
+      matriz[indiceExistente][indiceBodega] = stock;
       actualizados += 1;
       return;
     }
@@ -425,7 +485,7 @@ function importarSap(clave, buffer) {
     const filaNueva = columnas.map(() => "");
     filaNueva[indiceCodigo] = codigo;
     filaNueva[indiceDescripcion] = descripcion;
-    filaNueva[indiceStock] = stock;
+    filaNueva[indiceBodega] = stock;
     matriz.push(filaNueva);
     agregados += 1;
   });
@@ -454,9 +514,9 @@ function importarPrecios(clave, buffer) {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
-  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;
@@ -527,9 +587,9 @@ function importarUbicaciones(clave, buffer) {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
-  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;
@@ -618,9 +678,9 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];
-  const matriz = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" });
+  const { matriz } = leerMatriz(libro);
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  for (const extra of ["Rombo", "QR"]) {
+  for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
   }
   matriz[0] = columnas;

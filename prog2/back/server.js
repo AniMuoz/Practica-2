@@ -105,12 +105,12 @@ app.post("/api/material", (req, res) => {
 
 app.get("/api/material/:codigo", (req, res) => {
   try {
-    const { columnas, fila } = buscarMaterial(req.params.codigo);
+    const { columnas, fila, bodegas } = buscarMaterial(req.params.codigo);
     if (!fila) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
     }
-    res.json({ columnas, fila });
+    res.json({ columnas, fila, bodegas });
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer el material." });
   }
