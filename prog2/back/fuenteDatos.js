@@ -148,6 +148,34 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
   return buscarMaterial(codigo);
 }
 
+function limpiarInventarioComentarios() {
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const { matriz } = leerMatriz(libro);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceInventario = columnas.indexOf("Inventario");
+  const indiceComentario = columnas.indexOf("Comentario");
+
+  if (indiceInventario < 0 || indiceComentario < 0) {
+    const error = new Error("La tabla no tiene las columnas esperadas.");
+    error.status = 500;
+    throw error;
+  }
+
+  for (let indice = 1; indice < matriz.length; indice += 1) {
+    const fila = matriz[indice] || [];
+    while (fila.length <= Math.max(indiceInventario, indiceComentario)) fila.push("");
+    fila[indiceInventario] = "";
+    fila[indiceComentario] = "";
+    matriz[indice] = fila;
+  }
+
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
+  XLSX.writeFile(libro, archivo);
+  return leerTabla();
+}
+
 const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR"]);
 const CLAVE_DATOS = "Berfre2026";
 
@@ -748,7 +776,11 @@ function stockEnBodega() {
   return { columnas, filas: resultado };
 }
 
-async function exportarStockBodega() {
+function pintar(celda, estilo, colores) {
+  if (colores) celda.fill = estilo;
+}
+
+async function exportarStockBodega(colores = true) {
   const { columnas, filas } = stockEnBodega();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("M501");
@@ -773,7 +805,7 @@ async function exportarStockBodega() {
   ["A1", "B1"].forEach((ref) => {
     const celda = hoja.getCell(ref);
     celda.font = { bold: true, size: 12 };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -781,7 +813,7 @@ async function exportarStockBodega() {
     const celda = hoja.getCell(3, indice + 1);
     celda.value = nombre;
     celda.font = { bold: true };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -797,7 +829,7 @@ async function exportarStockBodega() {
     let color = "FF73C883";
     if (valor === 0 || valor === "0") color = "FFD3D3D3";
     else if (valor === "          ") color = "FFF9E37C";
-    libre.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+    pintar(libre, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
   });
 
   const ultima = Math.max(filas.length + 3, 3);
@@ -840,7 +872,7 @@ function stockRegional() {
   return { columnas, filas: resultado };
 }
 
-async function exportarStockRegional() {
+async function exportarStockRegional(colores = true) {
   const { columnas, filas } = stockRegional();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock regional");
@@ -863,14 +895,14 @@ async function exportarStockRegional() {
   const titulo = hoja.getCell("A1");
   titulo.value = "Stock por bodega";
   titulo.font = { bold: true };
-  titulo.fill = encabezado;
+  pintar(titulo, encabezado, colores);
   titulo.border = borde;
 
   columnas.forEach((nombre, indice) => {
     const celda = hoja.getCell(3, indice + 1);
     celda.value = nombre;
     celda.font = { bold: true };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -885,7 +917,7 @@ async function exportarStockRegional() {
       let color = "FF73C883";
       if (valor == null || valor === "" || valor === "          ") color = "FFF9E37C";
       else if (valor === 0 || valor === "0") color = "FFD3D3D3";
-      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
     });
   });
 
@@ -922,7 +954,7 @@ function planillaInventario() {
   return { columnas, filas: resultado };
 }
 
-async function exportarPlanillaInventario() {
+async function exportarPlanillaInventario(colores = true) {
   const { columnas, filas } = planillaInventario();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
@@ -953,7 +985,7 @@ async function exportarPlanillaInventario() {
   ["A1", "B1"].forEach((ref) => {
     const celda = hoja.getCell(ref);
     celda.font = { bold: true, size: 12 };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
   hoja.getCell("A1").value = "Almacen";
@@ -963,7 +995,7 @@ async function exportarPlanillaInventario() {
     const celda = hoja.getCell(3, indice + 1);
     celda.value = nombre;
     celda.font = { bold: true };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -973,7 +1005,7 @@ async function exportarPlanillaInventario() {
       const celda = hoja.getCell(numero, columna + 1);
       celda.value = valor ?? "";
       celda.border = borde;
-      if ((columna === 2 || columna === 3) && String(valor ?? "").trim() === "") celda.fill = vacio;
+      if ((columna === 2 || columna === 3) && String(valor ?? "").trim() === "") pintar(celda, vacio, colores);
     });
   });
 
@@ -1038,7 +1070,7 @@ function colorStockDetallado(valor) {
   return "FF73C883";
 }
 
-async function exportarStockDetallado() {
+async function exportarStockDetallado(colores = true) {
   const { columnas, filas } = stockDetallado();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock detallado");
@@ -1061,7 +1093,7 @@ async function exportarStockDetallado() {
   const titulo = hoja.getCell("A1");
   titulo.value = "Stock detallado";
   titulo.font = { bold: true };
-  titulo.fill = encabezado;
+  pintar(titulo, encabezado, colores);
   titulo.border = borde;
 
   const coloreadas = new Set([0, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -1069,7 +1101,7 @@ async function exportarStockDetallado() {
     const celda = hoja.getCell(3, indice + 1);
     celda.value = nombre;
     celda.font = { bold: true };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -1081,7 +1113,7 @@ async function exportarStockDetallado() {
       celda.border = borde;
       if (columna === 10) celda.font = { bold: true };
       if (!coloreadas.has(columna)) return;
-      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorStockDetallado(valor) } };
+      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: colorStockDetallado(valor) } }, colores);
     });
   });
 
@@ -1090,7 +1122,7 @@ async function exportarStockDetallado() {
   return libro.xlsx.writeBuffer();
 }
 
-async function exportarTabla() {
+async function exportarTabla(colores = true) {
   const { columnas, filas } = leerTabla();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
@@ -1103,11 +1135,11 @@ async function exportarTabla() {
   encabezado.font = { bold: true };
   encabezado.eachCell((celda) => {
     celda.font = { bold: true };
-    celda.fill = {
+    pintar(celda, {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFA9E5E5" },
-    };
+    }, colores);
   });
 
   if (columnas.length > 0) {
@@ -1232,7 +1264,7 @@ async function revisarReserva(buffer) {
   }
 }
 
-async function exportarRevisionReserva(buffer) {
+async function exportarRevisionReserva(buffer, colores = true) {
   const { columnas, filas } = await revisarReserva(buffer);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Reserva");
@@ -1255,14 +1287,14 @@ async function exportarRevisionReserva(buffer) {
   const titulo = hoja.getCell("A1");
   titulo.value = "Revisión Stock de Reserva";
   titulo.font = { bold: true, size: 12 };
-  titulo.fill = encabezado;
+  pintar(titulo, encabezado, colores);
   titulo.border = borde;
 
   columnas.forEach((nombre, indice) => {
     const celda = hoja.getCell(3, indice + 1);
     celda.value = nombre;
     celda.font = { bold: true };
-    celda.fill = encabezado;
+    pintar(celda, encabezado, colores);
     celda.border = borde;
   });
 
@@ -1274,7 +1306,7 @@ async function exportarRevisionReserva(buffer) {
       celda.border = borde;
       if (columna !== 7) return;
       const color = valor === "Disponible" ? "FF73C883" : "FFF9E37C";
-      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
     });
   });
 
@@ -1288,7 +1320,7 @@ function enteroCelda(valor) {
   return Number.isFinite(numero) ? Math.trunc(numero) : 0;
 }
 
-function escribirEncabezadoVentas(hoja, fila) {
+function escribirEncabezadoVentas(hoja, fila, colores) {
   const amarillo = [
     "Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505",
     "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD",
@@ -1300,14 +1332,14 @@ function escribirEncabezadoVentas(hoja, fila) {
   amarillo.forEach((nombre, indice) => {
     const celda = hoja.getCell(fila, indice + 1);
     celda.value = nombre;
-    celda.fill = relleno;
+    pintar(celda, relleno, colores);
   });
   gris.forEach((nombre, indice) => {
     hoja.getCell(fila, amarillo.length + 1 + indice).value = nombre;
   });
 }
 
-async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta }) {
+async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta, colores = true }) {
   const materiales = new Map();
   filasConBodegas().forEach((fila) => {
     materiales.set(String(fila.Codigo ?? "").trim(), fila);
@@ -1346,7 +1378,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     });
   } else {
     hoja = libro.addWorksheet("Ventas");
-    escribirEncabezadoVentas(hoja, 1);
+    escribirEncabezadoVentas(hoja, 1, colores);
   }
 
   let lastPos = 1;
@@ -1395,7 +1427,9 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       hoja.getCell(fila, 4).value = material["Ubicación"] ?? "";
     }
     hoja.getCell(fila, 5).value = m501;
-    hoja.getCell(fila, 5).font = { bold: true, color: { argb: m501 === 0 ? "FFFF0000" : "FF7CC8FF" } };
+    hoja.getCell(fila, 5).font = colores
+      ? { bold: true, color: { argb: m501 === 0 ? "FFFF0000" : "FF7CC8FF" } }
+      : { bold: true };
     hoja.getCell(fila, 6).value = material ? stock("M502") : 0;
     hoja.getCell(fila, 7).value = material ? stock("M503") : 0;
     hoja.getCell(fila, 8).value = material ? stock("M504") : 0;
@@ -1407,11 +1441,11 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     else if (material && m505 > m501) {
       hoja.getCell(fila, 4).value = "CONCON";
       for (let columna = 1; columna <= 36; columna += 1) {
-        hoja.getCell(fila, columna).font = { bold: true, color: { argb: "FFFF0000" } };
+        hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
     } else if (material && m505 === 0 && m501 === 0) {
       for (let columna = 1; columna <= 36; columna += 1) {
-        hoja.getCell(fila, columna).font = { bold: true, color: { argb: "FFFF0000" } };
+        hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
     }
     hoja.getCell(fila, 11).value = entregar;
@@ -1438,7 +1472,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     cont += 10;
   }
 
-  escribirEncabezadoVentas(hoja, lastPos + 1);
+  escribirEncabezadoVentas(hoja, lastPos + 1, colores);
   for (let columna = 1; columna <= 36; columna += 1) {
     const celda = hoja.getCell(lastPos + 1, columna);
     celda.border = borde;
@@ -1514,6 +1548,7 @@ module.exports = {
   leerTabla,
   buscarMaterial,
   actualizarMaterial,
+  limpiarInventarioComentarios,
   actualizarDatos,
   guardarImagen,
   exportarTabla,

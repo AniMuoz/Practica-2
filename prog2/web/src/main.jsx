@@ -4,8 +4,13 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Admin from "./Admin.jsx";
 import App from "./App.jsx";
+import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
 import Detalle from "./Detalle.jsx";
 import "./movil.css";
+
+if (localStorage.getItem("modoOscuro") === "1") {
+  document.documentElement.classList.add("oscuro");
+}
 
 const icono = document.createElement("link");
 icono.rel = "icon";
@@ -15,11 +20,13 @@ document.head.appendChild(icono);
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/:codigo" element={<Detalle />} />
-      </Routes>
+      <ColoresPlanillaProvider>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/:codigo" element={<Detalle />} />
+        </Routes>
+      </ColoresPlanillaProvider>
     </BrowserRouter>
   </StrictMode>
 );

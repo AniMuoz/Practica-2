@@ -141,8 +141,8 @@ export default function Detalle() {
         flexDirection: "column",
         overflow: movil ? "visible" : "hidden",
         fontFamily: "Segoe UI, sans-serif",
-        background: "#f4f6f8",
-        color: "#111111",
+        background: "var(--fondo)",
+        color: "var(--texto)",
       }}
     >
       <Navbar />
@@ -167,7 +167,7 @@ export default function Detalle() {
                 key={campo}
                 className="tarjeta-imagen"
                 style={{
-                  background: "#fff",
+                  background: "var(--superficie)",
                   borderRadius: 8,
                   padding: 12,
                   display: "grid",
@@ -181,9 +181,9 @@ export default function Detalle() {
                   style={{
                     width: 160,
                     height: 160,
-                    border: "1px solid #e6e8ec",
+                    border: "1px solid var(--borde-suave)",
                     borderRadius: 8,
-                    background: "#f8fafc",
+                    background: "var(--campo-suave)",
                     display: "grid",
                     placeItems: "center",
                     overflow: "hidden",
@@ -196,7 +196,7 @@ export default function Detalle() {
                       style={{ width: "100%", height: "100%", objectFit: "contain" }}
                     />
                   ) : (
-                    <span style={{ color: "#98a2b3", fontSize: 13 }}>Sin imagen</span>
+                    <span style={{ color: "var(--muted)", fontSize: 13 }}>Sin imagen</span>
                   )}
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
@@ -234,9 +234,9 @@ export default function Detalle() {
                           style={{
                             justifySelf: "start",
                             padding: "6px 10px",
-                            border: "1px solid #d0d5dd",
+                            border: "1px solid var(--borde)",
                             borderRadius: 6,
-                            background: "#fff",
+                            background: "var(--superficie)",
                             fontSize: 13,
                             fontWeight: 400,
                             cursor: "pointer",
@@ -266,7 +266,7 @@ export default function Detalle() {
         >
           <section
             style={{
-              background: "#fff",
+              background: "var(--superficie)",
               borderRadius: 8,
               padding: 12,
               display: "flex",
@@ -289,8 +289,8 @@ export default function Detalle() {
                   padding: "8px 14px",
                   border: 0,
                   borderRadius: 6,
-                  background: "#111827",
-                  color: "#fff",
+                  background: "var(--boton)",
+                  color: "var(--sobre)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}
@@ -323,7 +323,7 @@ export default function Detalle() {
                   autoFocus
                   placeholder="Contraseña"
                   onChange={(event) => setClave(event.target.value)}
-                  style={{ padding: "8px 12px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                  style={{ padding: "8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
                 />
                 <button
                   type="submit"
@@ -331,8 +331,8 @@ export default function Detalle() {
                     padding: "8px 14px",
                     border: 0,
                     borderRadius: 6,
-                    background: "#1d4ed8",
-                    color: "#fff",
+                    background: "var(--acento)",
+                    color: "var(--sobre)",
                     fontSize: 14,
                     cursor: "pointer",
                   }}
@@ -360,7 +360,7 @@ export default function Detalle() {
             >
               {soloLectura.map((columna) => (
                 <div key={columna} style={{ minWidth: 0 }}>
-                  <dt style={{ fontSize: 12, color: "#667085", marginBottom: 2 }}>{columna}</dt>
+                  <dt style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>{columna}</dt>
                   <dd style={{ margin: 0, fontSize: 15 }}>
                     {editando ? (
                       <input
@@ -372,7 +372,7 @@ export default function Detalle() {
                           width: "100%",
                           boxSizing: "border-box",
                           padding: "6px 8px",
-                          border: "1px solid #d0d5dd",
+                          border: "1px solid var(--borde)",
                           borderRadius: 6,
                           fontSize: 14,
                         }}
@@ -396,8 +396,8 @@ export default function Detalle() {
                     padding: "8px 14px",
                     border: 0,
                     borderRadius: 6,
-                    background: "#1d4ed8",
-                    color: "#fff",
+                    background: "var(--acento)",
+                    color: "var(--sobre)",
                     fontSize: 14,
                     cursor: "pointer",
                   }}
@@ -430,7 +430,7 @@ export default function Detalle() {
                 .finally(() => setGuardando(false));
             }}
             style={{
-              background: "#fff",
+              background: "var(--superficie)",
               borderRadius: 8,
               padding: 12,
               display: "flex",
@@ -448,7 +448,7 @@ export default function Detalle() {
                   const valor = event.target.value;
                   if (valor === "" || /^-?\d+$/.test(valor)) setInventario(valor);
                 }}
-                style={{ padding: "8px 12px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                style={{ padding: "8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, flex: 1, minHeight: 0 }}>
@@ -460,7 +460,7 @@ export default function Detalle() {
                   flex: 1,
                   minHeight: movil ? 140 : 0,
                   padding: "8px 12px",
-                  border: "1px solid #d0d5dd",
+                  border: "1px solid var(--borde)",
                   borderRadius: 6,
                   fontSize: 14,
                   resize: "none",
@@ -475,8 +475,8 @@ export default function Detalle() {
                   padding: "8px 14px",
                   border: 0,
                   borderRadius: 6,
-                  background: "#1d4ed8",
-                  color: "#fff",
+                  background: "var(--acento)",
+                  color: "var(--sobre)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}
@@ -499,7 +499,7 @@ export default function Detalle() {
             padding: 24,
           }}
         >
-          <div style={{ background: "#fff", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
             <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Ese código ya existe</p>
             <p style={{ margin: "0 0 16px", fontSize: 14 }}>
               Si continúas, los datos de este material reemplazan al que ya tiene ese código. Mantén
@@ -516,8 +516,8 @@ export default function Detalle() {
                   padding: "10px 14px",
                   border: 0,
                   borderRadius: 6,
-                  background: `linear-gradient(90deg, #b45309 ${pulsado * 100}%, #111827 ${pulsado * 100}%)`,
-                  color: "#fff",
+                  background: `linear-gradient(90deg, var(--acento) ${pulsado * 100}%, var(--boton) ${pulsado * 100}%)`,
+                  color: "var(--sobre)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}
@@ -533,9 +533,9 @@ export default function Detalle() {
                 style={{
                   width: "100%",
                   padding: "10px 14px",
-                  border: "1px solid #d0d5dd",
+                  border: "1px solid var(--borde)",
                   borderRadius: 6,
-                  background: "#fff",
+                  background: "var(--superficie)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}

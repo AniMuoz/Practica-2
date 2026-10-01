@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
 
 export default function App() {
   const navigate = useNavigate();
+  const { colores } = useColoresPlanilla();
   const [columnas, setColumnas] = useState([]);
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState("");
@@ -11,11 +13,22 @@ export default function App() {
   const [pagina, setPagina] = useState(0);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const [orden, setOrden] = useState("");
+  const [bodega, setBodega] = useState("");
   const [subUbicacion, setSubUbicacion] = useState("");
   const [stockMinimo, setStockMinimo] = useState("");
   const [soloConPrecio, setSoloConPrecio] = useState(false);
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
+  const [limpiando, setLimpiando] = useState(false);
   const tamano = 100;
+
+  const bodegas = useMemo(() => {
+    const valores = new Set(
+      filas
+        .map((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2))
+        .filter((valor) => valor.length === 2)
+    );
+    return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+  }, [filas]);
 
   const subUbicaciones = useMemo(() => {
     const valores = new Set(
@@ -26,6 +39,9 @@ export default function App() {
 
   const visibles = useMemo(() => {
     let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
+    if (bodega) {
+      lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
+    }
     if (subUbicacion) {
       lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
     }
@@ -59,14 +75,14 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
+  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
 
   useEffect(() => {
-    fetch("/api/tabla")
+    fetch("/api/tabla", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error("No se pudo leer la API");
         return res.json();
@@ -86,6 +102,23 @@ export default function App() {
       ? "0 de 0"
       : `${pagina * tamano + 1}–${Math.min((pagina + 1) * tamano, visibles.length)} de ${visibles.length}`;
 
+  function limpiarInventario() {
+    if (!window.confirm("¿Vaciar las columnas Inventario y Comentario de todos los materiales?")) return;
+    setLimpiando(true);
+    setError("");
+    fetch("/api/tabla/limpiar-inventario", { method: "POST" })
+      .then((res) => {
+        if (!res.ok) throw new Error("No se pudo limpiar");
+        return res.json();
+      })
+      .then((data) => {
+        setColumnas(data.columnas || []);
+        setFilas(data.filas || []);
+      })
+      .catch(() => setError("No se pudieron limpiar inventario y comentarios."))
+      .finally(() => setLimpiando(false));
+  }
+
   function paginacion() {
     return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
@@ -97,8 +130,8 @@ export default function App() {
           padding: "6px 12px",
           border: 0,
           borderRadius: 6,
-          background: pagina === 0 ? "#e5e7eb" : "#111827",
-          color: pagina === 0 ? "#6b7280" : "#fff",
+          background: pagina === 0 ? "var(--apagado)" : "var(--boton)",
+          color: pagina === 0 ? "var(--apagado-texto)" : "var(--sobre)",
           fontSize: 14,
           cursor: pagina === 0 ? "default" : "pointer",
         }}
@@ -114,8 +147,8 @@ export default function App() {
           padding: "6px 12px",
           border: 0,
           borderRadius: 6,
-          background: alFinal ? "#e5e7eb" : "#111827",
-          color: alFinal ? "#6b7280" : "#fff",
+          background: alFinal ? "var(--apagado)" : "var(--boton)",
+          color: alFinal ? "var(--apagado-texto)" : "var(--sobre)",
           fontSize: 14,
           cursor: alFinal ? "default" : "pointer",
         }}
@@ -133,48 +166,70 @@ export default function App() {
         margin: 0,
         padding: 16,
         fontFamily: "Segoe UI, sans-serif",
-        background: "#f4f6f8",
-        color: "#111111",
+        background: "var(--fondo)",
+        color: "var(--texto)",
       }}
     >
       <Navbar />
-      <a
-        href="/api/tabla/excel"
-        style={{
-          display: "inline-block",
-          marginBottom: 16,
-          padding: "8px 14px",
-          borderRadius: 6,
-          background: "#0f766e",
-          color: "#fff",
-          fontSize: 14,
-          textDecoration: "none",
-        }}
-      >
-        Descargar planilla
-      </a>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {!cargando && !error && filas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setFiltrosAbiertos((abierto) => !abierto)}
+              style={{
+                padding: "8px 14px",
+                border: 0,
+                borderRadius: 6,
+                background: "var(--boton)",
+                color: "var(--sobre)",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
+            </button>
+          )}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
+            <button
+              type="button"
+              disabled={cargando || limpiando}
+              onClick={limpiarInventario}
+              style={{
+                padding: "8px 14px",
+                border: 0,
+                borderRadius: 6,
+                background: cargando || limpiando ? "var(--apagado)" : "var(--peligro)",
+                color: cargando || limpiando ? "var(--apagado-texto)" : "var(--sobre)",
+                fontSize: 14,
+                cursor: cargando || limpiando ? "default" : "pointer",
+              }}
+            >
+              {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
+            </button>
+            <a
+              href={colores ? "/api/tabla/excel" : "/api/tabla/excel?colores=0"}
+              style={{
+                display: "inline-block",
+                padding: "8px 14px",
+                borderRadius: 6,
+                background: "var(--descarga)",
+                color: "var(--sobre)",
+                fontSize: 14,
+                textDecoration: "none",
+              }}
+            >
+              Descargar planilla
+            </a>
+          </div>
+        </div>
       {!cargando && !error && filas.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <button
-            type="button"
-            onClick={() => setFiltrosAbiertos((abierto) => !abierto)}
-            style={{
-              padding: "8px 14px",
-              border: 0,
-              borderRadius: 6,
-              background: "#111827",
-              color: "#fff",
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
-          </button>
+        <>
           {filtrosAbiertos && (
             <div
               style={{
                 marginTop: 10,
-                background: "#fff",
+                background: "var(--superficie)",
                 borderRadius: 8,
                 padding: 16,
                 display: "grid",
@@ -227,11 +282,26 @@ export default function App() {
                 Ordenar descripciones alfabéticamente al revés
               </label>
               <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
+                Bodega
+                <select
+                  value={bodega}
+                  onChange={(event) => setBodega(event.target.value)}
+                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                >
+                  <option value="">Todas</option>
+                  {bodegas.map((valor) => (
+                    <option key={valor} value={valor}>
+                      {valor}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
                 Sub-ubicación
                 <select
                   value={subUbicacion}
                   onChange={(event) => setSubUbicacion(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
                 >
                   <option value="">Todas</option>
                   {subUbicaciones.map((valor) => (
@@ -251,7 +321,7 @@ export default function App() {
                     const valor = event.target.value;
                     if (valor === "" || /^-?\d*\.?\d*$/.test(valor)) setStockMinimo(valor);
                   }}
-                  style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
                 />
               </label>
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
@@ -274,6 +344,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setOrden("");
+                  setBodega("");
                   setSubUbicacion("");
                   setStockMinimo("");
                   setSoloConPrecio(false);
@@ -284,8 +355,8 @@ export default function App() {
                   padding: "8px 14px",
                   border: 0,
                   borderRadius: 6,
-                  background: "#e5e7eb",
-                  color: "#111827",
+                  background: "var(--apagado)",
+                  color: "var(--boton)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}
@@ -294,13 +365,14 @@ export default function App() {
               </button>
             </div>
           )}
-        </div>
+        </>
       )}
+      </div>
       {cargando && <p>Cargando tabla...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}
       {!cargando && !error && filas.length > 0 && (
-        <div className="tabla-inventario" style={{ overflowX: "auto", background: "#fff", borderRadius: 8 }}>
+        <div className="tabla-inventario" style={{ overflowX: "auto", background: "var(--superficie)", borderRadius: 8 }}>
           {paginacion()}
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
             <thead>
@@ -311,8 +383,8 @@ export default function App() {
                     style={{
                       textAlign: "left",
                       padding: "10px 12px",
-                      borderBottom: "2px solid #d0d5dd",
-                      background: "#eef2f6",
+                      borderBottom: "2px solid var(--borde)",
+                      background: "var(--encabezado)",
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -333,7 +405,7 @@ export default function App() {
                       key={columna}
                       style={{
                         padding: "8px 12px",
-                        borderBottom: "1px solid #e6e8ec",
+                        borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
                       }}
                     >

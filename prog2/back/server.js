@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -53,20 +53,28 @@ const upload = multer({
   },
 });
 
+function conColores(valor) {
+  return valor !== "0";
+}
+
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 app.use("/api/imagenes", express.static(carpetaImagenes));
 
 app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
 });
 
-app.get("/api/tabla/excel", async (_req, res) => {
+app.get("/api/tabla/excel", async (req, res) => {
   try {
-    const buffer = await exportarTabla();
+    const buffer = await exportarTabla(conColores(req.query.colores));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
     res.send(Buffer.from(buffer));
@@ -83,9 +91,9 @@ app.get("/api/bodega", (_req, res) => {
   }
 });
 
-app.get("/api/bodega/excel", async (_req, res) => {
+app.get("/api/bodega/excel", async (req, res) => {
   try {
-    const buffer = await exportarStockBodega();
+    const buffer = await exportarStockBodega(conColores(req.query.colores));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20M501.xlsx");
     res.send(Buffer.from(buffer));
@@ -102,9 +110,9 @@ app.get("/api/regional", (_req, res) => {
   }
 });
 
-app.get("/api/regional/excel", async (_req, res) => {
+app.get("/api/regional/excel", async (req, res) => {
   try {
-    const buffer = await exportarStockRegional();
+    const buffer = await exportarStockRegional(conColores(req.query.colores));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
     res.send(Buffer.from(buffer));
@@ -121,9 +129,9 @@ app.get("/api/inventario", (_req, res) => {
   }
 });
 
-app.get("/api/inventario/excel", async (_req, res) => {
+app.get("/api/inventario/excel", async (req, res) => {
   try {
-    const buffer = await exportarPlanillaInventario();
+    const buffer = await exportarPlanillaInventario(conColores(req.query.colores));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
     res.send(Buffer.from(buffer));
@@ -140,9 +148,9 @@ app.get("/api/stock-detallado", (_req, res) => {
   }
 });
 
-app.get("/api/stock-detallado/excel", async (_req, res) => {
+app.get("/api/stock-detallado/excel", async (req, res) => {
   try {
-    const buffer = await exportarStockDetallado();
+    const buffer = await exportarStockDetallado(conColores(req.query.colores));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=Prueba_de_stock_detallado.xlsx");
     res.send(Buffer.from(buffer));
@@ -178,7 +186,7 @@ app.post("/api/reserva", (req, res) => {
 app.post("/api/reserva/excel", (req, res) => {
   recibirReserva(req, res, async () => {
     try {
-      const buffer = await exportarRevisionReserva(req.file.buffer);
+      const buffer = await exportarRevisionReserva(req.file.buffer, conColores(req.body.colores));
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
       res.send(Buffer.from(buffer));
@@ -210,6 +218,7 @@ app.post("/api/ventas", (req, res) => {
         contratistaIdx: Number(req.body.contratista),
         movTipo: Number(req.body.movimiento),
         codVenta: req.body.codVenta,
+        colores: conColores(req.body.colores),
       });
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
@@ -292,6 +301,15 @@ app.get("/api/material/:codigo", (req, res) => {
     res.json({ columnas, fila, bodegas });
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer el material." });
+  }
+});
+
+app.post("/api/tabla/limpiar-inventario", (_req, res) => {
+  try {
+    const tabla = limpiarInventarioComentarios();
+    res.json(tabla);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo limpiar inventario y comentarios." });
   }
 });
 

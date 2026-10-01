@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../logo/logo.ico";
+import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [codigo, setCodigo] = useState("");
+  const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
 
   return (
     <header
@@ -16,7 +18,7 @@ export default function Navbar() {
         gap: 12,
         marginBottom: 16,
         padding: "10px 14px",
-        background: "#fff",
+        background: "var(--superficie)",
         borderRadius: 8,
       }}
     >
@@ -26,7 +28,7 @@ export default function Navbar() {
           display: "flex",
           alignItems: "center",
           gap: 10,
-          color: "#111",
+          color: "var(--texto)",
           textDecoration: "none",
           fontSize: 20,
           fontWeight: 700,
@@ -35,6 +37,92 @@ export default function Navbar() {
         <img src={logo} alt="" width={28} height={28} />
         Inventario M501
       </Link>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={colores}
+        aria-label="Colores en planillas"
+        onClick={() => cambiarColores(!colores)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: 0,
+          border: 0,
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: 14,
+          color: "var(--texto)",
+        }}
+      >
+        Colores
+        <span
+          style={{
+            position: "relative",
+            width: 44,
+            height: 24,
+            borderRadius: 999,
+            background: colores ? "var(--acento)" : "var(--interruptor)",
+            transition: "background 0.2s ease",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: colores ? 22 : 2,
+              width: 20,
+              height: 20,
+              borderRadius: "50%",
+              background: "#fff",
+              transition: "left 0.2s ease",
+            }}
+          />
+        </span>
+      </button>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={oscuro}
+        aria-label="Modo oscuro"
+        onClick={() => cambiarOscuro(!oscuro)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: 0,
+          border: 0,
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: 14,
+          color: "var(--texto)",
+        }}
+      >
+        Oscuro
+        <span
+          style={{
+            position: "relative",
+            width: 44,
+            height: 24,
+            borderRadius: 999,
+            background: oscuro ? "var(--acento)" : "var(--interruptor)",
+            transition: "background 0.2s ease",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: oscuro ? 22 : 2,
+              width: 20,
+              height: 20,
+              borderRadius: "50%",
+              background: "#fff",
+              transition: "left 0.2s ease",
+            }}
+          />
+        </span>
+      </button>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -52,7 +140,6 @@ export default function Navbar() {
           aria-label="Código de material"
           style={{
             padding: "8px 12px",
-            border: "1px solid #d0d5dd",
             borderRadius: 6,
             fontSize: 14,
             minWidth: 180,
@@ -64,8 +151,8 @@ export default function Navbar() {
             padding: "8px 14px",
             border: 0,
             borderRadius: 6,
-            background: "#1d4ed8",
-            color: "#fff",
+            background: "var(--acento)",
+            color: "var(--sobre)",
             fontSize: 14,
             cursor: "pointer",
           }}
@@ -79,8 +166,8 @@ export default function Navbar() {
         style={{
           padding: "8px 14px",
           borderRadius: 6,
-          background: "#111827",
-          color: "#fff",
+          background: "var(--boton)",
+          color: "var(--sobre)",
           fontSize: 14,
           textDecoration: "none",
         }}

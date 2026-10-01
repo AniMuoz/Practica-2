@@ -1,3 +1,75 @@
+:root {
+  --fondo: #f4f6f8;
+  --superficie: #ffffff;
+  --texto: #111111;
+  --texto-suave: #667085;
+  --muted: #98a2b3;
+  --borde: #d0d5dd;
+  --borde-suave: #e5e7eb;
+  --campo: #ffffff;
+  --campo-suave: #f8fafc;
+  --acento: #1d4ed8;
+  --sobre: #ffffff;
+  --boton: #111827;
+  --apagado: #e5e7eb;
+  --apagado-texto: #6b7280;
+  --encabezado: #eef2f6;
+  --descarga: #0f766e;
+  --peligro: #b91c1c;
+  --pista: #9ca3af;
+  --interruptor: #d0d5dd;
+  color-scheme: light;
+}
+
+html.oscuro {
+  --fondo: #0c1111;
+  --superficie: #171f1f;
+  --texto: #e7f3f0;
+  --texto-suave: #93aaa6;
+  --muted: #7f9894;
+  --borde: #314240;
+  --borde-suave: #283634;
+  --campo: #101616;
+  --campo-suave: #121c1b;
+  --acento: #14b8a6;
+  --sobre: #042421;
+  --boton: #0092FF;
+  --apagado: #24302e;
+  --apagado-texto: #7d918d;
+  --encabezado: #1c2928;
+  --descarga: #2dd4bf;
+  --peligro: #e11d48;
+  --pista: #3d524f;
+  --interruptor: #3a4c4a;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+input,
+select,
+textarea {
+  background: var(--campo);
+  color: var(--texto);
+}
+
+.barra-buscar input {
+  border: 1px solid var(--borde);
+}
+
+html.oscuro .barra-buscar input {
+  border: 2px solid #5eead4;
+}
+
+html.oscuro table.planilla-oscura th,
+html.oscuro table.planilla-oscura td.celda-color {
+  color: #111;
+}
+
 *,
 *::before,
 *::after {

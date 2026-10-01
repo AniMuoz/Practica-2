@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 
@@ -6,6 +7,9 @@ const IMAGENES = new Set(["Rombo", "QR"]);
 
 export default function Admin() {
   const navigate = useNavigate();
+  const { colores, oscuro } = useColoresPlanilla();
+  const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
+  const excel = (ruta) => (colores ? ruta : `${ruta}?colores=0`);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -56,24 +60,90 @@ export default function Admin() {
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [avisoVenta, setAvisoVenta] = useState("");
 
-  useEffect(() => {
-    if (!autorizado) return;
-    fetch("/api/tabla")
+  function aplicarColumnas(data) {
+    const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
+    setColumnas(lista);
+    const destino = (data.columnas || []).filter(
+      (columna) => !["Codigo", "Inventario", "Comentario"].includes(columna)
+    );
+    setColumnasDestino(destino);
+    setColumnaCarga((actual) => (destino.includes(actual) ? actual : destino[0] || ""));
+    setDatos((actual) => {
+      const siguientes = {};
+      lista.forEach((columna) => {
+        siguientes[columna] = actual[columna] ?? "";
+      });
+      return siguientes;
+    });
+  }
+
+  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje) {
+    setCargando(true);
+    setAviso("");
+    return fetch(url, { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || mensaje);
+        setTabla({ columnas: data.columnas || [], filas: data.filas || [] });
+      })
+      .catch((err) => setAviso(err.message))
+      .finally(() => setCargando(false));
+  }
+
+  function cargarNombresContratistas() {
+    return fetch("/api/contratistas", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
-        setColumnas(lista);
-        const destino = (data.columnas || []).filter(
-          (columna) => !["Codigo", "Inventario", "Comentario"].includes(columna)
-        );
-        setColumnasDestino(destino);
-        setColumnaCarga((actual) => (destino.includes(actual) ? actual : destino[0] || ""));
-        const vacios = {};
-        lista.forEach((columna) => {
-          vacios[columna] = "";
+        const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
+        setListaContratistas(nombres);
+        setContratistaVenta((actual) => {
+          const indice = Number(actual);
+          if (indice >= 1 && indice <= nombres.length) return actual;
+          return nombres.length ? "1" : "1";
         });
-        setDatos(vacios);
-      })
+        return data.filas || [];
+      });
+  }
+
+  function cerrarPaneles(permitidos) {
+    const ok = new Set(permitidos);
+    if (!ok.has("carga")) setMostrarCarga(false);
+    if (!ok.has("formulario")) setMostrarFormulario(false);
+    if (!ok.has("bodega")) setMostrarBodega(false);
+    if (!ok.has("regional")) setMostrarRegional(false);
+    if (!ok.has("inventario")) setMostrarInventario(false);
+    if (!ok.has("detallado")) setMostrarDetallado(false);
+    if (!ok.has("reserva")) setMostrarReserva(false);
+    if (!ok.has("ventas")) setMostrarVentas(false);
+    if (!ok.has("contratistas")) setMostrarContratistas(false);
+  }
+
+  function refrescarVistas() {
+    fetch("/api/tabla", { cache: "no-store" })
+      .then((res) => res.json())
+      .then(aplicarColumnas)
+      .catch(() => setAviso("No se pudo cargar la tabla."));
+    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.");
+    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.");
+    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
+    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
+    if (mostrarContratistas || mostrarVentas) {
+      cargarNombresContratistas()
+        .then((filas) => {
+          if (mostrarContratistas) setContratistas(filas);
+        })
+        .catch(() => {
+          if (mostrarContratistas) setAvisoContratistas("No se pudo leer los contratistas.");
+          if (mostrarVentas) setAvisoVenta("No se pudo cargar los contratistas.");
+        });
+    }
+  }
+
+  useEffect(() => {
+    if (!autorizado) return;
+    fetch("/api/tabla", { cache: "no-store" })
+      .then((res) => res.json())
+      .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
   }, [autorizado]);
 
@@ -85,8 +155,8 @@ export default function Admin() {
         margin: 0,
         padding: 16,
         fontFamily: "Segoe UI, sans-serif",
-        background: "#f4f6f8",
-        color: "#111111",
+        background: "var(--fondo)",
+        color: "var(--texto)",
       }}
     >
       <Navbar />
@@ -110,7 +180,7 @@ export default function Admin() {
             autoFocus
             placeholder="Contraseña"
             onChange={(event) => setClave(event.target.value)}
-            style={{ padding: "8px 12px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+            style={{ padding: "8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
           />
           <button
             type="submit"
@@ -118,8 +188,8 @@ export default function Admin() {
               padding: "8px 14px",
               border: 0,
               borderRadius: 6,
-              background: "#1d4ed8",
-              color: "#fff",
+              background: "var(--acento)",
+              color: "var(--sobre)",
               fontSize: 14,
               cursor: "pointer",
             }}
@@ -157,122 +227,87 @@ export default function Admin() {
                 key={nombre}
                 type="button"
                 onClick={() => {
-                  if (nombre === "Carga de datos") setMostrarCarga((actual) => !actual);
-                  if (nombre === "Añadir un dato") setMostrarFormulario((actual) => !actual);
+                  if (nombre === "Carga de datos") {
+                    const abrir = !mostrarCarga;
+                    if (abrir) cerrarPaneles(["carga", "formulario"]);
+                    setMostrarCarga(abrir);
+                  }
+                  if (nombre === "Añadir un dato") {
+                    const abrir = !mostrarFormulario;
+                    if (abrir) cerrarPaneles(["carga", "formulario"]);
+                    setMostrarFormulario(abrir);
+                  }
                   if (nombre === "Stock en bodega") {
-                    setMostrarBodega((actual) => {
-                      const abrir = !actual;
-                      if (abrir) {
-                        setCargandoBodega(true);
-                        setAvisoBodega("");
-                        fetch("/api/bodega")
-                          .then(async (res) => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "No se pudo leer el stock.");
-                            setBodega({ columnas: data.columnas || [], filas: data.filas || [] });
-                          })
-                          .catch((err) => setAvisoBodega(err.message))
-                          .finally(() => setCargandoBodega(false));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarBodega;
+                    if (abrir) {
+                      cerrarPaneles(["bodega"]);
+                      cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.");
+                    }
+                    setMostrarBodega(abrir);
                   }
                   if (nombre === "Stock regional") {
-                    setMostrarRegional((actual) => {
-                      const abrir = !actual;
-                      if (abrir) {
-                        setCargandoRegional(true);
-                        setAvisoRegional("");
-                        fetch("/api/regional")
-                          .then(async (res) => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "No se pudo leer el stock regional.");
-                            setRegional({ columnas: data.columnas || [], filas: data.filas || [] });
-                          })
-                          .catch((err) => setAvisoRegional(err.message))
-                          .finally(() => setCargandoRegional(false));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarRegional;
+                    if (abrir) {
+                      cerrarPaneles(["regional"]);
+                      cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.");
+                    }
+                    setMostrarRegional(abrir);
                   }
                   if (nombre === "Planilla de inventario") {
-                    setMostrarInventario((actual) => {
-                      const abrir = !actual;
-                      if (abrir) {
-                        setCargandoInventario(true);
-                        setAvisoInventario("");
-                        fetch("/api/inventario")
-                          .then(async (res) => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario.");
-                            setInventario({ columnas: data.columnas || [], filas: data.filas || [] });
-                          })
-                          .catch((err) => setAvisoInventario(err.message))
-                          .finally(() => setCargandoInventario(false));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarInventario;
+                    if (abrir) {
+                      cerrarPaneles(["inventario"]);
+                      cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
+                    }
+                    setMostrarInventario(abrir);
                   }
                   if (nombre === "Stock detallado") {
-                    setMostrarDetallado((actual) => {
-                      const abrir = !actual;
-                      if (abrir) {
-                        setCargandoDetallado(true);
-                        setAvisoDetallado("");
-                        fetch("/api/stock-detallado")
-                          .then(async (res) => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "No se pudo leer el stock detallado.");
-                            setDetallado({ columnas: data.columnas || [], filas: data.filas || [] });
-                          })
-                          .catch((err) => setAvisoDetallado(err.message))
-                          .finally(() => setCargandoDetallado(false));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarDetallado;
+                    if (abrir) {
+                      cerrarPaneles(["detallado"]);
+                      cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
+                    }
+                    setMostrarDetallado(abrir);
                   }
-                  if (nombre === "Revisar stock de reserva") setMostrarReserva((actual) => !actual);
+                  if (nombre === "Revisar stock de reserva") {
+                    const abrir = !mostrarReserva;
+                    if (abrir) cerrarPaneles(["reserva"]);
+                    setMostrarReserva(abrir);
+                  }
                   if (nombre === "Planilla de ventas") {
-                    setMostrarVentas((actual) => {
-                      const abrir = !actual;
-                      if (abrir && listaContratistas.length === 0) {
-                        fetch("/api/contratistas")
-                          .then((res) => res.json())
-                          .then((data) => {
-                            const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
-                            setListaContratistas(nombres);
-                            setContratistaVenta(nombres.length ? "1" : String(nombres.length + 1));
-                          })
-                          .catch(() => setAvisoVenta("No se pudo cargar los contratistas."));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarVentas;
+                    if (abrir) {
+                      cerrarPaneles(["ventas", "contratistas"]);
+                      cargarNombresContratistas().catch(() => setAvisoVenta("No se pudo cargar los contratistas."));
+                    }
+                    setMostrarVentas(abrir);
                   }
                   if (nombre === "Editar contratistas") {
-                    setMostrarContratistas((actual) => {
-                      const abrir = !actual;
-                      if (abrir) {
-                        setCargandoContratistas(true);
-                        setAvisoContratistas("");
-                        fetch("/api/contratistas")
-                          .then(async (res) => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "No se pudo leer los contratistas.");
-                            setContratistas(data.filas || []);
-                          })
-                          .catch((err) => setAvisoContratistas(err.message))
-                          .finally(() => setCargandoContratistas(false));
-                      }
-                      return abrir;
-                    });
+                    const abrir = !mostrarContratistas;
+                    if (abrir) {
+                      cerrarPaneles(["ventas", "contratistas"]);
+                      setCargandoContratistas(true);
+                      setAvisoContratistas("");
+                      fetch("/api/contratistas", { cache: "no-store" })
+                        .then(async (res) => {
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "No se pudo leer los contratistas.");
+                          setContratistas(data.filas || []);
+                          const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
+                          setListaContratistas(nombres);
+                        })
+                        .catch((err) => setAvisoContratistas(err.message))
+                        .finally(() => setCargandoContratistas(false));
+                    }
+                    setMostrarContratistas(abrir);
                   }
                 }}
                 style={{
                   padding: "8px 14px",
-                  border: activo ? "1px solid #1d4ed8" : "1px solid #d0d5dd",
+                  border: activo ? "1px solid var(--acento)" : "1px solid var(--borde)",
                   borderRadius: 6,
-                  background: activo ? "#1d4ed8" : "#fff",
-                  color: activo ? "#fff" : "#111827",
+                  background: activo ? "var(--acento)" : "var(--superficie)",
+                  color: activo ? "var(--sobre)" : "var(--texto)",
                   fontSize: 14,
                   cursor: "pointer",
                 }}
@@ -310,12 +345,13 @@ export default function Admin() {
                 event.target.reset();
                 const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
                 setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`);
+                refrescarVistas();
               })
               .catch((err) => setAvisoCarga(err.message))
               .finally(() => setImportando(false));
           }}
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -330,7 +366,7 @@ export default function Admin() {
             aria-label="Tipo de planilla"
             value={modoCarga}
             onChange={(event) => setModoCarga(event.target.value)}
-            style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+            style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
           >
             <option value="completa">Planilla completa</option>
             <option value="sap">Planilla EXPORT SAP</option>
@@ -343,7 +379,7 @@ export default function Admin() {
               aria-label="Columna a llenar"
               value={columnaCarga}
               onChange={(event) => setColumnaCarga(event.target.value)}
-              style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6, fontSize: 14 }}
+              style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
             >
               {columnasDestino.map((columna) => (
                 <option key={columna} value={columna}>
@@ -364,8 +400,8 @@ export default function Admin() {
               padding: "8px 14px",
               border: 0,
               borderRadius: 6,
-              background: "#111827",
-              color: "#fff",
+              background: "var(--boton)",
+              color: "var(--sobre)",
               fontSize: 14,
               cursor: "pointer",
             }}
@@ -378,7 +414,7 @@ export default function Admin() {
       {autorizado && mostrarBodega && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -387,12 +423,12 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Bodega M501</h2>
             <a
-              href="/api/bodega/excel"
+              href={excel("/api/bodega/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
-                background: "#111827",
-                color: "#fff",
+                background: "var(--boton)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 textDecoration: "none",
               }}
@@ -404,7 +440,7 @@ export default function Admin() {
           {avisoBodega && <p style={{ margin: 0 }}>{avisoBodega}</p>}
           {!cargandoBodega && !avisoBodega && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {bodega.columnas.map((columna) => (
@@ -415,8 +451,8 @@ export default function Admin() {
                           top: 0,
                           textAlign: "left",
                           padding: "8px 10px",
-                          background: "#a9e5e5",
-                          border: "1px solid #d0d5dd",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
                         }}
                       >
                         {columna}
@@ -434,10 +470,11 @@ export default function Admin() {
                         {fila.map((valor, columna) => (
                           <td
                             key={columna}
+                            className={colores && columna === 2 ? "celda-color" : undefined}
                             style={{
                               padding: "8px 10px",
-                              border: "1px solid #e5e7eb",
-                              background: columna === 2 ? fondo : "#fff",
+                              border: "1px solid var(--borde-suave)",
+                              background: colores && columna === 2 ? fondo : "var(--superficie)",
                             }}
                           >
                             {valor === "" || valor == null ? "" : String(valor)}
@@ -456,7 +493,7 @@ export default function Admin() {
       {autorizado && mostrarRegional && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -465,12 +502,12 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Stock por bodega</h2>
             <a
-              href="/api/regional/excel"
+              href={excel("/api/regional/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
-                background: "#111827",
-                color: "#fff",
+                background: "var(--boton)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 textDecoration: "none",
               }}
@@ -482,7 +519,7 @@ export default function Admin() {
           {avisoRegional && <p style={{ margin: 0 }}>{avisoRegional}</p>}
           {!cargandoRegional && !avisoRegional && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {regional.columnas.map((columna) => (
@@ -493,8 +530,8 @@ export default function Admin() {
                           top: 0,
                           textAlign: "left",
                           padding: "8px 10px",
-                          background: "#a9e5e5",
-                          border: "1px solid #d0d5dd",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
                         }}
                       >
                         {columna}
@@ -508,7 +545,7 @@ export default function Admin() {
                       {fila.map((valor, columna) => {
                         const fondo =
                           columna < 2
-                            ? "#fff"
+                            ? "var(--superficie)"
                             : valor === 0 || valor === "0"
                               ? "#d3d3d3"
                               : valor == null || valor === "" || valor === "          "
@@ -517,10 +554,11 @@ export default function Admin() {
                         return (
                           <td
                             key={columna}
+                            className={colores && columna >= 2 ? "celda-color" : undefined}
                             style={{
                               padding: "8px 10px",
-                              border: "1px solid #e5e7eb",
-                              background: fondo,
+                              border: "1px solid var(--borde-suave)",
+                              background: colores ? fondo : "var(--superficie)",
                               fontWeight: columna === fila.length - 1 ? 700 : 400,
                             }}
                           >
@@ -540,7 +578,7 @@ export default function Admin() {
       {autorizado && mostrarInventario && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -549,12 +587,12 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Inventario por lugar</h2>
             <a
-              href="/api/inventario/excel"
+              href={excel("/api/inventario/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
-                background: "#111827",
-                color: "#fff",
+                background: "var(--boton)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 textDecoration: "none",
               }}
@@ -566,7 +604,7 @@ export default function Admin() {
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
           {!cargandoInventario && !avisoInventario && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {inventario.columnas.map((columna) => (
@@ -577,8 +615,8 @@ export default function Admin() {
                           top: 0,
                           textAlign: "left",
                           padding: "8px 10px",
-                          background: "#a9e5e5",
-                          border: "1px solid #d0d5dd",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
                         }}
                       >
                         {columna}
@@ -592,11 +630,12 @@ export default function Admin() {
                       {fila.map((valor, columna) => (
                         <td
                           key={columna}
+                          className={colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "celda-color" : undefined}
                           style={{
                             padding: "8px 10px",
-                            border: "1px solid #e5e7eb",
+                            border: "1px solid var(--borde-suave)",
                             background:
-                              (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "#f9e37c" : "#fff",
+                              colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "#f9e37c" : "var(--superficie)",
                           }}
                         >
                           {valor === "" || valor == null ? "" : String(valor)}
@@ -614,7 +653,7 @@ export default function Admin() {
       {autorizado && mostrarDetallado && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -623,12 +662,12 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Stock detallado</h2>
             <a
-              href="/api/stock-detallado/excel"
+              href={excel("/api/stock-detallado/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
-                background: "#111827",
-                color: "#fff",
+                background: "var(--boton)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 textDecoration: "none",
               }}
@@ -640,7 +679,7 @@ export default function Admin() {
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {detallado.columnas.map((columna) => (
@@ -651,8 +690,8 @@ export default function Admin() {
                           top: 0,
                           textAlign: "left",
                           padding: "8px 10px",
-                          background: "#a9e5e5",
-                          border: "1px solid #d0d5dd",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -667,7 +706,7 @@ export default function Admin() {
                       {fila.map((valor, columna) => {
                         const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
                         const fondo = !coloreada
-                          ? "#fff"
+                          ? "var(--superficie)"
                           : valor === 0 || valor === "0"
                             ? "#d3d3d3"
                             : valor == null || valor === "" || valor === "          " || valor === "Sin precio"
@@ -676,10 +715,11 @@ export default function Admin() {
                         return (
                           <td
                             key={columna}
+                            className={colores && coloreada ? "celda-color" : undefined}
                             style={{
                               padding: "8px 10px",
-                              border: "1px solid #e5e7eb",
-                              background: fondo,
+                              border: "1px solid var(--borde-suave)",
+                              background: colores ? fondo : "var(--superficie)",
                               fontWeight: columna === 10 ? 700 : 400,
                               whiteSpace: "nowrap",
                             }}
@@ -700,7 +740,7 @@ export default function Admin() {
       {autorizado && mostrarReserva && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -744,8 +784,8 @@ export default function Admin() {
                 padding: "8px 14px",
                 border: 0,
                 borderRadius: 6,
-                background: "#111827",
-                color: "#fff",
+                background: "var(--boton)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 cursor: "pointer",
               }}
@@ -758,6 +798,7 @@ export default function Admin() {
               onClick={() => {
                 const cuerpo = new FormData();
                 cuerpo.append("archivo", archivoReserva);
+                cuerpo.append("colores", colores ? "1" : "0");
                 fetch("/api/reserva/excel", { method: "POST", body: cuerpo })
                   .then(async (res) => {
                     if (!res.ok) {
@@ -780,8 +821,8 @@ export default function Admin() {
                 padding: "8px 14px",
                 border: 0,
                 borderRadius: 6,
-                background: reserva.filas.length === 0 ? "#9ca3af" : "#1d4ed8",
-                color: "#fff",
+                background: reserva.filas.length === 0 ? "var(--pista)" : "var(--acento)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 cursor: "pointer",
               }}
@@ -792,7 +833,7 @@ export default function Admin() {
           </form>
           {reserva.columnas.length > 0 && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {reserva.columnas.map((columna) => (
@@ -803,8 +844,8 @@ export default function Admin() {
                           top: 0,
                           textAlign: "left",
                           padding: "8px 10px",
-                          background: "#a9e5e5",
-                          border: "1px solid #d0d5dd",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -819,11 +860,12 @@ export default function Admin() {
                       {fila.map((valor, columna) => (
                         <td
                           key={columna}
+                          className={colores && columna === 7 ? "celda-color" : undefined}
                           style={{
                             padding: "8px 10px",
-                            border: "1px solid #e5e7eb",
+                            border: "1px solid var(--borde-suave)",
                             background:
-                              columna !== 7 ? "#fff" : valor === "Disponible" ? "#73c883" : "#f9e37c",
+                              !colores || columna !== 7 ? "var(--superficie)" : valor === "Disponible" ? "#73c883" : "#f9e37c",
                             whiteSpace: "nowrap",
                           }}
                         >
@@ -840,7 +882,7 @@ export default function Admin() {
         </section>
       )}
       {autorizado && mostrarVentas && (
-        <section style={{ background: "#fff", borderRadius: 8, padding: 16, marginBottom: 16, maxWidth: 640 }}>
+        <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 16, maxWidth: 640 }}>
           <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Añadir venta</h2>
           <form
             onSubmit={(event) => {
@@ -857,6 +899,7 @@ export default function Admin() {
               cuerpo.append("contratista", contratistaVenta);
               cuerpo.append("movimiento", movimientoVenta);
               cuerpo.append("codVenta", movimientoVenta === "2" ? "n/a" : codVenta);
+              cuerpo.append("colores", colores ? "1" : "0");
               fetch("/api/ventas", { method: "POST", body: cuerpo })
                 .then(async (res) => {
                   if (!res.ok) {
@@ -889,7 +932,7 @@ export default function Admin() {
               <select
                 value={contratistaVenta}
                 onChange={(event) => setContratistaVenta(event.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6 }}
+                style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
               >
                 {listaContratistas.map((nombre, indice) => (
                   <option key={nombre} value={String(indice + 1)}>{nombre}</option>
@@ -902,7 +945,7 @@ export default function Admin() {
               <select
                 value={movimientoVenta}
                 onChange={(event) => setMovimientoVenta(event.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6 }}
+                style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
               >
                 <option value="1">Venta</option>
                 <option value="2">Traspaso</option>
@@ -915,14 +958,14 @@ export default function Admin() {
                   value={codVenta}
                   placeholder="Ej: 12345"
                   onChange={(event) => setCodVenta(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6 }}
+                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
                 />
               </label>
             )}
             <button
               type="submit"
               disabled={procesandoVenta}
-              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "#1d4ed8", color: "#fff", cursor: "pointer", justifySelf: "start" }}
+              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer", justifySelf: "start" }}
             >
               {procesandoVenta ? "Procesando..." : "Procesar y descargar"}
             </button>
@@ -933,7 +976,7 @@ export default function Admin() {
       {autorizado && mostrarContratistas && (
         <section
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -957,19 +1000,21 @@ export default function Admin() {
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
                     setContratistas(data.filas || []);
+                    const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
+                    setListaContratistas(nombres);
                     setAvisoContratistas("Contratistas guardados.");
                   })
                   .catch((err) => setAvisoContratistas(err.message))
                   .finally(() => setGuardandoContratistas(false));
               }}
             >
-              <table style={{ width: "100%", maxWidth: 640, borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", maxWidth: 640, borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {["id", "Nombre", ""].map((columna) => (
                       <th
                         key={columna || "accion"}
-                        style={{ textAlign: "left", padding: "8px 10px", background: "#a9e5e5", border: "1px solid #d0d5dd" }}
+                        style={{ textAlign: "left", padding: "8px 10px", background: colores ? "#a9e5e5" : "var(--superficie)", border: "1px solid var(--borde)" }}
                       >
                         {columna}
                       </th>
@@ -979,7 +1024,7 @@ export default function Admin() {
                 <tbody>
                   {contratistas.map((fila, indice) => (
                     <tr key={indice}>
-                      <td style={{ padding: 6, border: "1px solid #e5e7eb" }}>
+                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                         <input
                           value={fila.id}
                           inputMode="numeric"
@@ -988,24 +1033,24 @@ export default function Admin() {
                             if (valor !== "" && !/^\d+$/.test(valor)) return;
                             setContratistas((actual) => actual.map((item, i) => (i === indice ? { ...item, id: valor } : item)));
                           }}
-                          style={{ width: "100%", padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6 }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
                         />
                       </td>
-                      <td style={{ padding: 6, border: "1px solid #e5e7eb" }}>
+                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                         <input
                           value={fila.nombre}
                           onChange={(event) => {
                             const valor = event.target.value;
                             setContratistas((actual) => actual.map((item, i) => (i === indice ? { ...item, nombre: valor } : item)));
                           }}
-                          style={{ width: "100%", padding: "8px 10px", border: "1px solid #d0d5dd", borderRadius: 6 }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
                         />
                       </td>
-                      <td style={{ padding: 6, border: "1px solid #e5e7eb" }}>
+                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                         <button
                           type="button"
                           onClick={() => setContratistas((actual) => actual.filter((_, i) => i !== indice))}
-                          style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "#b91c1c", color: "#fff", cursor: "pointer" }}
+                          style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--peligro)", color: "var(--sobre)", cursor: "pointer" }}
                         >
                           Quitar
                         </button>
@@ -1021,14 +1066,14 @@ export default function Admin() {
                     const siguiente = contratistas.reduce((maximo, fila) => Math.max(maximo, Number(fila.id) || 0), 0) + 1;
                     setContratistas((actual) => [...actual, { id: String(siguiente), nombre: "" }]);
                   }}
-                  style={{ padding: "8px 14px", border: "1px solid #d0d5dd", borderRadius: 6, background: "#fff", cursor: "pointer" }}
+                  style={{ padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", cursor: "pointer" }}
                 >
                   Agregar
                 </button>
                 <button
                   type="submit"
                   disabled={guardandoContratistas}
-                  style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "#1d4ed8", color: "#fff", cursor: "pointer" }}
+                  style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
                 >
                   {guardandoContratistas ? "Guardando..." : "Guardar"}
                 </button>
@@ -1058,7 +1103,7 @@ export default function Admin() {
           }}
           className="form-admin"
           style={{
-            background: "#fff",
+            background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
             display: "grid",
@@ -1079,7 +1124,7 @@ export default function Admin() {
                 }}
                 style={{
                   padding: "8px 10px",
-                  border: "1px solid #d0d5dd",
+                  border: "1px solid var(--borde)",
                   borderRadius: 6,
                   fontSize: 14,
                 }}
@@ -1094,8 +1139,8 @@ export default function Admin() {
                 padding: "8px 14px",
                 border: 0,
                 borderRadius: 6,
-                background: "#1d4ed8",
-                color: "#fff",
+                background: "var(--acento)",
+                color: "var(--sobre)",
                 fontSize: 14,
                 cursor: "pointer",
               }}
