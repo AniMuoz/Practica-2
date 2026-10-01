@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -15,6 +15,24 @@ const uploadPlanilla = multer({
     const nombre = file.originalname.toLowerCase();
     if (nombre.endsWith(".xlsx")) cb(null, true);
     else cb(new Error("Solo se aceptan archivos .xlsx."));
+  },
+});
+
+const uploadVenta = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.originalname.toLowerCase().endsWith(".xlsx")) cb(null, true);
+    else cb(new Error("Solo se aceptan archivos .xlsx."));
+  },
+});
+
+const uploadPdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.originalname.toLowerCase().endsWith(".pdf")) cb(null, true);
+    else cb(new Error("Solo se aceptan archivos PDF."));
   },
 });
 
@@ -130,6 +148,91 @@ app.get("/api/stock-detallado/excel", async (_req, res) => {
     res.send(Buffer.from(buffer));
   } catch (error) {
     res.status(500).json({ error: "No se pudo generar el stock detallado." });
+  }
+});
+
+function recibirReserva(req, res, siguiente) {
+  uploadPdf.single("archivo")(req, res, (errorCarga) => {
+    if (errorCarga) {
+      res.status(400).json({ error: errorCarga.message });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "Falta el PDF de la reserva." });
+      return;
+    }
+    siguiente();
+  });
+}
+
+app.post("/api/reserva", (req, res) => {
+  recibirReserva(req, res, async () => {
+    try {
+      res.json(await revisarReserva(req.file.buffer));
+    } catch (error) {
+      res.status(500).json({ error: "No se pudo leer la reserva." });
+    }
+  });
+});
+
+app.post("/api/reserva/excel", (req, res) => {
+  recibirReserva(req, res, async () => {
+    try {
+      const buffer = await exportarRevisionReserva(req.file.buffer);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      res.status(500).json({ error: "No se pudo generar la revisión de reserva." });
+    }
+  });
+});
+
+app.post("/api/ventas", (req, res) => {
+  uploadVenta.fields([
+    { name: "orden", maxCount: 1 },
+    { name: "ventas", maxCount: 1 },
+  ])(req, res, async (errorCarga) => {
+    if (errorCarga) {
+      res.status(400).json({ error: errorCarga.message });
+      return;
+    }
+    const orden = req.files?.orden?.[0];
+    if (!orden) {
+      res.status(400).json({ error: "Falta el archivo de orden de venta." });
+      return;
+    }
+    try {
+      const ventas = req.files?.ventas?.[0];
+      const { buffer, nombre } = await añadirVenta({
+        ordenBuffer: orden.buffer,
+        ventasBuffer: ventas?.buffer,
+        contratistaIdx: Number(req.body.contratista),
+        movTipo: Number(req.body.movimiento),
+        codVenta: req.body.codVenta,
+      });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      res.status(500).json({ error: "No se pudo generar la planilla de ventas." });
+    }
+  });
+});
+
+app.get("/api/contratistas", (_req, res) => {
+  try {
+    res.json(leerContratistas());
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer los contratistas." });
+  }
+});
+
+app.put("/api/contratistas", (req, res) => {
+  try {
+    res.json(guardarContratistas(req.body.clave, req.body.filas));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo guardar los contratistas." });
   }
 });
 

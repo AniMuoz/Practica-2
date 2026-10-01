@@ -1122,6 +1122,394 @@ async function exportarTabla() {
   return libro.xlsx.writeBuffer();
 }
 
+function enteroReserva(valor) {
+  const numero = parseInt(String(valor ?? "").trim(), 10);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function armarReserva(texto) {
+  const lineas = String(texto || "").split(/\r?\n/);
+  const horizontal = lineas.some((linea) => linea.trim().startsWith("Reserva No."));
+  const materiales = new Map();
+  filasConBodegas().forEach((fila) => {
+    materiales.set(String(fila.Codigo ?? "").trim(), fila);
+  });
+
+  const orden = [];
+  const num = [];
+  const des = [];
+  const ub = [];
+  const res = [];
+  const sto = [];
+  const numOrdenItem = [];
+  let ordenPagina = null;
+
+  const datoMaterial = (cod) => {
+    const material = materiales.get(String(cod ?? "").trim());
+    const descripcion = material && String(material.Descripcion ?? "").trim() !== ""
+      ? material.Descripcion
+      : "Sin descripción";
+    const stock = material ? material.Stock ?? 0 : 0;
+    const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
+    const lugar = ubicacion.trim() !== "" && ubicacion !== "          "
+      ? material["Ubicación"]
+      : "No se encontro ubicación";
+    return { descripcion, stock, lugar };
+  };
+
+  lineas.forEach((linea) => {
+    const lineaLimpia = linea.trim();
+    if (!lineaLimpia) return;
+    if (horizontal) {
+      if (lineaLimpia.slice(0, 11) === "Reserva No.") {
+        const tom2 = (lineaLimpia.split(".")[1] || "").split(" ");
+        ordenPagina = tom2[1];
+        orden.push(tom2[1]);
+      }
+      if (lineaLimpia.slice(0, 2) === "00") {
+        const cod = lineaLimpia.split(" ")[1];
+        const dato = datoMaterial(cod);
+        num.push(cod);
+        des.push(dato.descripcion);
+        sto.push(dato.stock);
+        ub.push(dato.lugar);
+        numOrdenItem.push(ordenPagina);
+      }
+      const cant = lineaLimpia.split(",");
+      if (cant.length === 2 && cant[1] === "000") res.push(cant[0]);
+      return;
+    }
+    if (lineaLimpia.slice(0, 5) === "Orden") {
+      const tom = lineaLimpia.split(/\s{2,}/);
+      const resto = (tom.length > 1 ? tom.slice(1).join(" ") : lineaLimpia.slice(5)).trim();
+      const numeroOrden = resto.split(/\s+/)[0];
+      if (numeroOrden) {
+        ordenPagina = numeroOrden;
+        orden.push(numeroOrden);
+      }
+      return;
+    }
+    if (lineaLimpia.slice(0, 8) === "Material") {
+      const tomar = lineaLimpia.split(/\s+/);
+      if (tomar[1]) {
+        const dato = datoMaterial(tomar[1]);
+        num.push(tomar[1]);
+        des.push(dato.descripcion);
+        sto.push(dato.stock);
+        ub.push(dato.lugar);
+        res.push(tomar[2]);
+        numOrdenItem.push(orden[0] || "");
+      }
+    }
+  });
+
+  const columnas = ["N°", "N° Orden", "Código", "Descripción", "Reserva", "Stock", "Ubicación", "Estado"];
+  const filas = num.map((codigo, indice) => {
+    const valRes = enteroReserva(res[indice]);
+    const valSto = enteroReserva(sto[indice]);
+    return [
+      indice + 1,
+      numOrdenItem[indice] || orden[0] || "",
+      codigo,
+      des[indice],
+      valRes,
+      valSto,
+      ub[indice],
+      valRes <= valSto ? "Disponible" : "No disponible",
+    ];
+  });
+  return { columnas, filas };
+}
+
+async function revisarReserva(buffer) {
+  const { PDFParse } = require("pdf-parse");
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const data = await parser.getText();
+    return armarReserva(data.text);
+  } finally {
+    await parser.destroy();
+  }
+}
+
+async function exportarRevisionReserva(buffer) {
+  const { columnas, filas } = await revisarReserva(buffer);
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Reserva");
+  [8, 18, 15, 52, 12, 12, 25, 16].forEach((ancho, indice) => {
+    hoja.getColumn(indice + 1).width = ancho;
+  });
+
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+  hoja.mergeCells("A1:B1");
+  const titulo = hoja.getCell("A1");
+  titulo.value = "Revisión Stock de Reserva";
+  titulo.font = { bold: true, size: 12 };
+  titulo.fill = encabezado;
+  titulo.border = borde;
+
+  columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 1);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    celda.fill = encabezado;
+    celda.border = borde;
+  });
+
+  filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 1);
+      celda.value = valor ?? "";
+      celda.border = borde;
+      if (columna !== 7) return;
+      const color = valor === "Disponible" ? "FF73C883" : "FFF9E37C";
+      celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+    });
+  });
+
+  const ultima = Math.max(filas.length + 3, 3);
+  hoja.autoFilter = `A3:H${ultima}`;
+  return libro.xlsx.writeBuffer();
+}
+
+function enteroCelda(valor) {
+  const numero = Number(String(valor ?? "").trim());
+  return Number.isFinite(numero) ? Math.trunc(numero) : 0;
+}
+
+function escribirEncabezadoVentas(hoja, fila) {
+  const amarillo = [
+    "Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505",
+    "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD",
+    "Contratistas", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval", "Estado", "Fecha",
+    "Dif.Pend", "GD Esval", "Fecha", "Observacion",
+  ];
+  const gris = ["Pos", "Codigo", "SOLICITUD", "COMPARA CODIGO", "COMPARA CANT"];
+  const relleno = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+  amarillo.forEach((nombre, indice) => {
+    const celda = hoja.getCell(fila, indice + 1);
+    celda.value = nombre;
+    celda.fill = relleno;
+  });
+  gris.forEach((nombre, indice) => {
+    hoja.getCell(fila, amarillo.length + 1 + indice).value = nombre;
+  });
+}
+
+async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta }) {
+  const materiales = new Map();
+  filasConBodegas().forEach((fila) => {
+    materiales.set(String(fila.Codigo ?? "").trim(), fila);
+  });
+  const contratistas = leerContratistas().filas.map((fila) => String(fila.nombre ?? ""));
+
+  const libroOrden = XLSX.read(ordenBuffer, { type: "buffer" });
+  const nombrePedido = libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
+  const orden = XLSX.utils.sheet_to_json(libroOrden.Sheets[nombrePedido], { header: 1, defval: null });
+  const encabezado = orden.findIndex((fila) =>
+    (fila || []).some((celda) => String(celda ?? "").trim().toLowerCase() === "solicitado")
+  );
+  const titulos = (orden[encabezado] || []).map((celda) => String(celda ?? "").trim().toLowerCase());
+  const colCodigo = Math.max(titulos.indexOf("código"), titulos.indexOf("codigo"), 0);
+  const colUnidad = titulos.indexOf("un") >= 0 ? titulos.indexOf("un") : 2;
+  const colSolicitado = titulos.indexOf("solicitado") >= 0 ? titulos.indexOf("solicitado") : 3;
+  const items = orden.slice(encabezado + 1).flatMap((fila) => {
+    const cantidad = fila?.[colSolicitado];
+    if (cantidad == null || cantidad === "" || Number(cantidad) === 0) return [];
+    return [{
+      codigo: fila?.[colCodigo],
+      unidad: fila?.[colUnidad],
+      cantidad,
+    }];
+  });
+
+  const libro = new ExcelJS.Workbook();
+  let hoja;
+  if (ventasBuffer) {
+    await libro.xlsx.load(ventasBuffer);
+    hoja = libro.worksheets[0];
+    hoja.eachRow((fila) => {
+      fila.eachCell((celda) => {
+        if (celda.value === "Comprador") celda.value = "Contratistas";
+      });
+    });
+  } else {
+    hoja = libro.addWorksheet("Ventas");
+    escribirEncabezadoVentas(hoja, 1);
+  }
+
+  let lastPos = 1;
+  hoja.eachRow((fila, numero) => {
+    if (fila.getCell(1).value === "Pos") lastPos = numero;
+  });
+
+  const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
+  const codcomp = mov === "TRASPASO" ? "n/a" : (codVenta === "" || codVenta == null ? "n/a" : codVenta);
+  const contratista = contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
+  const hoy = new Date();
+  const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
+  const borde = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+
+  const anchos = {
+    A: 5, C: 50, D: 12, E: 7, F: 7, G: 7, H: 7, I: 7, J: 7, K: 7, L: 4, M: 4, N: 6, O: 11,
+    P: 6, Q: 6, R: 7, S: 9, T: 12, U: 9, V: 6, W: 7, X: 8, Y: 8, Z: 13, AA: 10, AB: 9,
+    AC: 9, AD: 9, AE: 35, AF: 5, AH: 10, AI: 18, AJ: 18,
+  };
+  Object.entries(anchos).forEach(([letra, ancho]) => {
+    hoja.getColumn(letra).width = ancho;
+  });
+  hoja.autoFilter = "A1:AJ1";
+
+  let cont = 10;
+  for (const item of items) {
+    const cant = item.cantidad;
+    const codMat = String(item.codigo ?? "");
+    const material = materiales.get(codMat);
+    const stock = (campo) => enteroCelda(material?.[campo]);
+    const fila = lastPos + 1;
+    const m501 = material ? stock("Stock") : 0;
+    const m505 = material ? stock("M505") : 0;
+    const cantidad = enteroCelda(cant);
+
+    for (let columna = 1; columna <= 36; columna += 1) {
+      const celda = hoja.getCell(fila, columna);
+      celda.border = borde;
+      celda.font = { bold: true };
+    }
+
+    hoja.getCell(fila, 1).value = cont;
+    hoja.getCell(fila, 2).value = item.codigo;
+    if (material) {
+      hoja.getCell(fila, 3).value = material.Descripcion ?? "";
+      hoja.getCell(fila, 4).value = material["Ubicación"] ?? "";
+    }
+    hoja.getCell(fila, 5).value = m501;
+    hoja.getCell(fila, 5).font = { bold: true, color: { argb: m501 === 0 ? "FFFF0000" : "FF7CC8FF" } };
+    hoja.getCell(fila, 6).value = material ? stock("M502") : 0;
+    hoja.getCell(fila, 7).value = material ? stock("M503") : 0;
+    hoja.getCell(fila, 8).value = material ? stock("M504") : 0;
+    hoja.getCell(fila, 9).value = m505;
+    hoja.getCell(fila, 10).value = cant;
+
+    let entregar = 0;
+    if (material && cantidad <= m501) entregar = cant;
+    else if (material && m505 > m501) {
+      hoja.getCell(fila, 4).value = "CONCON";
+      for (let columna = 1; columna <= 36; columna += 1) {
+        hoja.getCell(fila, columna).font = { bold: true, color: { argb: "FFFF0000" } };
+      }
+    } else if (material && m505 === 0 && m501 === 0) {
+      for (let columna = 1; columna <= 36; columna += 1) {
+        hoja.getCell(fila, columna).font = { bold: true, color: { argb: "FFFF0000" } };
+      }
+    }
+    hoja.getCell(fila, 11).value = entregar;
+    hoja.getCell(fila, 12).value = item.unidad;
+    hoja.getCell(fila, 13).value = 0;
+    hoja.getCell(fila, 14).value = m501 - cantidad;
+    hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
+    hoja.getCell(fila, 16).value = 0;
+    hoja.getCell(fila, 17).value = { formula: `P${fila}*J${fila}` };
+    const precio = enteroCelda(material?.Precio);
+    hoja.getCell(fila, 18).value = precio;
+    hoja.getCell(fila, 19).value = cantidad * precio;
+    hoja.getCell(fila, 20).value = contratista;
+    hoja.getCell(fila, 21).value = mov;
+    hoja.getCell(fila, 23).value = codcomp;
+    hoja.getCell(fila, 24).value = { formula: `K${fila}` };
+    hoja.getCell(fila, 28).value = { formula: `X${fila}-J${fila}` };
+    hoja.getCell(fila, 27).value = fecha;
+    hoja.getCell(fila, 32).value = cont;
+    hoja.getCell(fila, 35).value = { formula: `AG${fila}=B${fila}` };
+    hoja.getCell(fila, 36).value = { formula: `AH${fila}=X${fila}` };
+
+    lastPos += 1;
+    cont += 10;
+  }
+
+  escribirEncabezadoVentas(hoja, lastPos + 1);
+  for (let columna = 1; columna <= 36; columna += 1) {
+    const celda = hoja.getCell(lastPos + 1, columna);
+    celda.border = borde;
+    celda.font = { ...(celda.font || {}), bold: true };
+  }
+
+  const buffer = await libro.xlsx.writeBuffer();
+  return { buffer, nombre: `VENTAS ${hoy.getFullYear()}.xlsx` };
+}
+
+function archivoContratistas() {
+  return path.join(__dirname, "bd_comp.xlsx");
+}
+
+function leerContratistas() {
+  const libro = XLSX.readFile(archivoContratistas());
+  const hoja = libro.Sheets[libro.SheetNames[0]];
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const columnas = (matriz[0] || ["id", "Nombre"]).map((nombre) => String(nombre));
+  const filas = matriz.slice(1)
+    .filter((fila) => (fila || []).some((celda) => String(celda ?? "").trim() !== ""))
+    .map((fila) => ({
+      id: fila[0] ?? "",
+      nombre: fila[1] ?? "",
+    }));
+  return { columnas, filas };
+}
+
+function guardarContratistas(clave, filas) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+  if (!Array.isArray(filas)) {
+    const error = new Error("No hay contratistas para guardar.");
+    error.status = 400;
+    throw error;
+  }
+
+  const vistos = new Set();
+  const matriz = [["id", "Nombre"]];
+  filas.forEach((fila, indice) => {
+    const id = String(fila.id ?? "").trim();
+    const nombre = String(fila.nombre ?? "").trim();
+    if (!id && !nombre) return;
+    if (!id || !/^\d+$/.test(id)) {
+      const error = new Error(`La fila ${indice + 1} necesita un id numérico.`);
+      error.status = 400;
+      throw error;
+    }
+    if (!nombre) {
+      const error = new Error(`La fila ${indice + 1} necesita un nombre.`);
+      error.status = 400;
+      throw error;
+    }
+    if (vistos.has(id)) {
+      const error = new Error(`El id ${id} está repetido.`);
+      error.status = 400;
+      throw error;
+    }
+    vistos.add(id);
+    matriz.push([Number(id), nombre]);
+  });
+
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Hoja1");
+  XLSX.writeFile(libro, archivoContratistas());
+  return leerContratistas();
+}
+
 module.exports = {
   leerTabla,
   buscarMaterial,
@@ -1143,4 +1531,10 @@ module.exports = {
   exportarPlanillaInventario,
   stockDetallado,
   exportarStockDetallado,
+  armarReserva,
+  revisarReserva,
+  exportarRevisionReserva,
+  leerContratistas,
+  guardarContratistas,
+  añadirVenta,
 };
