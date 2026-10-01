@@ -403,7 +403,7 @@ export default function App() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {columna}
+                    {columna === "Codigo" ? "Código" : columna}
                   </th>
                 ))}
               </tr>

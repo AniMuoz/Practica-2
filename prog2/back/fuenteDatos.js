@@ -778,7 +778,7 @@ function columnaExcel(indice) {
 
 function stockEnBodega() {
   const { filas } = leerTabla();
-  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Libre utilización"];
+  const columnas = ["Código", "Descripción", "Libre utilización"];
   const resultado = filas
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
     .map((fila) => [fila.Codigo ?? "", fila.Descripcion ?? "", valorStock(fila.Stock) ?? ""]);
@@ -870,7 +870,7 @@ function filasConBodegas() {
 
 function stockRegional() {
   const filas = filasConBodegas();
-  const columnas = ["Material", "Descripcion del producto", "M501", "M502", "M503", "M504", "M505", "Total"];
+  const columnas = ["Código", "Descripción", "M501", "M502", "M503", "M504", "M505", "Total"];
   const resultado = filas
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
     .map((fila) => {
@@ -944,7 +944,7 @@ function claveUbicacion(ubicacion) {
 
 function planillaInventario() {
   const { filas } = leerTabla();
-  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"];
+  const columnas = ["Código", "Descripción", "Ubicación", "Sub-Ubicación", "Libre utilización", "Existencia"];
   const resultado = filas
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
     .map((fila) => [
@@ -986,7 +986,7 @@ function planillaInventarioPorBodega() {
 }
 
 async function armarPlanillaInventario(filas, almacen, colores = true) {
-  const columnas = ["Etiqueta de fila", "Descripcion del producto", "Ubicacion", "sub-ubicacion", "Libre utilización", "Existencia"];
+  const columnas = ["Código", "Descripción", "Ubicación", "Sub-Ubicación", "Libre utilización", "Existencia"];
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
   hoja.getColumn(1).width = 20;
@@ -1065,7 +1065,7 @@ function stockDetallado() {
   const filas = filasConBodegas();
   const columnas = [
     "Ubicación",
-    "Codigo",
+    "Código",
     "Descripción",
     "M501",
     "Precio x Unidad",
@@ -1402,12 +1402,12 @@ function enteroCelda(valor) {
 
 function escribirEncabezadoVentas(hoja, fila, colores) {
   const amarillo = [
-    "Pos", "Codigo", "Descripcion", "Ubicación", "M501", "M502", "M503", "M504", "M505",
+    "Pos", "Código", "Descripción", "Ubicación", "M501", "M502", "M503", "M504", "M505",
     "Solicitado", "Entregar", "Med", "Tiras", "Dif", "Comp", "kg x U", "Kg Total GD", "$ x U", "$ Total GD",
     "Contratistas", "Movimiento", "Almacen", "N°Venta", "Cant:GD", "GD Esval", "Estado", "Fecha",
     "Dif.Pend", "GD Esval", "Fecha", "Observacion",
   ];
-  const gris = ["Pos", "Codigo", "SOLICITUD", "COMPARA CODIGO", "COMPARA CANT"];
+  const gris = ["Pos", "Código", "SOLICITUD", "COMPARA CODIGO", "COMPARA CANT"];
   const relleno = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
   amarillo.forEach((nombre, indice) => {
     const celda = hoja.getCell(fila, indice + 1);
