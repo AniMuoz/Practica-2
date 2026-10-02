@@ -854,7 +854,7 @@ async function exportarStockBodega(colores = true) {
     fgColor: { argb: "FFA9E5E5" },
   };
 
-  hoja.getCell("A1").value = "Almacen";
+  hoja.getCell("A1").value = "Bodega";
   hoja.getCell("B1").value = "M501";
   ["A1", "B1"].forEach((ref) => {
     const celda = hoja.getCell(ref);
@@ -1057,7 +1057,7 @@ async function armarPlanillaInventario(filas, almacen, colores = true) {
     pintar(celda, encabezado, colores);
     celda.border = borde;
   });
-  hoja.getCell("A1").value = "Almacen";
+  hoja.getCell("A1").value = "Bodega";
   hoja.getCell("B1").value = almacen;
 
   columnas.forEach((nombre, indice) => {
@@ -1583,6 +1583,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   hoja.autoFilter = "A1:AJ1";
 
   let cont = 10;
+  const primeraFila = lastPos + 1;
   for (const item of items) {
     const cant = item.cantidad;
     const codMat = String(item.codigo ?? "");
@@ -1649,6 +1650,18 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
 
     lastPos += 1;
     cont += 10;
+  }
+
+  if (items.length > 0) {
+    const filaTotal = lastPos + 1;
+    for (let columna = 1; columna <= 36; columna += 1) {
+      const celda = hoja.getCell(filaTotal, columna);
+      celda.border = borde;
+      celda.font = { bold: true };
+    }
+    hoja.getCell(filaTotal, 18).value = "Total";
+    hoja.getCell(filaTotal, 19).value = { formula: `SUM(S${primeraFila}:S${lastPos})` };
+    lastPos += 1;
   }
 
   escribirEncabezadoVentas(hoja, lastPos + 1, colores);
