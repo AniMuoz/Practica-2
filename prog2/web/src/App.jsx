@@ -96,8 +96,8 @@ export default function App() {
     setPagina(0);
   }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
 
-  useEffect(() => {
-    fetch("/api/tabla", { cache: "no-store" })
+  function cargarTabla() {
+    return fetch("/api/tabla", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error("No se pudo leer la API");
         return res.json();
@@ -105,9 +105,44 @@ export default function App() {
       .then((data) => {
         setColumnas(data.columnas || []);
         setFilas(data.filas || []);
-      })
+      });
+  }
+
+  useEffect(() => {
+    cargarTabla()
       .catch(() => setError("No se pudo cargar la tabla."))
       .finally(() => setCargando(false));
+  }, []);
+
+  useEffect(() => {
+    const fuente = new EventSource("/api/eventos");
+    fuente.onmessage = (evento) => {
+      let data;
+      try {
+        data = JSON.parse(evento.data);
+      } catch {
+        return;
+      }
+      if (data.tipo === "fila" && data.fila) {
+        setFilas((actuales) => {
+          const codigoNuevo = String(data.fila.Codigo);
+          const codigoAnterior = data.codigoAnterior ? String(data.codigoAnterior) : codigoNuevo;
+          const indice = actuales.findIndex((fila) => String(fila.Codigo) === codigoAnterior);
+          if (indice < 0) return [...actuales, data.fila];
+          const copia = actuales.slice();
+          copia[indice] = data.fila;
+          if (codigoAnterior !== codigoNuevo) {
+            return copia.filter((fila, posicion) => posicion === indice || String(fila.Codigo) !== codigoNuevo);
+          }
+          return copia;
+        });
+        return;
+      }
+      if (data.tipo === "recarga") {
+        cargarTabla().catch(() => setError("No se pudo actualizar la tabla."));
+      }
+    };
+    return () => fuente.close();
   }, []);
 
   const columnasTabla = columnas.filter((columna) => columna !== "Rombo" && columna !== "QR");

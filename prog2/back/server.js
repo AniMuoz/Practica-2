@@ -60,6 +60,15 @@ function conColores(valor) {
 const app = express();
 const PORT = 3001;
 
+const clientesEventos = new Set();
+
+function emitir(evento) {
+  const mensaje = `data: ${JSON.stringify(evento)}\n\n`;
+  for (const cliente of clientesEventos) {
+    cliente.write(mensaje);
+  }
+}
+
 app.use(cors());
 app.use(express.json());
 app.use("/api", (_req, res, next) => {
@@ -67,6 +76,23 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 app.use("/api/imagenes", express.static(carpetaImagenes));
+
+app.get("/api/eventos", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+  res.write(": conectado\n\n");
+  clientesEventos.add(res);
+  const pulso = setInterval(() => {
+    res.write(": pulso\n\n");
+  }, 15000);
+  req.on("close", () => {
+    clearInterval(pulso);
+    clientesEventos.delete(res);
+  });
+});
 
 app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
@@ -297,6 +323,7 @@ app.post("/api/tabla/excel", (req, res) => {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;
       }
+      emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {
       res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });
@@ -307,6 +334,7 @@ app.post("/api/tabla/excel", (req, res) => {
 app.post("/api/material", (req, res) => {
   try {
     const resultado = agregarMaterial(req.body.clave, req.body.datos);
+    if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.status(201).json(resultado);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo agregar el material." });
@@ -329,6 +357,7 @@ app.get("/api/material/:codigo", (req, res) => {
 app.post("/api/tabla/limpiar-inventario", (_req, res) => {
   try {
     const tabla = limpiarInventarioComentarios();
+    emitir({ tipo: "recarga" });
     res.json(tabla);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo limpiar inventario y comentarios." });
@@ -345,6 +374,7 @@ app.put("/api/material/:codigo", (req, res) => {
       res.status(404).json({ error: "Material no encontrado." });
       return;
     }
+    emitir({ tipo: "fila", fila: resultado.fila });
     res.json(resultado);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo guardar." });
@@ -363,6 +393,11 @@ app.put("/api/material/:codigo/datos", (req, res) => {
       res.status(404).json({ error: "Material no encontrado." });
       return;
     }
+    emitir({
+      tipo: "fila",
+      fila: resultado.fila,
+      codigoAnterior: String(req.params.codigo),
+    });
     res.json(resultado);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo guardar." });
@@ -376,6 +411,7 @@ app.delete("/api/material/:codigo/imagen", (req, res) => {
       res.status(404).json({ error: "Material no encontrado." });
       return;
     }
+    if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.json(resultado);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo quitar la imagen." });
@@ -398,6 +434,7 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
         res.status(404).json({ error: "Material no encontrado." });
         return;
       }
+      if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
       res.json(resultado);
     } catch (error) {
       res.status(error.status || 500).json({ error: error.message || "No se pudo guardar la imagen." });
