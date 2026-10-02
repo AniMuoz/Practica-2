@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -222,6 +222,14 @@ function recibirReserva(req, res, siguiente) {
   });
 }
 
+app.get("/api/reservas", (req, res) => {
+  try {
+    res.json(buscarReservas(req.query.orden));
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo leer las reservas." });
+  }
+});
+
 app.post("/api/reserva", (req, res) => {
   recibirReserva(req, res, async () => {
     try {
@@ -320,6 +328,7 @@ app.post("/api/tabla/excel", (req, res) => {
       else if (modo === "precios") resultado = importarPrecios(req.body.clave, req.file.buffer);
       else if (modo === "ubicaciones") resultado = importarUbicaciones(req.body.clave, req.file.buffer);
       else if (modo === "dos-columnas") resultado = importarDosColumnas(req.body.clave, req.file.buffer, req.body.columna);
+      else if (modo === "reservas") resultado = importarReservas(req.body.clave, req.file.buffer);
       else {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;

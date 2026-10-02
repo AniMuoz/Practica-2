@@ -1654,6 +1654,74 @@ function guardarContratistas(clave, filas) {
   return leerContratistas();
 }
 
+function archivoReservas() {
+  return path.join(__dirname, "bd_reservas.xlsx");
+}
+
+function leerReservas() {
+  const archivo = archivoReservas();
+  if (!fs.existsSync(archivo)) return { columnas: [], filas: [] };
+  const libro = XLSX.readFile(archivo);
+  const hoja = libro.Sheets[libro.SheetNames[0]];
+  if (!hoja) return { columnas: [], filas: [] };
+  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
+  const filas = matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""));
+  return { columnas, filas };
+}
+
+function importarReservas(clave, buffer) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+  const libroEntrada = XLSX.read(buffer, { type: "buffer" });
+  const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
+  if (!hojaEntrada) {
+    const error = new Error("El archivo no tiene hojas.");
+    error.status = 400;
+    throw error;
+  }
+  const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
+  const encabezados = (matrizEntrada[0] || []).map((nombre) => String(nombre).trim());
+  if (!encabezados.some(Boolean)) {
+    const error = new Error("La planilla no tiene encabezados.");
+    error.status = 400;
+    throw error;
+  }
+  const nuevas = matrizEntrada.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""));
+  const actual = leerReservas();
+  let matriz;
+  let agregados = nuevas.length;
+  let actualizados = 0;
+  if (actual.columnas.length === 0) {
+    matriz = [encabezados, ...nuevas];
+  } else if (encabezados.join("|") !== actual.columnas.join("|")) {
+    const error = new Error("Los encabezados no coinciden con bd_reservas.");
+    error.status = 400;
+    throw error;
+  } else {
+    matriz = [actual.columnas, ...actual.filas, ...nuevas];
+  }
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Reservas");
+  XLSX.writeFile(libro, archivoReservas());
+  return { agregados, actualizados, omitidos: 0 };
+}
+
+function buscarReservas(orden) {
+  const termino = String(orden ?? "").trim().toLowerCase();
+  const { columnas, filas } = leerReservas();
+  if (!termino) return { columnas, filas: [], total: filas.length };
+  const indiceOrden = columnas.findIndex((columna) => /orden|order|pedido/i.test(columna));
+  const coinciden = filas.filter((fila) => {
+    if (indiceOrden >= 0) return String(fila[indiceOrden] ?? "").trim().toLowerCase().includes(termino);
+    return fila.some((celda) => String(celda ?? "").trim().toLowerCase().includes(termino));
+  });
+  return { columnas, filas: coinciden, total: filas.length };
+}
+
 module.exports = {
   leerTabla,
   buscarMaterial,
@@ -1684,4 +1752,6 @@ module.exports = {
   leerContratistas,
   guardarContratistas,
   añadirVenta,
+  importarReservas,
+  buscarReservas,
 };

@@ -49,6 +49,10 @@ export default function Admin() {
   const [reserva, setReserva] = useState({ columnas: [], filas: [] });
   const [revisandoReserva, setRevisandoReserva] = useState(false);
   const [avisoReserva, setAvisoReserva] = useState("");
+  const [ordenReserva, setOrdenReserva] = useState("");
+  const [busquedaReserva, setBusquedaReserva] = useState({ columnas: [], filas: [], total: 0 });
+  const [buscandoReserva, setBuscandoReserva] = useState(false);
+  const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
   const [mostrarContratistas, setMostrarContratistas] = useState(false);
   const [contratistas, setContratistas] = useState([]);
   const [cargandoContratistas, setCargandoContratistas] = useState(false);
@@ -397,6 +401,7 @@ export default function Admin() {
             <option value="ubicaciones">Planilla de ubicaciones</option>
             <option value="precios">Planilla de precios</option>
             <option value="dos-columnas">Planilla de 2 columnas</option>
+            <option value="reservas">Añadir reservas</option>
           </select>
           {modoCarga === "dos-columnas" && (
             <select
@@ -808,6 +813,103 @@ export default function Admin() {
           }}
         >
           <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Revisión de stock de reserva</h2>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const orden = ordenReserva.trim();
+              if (!orden) {
+                setAvisoBusquedaReserva("Escribí un número de orden.");
+                setBusquedaReserva({ columnas: [], filas: [], total: 0 });
+                return;
+              }
+              setAvisoBusquedaReserva("");
+              setBuscandoReserva(true);
+              fetch(`/api/reservas?orden=${encodeURIComponent(orden)}`)
+                .then(async (res) => {
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || "No se pudo buscar la orden.");
+                  setBusquedaReserva({
+                    columnas: data.columnas || [],
+                    filas: data.filas || [],
+                    total: data.total || 0,
+                  });
+                  if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
+                  else if ((data.filas || []).length === 0) setAvisoBusquedaReserva("No hay reservas con ese número de orden.");
+                })
+                .catch((err) => setAvisoBusquedaReserva(err.message))
+                .finally(() => setBuscandoReserva(false));
+            }}
+            style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}
+          >
+            <input
+              type="search"
+              aria-label="Número de orden"
+              value={ordenReserva}
+              placeholder="Buscar número de orden"
+              onChange={(event) => setOrdenReserva(event.target.value)}
+              style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, minWidth: 220 }}
+            />
+            <button
+              type="submit"
+              disabled={buscandoReserva}
+              style={{
+                padding: "8px 14px",
+                border: 0,
+                borderRadius: 6,
+                background: "var(--boton)",
+                color: "var(--sobre)",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              {buscandoReserva ? "Buscando..." : "Buscar orden"}
+            </button>
+            {avisoBusquedaReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoBusquedaReserva}</p>}
+          </form>
+          {busquedaReserva.columnas.length > 0 && (
+            <div style={{ overflow: "auto", maxHeight: 320, marginBottom: 16 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                <thead>
+                  <tr>
+                    {busquedaReserva.columnas.map((columna) => (
+                      <th
+                        key={columna}
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {columna}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {busquedaReserva.filas.map((fila, indice) => (
+                    <tr key={indice}>
+                      {busquedaReserva.columnas.map((_, columna) => (
+                        <td
+                          key={columna}
+                          style={{
+                            padding: "8px 10px",
+                            border: "1px solid var(--borde-suave)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {fila[columna] === "" || fila[columna] == null ? "" : String(fila[columna])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <form
             onSubmit={(event) => {
               event.preventDefault();
