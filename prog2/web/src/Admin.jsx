@@ -1075,8 +1075,8 @@ export default function Admin() {
         </section>
       )}
       {autorizado && mostrarVentas && (
-        <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 16, maxWidth: 640 }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Añadir venta</h2>
+        <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: 640, width: "100%" }}>
+          <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Añadir venta</h2>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -1158,7 +1158,7 @@ export default function Admin() {
             <button
               type="submit"
               disabled={procesandoVenta}
-              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer", justifySelf: "start" }}
+              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer", justifySelf: "center" }}
             >
               {procesandoVenta ? "Procesando..." : "Procesar y descargar"}
             </button>
@@ -1172,10 +1172,12 @@ export default function Admin() {
             background: "var(--superficie)",
             borderRadius: 8,
             padding: 16,
-            marginBottom: 16,
+            margin: "0 auto 16px",
+            maxWidth: 640,
+            width: "100%",
           }}
         >
-          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Contratistas</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Contratistas</h2>
           {cargandoContratistas && <p style={{ margin: 0 }}>Cargando contratistas...</p>}
           {avisoContratistas && <p style={{ margin: "0 0 12px" }}>{avisoContratistas}</p>}
           {!cargandoContratistas && (
@@ -1215,7 +1217,7 @@ export default function Admin() {
                   .finally(() => setGuardandoContratistas(false));
               }}
             >
-              <table className={clasePlanilla} style={{ width: "100%", maxWidth: 640, borderCollapse: "collapse", fontSize: 14 }}>
+              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr>
                     {["id", "Nombre", ""].map((columna) => (
@@ -1266,7 +1268,7 @@ export default function Admin() {
                   ))}
                 </tbody>
               </table>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
                 <button
                   type="button"
                   onClick={() => {
