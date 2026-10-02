@@ -306,7 +306,20 @@ export default function App() {
               {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
             </button>
             <a
-              href={colores ? "/api/tabla/excel" : "/api/tabla/excel?colores=0"}
+              href={(() => {
+                const params = new URLSearchParams();
+                if (!colores) params.set("colores", "0");
+                if (orden) params.set("orden", orden);
+                if (bodega) params.set("bodega", bodega);
+                if (subUbicacion) params.set("subUbicacion", subUbicacion);
+                if (stockMinimo.trim() !== "") params.set("stockMinimo", stockMinimo.trim());
+                if (soloConPrecio) params.set("precio", "1");
+                if (soloConUbicacion) params.set("ubicacion", "1");
+                if (soloStockCritico) params.set("critico", "1");
+                if (soloInventarioOComentario) params.set("inventario", "1");
+                const consulta = params.toString();
+                return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
+              })()}
               style={{
                 display: "inline-block",
                 padding: "8px 14px",

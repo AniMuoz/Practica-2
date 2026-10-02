@@ -101,7 +101,16 @@ app.get("/api/mensaje", (_req, res) => {
 
 app.get("/api/tabla/excel", async (req, res) => {
   try {
-    const buffer = await exportarTabla(conColores(req.query.colores));
+    const buffer = await exportarTabla(conColores(req.query.colores), {
+      orden: req.query.orden,
+      bodega: req.query.bodega,
+      subUbicacion: req.query.subUbicacion,
+      stockMinimo: req.query.stockMinimo,
+      soloConPrecio: req.query.precio === "1",
+      soloConUbicacion: req.query.ubicacion === "1",
+      soloStockCritico: req.query.critico === "1",
+      soloInventarioOComentario: req.query.inventario === "1",
+    });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
     res.send(Buffer.from(buffer));

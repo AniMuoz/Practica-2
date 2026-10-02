@@ -1184,10 +1184,70 @@ async function exportarStockDetallado(colores = true) {
   return libro.xlsx.writeBuffer();
 }
 
-async function exportarTabla(colores = true) {
+function aplicarFiltrosTabla(filas, filtros = {}) {
+  let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
+  const bodega = String(filtros.bodega ?? "").trim();
+  const subUbicacion = String(filtros.subUbicacion ?? "").trim();
+  const stockMinimo = String(filtros.stockMinimo ?? "").trim();
+  if (bodega) {
+    lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
+  }
+  if (subUbicacion) {
+    lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
+  }
+  if (stockMinimo !== "") {
+    const minimo = Number(stockMinimo);
+    lista = lista.filter((fila) => {
+      const stock = Number(String(fila.Stock ?? "").trim());
+      return Number.isFinite(stock) && stock >= minimo;
+    });
+  }
+  if (filtros.soloConPrecio) {
+    lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
+  }
+  if (filtros.soloConUbicacion) {
+    lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
+  }
+  if (filtros.soloStockCritico) {
+    lista = lista.filter((fila) => {
+      const textoCritico = String(fila["Stock critico"] ?? "").trim();
+      if (textoCritico === "") return false;
+      const critico = Number(textoCritico);
+      const stock = Number(String(fila.Stock ?? "").trim());
+      return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
+    });
+  }
+  if (filtros.soloInventarioOComentario) {
+    lista = lista.filter((fila) => {
+      const inventario = String(fila.Inventario ?? "").trim();
+      const comentario = String(fila.Comentario ?? "").trim();
+      return inventario !== "" || comentario !== "";
+    });
+  }
+  const orden = String(filtros.orden ?? "");
+  if (orden === "codigo" || orden === "codigo-asc") {
+    const sentido = orden === "codigo" ? -1 : 1;
+    lista = [...lista].sort((a, b) => {
+      const na = Number(a.Codigo);
+      const nb = Number(b.Codigo);
+      const comparado = Number.isFinite(na) && Number.isFinite(nb)
+        ? na - nb
+        : String(a.Codigo).localeCompare(String(b.Codigo), "es", { numeric: true });
+      return comparado * sentido;
+    });
+  } else if (orden === "descripcion" || orden === "descripcion-desc") {
+    const sentido = orden === "descripcion" ? 1 : -1;
+    lista = [...lista].sort((a, b) =>
+      String(a.Descripcion ?? "").localeCompare(String(b.Descripcion ?? ""), "es", { sensitivity: "base" }) * sentido
+    );
+  }
+  return lista;
+}
+
+async function exportarTabla(colores = true, filtros = {}) {
   const tabla = leerTabla();
   const columnas = tabla.columnas.filter((columna) => !CAMPOS_IMAGEN.has(columna));
-  const filas = tabla.filas;
+  const filas = aplicarFiltrosTabla(tabla.filas, filtros);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
   const borde = {
