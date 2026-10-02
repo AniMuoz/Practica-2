@@ -24,6 +24,7 @@ export default function Detalle() {
   const [pulsado, setPulsado] = useState(0);
   const pulso = useRef(null);
   const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
+  const [imagenGrande, setImagenGrande] = useState(null);
 
   useEffect(() => {
     const consulta = window.matchMedia("(max-width: 800px)");
@@ -53,7 +54,7 @@ export default function Detalle() {
   }, [codigo]);
 
   const soloLectura = columnas.filter(
-    (columna) => !["Inventario", "Comentario", "Rombo", "QR"].includes(columna)
+    (columna) => !["Inventario", "Comentario", "Rombo", "QR", "Foto"].includes(columna)
   );
 
   function guardarDatos(reemplazar) {
@@ -154,12 +155,12 @@ export default function Detalle() {
           className="imagenes-material"
           style={{
             display: "grid",
-            gridTemplateColumns: movil ? "1fr" : "1fr 1fr",
+            gridTemplateColumns: movil ? "1fr" : "1fr 1fr 1fr",
             gap: 16,
             marginBottom: 16,
           }}
         >
-          {["Rombo", "QR"].map((campo) => {
+          {["Rombo", "QR", "Foto"].map((campo) => {
             const valor = fila[campo];
             const esImagen = typeof valor === "string" && /\.(png|jpe?g|webp|gif)$/i.test(valor);
             return (
@@ -193,7 +194,8 @@ export default function Detalle() {
                     <img
                       src={`/api/imagenes/${valor}`}
                       alt={campo}
-                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      onClick={() => setImagenGrande({ src: `/api/imagenes/${valor}`, alt: campo })}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", cursor: "zoom-in" }}
                     />
                   ) : (
                     <span style={{ color: "var(--muted)", fontSize: 13 }}>Sin imagen</span>
@@ -548,6 +550,27 @@ export default function Detalle() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {imagenGrande && (
+        <div
+          onClick={() => setImagenGrande(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 40,
+            background: "rgba(0, 0, 0, 0.72)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            cursor: "zoom-out",
+          }}
+        >
+          <img
+            src={imagenGrande.src}
+            alt={imagenGrande.alt}
+            style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8, background: "#fff" }}
+          />
         </div>
       )}
       <div className="footer">

@@ -3,7 +3,7 @@ import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 
-const IMAGENES = new Set(["Rombo", "QR"]);
+const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
 export default function Admin() {
   const navigate = useNavigate();

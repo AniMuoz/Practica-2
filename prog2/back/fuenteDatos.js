@@ -6,7 +6,8 @@ const ExcelJS = require("exceljs");
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
 const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
 const COLUMNAS_OCULTAS = new Set(BODEGAS_EXTRA);
-const COLUMNAS_EXTRA = ["Rombo", "QR", ...BODEGAS_EXTRA];
+const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
+const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";
 
 function conStockCritico(matriz) {
@@ -50,7 +51,16 @@ function leerTabla() {
   const libro = XLSX.readFile(archivo);
   const { nombreHoja, matriz } = leerMatriz(libro);
   const encabezadoGuardado = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })[0] || [];
-  if (!encabezadoGuardado.map((nombre) => String(nombre)).includes(COLUMNA_STOCK_CRITICO)) {
+  const encabezadosGuardados = encabezadoGuardado.map((nombre) => String(nombre));
+  const faltaFoto = !encabezadosGuardados.includes("Foto");
+  if (faltaFoto) {
+    const columnasArchivo = (matriz[0] || []).map((nombre) => String(nombre));
+    if (!columnasArchivo.includes("Foto")) {
+      columnasArchivo.push("Foto");
+      matriz[0] = columnasArchivo;
+    }
+  }
+  if (!encabezadosGuardados.includes(COLUMNA_STOCK_CRITICO) || faltaFoto) {
     libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
     try {
       XLSX.writeFile(libro, archivo);
@@ -185,7 +195,7 @@ function limpiarInventarioComentarios() {
   return leerTabla();
 }
 
-const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR"]);
+const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto"]);
 const CLAVE_DATOS = "Berfre2026";
 
 function actualizarDatos(codigo, clave, datos, reemplazar) {
@@ -257,8 +267,8 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
     error.status = 403;
     throw error;
   }
-  if (campo !== "Rombo" && campo !== "QR") {
-    const error = new Error("La imagen debe ser Rombo o QR.");
+  if (!CAMPOS_IMAGEN.has(campo)) {
+    const error = new Error("La imagen debe ser Rombo, QR o Foto.");
     error.status = 400;
     throw error;
   }
@@ -354,7 +364,7 @@ function agregarMaterial(clave, datos) {
       const valor = String(datos.Inventario ?? "").trim();
       return valor === "" ? "" : Number(valor);
     }
-    if (columna === "Rombo" || columna === "QR") return filaPrevia[indice] ?? "";
+    if (CAMPOS_IMAGEN.has(columna)) return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";
   });
   if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
@@ -433,7 +443,7 @@ function importarPlanilla(clave, buffer) {
       if (columna === "Codigo") return codigoNuevo;
       if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
       const valor = fila[indicePorNombre[columna]];
-      if ((columna === "Rombo" || columna === "QR") && String(valor ?? "").trim() === "") {
+      if (CAMPOS_IMAGEN.has(columna) && String(valor ?? "").trim() === "") {
         return filaPrevia[indice] ?? "";
       }
       return valor ?? "";
@@ -1171,7 +1181,7 @@ async function exportarStockDetallado(colores = true) {
 
 async function exportarTabla(colores = true) {
   const tabla = leerTabla();
-  const columnas = tabla.columnas.filter((columna) => columna !== "Rombo" && columna !== "QR");
+  const columnas = tabla.columnas.filter((columna) => !CAMPOS_IMAGEN.has(columna));
   const filas = tabla.filas;
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");

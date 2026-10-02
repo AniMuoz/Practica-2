@@ -40,7 +40,8 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: carpetaImagenes,
     filename: (req, file, cb) => {
-      const campo = req.body.campo === "QR" ? "qr" : "rombo";
+      const nombres = { QR: "qr", Foto: "foto", Rombo: "rombo" };
+      const campo = nombres[req.body.campo] || "rombo";
       const codigo = String(req.params.codigo).replace(/[^\w.-]/g, "_");
       const extension = path.extname(file.originalname).toLowerCase() || ".png";
       cb(null, `${codigo}-${campo}${extension}`);

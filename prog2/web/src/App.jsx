@@ -145,7 +145,7 @@ export default function App() {
     return () => fuente.close();
   }, []);
 
-  const columnasTabla = columnas.filter((columna) => columna !== "Rombo" && columna !== "QR");
+  const columnasTabla = columnas.filter((columna) => !["Rombo", "QR", "Foto"].includes(columna));
   const alFinal = (pagina + 1) * tamano >= visibles.length;
   const rango =
     visibles.length === 0
