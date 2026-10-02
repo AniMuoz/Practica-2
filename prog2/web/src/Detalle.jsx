@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 export default function Detalle() {
   const { codigo } = useParams();
@@ -61,6 +62,11 @@ export default function Detalle() {
       .catch((err) => setError(err.message || "No se pudo cargar el material."))
       .finally(() => setCargando(false));
   }, [codigo]);
+
+  useEffect(() => {
+    if (cargando || error || !fila) return;
+    if (recorridoPendiente("material")) iniciarRecorrido("material");
+  }, [cargando, error, fila]);
 
   const soloLectura = columnas.filter(
     (columna) => !["Inventario", "Comentario", "Rombo", "QR", "Foto"].includes(columna)
@@ -157,10 +163,11 @@ export default function Detalle() {
     >
       <Navbar />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 12px", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
+        <h1 data-tour="material" style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
         <button
           type="button"
           role="switch"
+          data-tour="ocultar-imagenes"
           aria-checked={ocultarImagenes}
           onClick={() => cambiarOcultarImagenes(!ocultarImagenes)}
           style={{
@@ -335,6 +342,7 @@ export default function Detalle() {
           >
             {!editando && !pidiendoClave && (
               <button
+                data-tour="editar-material"
                 type="button"
                 onClick={() => {
                   setAvisoDatos("");
@@ -467,6 +475,7 @@ export default function Detalle() {
             {avisoDatos && <p style={{ margin: 0, fontSize: 14 }}>{avisoDatos}</p>}
           </section>
           <form
+            data-tour="conteo"
             onSubmit={(event) => {
               event.preventDefault();
               setAviso("");

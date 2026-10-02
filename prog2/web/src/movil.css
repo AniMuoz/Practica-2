@@ -149,12 +149,24 @@ select {
   }
 
   .barra > a:first-child {
-    flex: 1;
+    flex: 1 1 calc(100% - 44px);
+    min-width: 0;
     font-size: 17px !important;
+  }
+
+  .barra-ayuda {
+    flex: 0 0 28px;
+    order: 1;
+  }
+
+  .barra-switch {
+    order: 2;
+    flex: 0 0 auto;
   }
 
   .barra-admin {
     order: 2;
+    margin-left: auto;
     padding: 6px 12px !important;
   }
 

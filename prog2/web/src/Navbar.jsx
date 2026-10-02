@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../logo/logo.ico";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
+import { iniciarRecorrido } from "./Recorrido.jsx";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [codigo, setCodigo] = useState("");
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
 
@@ -23,6 +25,7 @@ export default function Navbar() {
       }}
     >
       <Link
+        data-tour="titulo"
         to="/"
         style={{
           display: "flex",
@@ -39,8 +42,31 @@ export default function Navbar() {
       </Link>
       <button
         type="button"
+        className="barra-ayuda"
+        aria-label="Ayuda"
+        onClick={() => iniciarRecorrido(pathname === "/admin" ? "admin" : pathname === "/" ? "principal" : "material")}
+        style={{
+          width: 28,
+          height: 28,
+          padding: 0,
+          border: "2px solid var(--texto)",
+          borderRadius: "50%",
+          background: "transparent",
+          color: "var(--texto)",
+          fontSize: 16,
+          fontWeight: 700,
+          lineHeight: 1,
+          cursor: "pointer",
+        }}
+      >
+        ?
+      </button>
+      <button
+        type="button"
+        className="barra-switch"
         role="switch"
         aria-checked={colores}
+        data-tour="colores"
         aria-label="Colores en planillas"
         onClick={() => cambiarColores(!colores)}
         style={{
@@ -82,8 +108,10 @@ export default function Navbar() {
       </button>
       <button
         type="button"
+        className="barra-switch"
         role="switch"
         aria-checked={oscuro}
+        data-tour="oscuro"
         aria-label="Modo oscuro"
         onClick={() => cambiarOscuro(!oscuro)}
         style={{
@@ -130,6 +158,7 @@ export default function Navbar() {
           if (!buscado) return;
           navigate(`/${encodeURIComponent(buscado)}`);
         }}
+        data-tour="buscar"
         className="barra-buscar"
         style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0 }}
       >

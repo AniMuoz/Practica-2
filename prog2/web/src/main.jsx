@@ -6,6 +6,7 @@ import Admin from "./Admin.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
 import Detalle from "./Detalle.jsx";
+import { Recorrido } from "./Recorrido.jsx";
 import "./movil.css";
 
 if (localStorage.getItem("modoOscuro") === "1") {
@@ -26,6 +27,7 @@ createRoot(document.getElementById("root")).render(
           <Route path="/admin" element={<Admin />} />
           <Route path="/:codigo" element={<Detalle />} />
         </Routes>
+        <Recorrido />
       </ColoresPlanillaProvider>
     </BrowserRouter>
   </StrictMode>

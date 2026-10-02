@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 export default function App() {
   const navigate = useNavigate();
@@ -146,6 +147,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (cargando || error || filas.length === 0) return;
+    if (recorridoPendiente("principal")) iniciarRecorrido("principal");
+  }, [cargando, error, filas.length]);
+
+  useEffect(() => {
     const fuente = new EventSource("/api/eventos");
     fuente.onmessage = (evento) => {
       let data;
@@ -270,6 +276,7 @@ export default function App() {
           {!cargando && !error && filas.length > 0 && (
             <button
               type="button"
+              data-tour="filtros"
               onClick={() => setFiltrosAbiertos((abierto) => !abierto)}
               style={{
                 padding: "8px 14px",
@@ -288,6 +295,7 @@ export default function App() {
             <button
               type="button"
               disabled={cargando || limpiando}
+              data-tour="limpiar"
               onClick={() => {
                 setAvisoClave("");
                 setClave("");
@@ -306,6 +314,7 @@ export default function App() {
               {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
             </button>
             <a
+              data-tour="descargar"
               href={(() => {
                 const params = new URLSearchParams();
                 if (!colores) params.set("colores", "0");
@@ -510,8 +519,31 @@ export default function App() {
                 ))}
               </tr>
             </thead>
+            <tbody data-tour="planilla">
+              {visibles.slice(pagina * tamano, pagina * tamano + 5).map((fila) => (
+                <tr
+                  key={fila.Codigo}
+                  onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {columnasTabla.map((columna) => (
+                    <td
+                      key={columna}
+                      style={{
+                        padding: "8px 12px",
+                        borderBottom: "1px solid var(--borde-suave)",
+                        whiteSpace: "nowrap",
+                        background: colores ? colorCelda(columna, fila) : undefined,
+                      }}
+                    >
+                      {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
             <tbody>
-              {visibles.slice(pagina * tamano, pagina * tamano + tamano).map((fila) => (
+              {visibles.slice(pagina * tamano + 5, pagina * tamano + tamano).map((fila) => (
                 <tr
                   key={fila.Codigo}
                   onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}

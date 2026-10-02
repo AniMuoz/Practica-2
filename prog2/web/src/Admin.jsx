@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
@@ -182,6 +183,7 @@ export default function Admin() {
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
     cargarUltimasCargas();
+    if (recorridoPendiente("admin")) iniciarRecorrido("admin");
   }, [autorizado]);
 
   return (
@@ -200,6 +202,7 @@ export default function Admin() {
       <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Agregar material</h1>
       {!autorizado && (
         <form
+          data-tour="admin-clave"
           onSubmit={(event) => {
             event.preventDefault();
             if (clave !== "Berfre2026") {
@@ -264,6 +267,7 @@ export default function Admin() {
             return (
               <button
                 key={nombre}
+                data-tour={nombre}
                 type="button"
                 onClick={() => {
                   if (nombre === "Carga de datos") {
