@@ -18,6 +18,7 @@ export default function App() {
   const [stockMinimo, setStockMinimo] = useState("");
   const [soloConPrecio, setSoloConPrecio] = useState(false);
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
+  const [soloStockCritico, setSoloStockCritico] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
   const tamano = 100;
 
@@ -83,6 +84,15 @@ export default function App() {
     if (soloConUbicacion) {
       lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
     }
+    if (soloStockCritico) {
+      lista = lista.filter((fila) => {
+        const textoCritico = String(fila["Stock critico"] ?? "").trim();
+        if (textoCritico === "") return false;
+        const critico = Number(textoCritico);
+        const stock = Number(String(fila.Stock ?? "").trim());
+        return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
+      });
+    }
     if (orden === "codigo" || orden === "codigo-asc") {
       const sentido = orden === "codigo" ? -1 : 1;
       lista = [...lista].sort((a, b) => {
@@ -100,11 +110,11 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
+  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -286,122 +296,128 @@ export default function App() {
       {!cargando && !error && filas.length > 0 && (
         <>
           {filtrosAbiertos && (
-            <div
-              style={{
-                marginTop: 10,
-                background: "var(--superficie)",
-                borderRadius: 8,
-                padding: 16,
-                display: "grid",
-                gap: 12,
-              }}
-            >
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="orden"
-                  checked={orden === ""}
-                  onChange={() => setOrden("")}
-                />
-                Sin orden extra
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="orden"
-                  checked={orden === "codigo"}
-                  onChange={() => setOrden("codigo")}
-                />
-                Ordenar códigos de mayor a menor
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="orden"
-                  checked={orden === "codigo-asc"}
-                  onChange={() => setOrden("codigo-asc")}
-                />
-                Ordenar códigos de menor a mayor
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="orden"
-                  checked={orden === "descripcion"}
-                  onChange={() => setOrden("descripcion")}
-                />
-                Ordenar descripciones alfabéticamente
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="orden"
-                  checked={orden === "descripcion-desc"}
-                  onChange={() => setOrden("descripcion-desc")}
-                />
-                Ordenar descripciones alfabéticamente al revés
-              </label>
-              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
-                Bodega
-                <select
-                  value={bodega}
-                  onChange={(event) => setBodega(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-                >
-                  <option value="">Todas</option>
-                  {bodegas.map((valor) => (
-                    <option key={valor} value={valor}>
-                      {valor}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
-                Sub-ubicación
-                <select
-                  value={subUbicacion}
-                  onChange={(event) => setSubUbicacion(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-                >
-                  <option value="">Todas</option>
-                  {subUbicaciones.map((valor) => (
-                    <option key={valor} value={valor}>
-                      {valor}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ display: "grid", gap: 4, fontSize: 14, maxWidth: 280 }}>
-                Stock igual o mayor a
-                <input
-                  inputMode="decimal"
-                  value={stockMinimo}
-                  placeholder="Cualquier stock"
-                  onChange={(event) => {
-                    const valor = event.target.value;
-                    if (valor === "" || /^-?\d*\.?\d*$/.test(valor)) setStockMinimo(valor);
-                  }}
-                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-                />
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={soloConPrecio}
-                  onChange={(event) => setSoloConPrecio(event.target.checked)}
-                />
-                Mostrar solo materiales con precio
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={soloConUbicacion}
-                  onChange={(event) => setSoloConUbicacion(event.target.checked)}
-                />
-                Mostrar solo materiales con ubicación
-              </label>
+            <div className="filtros-panel">
+              <div className="filtros-col">
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === ""}
+                    onChange={() => setOrden("")}
+                  />
+                  Sin orden extra
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "codigo"}
+                    onChange={() => setOrden("codigo")}
+                  />
+                  Ordenar códigos de mayor a menor
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "codigo-asc"}
+                    onChange={() => setOrden("codigo-asc")}
+                  />
+                  Ordenar códigos de menor a mayor
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "descripcion"}
+                    onChange={() => setOrden("descripcion")}
+                  />
+                  Ordenar descripciones alfabéticamente
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "descripcion-desc"}
+                    onChange={() => setOrden("descripcion-desc")}
+                  />
+                  Ordenar descripciones alfabéticamente al revés
+                </label>
+              </div>
+              <div className="filtros-col filtros-campos">
+                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                  Bodega
+                  <select
+                    value={bodega}
+                    onChange={(event) => setBodega(event.target.value)}
+                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">Todas</option>
+                    {bodegas.map((valor) => (
+                      <option key={valor} value={valor}>
+                        {valor}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                  Sub-ubicación
+                  <select
+                    value={subUbicacion}
+                    onChange={(event) => setSubUbicacion(event.target.value)}
+                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">Todas</option>
+                    {subUbicaciones.map((valor) => (
+                      <option key={valor} value={valor}>
+                        {valor}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                  Stock igual o mayor a
+                  <input
+                    inputMode="decimal"
+                    value={stockMinimo}
+                    placeholder="Cualquier stock"
+                    onChange={(event) => {
+                      const valor = event.target.value;
+                      if (valor === "" || /^-?\d*\.?\d*$/.test(valor)) setStockMinimo(valor);
+                    }}
+                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                  />
+                </label>
+              </div>
+              <div className="filtros-col">
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={soloConPrecio}
+                    onChange={(event) => setSoloConPrecio(event.target.checked)}
+                  />
+                  Mostrar solo materiales con precio
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={soloConUbicacion}
+                    onChange={(event) => setSoloConUbicacion(event.target.checked)}
+                  />
+                  Mostrar solo materiales con ubicación
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={soloStockCritico}
+                    onChange={(event) => setSoloStockCritico(event.target.checked)}
+                  />
+                  Mostrar material en stock crítico
+                </label>
+              </div>
               <button
                 type="button"
+                className="filtros-limpiar"
                 onClick={() => {
                   setOrden("");
                   setBodega("");
@@ -409,16 +425,7 @@ export default function App() {
                   setStockMinimo("");
                   setSoloConPrecio(false);
                   setSoloConUbicacion(false);
-                }}
-                style={{
-                  justifySelf: "start",
-                  padding: "8px 14px",
-                  border: 0,
-                  borderRadius: 6,
-                  background: "var(--apagado)",
-                  color: "var(--boton)",
-                  fontSize: 14,
-                  cursor: "pointer",
+                  setSoloStockCritico(false);
                 }}
               >
                 Limpiar filtros

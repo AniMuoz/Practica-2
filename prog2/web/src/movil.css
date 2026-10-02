@@ -91,6 +91,53 @@ select {
   max-width: 100%;
 }
 
+.filtros-panel {
+  margin-top: 10px;
+  background: var(--superficie);
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 24px;
+  align-items: center;
+}
+
+.filtros-col {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  justify-items: start;
+  min-width: 0;
+}
+
+.filtros-campos {
+  justify-items: stretch;
+  width: max-content;
+  max-width: 100%;
+}
+
+.filtros-campos > label {
+  width: 100%;
+}
+
+.filtros-campos select,
+.filtros-campos input {
+  width: 100%;
+  min-width: 16rem;
+}
+
+.filtros-limpiar {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--apagado);
+  color: var(--boton);
+  font-size: 14px;
+  cursor: pointer;
+}
+
 @media (max-width: 800px) {
   .barra {
     flex-direction: row !important;
@@ -156,5 +203,9 @@ select {
 
   .tabla-inventario {
     max-width: 100%;
+  }
+
+  .filtros-panel {
+    grid-template-columns: 1fr;
   }
 }
