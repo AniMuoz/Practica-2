@@ -19,7 +19,11 @@ export default function App() {
   const [soloConPrecio, setSoloConPrecio] = useState(false);
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
   const [soloStockCritico, setSoloStockCritico] = useState(false);
+  const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
+  const [pedirClave, setPedirClave] = useState(false);
+  const [clave, setClave] = useState("");
+  const [avisoClave, setAvisoClave] = useState("");
   const tamano = 100;
 
   function colorInventario(columna, fila) {
@@ -93,6 +97,13 @@ export default function App() {
         return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
       });
     }
+    if (soloInventarioOComentario) {
+      lista = lista.filter((fila) => {
+        const inventario = String(fila.Inventario ?? "").trim();
+        const comentario = String(fila.Comentario ?? "").trim();
+        return inventario !== "" || comentario !== "";
+      });
+    }
     if (orden === "codigo" || orden === "codigo-asc") {
       const sentido = orden === "codigo" ? -1 : 1;
       lista = [...lista].sort((a, b) => {
@@ -110,11 +121,11 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico]);
+  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -172,20 +183,33 @@ export default function App() {
       ? "0 de 0"
       : `${pagina * tamano + 1}–${Math.min((pagina + 1) * tamano, visibles.length)} de ${visibles.length}`;
 
-  function limpiarInventario() {
+  function limpiarInventario(event) {
+    event.preventDefault();
     if (!window.confirm("¿Vaciar las columnas Inventario y Comentario de todos los materiales?")) return;
     setLimpiando(true);
     setError("");
-    fetch("/api/tabla/limpiar-inventario", { method: "POST" })
-      .then((res) => {
-        if (!res.ok) throw new Error("No se pudo limpiar");
-        return res.json();
+    setAvisoClave("");
+    fetch("/api/tabla/limpiar-inventario", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo limpiar");
+        return data;
       })
       .then((data) => {
         setColumnas(data.columnas || []);
         setFilas(data.filas || []);
+        setPedirClave(false);
+        setClave("");
       })
-      .catch(() => setError("No se pudieron limpiar inventario y comentarios."))
+      .catch((error) => {
+        const mensaje = error.message || "No se pudieron limpiar inventario y comentarios.";
+        if (mensaje === "Contraseña incorrecta.") setAvisoClave(mensaje);
+        else setError(mensaje);
+      })
       .finally(() => setLimpiando(false));
   }
 
@@ -264,7 +288,11 @@ export default function App() {
             <button
               type="button"
               disabled={cargando || limpiando}
-              onClick={limpiarInventario}
+              onClick={() => {
+                setAvisoClave("");
+                setClave("");
+                setPedirClave(true);
+              }}
               style={{
                 padding: "8px 14px",
                 border: 0,
@@ -414,6 +442,14 @@ export default function App() {
                   />
                   Mostrar material en stock crítico
                 </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={soloInventarioOComentario}
+                    onChange={(event) => setSoloInventarioOComentario(event.target.checked)}
+                  />
+                  Mostrar solo materiales con inventario o comentario
+                </label>
               </div>
               <button
                 type="button"
@@ -426,6 +462,7 @@ export default function App() {
                   setSoloConPrecio(false);
                   setSoloConUbicacion(false);
                   setSoloStockCritico(false);
+                  setSoloInventarioOComentario(false);
                 }}
               >
                 Limpiar filtros
@@ -485,6 +522,81 @@ export default function App() {
             </tbody>
           </table>
           {paginacion()}
+        </div>
+      )}
+      {pedirClave && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 20,
+          }}
+        >
+          <form
+            onSubmit={limpiarInventario}
+            style={{
+              width: "min(420px, 100%)",
+              background: "var(--superficie)",
+              borderRadius: 8,
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 16 }}>Ingresa la contraseña para limpiar inventario y comentarios.</p>
+            <input
+              type="password"
+              value={clave}
+              autoFocus
+              placeholder="Contraseña"
+              onChange={(event) => setClave(event.target.value)}
+              style={{ padding: "8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+            />
+            {avisoClave && <p style={{ margin: 0, color: "var(--peligro)" }}>{avisoClave}</p>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={limpiando}
+                onClick={() => {
+                  setPedirClave(false);
+                  setClave("");
+                  setAvisoClave("");
+                }}
+                style={{
+                  padding: "8px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "var(--apagado)",
+                  color: "var(--apagado-texto)",
+                  fontSize: 14,
+                  cursor: limpiando ? "default" : "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={limpiando || clave.trim() === ""}
+                style={{
+                  padding: "8px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: limpiando || clave.trim() === "" ? "var(--apagado)" : "var(--peligro)",
+                  color: limpiando || clave.trim() === "" ? "var(--apagado-texto)" : "var(--sobre)",
+                  fontSize: 14,
+                  cursor: limpiando || clave.trim() === "" ? "default" : "pointer",
+                }}
+              >
+                {limpiando ? "Limpiando..." : "Confirmar"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
       <div className="footer">

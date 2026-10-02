@@ -167,7 +167,12 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
   return buscarMaterial(codigo);
 }
 
-function limpiarInventarioComentarios() {
+function limpiarInventarioComentarios(clave) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
   const archivo = path.join(__dirname, "bd_test.xlsx");
   const libro = XLSX.readFile(archivo);
   const nombreHoja = libro.SheetNames[0];

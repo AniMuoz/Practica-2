@@ -355,9 +355,9 @@ app.get("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.post("/api/tabla/limpiar-inventario", (_req, res) => {
+app.post("/api/tabla/limpiar-inventario", (req, res) => {
   try {
-    const tabla = limpiarInventarioComentarios();
+    const tabla = limpiarInventarioComentarios(req.body.clave);
     emitir({ tipo: "recarga" });
     res.json(tabla);
   } catch (error) {
