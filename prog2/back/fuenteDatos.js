@@ -115,11 +115,8 @@ function buscarMaterial(codigo) {
   const { columnas, filas } = leerTabla();
   const buscado = String(codigo);
   const fila = filas.find((item) => String(item.Codigo) === buscado) || null;
-  const textoStock = fila == null ? "" : String(fila.Stock ?? "").trim();
-  const stockCero = textoStock !== "" && Number(textoStock) === 0;
-  const sinStock = fila != null && (textoStock === "" || stockCero);
-  const bodegas = sinStock ? stockPorBodega(buscado) : [];
-  return { columnas, fila, bodegas: stockCero ? bodegas.filter((item) => item.bodega !== "M501") : bodegas };
+  const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== "M501");
+  return { columnas, fila, bodegas };
 }
 
 function actualizarMaterial(codigo, { inventario, comentario }) {

@@ -25,6 +25,15 @@ export default function Detalle() {
   const pulso = useRef(null);
   const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
   const [imagenGrande, setImagenGrande] = useState(null);
+  const [ocultarImagenes, setOcultarImagenes] = useState(
+    () => localStorage.getItem("ocultarImagenes") === "1"
+  );
+
+  function cambiarOcultarImagenes(activo) {
+    localStorage.setItem("ocultarImagenes", activo ? "1" : "0");
+    setOcultarImagenes(activo);
+    if (activo) setImagenGrande(null);
+  }
 
   useEffect(() => {
     const consulta = window.matchMedia("(max-width: 800px)");
@@ -147,10 +156,57 @@ export default function Detalle() {
       }}
     >
       <Navbar />
-      <h1 style={{ margin: "0 0 12px", fontSize: 20 }}>Material {codigo}</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 12px", flexWrap: "wrap" }}>
+        <h1 style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={ocultarImagenes}
+          onClick={() => cambiarOcultarImagenes(!ocultarImagenes)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            color: "inherit",
+            fontSize: 14,
+            cursor: "pointer",
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 40,
+              height: 22,
+              borderRadius: 999,
+              background: ocultarImagenes ? "var(--acento)" : "var(--borde)",
+              position: "relative",
+              flexShrink: 0,
+              transition: "background 0.2s ease",
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                left: ocultarImagenes ? 20 : 2,
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "#fff",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.25)",
+                transition: "left 0.2s ease",
+              }}
+            />
+          </span>
+          Ocultar imágenes
+        </button>
+      </div>
       {cargando && <p>Cargando detalle...</p>}
       {error && <p>{error}</p>}
-      {!cargando && !error && fila && (
+      {!cargando && !error && fila && !ocultarImagenes && (
         <div
           className="imagenes-material"
           style={{
@@ -343,9 +399,9 @@ export default function Detalle() {
                 </button>
               </form>
             )}
-            {(String(fila.Stock ?? "").trim() === "" || Number(String(fila.Stock ?? "").trim()) === 0) && bodegas.length > 0 && (
+            {bodegas.length > 0 && (
               <p style={{ margin: 0, fontSize: 14 }}>
-                Stock por bodega:{" "}
+                Stock de otras bodegas:{" "}
                 {bodegas.map((item) => `${item.bodega}: ${item.stock}`).join(" · ")}
               </p>
             )}
