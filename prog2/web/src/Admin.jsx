@@ -19,6 +19,7 @@ export default function Admin() {
   const [archivo, setArchivo] = useState(null);
   const [importando, setImportando] = useState(false);
   const [avisoCarga, setAvisoCarga] = useState("");
+  const [ultimasCargas, setUltimasCargas] = useState({});
   const [modoCarga, setModoCarga] = useState("completa");
   const [columnaCarga, setColumnaCarga] = useState("");
   const [columnasDestino, setColumnasDestino] = useState([]);
@@ -127,6 +128,32 @@ export default function Admin() {
     if (!ok.has("contratistas")) setMostrarContratistas(false);
   }
 
+  function cargarUltimasCargas() {
+    return fetch("/api/tabla/ultimas-cargas", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => setUltimasCargas(data.cargas || {}))
+      .catch(() => {});
+  }
+
+  function textoUltimaCarga() {
+    const clave =
+      modoCarga === "dos-columnas" && columnaCarga
+        ? `dos-columnas:${columnaCarga}`
+        : modoCarga;
+    const iso = ultimasCargas[clave];
+    if (!iso) return "Todavía no hay una carga registrada para esta opción.";
+    const fecha = new Date(iso);
+    if (Number.isNaN(fecha.getTime())) return "Todavía no hay una carga registrada para esta opción.";
+    const texto = fecha.toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `Último cambio: ${texto}`;
+  }
+
   function refrescarVistas() {
     fetch("/api/tabla", { cache: "no-store" })
       .then((res) => res.json())
@@ -154,6 +181,7 @@ export default function Admin() {
       .then((res) => res.json())
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
+    cargarUltimasCargas();
   }, [autorizado]);
 
   return (
@@ -373,6 +401,7 @@ export default function Admin() {
                 event.target.reset();
                 const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
                 setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`);
+                cargarUltimasCargas();
                 refrescarVistas();
               })
               .catch((err) => setAvisoCarga(err.message))
@@ -437,6 +466,7 @@ export default function Admin() {
           >
             {importando ? "Importando..." : "Importar planilla"}
           </button>
+          <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
         </form>
       )}

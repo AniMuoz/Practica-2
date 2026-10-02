@@ -1780,6 +1780,33 @@ function importarReservas(clave, buffer) {
   return { agregados, actualizados, omitidos: 0 };
 }
 
+const ARCHIVO_CARGAS = path.join(__dirname, "ultimas_cargas.json");
+
+function claveCarga(modo, columna) {
+  if (modo === "dos-columnas") {
+    const destino = String(columna ?? "").trim();
+    return destino ? `dos-columnas:${destino}` : "dos-columnas";
+  }
+  return String(modo || "completa");
+}
+
+function leerUltimasCargas() {
+  try {
+    const datos = JSON.parse(fs.readFileSync(ARCHIVO_CARGAS, "utf8"));
+    return datos && typeof datos === "object" ? datos : {};
+  } catch {
+    return {};
+  }
+}
+
+function registrarCarga(modo, columna) {
+  const cargas = leerUltimasCargas();
+  const clave = claveCarga(modo, columna);
+  cargas[clave] = new Date().toISOString();
+  fs.writeFileSync(ARCHIVO_CARGAS, JSON.stringify(cargas, null, 2));
+  return { clave, fecha: cargas[clave], cargas };
+}
+
 function buscarReservas(orden) {
   const termino = String(orden ?? "").trim().toLowerCase();
   const { columnas, filas } = leerReservas();
@@ -1824,4 +1851,6 @@ module.exports = {
   añadirVenta,
   importarReservas,
   buscarReservas,
+  leerUltimasCargas,
+  registrarCarga,
 };

@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -311,6 +311,14 @@ app.put("/api/contratistas", (req, res) => {
   }
 });
 
+app.get("/api/tabla/ultimas-cargas", (_req, res) => {
+  try {
+    res.json({ cargas: leerUltimasCargas() });
+  } catch (error) {
+    res.status(500).json({ error: "No se pudieron leer las últimas cargas." });
+  }
+});
+
 app.get("/api/tabla", (_req, res) => {
   try {
     res.json(leerTabla());
@@ -342,6 +350,7 @@ app.post("/api/tabla/excel", (req, res) => {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;
       }
+      registrarCarga(modo, req.body.columna);
       emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {
