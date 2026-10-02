@@ -1152,6 +1152,20 @@ export default function Admin() {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
+                const sinNombre = contratistas.findIndex((fila) => !String(fila.nombre ?? "").trim());
+                if (sinNombre !== -1) {
+                  setAvisoContratistas(`La fila ${sinNombre + 1} necesita un nombre.`);
+                  return;
+                }
+                const ids = new Set();
+                for (const fila of contratistas) {
+                  const id = String(fila.id ?? "").trim();
+                  if (ids.has(id)) {
+                    setAvisoContratistas(`El id ${id} está repetido.`);
+                    return;
+                  }
+                  ids.add(id);
+                }
                 setAvisoContratistas("");
                 setGuardandoContratistas(true);
                 fetch("/api/contratistas", {

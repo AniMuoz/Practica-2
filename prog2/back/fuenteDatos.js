@@ -804,13 +804,46 @@ function pintar(celda, estilo, colores) {
   if (colores) celda.fill = estilo;
 }
 
+function textoVisible(valor) {
+  if (valor == null) return "";
+  if (valor instanceof Date) return `${valor.getDate()}/${valor.getMonth() + 1}/${valor.getFullYear()}`;
+  if (typeof valor === "object") {
+    if (Array.isArray(valor.richText)) return valor.richText.map((parte) => parte.text || "").join("");
+    if (valor.text != null) return String(valor.text);
+    if (valor.result != null && valor.result !== "") return textoVisible(valor.result);
+    if (valor.formula) return "0000000000";
+    return "";
+  }
+  return String(valor);
+}
+
+function compactarPlanilla(hoja) {
+  const vista = { ...(hoja.views && hoja.views[0] ? hoja.views[0] : {}), zoomScale: 80, zoomScaleNormal: 80 };
+  hoja.views = [vista];
+  const titulosCombinados = new Set();
+  Object.keys(hoja._merges || {}).forEach((rango) => {
+    const [inicio, fin] = String(rango).split(":");
+    if (!fin) return;
+    const limpio = inicio.replace(/\$/g, "");
+    if (limpio.replace(/\d/g, "") !== fin.replace(/\$/g, "").replace(/\d/g, "")) titulosCombinados.add(limpio);
+  });
+  const total = hoja.actualColumnCount || hoja.columnCount;
+  for (let columna = 1; columna <= total; columna += 1) {
+    let maximo = 0;
+    hoja.getColumn(columna).eachCell({ includeEmpty: false }, (celda) => {
+      if (titulosCombinados.has(celda.address)) return;
+      textoVisible(celda.value).split(/\r?\n/).forEach((linea) => {
+        if (linea.length > maximo) maximo = linea.length;
+      });
+    });
+    if (maximo > 0) hoja.getColumn(columna).width = maximo + 1;
+  }
+}
+
 async function exportarStockBodega(colores = true) {
   const { columnas, filas } = stockEnBodega();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("M501");
-  hoja.getColumn(1).width = 20;
-  hoja.getColumn(2).width = 52;
-  hoja.getColumn(3).width = 20;
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -858,6 +891,7 @@ async function exportarStockBodega(colores = true) {
 
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:C${ultima}`;
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -900,9 +934,6 @@ async function exportarStockRegional(colores = true) {
   const { columnas, filas } = stockRegional();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock regional");
-  hoja.getColumn(1).width = 20;
-  hoja.getColumn(2).width = 52;
-  for (let indice = 3; indice <= 8; indice += 1) hoja.getColumn(indice).width = 15;
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -947,6 +978,7 @@ async function exportarStockRegional(colores = true) {
 
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:H${ultima}`;
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -1004,12 +1036,6 @@ async function armarPlanillaInventario(filas, almacen, colores = true) {
   const columnas = ["Código", "Descripción", "Ubicación", "Sub-Ubicación", "Libre utilización", "Existencia"];
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Inventario");
-  hoja.getColumn(1).width = 20;
-  hoja.getColumn(2).width = 52;
-  hoja.getColumn(3).width = 20;
-  hoja.getColumn(4).width = 15;
-  hoja.getColumn(5).width = 15;
-  hoja.getColumn(6).width = 25;
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -1057,6 +1083,7 @@ async function armarPlanillaInventario(filas, almacen, colores = true) {
 
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:F${ultima}`;
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -1136,10 +1163,6 @@ async function exportarStockDetallado(colores = true) {
   const { columnas, filas } = stockDetallado();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock detallado");
-  const anchos = [15, 10, 52, 8, 15, 30, 8, 8, 8, 8, 10, 18, 15, 15, 15, 18];
-  anchos.forEach((ancho, indice) => {
-    hoja.getColumn(indice + 1).width = ancho;
-  });
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -1181,6 +1204,7 @@ async function exportarStockDetallado(colores = true) {
 
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:P${ultima}`;
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -1316,11 +1340,9 @@ async function exportarTabla(colores = true, filtros = {}) {
     const ultima = columnaExcel(columnas.length - 1);
     const ultimaFila = Math.max(filas.length + 1, 1);
     hoja.autoFilter = `A1:${ultima}${ultimaFila}`;
-    columnas.forEach((columna, indice) => {
-      hoja.getColumn(indice + 1).width = Math.max(String(columna).length + 2, 14);
-    });
   }
 
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -1438,9 +1460,6 @@ async function exportarRevisionReserva(buffer, colores = true) {
   const { columnas, filas } = await revisarReserva(buffer);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Reserva");
-  [8, 18, 15, 52, 12, 12, 25, 16].forEach((ancho, indice) => {
-    hoja.getColumn(indice + 1).width = ancho;
-  });
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -1482,6 +1501,7 @@ async function exportarRevisionReserva(buffer, colores = true) {
 
   const ultima = Math.max(filas.length + 3, 3);
   hoja.autoFilter = `A3:H${ultima}`;
+  compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
 
@@ -1563,14 +1583,6 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
   const borde = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
 
-  const anchos = {
-    A: 5, C: 50, D: 12, E: 7, F: 7, G: 7, H: 7, I: 7, J: 7, K: 7, L: 4, M: 4, N: 6, O: 11,
-    P: 6, Q: 6, R: 7, S: 9, T: 12, U: 9, V: 6, W: 7, X: 8, Y: 8, Z: 13, AA: 10, AB: 9,
-    AC: 9, AD: 9, AE: 35, AF: 5, AH: 10, AI: 18, AJ: 18,
-  };
-  Object.entries(anchos).forEach(([letra, ancho]) => {
-    hoja.getColumn(letra).width = ancho;
-  });
   hoja.autoFilter = "A1:AJ1";
 
   let cont = 10;
@@ -1649,6 +1661,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     celda.font = { ...(celda.font || {}), bold: true };
   }
 
+  libro.worksheets.forEach((planilla) => compactarPlanilla(planilla));
   const buffer = await libro.xlsx.writeBuffer();
   return { buffer, nombre: `VENTAS ${hoy.getFullYear()}.xlsx` };
 }

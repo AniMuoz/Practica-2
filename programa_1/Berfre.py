@@ -31,6 +31,38 @@ def maquillaje():
     zero = PatternFill(start_color='D3D3D3', end_color='5CB800', fill_type='solid')
     return bordes, color, vacio, ding, zero
 
+def texto_visible(valor):
+    if valor is None:
+        return ""
+    if hasattr(valor, "strftime"):
+        return valor.strftime("%d/%m/%Y")
+    texto = str(valor)
+    if texto.startswith("="):
+        return "0000000000"
+    return texto
+
+def compactar_planilla(hoja, zoom=80):
+    """Ajusta cada columna al texto más largo y deja el zoom en 80%."""
+    hoja.sheet_view.zoomScale = zoom
+    hoja.sheet_view.zoomScaleNormal = zoom
+    titulos = set()
+    for rango in hoja.merged_cells.ranges:
+        if rango.min_col != rango.max_col:
+            titulos.add((rango.min_row, rango.min_col))
+    anchos = {}
+    for fila in hoja.iter_rows():
+        for celda in fila:
+            if celda.value is None or (celda.row, celda.column) in titulos:
+                continue
+            texto = texto_visible(celda.value)
+            if not texto:
+                continue
+            largo = max(len(linea) for linea in texto.splitlines())
+            if largo > anchos.get(celda.column_letter, 0):
+                anchos[celda.column_letter] = largo
+    for letra, largo in anchos.items():
+        hoja.column_dimensions[letra].width = largo + 1
+
 #Funcion para realizar filtros y mostrar solo el stock de M501
 def filtro1(ruta):
     # inicializa manejo de archivos
@@ -89,6 +121,7 @@ def filtro1(ruta):
 
     print(f"i = {i} y x = {x}")
     nombre_archivo = "PLANILLA M501.xlsx"
+    compactar_planilla(hoja)
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -195,6 +228,7 @@ def total(ruta):
                 x += 1
     print(f"i = {i} y x = {x}")
     nombre_archivo = "PLANILLA STOCK REGIONAL.xlsx"
+    compactar_planilla(hoja)
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -332,6 +366,7 @@ def inventario(ruta, dicub):
     hoja.auto_filter.ref = f"A3:F{x-1}"
     # Guardar archivo
     nombre_archivo = "PLANILLA DE INVENTARIO M501.xlsx"
+    compactar_planilla(hoja)
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     print("¡Proceso completado con éxito!")
@@ -417,6 +452,7 @@ def modificar_diccionarios(dic, name):
             hoja.cell(row=j, column=1).value = clave
             hoja.cell(row=j, column=2).value = valor
             j += 1
+        compactar_planilla(hoja)
         excel.save(f"diccionario_{name}_exportado.xlsx")
     return
 
@@ -666,6 +702,7 @@ def añadir_venta(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp, ruta):
     for q in range(1, hoja.max_column + 1):
         hoja.cell(row = last_pos + 1, column = q).border = bordes
         hoja.cell(row = last_pos + 1, column = q).font = Font(bold = true)
+    compactar_planilla(hoja)
     mango.save(f"VENTAS {fecha.year}.xlsx")
     return
 
@@ -864,6 +901,7 @@ def añadir_venta_web(dic_mat, dic_ub, dic_pre, dic_sto, dic_comp,
         hoja.cell(row=last_pos + 1, column=q).font = Font(bold=True)
 
     buffer = io.BytesIO()
+    compactar_planilla(hoja)
     mango.save(buffer)
     buffer.seek(0)
     nombre_archivo = f"VENTAS {fecha.year}.xlsx"
@@ -1028,6 +1066,7 @@ def cont_reserva(dic_sto, dic_mat, dic_ub, ruta_reserva=None):
         x += 1
     hoja.auto_filter.ref = f"A3:H{x - 1}"
     nombre_archivo = "Revision stock en reserva.xlsx"
+    compactar_planilla(hoja)
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -1163,6 +1202,7 @@ def stock_detallado(ruta, dic_ub, dic_pre):
                 x += 1
     print(f"i = {i} y x = {x}")
     nombre_archivo = "Prueba_de_stock_detallado.xlsx"
+    compactar_planilla(hoja)
     mango.save(nombre_archivo)
     ruta_creacion = path.abspath(nombre_archivo)
     return nombre_archivo, ruta_creacion
@@ -1232,6 +1272,7 @@ def dic_exportar_bytes(dic: dict, name: str) -> io.BytesIO:
         hoja.cell(row=j, column=1, value=clave)
         hoja.cell(row=j, column=2, value=valor)
     buffer = io.BytesIO()
+    compactar_planilla(hoja)
     excel.save(buffer)
     buffer.seek(0)
     return buffer
