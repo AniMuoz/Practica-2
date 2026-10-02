@@ -1202,6 +1202,21 @@ async function exportarTabla(colores = true) {
         filaHoja.getCell(columna).border = borde;
       }
     }
+    const textoCritico = String(fila["Stock critico"] ?? "").trim();
+    const stockNumero = Number(String(fila.Stock ?? "").trim());
+    const critico = Number(textoCritico);
+    if (
+      textoCritico !== "" &&
+      Number.isFinite(critico) &&
+      Number.isFinite(stockNumero) &&
+      critico >= stockNumero
+    ) {
+      const rellenoCritico = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+      columnas.forEach((columna, indice) => {
+        if (columna === "Inventario" || columna === "Comentario") return;
+        pintar(filaHoja.getCell(indice + 1), rellenoCritico, colores);
+      });
+    }
     if (indiceInventario < 0 || indiceComentario < 0) return;
     const comentario = String(fila.Comentario ?? "").trim();
     const stock = String(fila.Stock ?? "").trim();

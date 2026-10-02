@@ -5,7 +5,7 @@ import Navbar from "./Navbar.jsx";
 
 export default function App() {
   const navigate = useNavigate();
-  const { colores } = useColoresPlanilla();
+  const { colores, oscuro } = useColoresPlanilla();
   const [columnas, setColumnas] = useState([]);
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState("");
@@ -34,6 +34,16 @@ export default function App() {
       Number.isFinite(Number(stock)) &&
       Number.isFinite(Number(inventario));
     return iguales ? "#5DBB63" : "#FF0000";
+  }
+
+  function colorCelda(columna, fila) {
+    if (columna === "Inventario" || columna === "Comentario") return colorInventario(columna, fila);
+    const textoCritico = String(fila["Stock critico"] ?? "").trim();
+    if (textoCritico === "") return undefined;
+    const critico = Number(textoCritico);
+    const stock = Number(String(fila.Stock ?? "").trim());
+    if (Number.isFinite(critico) && Number.isFinite(stock) && critico >= stock) return oscuro ? "#A711D0" : "#FFFF00";
+    return undefined;
   }
 
   const bodegas = useMemo(() => {
@@ -457,7 +467,7 @@ export default function App() {
                         padding: "8px 12px",
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
-                        background: colores ? colorInventario(columna, fila) : undefined,
+                        background: colores ? colorCelda(columna, fila) : undefined,
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}
