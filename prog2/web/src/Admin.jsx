@@ -6,6 +6,52 @@ import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
+function Interruptor({ activo, onClick, texto }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        color: "inherit",
+        cursor: "pointer",
+        fontSize: 14,
+      }}
+    >
+      <span
+        style={{
+          width: 40,
+          height: 22,
+          borderRadius: 999,
+          background: activo ? "var(--boton)" : "var(--borde)",
+          position: "relative",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 2,
+            left: activo ? 20 : 2,
+            width: 18,
+            height: 18,
+            borderRadius: "50%",
+            background: "#fff",
+            transition: "left 0.15s ease",
+          }}
+        />
+      </span>
+      {texto}
+    </button>
+  );
+}
+
 export default function Admin() {
   const navigate = useNavigate();
   const { colores, oscuro } = useColoresPlanilla();
@@ -38,10 +84,44 @@ export default function Admin() {
   const [inventario, setInventario] = useState({ columnas: [], filas: [] });
   const [cargandoInventario, setCargandoInventario] = useState(false);
   const [avisoInventario, setAvisoInventario] = useState("");
+  const [copiarExistencia, setCopiarExistencia] = useState(false);
+  const [copiarInventario, setCopiarInventario] = useState(false);
   const [mostrarInventarioBodega, setMostrarInventarioBodega] = useState(false);
   const [bodegasInventario, setBodegasInventario] = useState([]);
   const [cargandoInventarioBodega, setCargandoInventarioBodega] = useState(false);
   const [avisoInventarioBodega, setAvisoInventarioBodega] = useState("");
+  const excelInventario = (ruta) => {
+    const base = excel(ruta);
+    const extra = copiarInventario ? "inventario=1" : copiarExistencia ? "existencia=1" : "";
+    if (!extra) return base;
+    return `${base}${base.includes("?") ? "&" : "?"}${extra}`;
+  };
+  function alternarExistencia() {
+    if (copiarExistencia) {
+      setCopiarExistencia(false);
+      return;
+    }
+    const confirmar = window.confirm("¿Querés poner en la columna Existencia los datos de Libre utilización?");
+    if (!confirmar) return;
+    setCopiarInventario(false);
+    setCopiarExistencia(true);
+  }
+  function alternarInventario() {
+    if (copiarInventario) {
+      setCopiarInventario(false);
+      return;
+    }
+    const confirmar = window.confirm("¿Querés poner en la columna Existencia los datos de la columna Inventario?");
+    if (!confirmar) return;
+    setCopiarExistencia(false);
+    setCopiarInventario(true);
+  }
+  const filasInventario = inventario.filas.map((fila) => {
+    const copia = fila.slice(0, 6);
+    if (copiarInventario) copia[5] = fila[6] ?? "";
+    else if (copiarExistencia) copia[5] = fila[4];
+    return copia;
+  });
   const [mostrarDetallado, setMostrarDetallado] = useState(false);
   const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
@@ -647,10 +727,13 @@ export default function Admin() {
             marginBottom: 16,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Inventario por lugar</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
+              <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
             <a
-              href={excel("/api/inventario/excel")}
+              href={excelInventario("/api/inventario/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
@@ -662,6 +745,7 @@ export default function Admin() {
             >
               Descargar planilla
             </a>
+            </div>
           </div>
           {cargandoInventario && <p style={{ margin: 0 }}>Cargando inventario...</p>}
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
@@ -688,7 +772,7 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inventario.filas.map((fila, indice) => (
+                  {filasInventario.map((fila, indice) => (
                     <tr key={`${fila[0]}-${indice}`}>
                       {fila.map((valor, columna) => (
                         <td
@@ -722,7 +806,13 @@ export default function Admin() {
             marginBottom: 16,
           }}
         >
-          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Inventario por bodega</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0, fontSize: 18 }}>Inventario por bodega</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
+              <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
+            </div>
+          </div>
           {cargandoInventarioBodega && <p style={{ margin: 0 }}>Cargando bodegas...</p>}
           {avisoInventarioBodega && <p style={{ margin: 0 }}>{avisoInventarioBodega}</p>}
           {!cargandoInventarioBodega && !avisoInventarioBodega && (
@@ -731,7 +821,7 @@ export default function Admin() {
                 <div key={bodegaItem.codigo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                   <span>Bodega {bodegaItem.codigo} ({bodegaItem.cantidad} materiales)</span>
                   <a
-                    href={excel(`/api/inventario-bodega/excel?bodega=${encodeURIComponent(bodegaItem.codigo)}`)}
+                    href={excelInventario(`/api/inventario-bodega/excel?bodega=${encodeURIComponent(bodegaItem.codigo)}`)}
                     style={{
                       padding: "8px 14px",
                       borderRadius: 6,

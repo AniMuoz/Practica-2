@@ -167,7 +167,8 @@ app.get("/api/inventario", (_req, res) => {
 
 app.get("/api/inventario/excel", async (req, res) => {
   try {
-    const buffer = await exportarPlanillaInventario(conColores(req.query.colores));
+    const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
+    const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
     res.send(Buffer.from(buffer));
@@ -188,7 +189,8 @@ app.get("/api/inventario-bodega", (_req, res) => {
 app.get("/api/inventario-bodega/excel", async (req, res) => {
   try {
     const codigo = String(req.query.bodega ?? "").trim();
-    const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores));
+    const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
+    const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores), origen);
     const nombre = `PLANILLA DE INVENTARIO ${codigo}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);

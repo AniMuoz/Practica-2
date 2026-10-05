@@ -1085,6 +1085,7 @@ function planillaInventario() {
       fila["Sub-ubicación"] ?? "",
       valorStock(fila.Stock) ?? "",
       "",
+      String(fila.Inventario ?? "").trim(),
     ])
     .sort((a, b) => {
       const [grupoA, numeroA] = claveUbicacion(a[2]);
@@ -1171,12 +1172,21 @@ async function armarPlanillaInventario(filas, almacen, colores = true) {
   return libro.xlsx.writeBuffer();
 }
 
-async function exportarPlanillaInventario(colores = true) {
-  const { filas } = planillaInventario();
-  return armarPlanillaInventario(filas, "M501", colores);
+function aplicarExistencia(filas, origen) {
+  return filas.map((fila) => {
+    const copia = fila.slice(0, 6);
+    if (origen === "libre") copia[5] = fila[4];
+    if (origen === "inventario") copia[5] = fila[6] ?? "";
+    return copia;
+  });
 }
 
-async function exportarInventarioBodega(codigo, colores = true) {
+async function exportarPlanillaInventario(colores = true, origenExistencia = "") {
+  const { filas } = planillaInventario();
+  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), "M501", colores);
+}
+
+async function exportarInventarioBodega(codigo, colores = true, origenExistencia = "") {
   const { grupos } = planillaInventarioPorBodega();
   const filas = grupos.get(String(codigo));
   if (!filas) {
@@ -1184,7 +1194,7 @@ async function exportarInventarioBodega(codigo, colores = true) {
     error.status = 404;
     throw error;
   }
-  return armarPlanillaInventario(filas, String(codigo), colores);
+  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), String(codigo), colores);
 }
 
 function stockDetallado() {
