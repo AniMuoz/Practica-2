@@ -1917,28 +1917,41 @@ function importarReservas(clave, buffer) {
   }
   const indiceOrden = columnas.findIndex((columna) => /^orden$/i.test(String(columna).trim()));
   const indiceReserva = columnas.findIndex((columna) => /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim()));
+  const indicePosicion = columnas.findIndex((columna) => /pos\.?reserva/i.test(String(columna).trim()));
+  const indiceMaterial = columnas.findIndex((columna) => /^material$/i.test(String(columna).trim()));
   if (indiceOrden < 0 || indiceReserva < 0) {
     const error = new Error("La planilla necesita las columnas Orden y Nº reserva.");
     error.status = 400;
     throw error;
   }
+  const textoClave = (fila, indice) => (indice < 0 ? "" : String(fila[indice] ?? "").trim().toLowerCase());
   const claveFila = (fila) =>
-    `${String(fila[indiceOrden] ?? "").trim().toLowerCase()}|${String(fila[indiceReserva] ?? "").trim().toLowerCase()}`;
-  const vistas = new Set(actual.filas.map(claveFila));
-  const porAgregar = [];
+    [indiceOrden, indiceReserva, indicePosicion, indiceMaterial].map((indice) => textoClave(fila, indice)).join("|");
+  const guardadas = actual.filas.map((fila) => fila.slice());
+  const indicePorClave = new Map();
+  guardadas.forEach((fila, indice) => indicePorClave.set(claveFila(fila), indice));
+  let agregados = 0;
+  let actualizados = 0;
   let omitidos = 0;
   nuevas.forEach((fila) => {
     const clave = claveFila(fila);
-    if (vistas.has(clave)) {
+    const existente = indicePorClave.get(clave);
+    if (existente == null) {
+      indicePorClave.set(clave, guardadas.length);
+      guardadas.push(fila);
+      agregados += 1;
+      return;
+    }
+    const anterior = guardadas[existente];
+    const cambio = columnas.some((_, columna) => String(anterior[columna] ?? "") !== String(fila[columna] ?? ""));
+    if (!cambio) {
       omitidos += 1;
       return;
     }
-    vistas.add(clave);
-    porAgregar.push(fila);
+    guardadas[existente] = fila;
+    actualizados += 1;
   });
-  const matriz = [columnas, ...actual.filas, ...porAgregar];
-  const agregados = porAgregar.length;
-  const actualizados = 0;
+  const matriz = [columnas, ...guardadas];
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Reservas");
   XLSX.writeFile(libro, archivoReservas());
