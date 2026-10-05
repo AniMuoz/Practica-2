@@ -21,6 +21,7 @@ export default function Detalle() {
   const [datos, setDatos] = useState({});
   const [avisoDatos, setAvisoDatos] = useState("");
   const [guardandoDatos, setGuardandoDatos] = useState(false);
+  const [enCurso, setEnCurso] = useState("");
   const [advertenciaCodigo, setAdvertenciaCodigo] = useState(false);
   const [pulsado, setPulsado] = useState(0);
   const pulso = useRef(null);
@@ -75,6 +76,7 @@ export default function Detalle() {
   function guardarDatos(reemplazar) {
     setAvisoDatos("");
     setGuardandoDatos(true);
+    setEnCurso("Guardando datos del material...");
     fetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -99,7 +101,10 @@ export default function Detalle() {
         }
       })
       .catch((err) => setAvisoDatos(err.message))
-      .finally(() => setGuardandoDatos(false));
+      .finally(() => {
+        setGuardandoDatos(false);
+        setEnCurso("");
+      });
   }
 
   function soltarAdvertencia() {
@@ -130,6 +135,7 @@ export default function Detalle() {
     cuerpo.append("clave", clave);
     cuerpo.append("archivo", archivo);
     setAvisoDatos("");
+    setEnCurso(`Subiendo ${campo}...`);
     fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
       method: "POST",
       body: cuerpo,
@@ -141,7 +147,8 @@ export default function Detalle() {
         setColumnas(data.columnas || []);
         setAvisoDatos(`${campo} actualizado.`);
       })
-      .catch((err) => setAvisoDatos(err.message));
+      .catch((err) => setAvisoDatos(err.message))
+      .finally(() => setEnCurso(""));
   }
 
   return (
@@ -162,6 +169,32 @@ export default function Detalle() {
       }}
     >
       <Navbar />
+      {enCurso && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 18px",
+            borderRadius: 8,
+            background: "var(--boton)",
+            color: "var(--sobre)",
+            fontSize: 15,
+            fontWeight: 700,
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          <span className="giro" aria-hidden="true" />
+          {enCurso}
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 12px", flexWrap: "wrap" }}>
         <h1 data-tour="material" style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
         <button
@@ -286,6 +319,7 @@ export default function Detalle() {
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp,image/gif"
+                        disabled={Boolean(enCurso)}
                         onChange={(event) => {
                           subirImagen(campo, event.target.files?.[0]);
                           event.target.value = "";
@@ -295,8 +329,10 @@ export default function Detalle() {
                       {esImagen && (
                         <button
                           type="button"
+                          disabled={Boolean(enCurso)}
                           onClick={() => {
                             setAvisoDatos("");
+                            setEnCurso(`Quitando ${campo}...`);
                             fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
                               method: "DELETE",
                               headers: { "Content-Type": "application/json" },
@@ -309,7 +345,8 @@ export default function Detalle() {
                                 setColumnas(data.columnas || []);
                                 setAvisoDatos(`${campo} quedó sin imagen.`);
                               })
-                              .catch((err) => setAvisoDatos(err.message));
+                              .catch((err) => setAvisoDatos(err.message))
+                              .finally(() => setEnCurso(""));
                           }}
                           style={{
                             justifySelf: "start",
@@ -535,6 +572,7 @@ export default function Detalle() {
               event.preventDefault();
               setAviso("");
               setGuardando(true);
+              setEnCurso("Guardando inventario y comentario...");
               fetch(`/api/material/${encodeURIComponent(codigo)}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -549,7 +587,10 @@ export default function Detalle() {
                   setAviso("Cambios guardados en la tabla.");
                 })
                 .catch((err) => setAviso(err.message))
-                .finally(() => setGuardando(false));
+                .finally(() => {
+                  setGuardando(false);
+                  setEnCurso("");
+                });
             }}
             style={{
               background: "var(--superficie)",

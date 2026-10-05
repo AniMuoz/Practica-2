@@ -245,6 +245,7 @@ export function Recorrido() {
           width: "min(320px, calc(100vw - 24px))",
           background: "var(--superficie)",
           color: "var(--texto)",
+          fontFamily: "'Miriam Libre', Miriam, sans-serif",
           borderRadius: 8,
           padding: 14,
           display: "flex",
@@ -269,6 +270,7 @@ export function Recorrido() {
                 borderRadius: 6,
                 background: "var(--apagado)",
                 color: "var(--apagado-texto)",
+                fontFamily: "inherit",
                 fontSize: 13,
                 cursor: "pointer",
               }}
@@ -284,6 +286,7 @@ export function Recorrido() {
                 borderRadius: 6,
                 background: "var(--acento)",
                 color: "var(--sobre)",
+                fontFamily: "inherit",
                 fontSize: 13,
                 cursor: "pointer",
               }}
