@@ -266,6 +266,25 @@ export default function Detalle() {
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
                   {campo}
+                  {esImagen && (
+                    <a
+                      href={`/api/imagenes/${valor}`}
+                      download={valor.split("/").pop()}
+                      style={{
+                        justifySelf: "start",
+                        padding: "6px 10px",
+                        border: "1px solid var(--borde)",
+                        borderRadius: 6,
+                        background: "var(--superficie)",
+                        fontSize: 13,
+                        fontWeight: 400,
+                        color: "inherit",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Descargar
+                    </a>
+                  )}
                   {editando && (
                     <>
                       <input
@@ -639,7 +658,7 @@ export default function Detalle() {
         </div>
       )}
       <div className="footer">
-        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+        <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
     </main>
   );

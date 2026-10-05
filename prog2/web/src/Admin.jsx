@@ -1365,7 +1365,7 @@ export default function Admin() {
         </form>
       )}
       <div className="footer">
-        <p>© 2026 Berfre - Práctica 2 - Python y HTML - Anibal Alexis Muñoz Reyes - UNAB</p>
+        <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
     </div>
     </main>
   );
