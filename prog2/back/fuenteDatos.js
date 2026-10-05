@@ -1342,6 +1342,9 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
       return inventario !== "" || comentario !== "";
     });
   }
+  if (filtros.ignorarNulo) {
+    lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
+  }
   const orden = String(filtros.orden ?? "");
   if (orden === "codigo" || orden === "codigo-asc") {
     const sentido = orden === "codigo" ? -1 : 1;

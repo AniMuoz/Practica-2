@@ -110,6 +110,7 @@ app.get("/api/tabla/excel", async (req, res) => {
       soloConUbicacion: req.query.ubicacion === "1",
       soloStockCritico: req.query.critico === "1",
       soloInventarioOComentario: req.query.inventario === "1",
+      ignorarNulo: req.query.ignorarNulo === "1",
     });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");

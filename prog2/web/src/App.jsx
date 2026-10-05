@@ -21,6 +21,7 @@ export default function App() {
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
   const [soloStockCritico, setSoloStockCritico] = useState(false);
   const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
+  const [ignorarNulo, setIgnorarNulo] = useState(true);
   const [limpiando, setLimpiando] = useState(false);
   const [pedirClave, setPedirClave] = useState(false);
   const [clave, setClave] = useState("");
@@ -77,6 +78,9 @@ export default function App() {
 
   const visibles = useMemo(() => {
     let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
+    if (ignorarNulo) {
+      lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
+    }
     if (bodega) {
       lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
     }
@@ -129,11 +133,11 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario]);
+  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, ignorarNulo]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, ignorarNulo]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -333,6 +337,7 @@ export default function App() {
                 if (soloConUbicacion) params.set("ubicacion", "1");
                 if (soloStockCritico) params.set("critico", "1");
                 if (soloInventarioOComentario) params.set("inventario", "1");
+                if (ignorarNulo) params.set("ignorarNulo", "1");
                 const consulta = params.toString();
                 return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
               })()}
@@ -479,6 +484,14 @@ export default function App() {
                   />
                   Mostrar solo materiales con inventario o comentario
                 </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={ignorarNulo}
+                    onChange={(event) => setIgnorarNulo(event.target.checked)}
+                  />
+                  Ignorar descripciones NULO
+                </label>
               </div>
               <button
                 type="button"
@@ -492,6 +505,7 @@ export default function App() {
                   setSoloConUbicacion(false);
                   setSoloStockCritico(false);
                   setSoloInventarioOComentario(false);
+                  setIgnorarNulo(true);
                 }}
               >
                 Limpiar filtros
