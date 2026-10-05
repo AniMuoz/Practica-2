@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -366,6 +366,14 @@ app.post("/api/material", (req, res) => {
     res.status(201).json(resultado);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo agregar el material." });
+  }
+});
+
+app.get("/api/buscar", (req, res) => {
+  try {
+    res.json({ resultados: buscarMateriales(req.query.q) });
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo buscar el material." });
   }
 });
 

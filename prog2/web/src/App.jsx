@@ -62,11 +62,18 @@ export default function App() {
   }, [filas]);
 
   const subUbicaciones = useMemo(() => {
+    const origen = bodega
+      ? filas.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega)
+      : filas;
     const valores = new Set(
-      filas.map((fila) => String(fila["Sub-ubicación"] ?? "").trim()).filter(Boolean)
+      origen.map((fila) => String(fila["Sub-ubicación"] ?? "").trim()).filter(Boolean)
     );
     return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
-  }, [filas]);
+  }, [filas, bodega]);
+
+  useEffect(() => {
+    if (subUbicacion && !subUbicaciones.includes(subUbicacion)) setSubUbicacion("");
+  }, [subUbicacion, subUbicaciones]);
 
   const visibles = useMemo(() => {
     let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");

@@ -20,7 +20,7 @@ const PASOS = {
     {
       id: "buscar",
       titulo: "Buscar un material",
-      texto: "Escribe un codigo y presiona Buscar para abrir la pagina de ese material.",
+      texto: "Escribe un codigo o parte del nombre y elige el material para abrir su pagina.",
     },
     {
       id: "filtros",

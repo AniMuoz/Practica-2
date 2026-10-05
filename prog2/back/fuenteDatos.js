@@ -119,6 +119,36 @@ function buscarMaterial(codigo) {
   return { columnas, fila, bodegas };
 }
 
+function textoBusqueda(valor) {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function buscarMateriales(texto) {
+  const consulta = textoBusqueda(texto);
+  if (consulta.length < 2) return [];
+  const { filas } = leerTabla();
+  const coincidencias = [];
+  for (const fila of filas) {
+    const codigo = String(fila.Codigo ?? "").trim();
+    const descripcion = String(fila.Descripcion ?? "").trim();
+    if (!codigo) continue;
+    const codigoNormalizado = textoBusqueda(codigo);
+    const descripcionNormalizada = textoBusqueda(descripcion);
+    if (!codigoNormalizado.includes(consulta) && !descripcionNormalizada.includes(consulta)) continue;
+    coincidencias.push({
+      codigo,
+      descripcion,
+      exacto: codigoNormalizado === consulta,
+    });
+  }
+  coincidencias.sort((a, b) => Number(b.exacto) - Number(a.exacto) || a.codigo.localeCompare(b.codigo, "es", { numeric: true }));
+  return coincidencias.map(({ codigo, descripcion }) => ({ codigo, descripcion }));
+}
+
 function actualizarMaterial(codigo, { inventario, comentario }) {
   const textoInventario = String(inventario ?? "").trim();
   const textoComentario = String(comentario ?? "");
@@ -1835,6 +1865,7 @@ function buscarReservas(orden) {
 module.exports = {
   leerTabla,
   buscarMaterial,
+  buscarMateriales,
   actualizarMaterial,
   limpiarInventarioComentarios,
   actualizarDatos,

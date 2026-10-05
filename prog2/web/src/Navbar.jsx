@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../logo/logo.ico";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
@@ -8,6 +8,55 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [codigo, setCodigo] = useState("");
+  const [resultados, setResultados] = useState([]);
+  const [abierto, setAbierto] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const caja = useRef(null);
+
+  useEffect(() => {
+    const consulta = codigo.trim();
+    if (consulta.length < 2) {
+      setResultados([]);
+      setAviso("");
+      return undefined;
+    }
+    const controlador = new AbortController();
+    const espera = setTimeout(() => {
+      fetch(`/api/buscar?q=${encodeURIComponent(consulta)}`, { signal: controlador.signal })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          setResultados(data.resultados || []);
+          setAviso((data.resultados || []).length ? "" : "Sin resultados.");
+          setAbierto(true);
+        })
+        .catch((error) => {
+          if (error.name === "AbortError") return;
+          setResultados([]);
+          setAviso("No se pudo buscar.");
+          setAbierto(true);
+        });
+    }, 200);
+    return () => {
+      clearTimeout(espera);
+      controlador.abort();
+    };
+  }, [codigo]);
+
+  useEffect(() => {
+    function cerrar(event) {
+      if (caja.current && !caja.current.contains(event.target)) setAbierto(false);
+    }
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, []);
+
+  function abrirMaterial(valor) {
+    const buscado = String(valor ?? "").trim();
+    if (!buscado) return;
+    setAbierto(false);
+    setCodigo("");
+    navigate(`/${encodeURIComponent(buscado)}`);
+  }
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
 
   return (
@@ -156,24 +205,89 @@ export default function Navbar() {
           event.preventDefault();
           const buscado = codigo.trim();
           if (!buscado) return;
-          navigate(`/${encodeURIComponent(buscado)}`);
+          if (buscado.length < 2) {
+            abrirMaterial(buscado);
+            return;
+          }
+          const exacto = resultados.find((item) => item.codigo.toLowerCase() === buscado.toLowerCase());
+          if (exacto) {
+            abrirMaterial(exacto.codigo);
+            return;
+          }
+          if (resultados.length === 1) {
+            abrirMaterial(resultados[0].codigo);
+            return;
+          }
+          setAbierto(true);
         }}
         data-tour="buscar"
         className="barra-buscar"
-        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0 }}
+        ref={caja}
+        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0, position: "relative" }}
       >
         <input
           value={codigo}
           onChange={(event) => setCodigo(event.target.value)}
-          placeholder="Código de material"
-          aria-label="Código de material"
+          onFocus={() => {
+            if (codigo.trim().length >= 2) setAbierto(true);
+          }}
+          placeholder="Código o nombre"
+          aria-label="Código o nombre de material"
+          autoComplete="off"
           style={{
             padding: "8px 12px",
             borderRadius: 6,
             fontSize: 14,
-            minWidth: 180,
+            minWidth: 220,
           }}
         />
+        {abierto && (resultados.length > 0 || aviso) && (
+          <ul
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              right: 48,
+              margin: 0,
+              padding: 4,
+              listStyle: "none",
+              background: "var(--superficie)",
+              border: "1px solid var(--borde)",
+              borderRadius: 6,
+              maxHeight: 280,
+              overflowY: "auto",
+              zIndex: 20,
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+            }}
+          >
+            {aviso && resultados.length === 0 && (
+              <li style={{ padding: "8px 10px", fontSize: 14, color: "var(--texto)" }}>{aviso}</li>
+            )}
+            {resultados.map((item) => (
+              <li key={item.codigo}>
+                <button
+                  type="button"
+                  onClick={() => abrirMaterial(item.codigo)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 10px",
+                    border: 0,
+                    borderRadius: 4,
+                    background: "transparent",
+                    color: "var(--texto)",
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  <strong>{item.codigo}</strong>
+                  {item.descripcion ? ` — ${item.descripcion}` : ""}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <button
           type="submit"
           style={{
