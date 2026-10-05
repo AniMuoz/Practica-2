@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
@@ -27,6 +27,8 @@ export default function Detalle() {
   const [eliminando, setEliminando] = useState(false);
   const [pulsado, setPulsado] = useState(0);
   const pulso = useRef(null);
+  const permitirSalida = useRef(false);
+  const hayCambiosRef = useRef(false);
   const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
   const [imagenGrande, setImagenGrande] = useState(null);
   const [ocultarImagenes, setOcultarImagenes] = useState(
@@ -64,6 +66,10 @@ export default function Detalle() {
       })
       .catch((err) => setError(err.message || "No se pudo cargar el material."))
       .finally(() => setCargando(false));
+  }, [codigo]);
+
+  useEffect(() => {
+    permitirSalida.current = false;
   }, [codigo]);
 
   useEffect(() => {
@@ -117,6 +123,7 @@ export default function Detalle() {
         setAvisoDatos("Datos del material guardados.");
         const codigoNuevo = String(data.fila.Codigo);
         if (codigoNuevo !== String(codigo)) {
+          permitirSalida.current = true;
           navigate(`/${encodeURIComponent(codigoNuevo)}`, { replace: true });
         }
       })
@@ -140,6 +147,7 @@ export default function Detalle() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "No se pudo eliminar el material.");
         setConfirmarEliminar(false);
+        permitirSalida.current = true;
         navigate("/", { replace: true });
       })
       .catch((err) => {
@@ -148,6 +156,41 @@ export default function Detalle() {
         setEnCurso("");
       });
   }
+
+  function textoCampo(valor) {
+    return valor == null ? "" : String(valor);
+  }
+
+  const inventarioSinGuardar = Boolean(
+    fila && textoCampo(inventario) !== textoCampo(fila.Inventario)
+  );
+  const comentarioSinGuardar = Boolean(
+    fila && textoCampo(comentario) !== textoCampo(fila.Comentario)
+  );
+  const datosSinGuardar = Boolean(
+    editando &&
+      fila &&
+      soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna]))
+  );
+  const hayCambiosSinGuardar = inventarioSinGuardar || comentarioSinGuardar || datosSinGuardar;
+  hayCambiosRef.current = hayCambiosSinGuardar;
+
+  const bloqueo = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !permitirSalida.current &&
+      hayCambiosRef.current &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (!hayCambiosSinGuardar) return undefined;
+    function avisarCierre(event) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", avisarCierre);
+    return () => window.removeEventListener("beforeunload", avisarCierre);
+  }, [hayCambiosSinGuardar]);
 
   function soltarAdvertencia() {
     clearInterval(pulso.current);
@@ -726,6 +769,59 @@ export default function Detalle() {
               {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
             </div>
           </form>
+        </div>
+      )}
+      {bloqueo.state === "blocked" && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 80,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Hay cambios sin guardar</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Si sales de esta página se pierden los datos que todavía no guardaste.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => bloqueo.reset()}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "var(--acento)",
+                  color: "var(--sobre)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Seguir en esta página
+              </button>
+              <button
+                type="button"
+                onClick={() => bloqueo.proceed()}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "1px solid var(--borde)",
+                  borderRadius: 6,
+                  background: "var(--superficie)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Salir sin guardar
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {confirmarEliminar && (

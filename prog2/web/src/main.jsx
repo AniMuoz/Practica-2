@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import logo from "../logo/logo.ico";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Admin from "./Admin.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
@@ -18,17 +18,28 @@ icono.rel = "icon";
 icono.href = logo;
 document.head.appendChild(icono);
 
+function Marco() {
+  return (
+    <ColoresPlanillaProvider>
+      <Outlet />
+      <Recorrido />
+    </ColoresPlanillaProvider>
+  );
+}
+
+const router = createBrowserRouter([
+  {
+    element: <Marco />,
+    children: [
+      { path: "/", element: <App /> },
+      { path: "/admin", element: <Admin /> },
+      { path: "/:codigo", element: <Detalle /> },
+    ],
+  },
+]);
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
-      <ColoresPlanillaProvider>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/:codigo" element={<Detalle />} />
-        </Routes>
-        <Recorrido />
-      </ColoresPlanillaProvider>
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </StrictMode>
 );

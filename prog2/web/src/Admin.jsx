@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
-import { useNavigate } from "react-router-dom";
+import { useBlocker, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
@@ -149,6 +149,18 @@ export default function Admin() {
   const [codVenta, setCodVenta] = useState("");
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [avisoVenta, setAvisoVenta] = useState("");
+  const [baseContratistas, setBaseContratistas] = useState("[]");
+  const [salidaPendiente, setSalidaPendiente] = useState(null);
+  const [ventaKey, setVentaKey] = useState(0);
+  const [cargaKey, setCargaKey] = useState(0);
+  const permitirSalida = useRef(false);
+  const hayCambiosRef = useRef(false);
+
+  function fijarContratistas(filas) {
+    const lista = filas || [];
+    setContratistas(lista);
+    setBaseContratistas(JSON.stringify(lista));
+  }
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -247,7 +259,7 @@ export default function Admin() {
     if (mostrarContratistas || mostrarVentas) {
       cargarNombresContratistas()
         .then((filas) => {
-          if (mostrarContratistas) setContratistas(filas);
+          if (mostrarContratistas) fijarContratistas(filas);
         })
         .catch(() => {
           if (mostrarContratistas) setAvisoContratistas("No se pudo leer los contratistas.");
@@ -255,6 +267,73 @@ export default function Admin() {
         });
     }
   }
+
+  const formularioSinGuardar =
+    mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
+  const contratistasSinGuardar =
+    mostrarContratistas && JSON.stringify(contratistas) !== baseContratistas;
+  const ventaSinGuardar =
+    mostrarVentas &&
+    Boolean(
+      ordenVenta ||
+        archivoVentas ||
+        movimientoVenta !== "1" ||
+        contratistaVenta !== "1" ||
+        String(codVenta).trim() !== ""
+    );
+  const cargaSinGuardar = mostrarCarga && Boolean(archivo);
+  const hayCambiosSinGuardar = formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar;
+  hayCambiosRef.current = hayCambiosSinGuardar;
+
+  function intentarSalir(accion) {
+    if (!hayCambiosRef.current) {
+      accion();
+      return;
+    }
+    setSalidaPendiente(() => accion);
+  }
+
+  function descartarCambios() {
+    if (formularioSinGuardar) {
+      setDatos((actual) => {
+        const siguientes = {};
+        Object.keys(actual).forEach((columna) => {
+          siguientes[columna] = "";
+        });
+        return siguientes;
+      });
+    }
+    if (contratistasSinGuardar) setContratistas(JSON.parse(baseContratistas));
+    if (cargaSinGuardar) {
+      setArchivo(null);
+      setCargaKey((actual) => actual + 1);
+    }
+    if (ventaSinGuardar) {
+      setOrdenVenta(null);
+      setArchivoVentas(null);
+      setContratistaVenta("1");
+      setMovimientoVenta("1");
+      setCodVenta("");
+      setVentaKey((actual) => actual + 1);
+    }
+  }
+
+  const bloqueo = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !permitirSalida.current &&
+      hayCambiosRef.current &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (!hayCambiosSinGuardar) return undefined;
+    function avisarCierre(event) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", avisarCierre);
+    return () => window.removeEventListener("beforeunload", avisarCierre);
+  }, [hayCambiosSinGuardar]);
 
   useEffect(() => {
     if (!autorizado) return;
@@ -350,6 +429,7 @@ export default function Admin() {
                 data-tour={nombre}
                 type="button"
                 onClick={() => {
+                  const cambiar = () => {
                   if (nombre === "Carga de datos") {
                     const abrir = !mostrarCarga;
                     if (abrir) cerrarPaneles(["carga", "formulario"]);
@@ -432,7 +512,7 @@ export default function Admin() {
                         .then(async (res) => {
                           const data = await res.json();
                           if (!res.ok) throw new Error(data.error || "No se pudo leer los contratistas.");
-                          setContratistas(data.filas || []);
+                          fijarContratistas(data.filas || []);
                           const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
                           setListaContratistas(nombres);
                         })
@@ -441,6 +521,8 @@ export default function Admin() {
                     }
                     setMostrarContratistas(abrir);
                   }
+                  };
+                  intentarSalir(cambiar);
                 }}
                 style={{
                   padding: "8px 14px",
@@ -460,6 +542,7 @@ export default function Admin() {
       )}
       {autorizado && mostrarCarga && (
         <form
+          key={cargaKey}
           onSubmit={(event) => {
             event.preventDefault();
             if (!archivo) {
@@ -1172,6 +1255,7 @@ export default function Admin() {
         <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: 640, width: "100%" }}>
           <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Añadir venta</h2>
           <form
+            key={ventaKey}
             onSubmit={(event) => {
               event.preventDefault();
               if (!ordenVenta) {
@@ -1200,6 +1284,12 @@ export default function Admin() {
                   enlace.download = `VENTAS ${new Date().getFullYear()}.xlsx`;
                   enlace.click();
                   URL.revokeObjectURL(url);
+                  setOrdenVenta(null);
+                  setArchivoVentas(null);
+                  setContratistaVenta("1");
+                  setMovimientoVenta("1");
+                  setCodVenta("");
+                  setVentaKey((actual) => actual + 1);
                 })
                 .catch((err) => setAvisoVenta(err.message))
                 .finally(() => setProcesandoVenta(false));
@@ -1302,7 +1392,7 @@ export default function Admin() {
                   .then(async (res) => {
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
-                    setContratistas(data.filas || []);
+                    fijarContratistas(data.filas || []);
                     const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
                     setListaContratistas(nombres);
                     setAvisoContratistas("Contratistas guardados.");
@@ -1399,6 +1489,7 @@ export default function Admin() {
               .then(async (res) => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "No se pudo agregar.");
+                permitirSalida.current = true;
                 navigate(`/${encodeURIComponent(data.fila.Codigo)}`);
               })
               .catch((err) => setAviso(err.message))
@@ -1453,6 +1544,70 @@ export default function Admin() {
             {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
           </div>
         </form>
+      )}
+      {(bloqueo.state === "blocked" || salidaPendiente) && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 80,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Hay cambios sin guardar</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Si sales de esta página se pierden los datos que todavía no guardaste.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (bloqueo.state === "blocked") bloqueo.reset();
+                  setSalidaPendiente(null);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "var(--acento)",
+                  color: "var(--sobre)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Seguir en esta página
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  descartarCambios();
+                  if (salidaPendiente) {
+                    const seguir = salidaPendiente;
+                    setSalidaPendiente(null);
+                    seguir();
+                  }
+                  if (bloqueo.state === "blocked") bloqueo.proceed();
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "1px solid var(--borde)",
+                  borderRadius: 6,
+                  background: "var(--superficie)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Salir sin guardar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
