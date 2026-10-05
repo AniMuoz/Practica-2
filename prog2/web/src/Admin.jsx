@@ -1086,6 +1086,43 @@ export default function Admin() {
             >
               {buscandoReserva ? "Buscando..." : "Buscar reserva"}
             </button>
+            <button
+              type="button"
+              disabled={busquedaReserva.filas.length === 0}
+              onClick={() => {
+                const numero = ordenReserva.trim();
+                if (!numero) return;
+                const params = new URLSearchParams({ reserva: numero, colores: colores ? "1" : "0" });
+                fetch(`/api/reservas/excel?${params.toString()}`)
+                  .then(async (res) => {
+                    if (!res.ok) {
+                      const data = await res.json();
+                      throw new Error(data.error || "No se pudo descargar.");
+                    }
+                    return res.blob();
+                  })
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const enlace = document.createElement("a");
+                    enlace.href = url;
+                    enlace.download = "Revision stock en reserva.xlsx";
+                    enlace.click();
+                    URL.revokeObjectURL(url);
+                  })
+                  .catch((err) => setAvisoBusquedaReserva(err.message));
+              }}
+              style={{
+                padding: "8px 14px",
+                border: 0,
+                borderRadius: 6,
+                background: busquedaReserva.filas.length === 0 ? "var(--pista)" : "var(--acento)",
+                color: "var(--sobre)",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Descargar planilla
+            </button>
             {avisoBusquedaReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoBusquedaReserva}</p>}
           </form>
           {busquedaReserva.columnas.length > 0 && (
@@ -1114,18 +1151,28 @@ export default function Admin() {
                 <tbody>
                   {busquedaReserva.filas.map((fila, indice) => (
                     <tr key={indice}>
-                      {busquedaReserva.columnas.map((_, columna) => (
-                        <td
-                          key={columna}
-                          style={{
-                            padding: "8px 10px",
-                            border: "1px solid var(--borde-suave)",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {fila[columna] === "" || fila[columna] == null ? "" : String(fila[columna])}
-                        </td>
-                      ))}
+                      {busquedaReserva.columnas.map((nombre, columna) => {
+                        const esEstado = nombre === "Estado";
+                        const valor = fila[columna];
+                        return (
+                          <td
+                            key={columna}
+                            style={{
+                              padding: "8px 10px",
+                              border: "1px solid var(--borde-suave)",
+                              background:
+                                colores && esEstado
+                                  ? valor === "Disponible"
+                                    ? "#73c883"
+                                    : "#f9e37c"
+                                  : "var(--superficie)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {valor === "" || valor == null ? "" : String(valor)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

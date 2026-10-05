@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -238,6 +238,17 @@ app.get("/api/reservas", (req, res) => {
     res.json(buscarReservas(req.query.reserva));
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer las reservas." });
+  }
+});
+
+app.get("/api/reservas/excel", async (req, res) => {
+  try {
+    const buffer = await exportarRevisionPorReserva(req.query.reserva, conColores(req.query.colores));
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo generar la revisión de reserva." });
   }
 });
 

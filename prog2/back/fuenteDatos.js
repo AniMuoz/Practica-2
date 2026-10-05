@@ -1838,15 +1838,49 @@ function archivoReservas() {
   return path.join(__dirname, "bd_reservas.xlsx");
 }
 
+function textoFecha(valor) {
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    const dia = String(valor.getUTCDate()).padStart(2, "0");
+    const mes = String(valor.getUTCMonth() + 1).padStart(2, "0");
+    return `${dia}/${mes}/${valor.getUTCFullYear()}`;
+  }
+  if (typeof valor === "number" && valor > 20000 && valor < 80000) {
+    const fecha = XLSX.SSF.parse_date_code(valor);
+    if (fecha) {
+      const dia = String(fecha.d).padStart(2, "0");
+      const mes = String(fecha.m).padStart(2, "0");
+      return `${dia}/${mes}/${fecha.y}`;
+    }
+  }
+  return valor;
+}
+
+function normalizarFechas(columnas, filas) {
+  const indices = columnas
+    .map((nombre, indice) => (/fecha/i.test(String(nombre)) ? indice : -1))
+    .filter((indice) => indice >= 0);
+  if (indices.length === 0) return filas;
+  return filas.map((fila) => {
+    const copia = fila.slice();
+    indices.forEach((indice) => {
+      copia[indice] = textoFecha(copia[indice]);
+    });
+    return copia;
+  });
+}
+
 function leerReservas() {
   const archivo = archivoReservas();
   if (!fs.existsSync(archivo)) return { columnas: [], filas: [] };
-  const libro = XLSX.readFile(archivo);
+  const libro = XLSX.readFile(archivo, { cellDates: true });
   const hoja = libro.Sheets[libro.SheetNames[0]];
   if (!hoja) return { columnas: [], filas: [] };
   const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
   const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
-  const filas = matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""));
+  const filas = normalizarFechas(
+    columnas,
+    matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
+  );
   return { columnas, filas };
 }
 
@@ -1856,7 +1890,7 @@ function importarReservas(clave, buffer) {
     error.status = 403;
     throw error;
   }
-  const libroEntrada = XLSX.read(buffer, { type: "buffer" });
+  const libroEntrada = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
   if (!hojaEntrada) {
     const error = new Error("El archivo no tiene hojas.");
@@ -1870,7 +1904,10 @@ function importarReservas(clave, buffer) {
     error.status = 400;
     throw error;
   }
-  const nuevas = matrizEntrada.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""));
+  const nuevas = normalizarFechas(
+    encabezados,
+    matrizEntrada.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
+  );
   const actual = leerReservas();
   const columnas = actual.columnas.length === 0 ? encabezados : actual.columnas;
   if (actual.columnas.length > 0 && encabezados.join("|") !== actual.columnas.join("|")) {
@@ -1935,18 +1972,216 @@ function registrarCarga(modo, columna) {
   return { clave, fecha: cargas[clave], cargas };
 }
 
-function buscarReservas(reserva) {
+function indiceEncabezado(columnas, patron) {
+  return columnas.findIndex((columna) => patron.test(String(columna).trim()));
+}
+
+function celdaReserva(fila, indice) {
+  if (indice < 0) return "";
+  const valor = textoFecha(fila[indice]);
+  return valor ?? "";
+}
+
+function numeroReserva(valor) {
+  if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+  const texto = String(valor ?? "").trim().replace(/\./g, "").replace(",", ".");
+  const numero = Number(texto);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function revisionReservas(reserva) {
   const termino = String(reserva ?? "").trim().toLowerCase();
   const { columnas, filas } = leerReservas();
-  if (!termino) return { columnas, filas: [], total: filas.length };
-  const indiceReserva = columnas.findIndex((columna) =>
-    /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim())
-  );
+  const vacio = {
+    columnas: [],
+    filas: [],
+    total: filas.length,
+    fecha: "",
+    solicitante: "",
+    movimiento: "",
+  };
+  if (!termino) return vacio;
+  const indiceReserva = indiceEncabezado(columnas, /^n[ºo°.]?\s*reserva$/i);
   const coinciden =
     indiceReserva < 0
       ? []
       : filas.filter((fila) => String(fila[indiceReserva] ?? "").trim().toLowerCase().includes(termino));
-  return { columnas, filas: coinciden, total: filas.length };
+  const indice = (patron) => indiceEncabezado(columnas, patron);
+  const iOrden = indice(/^orden$/i);
+  const iMaterial = indice(/^material$/i);
+  const iTexto = indice(/texto breve/i);
+  const iCentro = indice(/^centro$/i);
+  const iAlmacen = indice(/^almac[eé]n$/i);
+  const iNecesaria = indice(/cantidad necesaria/i);
+  const iUnidad = indice(/un\.?medida de entrada/i);
+  const iFecha = indice(/fecha de necesidad/i);
+  const iReducida = indice(/cantid\.?reducidas/i);
+  const iDiferencia = indice(/cantidad diferencia/i);
+  const iUsuario = indice(/nombre del usuario|solicitante/i);
+  const iMovimiento = indice(/^clase de movimiento$/i);
+
+  const materiales = new Map();
+  filasConBodegas().forEach((fila) => {
+    materiales.set(String(fila.Codigo ?? "").trim(), fila);
+  });
+
+  const salida = [
+    "N°",
+    "N° Orden",
+    "N° Reserva",
+    "Código",
+    "Descripción",
+    "Centro",
+    "Almacen",
+    "Stock",
+    "Reserva",
+    "UN",
+    "Ubicación",
+    "Sub Ubicación",
+    "Fecha de necesidad",
+    "Estado",
+    "M502",
+    "M503",
+    "M504",
+    "M505",
+    "Reducido",
+    "Diferencia",
+  ];
+  const filasRevision = coinciden.map((fila, posicion) => {
+    const codigo = String(celdaReserva(fila, iMaterial)).trim();
+    const material = materiales.get(codigo);
+    const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
+    const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? material["Ubicación"] : "No se encontro ubicación";
+    const stock = material ? numeroReserva(material.Stock) : 0;
+    const cantidad = numeroReserva(celdaReserva(fila, iNecesaria));
+    const descripcionInventario = material ? String(material.Descripcion ?? "").trim() : "";
+    const descripcion = descripcionInventario || String(celdaReserva(fila, iTexto)).trim() || "Sin descripción";
+    return [
+      posicion + 1,
+      celdaReserva(fila, iOrden),
+      celdaReserva(fila, indiceReserva),
+      codigo,
+      descripcion,
+      celdaReserva(fila, iCentro),
+      celdaReserva(fila, iAlmacen),
+      stock,
+      cantidad,
+      celdaReserva(fila, iUnidad),
+      lugar,
+      material ? material["Sub-ubicación"] ?? "" : "",
+      celdaReserva(fila, iFecha),
+      cantidad <= stock ? "Disponible" : "No disponible",
+      material ? numeroReserva(material.M502) : 0,
+      material ? numeroReserva(material.M503) : 0,
+      material ? numeroReserva(material.M504) : 0,
+      material ? numeroReserva(material.M505) : 0,
+      numeroReserva(celdaReserva(fila, iReducida)),
+      numeroReserva(celdaReserva(fila, iDiferencia)),
+    ];
+  });
+  const primera = coinciden[0] || [];
+  return {
+    columnas: salida,
+    filas: filasRevision,
+    total: filas.length,
+    fecha: celdaReserva(primera, iFecha),
+    solicitante: celdaReserva(primera, iUsuario),
+    movimiento: celdaReserva(primera, iMovimiento),
+  };
+}
+
+function buscarReservas(reserva) {
+  const revision = revisionReservas(reserva);
+  return {
+    columnas: revision.columnas,
+    filas: revision.filas,
+    total: revision.total,
+    fecha: revision.fecha,
+    solicitante: revision.solicitante,
+    movimiento: revision.movimiento,
+  };
+}
+
+async function exportarRevisionPorReserva(reserva, colores = true) {
+  const revision = revisionReservas(reserva);
+  if (!String(reserva ?? "").trim()) {
+    const error = new Error("Escribí un número de reserva.");
+    error.status = 400;
+    throw error;
+  }
+  if (revision.total === 0) {
+    const error = new Error("Todavía no hay reservas cargadas.");
+    error.status = 400;
+    throw error;
+  }
+  if (revision.filas.length === 0) {
+    const error = new Error("No hay reservas con ese número de reserva.");
+    error.status = 404;
+    throw error;
+  }
+
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Reserva");
+  const borde = {
+    bottom: { style: "medium", color: { argb: "FF000000" } },
+    left: { style: "thin" },
+    right: { style: "thin" },
+    top: { style: "thin" },
+  };
+  const encabezado = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFA9E5E5" },
+  };
+
+  hoja.mergeCells("C1:F1");
+  const titulo = hoja.getCell("C1");
+  titulo.value = "Revisión Stock de Reserva";
+  titulo.font = { bold: true, size: 12 };
+  pintar(titulo, encabezado, colores);
+
+  const laterales = [
+    [3, "Fecha de necesidad", revision.fecha],
+    [5, "Solicitante", revision.solicitante],
+    [7, "Clase de movimiento", revision.movimiento],
+  ];
+  laterales.forEach(([fila, etiqueta, valor]) => {
+    const celda = hoja.getCell(fila, 1);
+    celda.value = etiqueta;
+    celda.font = { bold: true };
+    hoja.getCell(fila, 2).value = valor ?? "";
+  });
+
+  revision.columnas.forEach((nombre, indice) => {
+    const celda = hoja.getCell(3, indice + 3);
+    celda.value = nombre;
+    celda.font = { bold: true };
+    pintar(celda, encabezado, colores);
+    celda.border = borde;
+  });
+
+  const columnaEstado = revision.columnas.indexOf("Estado");
+  revision.filas.forEach((fila, indice) => {
+    const numero = indice + 4;
+    fila.forEach((valor, columna) => {
+      const celda = hoja.getCell(numero, columna + 3);
+      celda.value = valor ?? "";
+      celda.border = borde;
+      if (columna !== columnaEstado) return;
+      const color = valor === "Disponible" ? "FF73C883" : "FFF9E37C";
+      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
+    });
+  });
+
+  const ultima = Math.max(revision.filas.length + 3, 3);
+  hoja.autoFilter = `C3:V${ultima}`;
+  hoja.getColumn(1).width = 24;
+  hoja.getColumn(3).width = 6;
+  hoja.getColumn(7).width = 18;
+  hoja.getColumn(9).width = 42;
+  hoja.getColumn(15).width = 26;
+  compactarPlanilla(hoja);
+  return libro.xlsx.writeBuffer();
 }
 
 module.exports = {
@@ -1983,6 +2218,7 @@ module.exports = {
   añadirVenta,
   importarReservas,
   buscarReservas,
+  exportarRevisionPorReserva,
   leerUltimasCargas,
   registrarCarga,
 };
