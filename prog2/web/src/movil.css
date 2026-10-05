@@ -44,6 +44,52 @@ html.oscuro {
   color-scheme: dark;
 }
 
+.descarga-imagen {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--acento);
+  color: var(--sobre);
+  text-decoration: none;
+  transition: width 0.2s ease, gap 0.2s ease, padding 0.2s ease;
+}
+
+.descarga-imagen svg {
+  flex-shrink: 0;
+}
+
+.descarga-imagen span {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
+.descarga-imagen:hover,
+.descarga-imagen:focus-visible {
+  width: 128px;
+  gap: 6px;
+  padding: 0 12px 0 8px;
+}
+
+.descarga-imagen:hover span,
+.descarga-imagen:focus-visible span {
+  max-width: 90px;
+  opacity: 1;
+}
+
 body {
   margin: 0;
   background: var(--fondo);

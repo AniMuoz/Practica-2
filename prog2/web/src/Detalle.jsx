@@ -231,6 +231,7 @@ export default function Detalle() {
                 key={campo}
                 className="tarjeta-imagen"
                 style={{
+                  position: "relative",
                   background: "var(--superficie)",
                   borderRadius: 8,
                   padding: 12,
@@ -240,6 +241,20 @@ export default function Detalle() {
                   alignItems: "center",
                 }}
               >
+                {esImagen && (
+                  <a
+                    className="descarga-imagen"
+                    href={`/api/imagenes/${valor}`}
+                    download={valor.split("/").pop()}
+                    aria-label={`Descargar ${campo}`}
+                    title="Descargar"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 4v11m0 0 4.5-4.5M12 15 7.5 10.5M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span>Descargar</span>
+                  </a>
+                )}
                 <div
                   className="marco-imagen"
                   style={{
@@ -266,25 +281,6 @@ export default function Detalle() {
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
                   {campo}
-                  {esImagen && (
-                    <a
-                      href={`/api/imagenes/${valor}`}
-                      download={valor.split("/").pop()}
-                      style={{
-                        justifySelf: "start",
-                        padding: "6px 10px",
-                        border: "1px solid var(--borde)",
-                        borderRadius: 6,
-                        background: "var(--superficie)",
-                        fontSize: 13,
-                        fontWeight: 400,
-                        color: "inherit",
-                        textDecoration: "none",
-                      }}
-                    >
-                      Descargar
-                    </a>
-                  )}
                   {editando && (
                     <>
                       <input
@@ -426,8 +422,48 @@ export default function Detalle() {
                 </button>
               </form>
             )}
+            {soloLectura.includes("Stock") && (
+              <div
+                style={{
+                  background: "var(--acento)",
+                  color: "var(--sobre)",
+                  borderRadius: 8,
+                  padding: "14px 16px",
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                  Stock
+                </span>
+                {editando ? (
+                  <input
+                    value={datos.Stock ?? ""}
+                    onChange={(event) =>
+                      setDatos((actual) => ({ ...actual, Stock: event.target.value }))
+                    }
+                    style={{
+                      minWidth: 120,
+                      boxSizing: "border-box",
+                      padding: "8px 10px",
+                      border: 0,
+                      borderRadius: 6,
+                      fontSize: 28,
+                      fontWeight: 700,
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>
+                    {fila.Stock === "" || fila.Stock == null ? "—" : fila.Stock}
+                  </span>
+                )}
+              </div>
+            )}
             {bodegas.length > 0 && (
-              <p style={{ margin: 0, fontSize: 14 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
                 Stock de otras bodegas:{" "}
                 {bodegas.map((item) => `${item.bodega}: ${item.stock}`).join(" · ")}
               </p>
@@ -443,7 +479,7 @@ export default function Detalle() {
                 overflow: "auto",
               }}
             >
-              {soloLectura.map((columna) => (
+              {soloLectura.filter((columna) => columna !== "Stock").map((columna) => (
                 <div key={columna} style={{ minWidth: 0 }}>
                   <dt style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>{columna}</dt>
                   <dd style={{ margin: 0, fontSize: 15 }}>
