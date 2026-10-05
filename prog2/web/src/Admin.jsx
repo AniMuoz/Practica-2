@@ -1038,25 +1038,25 @@ export default function Admin() {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              const orden = ordenReserva.trim();
-              if (!orden) {
-                setAvisoBusquedaReserva("Escribí un número de orden.");
+              const numero = ordenReserva.trim();
+              if (!numero) {
+                setAvisoBusquedaReserva("Escribí un número de reserva.");
                 setBusquedaReserva({ columnas: [], filas: [], total: 0 });
                 return;
               }
               setAvisoBusquedaReserva("");
               setBuscandoReserva(true);
-              fetch(`/api/reservas?orden=${encodeURIComponent(orden)}`)
+              fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}`)
                 .then(async (res) => {
                   const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || "No se pudo buscar la orden.");
+                  if (!res.ok) throw new Error(data.error || "No se pudo buscar la reserva.");
                   setBusquedaReserva({
                     columnas: data.columnas || [],
                     filas: data.filas || [],
                     total: data.total || 0,
                   });
                   if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
-                  else if ((data.filas || []).length === 0) setAvisoBusquedaReserva("No hay reservas con ese número de orden.");
+                  else if ((data.filas || []).length === 0) setAvisoBusquedaReserva("No hay reservas con ese número de reserva.");
                 })
                 .catch((err) => setAvisoBusquedaReserva(err.message))
                 .finally(() => setBuscandoReserva(false));
@@ -1065,9 +1065,9 @@ export default function Admin() {
           >
             <input
               type="search"
-              aria-label="Número de orden"
+              aria-label="Número de reserva"
               value={ordenReserva}
-              placeholder="Buscar número de orden"
+              placeholder="Buscar número de reserva"
               onChange={(event) => setOrdenReserva(event.target.value)}
               style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, minWidth: 220 }}
             />
@@ -1084,7 +1084,7 @@ export default function Admin() {
                 cursor: "pointer",
               }}
             >
-              {buscandoReserva ? "Buscando..." : "Buscar orden"}
+              {buscandoReserva ? "Buscando..." : "Buscar reserva"}
             </button>
             {avisoBusquedaReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoBusquedaReserva}</p>}
           </form>

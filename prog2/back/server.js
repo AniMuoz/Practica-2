@@ -235,7 +235,7 @@ function recibirReserva(req, res, siguiente) {
 
 app.get("/api/reservas", (req, res) => {
   try {
-    res.json(buscarReservas(req.query.orden));
+    res.json(buscarReservas(req.query.reserva));
   } catch (error) {
     res.status(500).json({ error: "No se pudo leer las reservas." });
   }

@@ -1872,22 +1872,40 @@ function importarReservas(clave, buffer) {
   }
   const nuevas = matrizEntrada.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""));
   const actual = leerReservas();
-  let matriz;
-  let agregados = nuevas.length;
-  let actualizados = 0;
-  if (actual.columnas.length === 0) {
-    matriz = [encabezados, ...nuevas];
-  } else if (encabezados.join("|") !== actual.columnas.join("|")) {
+  const columnas = actual.columnas.length === 0 ? encabezados : actual.columnas;
+  if (actual.columnas.length > 0 && encabezados.join("|") !== actual.columnas.join("|")) {
     const error = new Error("Los encabezados no coinciden con bd_reservas.");
     error.status = 400;
     throw error;
-  } else {
-    matriz = [actual.columnas, ...actual.filas, ...nuevas];
   }
+  const indiceOrden = columnas.findIndex((columna) => /^orden$/i.test(String(columna).trim()));
+  const indiceReserva = columnas.findIndex((columna) => /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim()));
+  if (indiceOrden < 0 || indiceReserva < 0) {
+    const error = new Error("La planilla necesita las columnas Orden y Nº reserva.");
+    error.status = 400;
+    throw error;
+  }
+  const claveFila = (fila) =>
+    `${String(fila[indiceOrden] ?? "").trim().toLowerCase()}|${String(fila[indiceReserva] ?? "").trim().toLowerCase()}`;
+  const vistas = new Set(actual.filas.map(claveFila));
+  const porAgregar = [];
+  let omitidos = 0;
+  nuevas.forEach((fila) => {
+    const clave = claveFila(fila);
+    if (vistas.has(clave)) {
+      omitidos += 1;
+      return;
+    }
+    vistas.add(clave);
+    porAgregar.push(fila);
+  });
+  const matriz = [columnas, ...actual.filas, ...porAgregar];
+  const agregados = porAgregar.length;
+  const actualizados = 0;
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Reservas");
   XLSX.writeFile(libro, archivoReservas());
-  return { agregados, actualizados, omitidos: 0 };
+  return { agregados, actualizados, omitidos };
 }
 
 const ARCHIVO_CARGAS = path.join(__dirname, "ultimas_cargas.json");
@@ -1917,15 +1935,17 @@ function registrarCarga(modo, columna) {
   return { clave, fecha: cargas[clave], cargas };
 }
 
-function buscarReservas(orden) {
-  const termino = String(orden ?? "").trim().toLowerCase();
+function buscarReservas(reserva) {
+  const termino = String(reserva ?? "").trim().toLowerCase();
   const { columnas, filas } = leerReservas();
   if (!termino) return { columnas, filas: [], total: filas.length };
-  const indiceOrden = columnas.findIndex((columna) => /orden|order|pedido/i.test(columna));
-  const coinciden = filas.filter((fila) => {
-    if (indiceOrden >= 0) return String(fila[indiceOrden] ?? "").trim().toLowerCase().includes(termino);
-    return fila.some((celda) => String(celda ?? "").trim().toLowerCase().includes(termino));
-  });
+  const indiceReserva = columnas.findIndex((columna) =>
+    /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim())
+  );
+  const coinciden =
+    indiceReserva < 0
+      ? []
+      : filas.filter((fila) => String(fila[indiceReserva] ?? "").trim().toLowerCase().includes(termino));
   return { columnas, filas: coinciden, total: filas.length };
 }
 
