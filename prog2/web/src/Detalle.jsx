@@ -73,6 +73,24 @@ export default function Detalle() {
     (columna) => !["Inventario", "Comentario", "Rombo", "QR", "Foto"].includes(columna)
   );
 
+  const estadoInventario = (() => {
+    if (!fila) return null;
+    if (String(fila.Comentario ?? "").trim() !== "") {
+      return { color: "#EFA94A", texto: "Hay comentario" };
+    }
+    const inventarioFila = String(fila.Inventario ?? "").trim();
+    if (inventarioFila === "") return null;
+    const stock = String(fila.Stock ?? "").trim();
+    const iguales =
+      stock !== "" &&
+      Number(stock) === Number(inventarioFila) &&
+      Number.isFinite(Number(stock)) &&
+      Number.isFinite(Number(inventarioFila));
+    return iguales
+      ? { color: "#5DBB63", texto: "Inventario igual al stock" }
+      : { color: "#FF0000", texto: "Inventario distinto al stock" };
+  })();
+
   function guardarDatos(reemplazar) {
     setAvisoDatos("");
     setGuardandoDatos(true);
@@ -196,7 +214,22 @@ export default function Detalle() {
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 12px", flexWrap: "wrap" }}>
-        <h1 data-tour="material" style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <h1 data-tour="material" style={{ margin: 0, fontSize: 20 }}>Material {codigo}</h1>
+          {estadoInventario && (
+            <span
+              title={estadoInventario.texto}
+              aria-label={estadoInventario.texto}
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: "50%",
+                background: estadoInventario.color,
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </div>
         <button
           type="button"
           role="switch"
