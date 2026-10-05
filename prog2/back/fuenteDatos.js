@@ -344,6 +344,46 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
   return buscarMaterial(codigo);
 }
 
+function eliminarMaterial(codigo, clave) {
+  if (clave !== CLAVE_DATOS) {
+    const error = new Error("Contraseña incorrecta.");
+    error.status = 403;
+    throw error;
+  }
+
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const nombreHoja = libro.SheetNames[0];
+  const { matriz } = leerMatriz(libro);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  if (indiceCodigo < 0) {
+    const error = new Error("La tabla no tiene la columna Codigo.");
+    error.status = 500;
+    throw error;
+  }
+
+  const indiceFila = matriz.findIndex(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
+  );
+  if (indiceFila < 0) return null;
+
+  for (const campo of CAMPOS_IMAGEN) {
+    const indiceCampo = columnas.indexOf(campo);
+    if (indiceCampo < 0) continue;
+    const anterior = String(matriz[indiceFila][indiceCampo] ?? "");
+    if (/\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
+      const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
+      if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+    }
+  }
+
+  matriz.splice(indiceFila, 1);
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
+  XLSX.writeFile(libro, archivo);
+  return { codigo: String(codigo) };
+}
+
 function agregarMaterial(clave, datos) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
@@ -532,6 +572,8 @@ function importarSap(clave, buffer) {
   let agregados = 0;
   let actualizados = 0;
   let omitidos = 0;
+  const ordenSap = [];
+  const vistosSap = new Set();
 
   matrizEntrada.slice(1).forEach((fila, desplazamiento) => {
     const numero = desplazamiento + 2;
@@ -548,6 +590,10 @@ function importarSap(clave, buffer) {
       const error = new Error(`La fila ${numero} no tiene código.`);
       error.status = 400;
       throw error;
+    }
+    if (!vistosSap.has(codigo)) {
+      vistosSap.add(codigo);
+      ordenSap.push(codigo);
     }
 
     const indiceBodega = planta === "M501" ? indiceStock : columnas.indexOf(planta);
@@ -568,6 +614,17 @@ function importarSap(clave, buffer) {
     matriz.push(filaNueva);
     agregados += 1;
   });
+
+  const encabezado = matriz[0];
+  const porCodigo = new Map();
+  const fueraDelExport = [];
+  for (let indice = 1; indice < matriz.length; indice += 1) {
+    const codigoFila = String(matriz[indice][indiceCodigo] ?? "").trim();
+    if (vistosSap.has(codigoFila) && !porCodigo.has(codigoFila)) porCodigo.set(codigoFila, matriz[indice]);
+    else if (!vistosSap.has(codigoFila)) fueraDelExport.push(matriz[indice]);
+  }
+  const ordenadas = ordenSap.map((codigoFila) => porCodigo.get(codigoFila)).filter(Boolean);
+  matriz.splice(0, matriz.length, encabezado, ...ordenadas, ...fueraDelExport);
 
   libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
   XLSX.writeFile(libro, archivo);
@@ -1872,6 +1929,7 @@ module.exports = {
   guardarImagen,
   exportarTabla,
   agregarMaterial,
+  eliminarMaterial,
   importarPlanilla,
   importarSap,
   importarPrecios,

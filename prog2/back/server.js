@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -357,6 +357,20 @@ app.post("/api/tabla/excel", (req, res) => {
       res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });
     }
   });
+});
+
+app.delete("/api/material/:codigo", (req, res) => {
+  try {
+    const resultado = eliminarMaterial(req.params.codigo, req.body.clave);
+    if (!resultado) {
+      res.status(404).json({ error: "Material no encontrado." });
+      return;
+    }
+    emitir({ tipo: "recarga" });
+    res.json(resultado);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo eliminar el material." });
+  }
 });
 
 app.post("/api/material", (req, res) => {

@@ -23,6 +23,8 @@ export default function Detalle() {
   const [guardandoDatos, setGuardandoDatos] = useState(false);
   const [enCurso, setEnCurso] = useState("");
   const [advertenciaCodigo, setAdvertenciaCodigo] = useState(false);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [pulsado, setPulsado] = useState(0);
   const pulso = useRef(null);
   const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
@@ -121,6 +123,28 @@ export default function Detalle() {
       .catch((err) => setAvisoDatos(err.message))
       .finally(() => {
         setGuardandoDatos(false);
+        setEnCurso("");
+      });
+  }
+
+  function eliminarMaterial() {
+    setAvisoDatos("");
+    setEliminando(true);
+    setEnCurso("Eliminando material...");
+    fetch(`/api/material/${encodeURIComponent(codigo)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo eliminar el material.");
+        setConfirmarEliminar(false);
+        navigate("/", { replace: true });
+      })
+      .catch((err) => {
+        setAvisoDatos(err.message);
+        setEliminando(false);
         setEnCurso("");
       });
   }
@@ -578,10 +602,10 @@ export default function Detalle() {
               ))}
             </dl>
             {editando && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <button
                   type="button"
-                  disabled={guardandoDatos}
+                  disabled={guardandoDatos || eliminando}
                   onClick={() => guardarDatos(false)}
                   style={{
                     padding: "8px 14px",
@@ -594,6 +618,22 @@ export default function Detalle() {
                   }}
                 >
                   {guardandoDatos ? "Guardando..." : "Guardar datos"}
+                </button>
+                <button
+                  type="button"
+                  disabled={guardandoDatos || eliminando}
+                  onClick={() => setConfirmarEliminar(true)}
+                  style={{
+                    padding: "8px 14px",
+                    border: 0,
+                    borderRadius: 6,
+                    background: "#b42318",
+                    color: "#fff",
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Eliminar material
                 </button>
               </div>
             )}
@@ -686,6 +726,62 @@ export default function Detalle() {
               {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
             </div>
           </form>
+        </div>
+      )}
+      {confirmarEliminar && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 70,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Eliminar material {codigo}</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Se va a borrar este material de la tabla, junto con su inventario, comentario e imágenes.
+              Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                disabled={eliminando}
+                onClick={eliminarMaterial}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#b42318",
+                  color: "#fff",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                {eliminando ? "Eliminando..." : "Sí, eliminar este material"}
+              </button>
+              <button
+                type="button"
+                disabled={eliminando}
+                onClick={() => setConfirmarEliminar(false)}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "1px solid var(--borde)",
+                  borderRadius: 6,
+                  background: "var(--superficie)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {advertenciaCodigo && (
