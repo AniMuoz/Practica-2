@@ -59,7 +59,7 @@ function conColores(valor) {
 }
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 const clientesEventos = new Set();
 
@@ -494,6 +494,6 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`API en http://localhost:${PORT}`);
 });

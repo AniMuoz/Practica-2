@@ -928,6 +928,7 @@ def ver_tarjetas():
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    Timer(1, abrir_navegador).start()
-    #Cambiar a False cuando se haga una build
-    front_flask.run(debug=False, port=5000)
+    en_docker = os.environ.get("EN_DOCKER") == "1"
+    if not en_docker:
+        Timer(1, abrir_navegador).start()
+    front_flask.run(debug=False, host="0.0.0.0", port=5000)

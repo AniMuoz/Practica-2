@@ -553,6 +553,21 @@ export default function Admin() {
               setAvisoCarga("Elegí la columna que va a llenar la planilla.");
               return;
             }
+            const secciones = {
+              completa: "Planilla completa",
+              sap: "Planilla EXPORT SAP",
+              ubicaciones: "Planilla de ubicaciones",
+              precios: "Planilla de precios",
+              "dos-columnas": columnaCarga
+                ? `Planilla de 2 columnas (columna ${columnaCarga})`
+                : "Planilla de 2 columnas",
+              reservas: "Añadir reservas",
+            };
+            const seccion = secciones[modoCarga] || modoCarga;
+            const confirmar = window.confirm(
+              `¿Confirmás la carga del archivo "${archivo.name}" en la sección ${seccion}?`
+            );
+            if (!confirmar) return;
             setAvisoCarga("");
             setImportando(true);
             const cuerpo = new FormData();

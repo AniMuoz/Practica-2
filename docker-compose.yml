@@ -1,0 +1,36 @@
+services:
+  python:
+    build: ./programa_1
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./programa_1/private:/app/private
+    networks:
+      - practica
+
+  back:
+    build: ./prog2/back
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./prog2/back:/app
+      - /app/node_modules
+    networks:
+      - practica
+
+  web:
+    build: ./prog2/web
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY: http://back:3001
+    volumes:
+      - ./prog2/web:/app
+      - /app/node_modules
+    depends_on:
+      - back
+    networks:
+      - practica
+
+networks:
+  practica:
