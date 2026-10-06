@@ -1880,7 +1880,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 11).value = entregar;
     if (concon > 0) {
       hoja.getCell(fila, 22).value = "CONCON";
-      hoja.getCell(fila, 31).value = concon;
+      hoja.getCell(fila, 31).value = `CONCON ${concon}`;
     }
     hoja.getCell(fila, 12).value = item.unidad;
     hoja.getCell(fila, 13).value = 0;
@@ -1894,7 +1894,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 20).value = contratista;
     hoja.getCell(fila, 21).value = mov;
     hoja.getCell(fila, 23).value = codcomp;
-    hoja.getCell(fila, 24).value = { formula: `K${fila}` };
+    hoja.getCell(fila, 24).value = concon > 0 ? concon : { formula: `K${fila}` };
     hoja.getCell(fila, 28).value = { formula: `X${fila}-J${fila}` };
     hoja.getCell(fila, 27).value = fecha;
     hoja.getCell(fila, 32).value = cont;
