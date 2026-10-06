@@ -117,7 +117,7 @@ const PASOS = {
     {
       id: "Planilla de ventas",
       titulo: "Planilla de ventas",
-      texto: "Genera o continua una planilla de ventas subiendo una orden de venta. Puedes elegir un contratista de la lista.",
+      texto: "Genera o continua una planilla de ventas. Podés subir una orden, un traspaso o cargar producto a producto. Podés elegir un contratista de la lista.",
     },
     {
       id: "Editar contratistas",

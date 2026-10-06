@@ -286,26 +286,36 @@ app.post("/api/ventas", (req, res) => {
       res.status(400).json({ error: errorCarga.message });
       return;
     }
+    const modo = req.body.modo || "orden";
     const orden = req.files?.orden?.[0];
-    if (!orden) {
-      res.status(400).json({ error: "Falta el archivo de orden de venta." });
+    let itemsManuales = null;
+    if (modo === "manual") {
+      try {
+        itemsManuales = JSON.parse(req.body.items || "[]");
+      } catch {
+        res.status(400).json({ error: "La lista de productos no es válida." });
+        return;
+      }
+    } else if (!orden) {
+      res.status(400).json({ error: "Falta el archivo." });
       return;
     }
     try {
       const ventas = req.files?.ventas?.[0];
       const { buffer, nombre } = await añadirVenta({
-        ordenBuffer: orden.buffer,
+        ordenBuffer: orden?.buffer,
         ventasBuffer: ventas?.buffer,
         contratistaIdx: Number(req.body.contratista),
         movTipo: Number(req.body.movimiento),
         codVenta: req.body.codVenta,
         colores: conColores(req.body.colores),
+        itemsManuales,
       });
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
       res.send(Buffer.from(buffer));
     } catch (error) {
-      res.status(500).json({ error: "No se pudo generar la planilla de ventas." });
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo generar la planilla de ventas." });
     }
   });
 });

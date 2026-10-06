@@ -1698,13 +1698,7 @@ function escribirEncabezadoVentas(hoja, fila, colores) {
   });
 }
 
-async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta, colores = true }) {
-  const materiales = new Map();
-  filasConBodegas().forEach((fila) => {
-    materiales.set(String(fila.Codigo ?? "").trim(), fila);
-  });
-  const contratistas = leerContratistas().filas.map((fila) => String(fila.nombre ?? ""));
-
+function itemsDesdeOrden(ordenBuffer) {
   const libroOrden = XLSX.read(ordenBuffer, { type: "buffer" });
   const nombrePedido = libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
   const orden = XLSX.utils.sheet_to_json(libroOrden.Sheets[nombrePedido], { header: 1, defval: null });
@@ -1715,7 +1709,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   const colCodigo = Math.max(titulos.indexOf("código"), titulos.indexOf("codigo"), 0);
   const colUnidad = titulos.indexOf("un") >= 0 ? titulos.indexOf("un") : 2;
   const colSolicitado = titulos.indexOf("solicitado") >= 0 ? titulos.indexOf("solicitado") : 3;
-  const items = orden.slice(encabezado + 1).flatMap((fila) => {
+  return orden.slice(encabezado + 1).flatMap((fila) => {
     const cantidad = fila?.[colSolicitado];
     if (cantidad == null || cantidad === "" || Number(cantidad) === 0) return [];
     return [{
@@ -1724,6 +1718,82 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       cantidad,
     }];
   });
+}
+
+function numeroEnTitulo(titulo) {
+  const texto = String(titulo ?? "").trim();
+  const marcado = texto.match(/(?:n[°ºo.]|numero|número|traspaso)\s*[:.]?\s*(\d+)/i);
+  if (marcado) return marcado[1];
+  const numeros = texto.match(/\d+/g);
+  return numeros ? numeros[numeros.length - 1] : "";
+}
+
+function itemsDesdeTraspaso(traspasoBuffer) {
+  // Encabezados en la fila 3. C1 trae el título con el número de traspaso.
+  // Col 2 código, col 3 descripción, col 4 med, col 5 solicitado,
+  // col 8 cantidad a entregar, col 10 cantidad a entregar desde CONCON.
+  const libro = XLSX.read(traspasoBuffer, { type: "buffer" });
+  const hoja = libro.Sheets[libro.SheetNames[0]];
+  const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null });
+  const numero = numeroEnTitulo(filas[0]?.[2]);
+  const items = filas.slice(3).flatMap((fila) => {
+    const codigo = fila?.[1];
+    if (codigo == null || String(codigo).trim() === "") return [];
+    const cantidad = fila?.[4];
+    const entregar = fila?.[7];
+    const concon = fila?.[9];
+    const hayCantidad = [cantidad, entregar, concon].some((valor) => valor != null && valor !== "" && Number(valor) !== 0);
+    if (!hayCantidad) return [];
+    return [{
+      codigo,
+      descripcion: fila?.[2] ?? "",
+      unidad: fila?.[3] ?? "",
+      cantidad: cantidad ?? 0,
+      entregar,
+      concon,
+    }];
+  });
+  return { items, numero };
+}
+
+function itemsDesdeManual(lista) {
+  if (!Array.isArray(lista)) return [];
+  return lista.flatMap((fila) => {
+    const codigo = String(fila?.codigo ?? "").trim();
+    const cantidad = fila?.cantidad;
+    if (!codigo) return [];
+    if (cantidad == null || cantidad === "" || Number(cantidad) === 0) return [];
+    return [{ codigo, unidad: "", cantidad }];
+  });
+}
+
+async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta, colores = true, itemsManuales = null }) {
+  const materiales = new Map();
+  filasConBodegas().forEach((fila) => {
+    materiales.set(String(fila.Codigo ?? "").trim(), fila);
+  });
+  const contratistas = leerContratistas().filas.map((fila) => String(fila.nombre ?? ""));
+
+  let items;
+  let numeroTraspaso = "";
+  if (itemsManuales) {
+    items = itemsDesdeManual(itemsManuales);
+  } else if (!ordenBuffer) {
+    const error = new Error("Falta el archivo o la lista de productos.");
+    error.status = 400;
+    throw error;
+  } else if (Number(movTipo) === 2) {
+    const traspaso = itemsDesdeTraspaso(ordenBuffer);
+    items = traspaso.items;
+    numeroTraspaso = traspaso.numero;
+  } else {
+    items = itemsDesdeOrden(ordenBuffer);
+  }
+  if (items.length === 0) {
+    const error = new Error("No se encontraron productos para cargar.");
+    error.status = 400;
+    throw error;
+  }
 
   const libro = new ExcelJS.Workbook();
   let hoja;
@@ -1746,7 +1816,9 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   });
 
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
-  const codcomp = mov === "TRASPASO" ? "n/a" : (codVenta === "" || codVenta == null ? "n/a" : codVenta);
+  const codcomp = mov === "TRASPASO"
+    ? (numeroTraspaso || "n/a")
+    : (codVenta === "" || codVenta == null ? "n/a" : codVenta);
   const contratista = contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
   const hoy = new Date();
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
@@ -1774,8 +1846,8 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
 
     hoja.getCell(fila, 1).value = cont;
     hoja.getCell(fila, 2).value = item.codigo;
+    hoja.getCell(fila, 3).value = material?.Descripcion || item.descripcion || "";
     if (material) {
-      hoja.getCell(fila, 3).value = material.Descripcion ?? "";
       hoja.getCell(fila, 4).value = material["Ubicación"] ?? "";
     }
     hoja.getCell(fila, 5).value = m501;
@@ -1788,19 +1860,28 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 9).value = m505;
     hoja.getCell(fila, 10).value = cant;
 
+    const concon = enteroCelda(item.concon);
     let entregar = 0;
-    if (material && cantidad <= m501) entregar = cant;
-    else if (material && m505 > m501) {
+    if (item.entregar != null && item.entregar !== "") {
+      entregar = item.entregar;
+    } else if (material && cantidad <= m501) {
+      entregar = cant;
+    }
+    if (concon > 0 || (item.entregar == null && material && m505 > m501 && cantidad > m501)) {
       hoja.getCell(fila, 4).value = "CONCON";
       for (let columna = 1; columna <= 36; columna += 1) {
         hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
-    } else if (material && m505 === 0 && m501 === 0) {
+    } else if (item.entregar == null && material && m505 === 0 && m501 === 0) {
       for (let columna = 1; columna <= 36; columna += 1) {
         hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
     }
     hoja.getCell(fila, 11).value = entregar;
+    if (concon > 0) {
+      hoja.getCell(fila, 22).value = "CONCON";
+      hoja.getCell(fila, 31).value = concon;
+    }
     hoja.getCell(fila, 12).value = item.unidad;
     hoja.getCell(fila, 13).value = 0;
     hoja.getCell(fila, 14).value = m501 - cantidad;
