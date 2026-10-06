@@ -4,7 +4,7 @@ import os
 
 import openpyxl
 from flask import Flask, flash, redirect, render_template_string, request, send_file, url_for
-from openpyxl.styles import Alignment, Border, Font, NamedStyle, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 app = Flask(__name__)
 app.secret_key = "planilla-gastos-test"
@@ -212,118 +212,129 @@ def workbook_sin_procesar():
     return guardar
 
 
+FORMATO_PESOS = '_-[$$-340A]* #,##0_-;-[$$-340A]* #,##0_-;_-[$$-340A]* "-"??_-;_-@_-'
+FUENTE = "Calibri"
+RELLENO_TITULO = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+BORDE_FINO = Border(
+    left=Side(style="thin"),
+    right=Side(style="thin"),
+    top=Side(style="thin"),
+    bottom=Side(style="thin"),
+)
+
+
+def borde_fila(hoja, fila, columnas):
+    for columna in columnas:
+        hoja.cell(row=fila, column=columna).border = BORDE_FINO
+
+
+def combinar_etiqueta(hoja, fila, texto, negrita, centrado, relleno=False):
+    hoja.merge_cells(start_row=fila, start_column=2, end_row=fila, end_column=4)
+    celda = hoja.cell(row=fila, column=2, value=texto)
+    celda.font = Font(name=FUENTE, bold=negrita, size=12)
+    celda.alignment = Alignment(horizontal="center" if centrado else "left")
+    if relleno:
+        celda.fill = RELLENO_TITULO
+    borde_fila(hoja, fila, range(2, 5))
+
+
+def celda_monto(hoja, fila, valor, negrita=False, relleno=False):
+    celda = hoja.cell(row=fila, column=5, value=valor)
+    celda.font = Font(name=FUENTE, bold=negrita, size=12)
+    celda.number_format = FORMATO_PESOS
+    celda.alignment = Alignment(horizontal="right")
+    celda.border = BORDE_FINO
+    if relleno:
+        celda.fill = RELLENO_TITULO
+    return celda
+
+
 def workbook_procesado(mes):
-    monto_final = []
     guardias = openpyxl.Workbook()
     hoja = guardias.active
-
-    thin_border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin"),
-    )
-    accounting_style = NamedStyle(name="accounting", number_format="$#")
-
-    hoja.column_dimensions["B"].width = 60
-    hoja.column_dimensions["C"].width = 15
-    hoja.column_dimensions["D"].width = 15
-    hoja.column_dimensions["E"].width = 25
-
     mes_txt = mes.upper()
-    hoja["B3"] = "EMPRESA: PRETORIANOS SEGURIDAD"
-    hoja["B4"] = "DIRECCIÓN: MANUEL BULNES Nº 920, OFICINA 208, QUILPUÉ"
+    hoja.title = f"GASTOS {mes_txt} {fecha.year}"[:31]
+
+    hoja.column_dimensions["B"].width = 59.43
+    hoja.column_dimensions["C"].width = 13
+    hoja.column_dimensions["D"].width = 11.29
+    hoja.column_dimensions["E"].width = 19.14
+
+    hoja["B3"] = "EMPRESA: BERFRE LTDA."
+    hoja["B3"].font = Font(name=FUENTE, size=11)
+    hoja["B4"] = "DIRECCIÓN: 22 NORTE 1150, VIÑA DEL MAR"
+    hoja["B4"].font = Font(name=FUENTE, size=11)
     hoja["B6"] = f"DETALLE GENERAL DE GASTOS MES {mes_txt} DEL AÑO {fecha.year}"
-    hoja["B6"].font = Font(bold=True, size=12)
+    hoja["B6"].font = Font(name=FUENTE, bold=True, size=12)
 
-    hoja["B8"] = "CLASIFICACION DEL GASTO"
-    hoja["B8"].font = Font(bold=True, size=12)
-    hoja["B8"].border = thin_border
-    hoja["C8"] = "MONTO ($)"
-    hoja["C8"].font = Font(bold=True, size=12)
-    hoja["C8"].border = thin_border
-
-    for i in range(9, 25):
-        hoja[f"B{i}"].border = thin_border
+    combinar_etiqueta(hoja, 8, "CLASIFICACION DEL GASTO", True, True, True)
+    monto_titulo = hoja.cell(row=8, column=5, value="MONTO")
+    monto_titulo.font = Font(name=FUENTE, bold=True, size=12)
+    monto_titulo.alignment = Alignment(horizontal="center")
+    monto_titulo.fill = RELLENO_TITULO
+    monto_titulo.border = BORDE_FINO
 
     for indice, topico in enumerate(topicos):
-        hoja.cell(row=9 + indice, column=2, value=topico)
+        combinar_etiqueta(hoja, 9 + indice, topico, False, False)
 
-    hoja["B24"] = "TOTAL GASTOS DEL MES"
-    hoja["B24"].font = Font(bold=True, size=12)
-    # C9:C23 cubre los 15 tópicos, incluido OTROS.
-    hoja["C24"] = "=SUM(C9:C23)"
-    hoja["C24"].font = Font(bold=True, size=12)
-    hoja["C24"].style = accounting_style
-    hoja["C24"].border = thin_border
+    fila_total = 9 + len(topicos)
+    combinar_etiqueta(hoja, fila_total, "TOTAL GASTOS DEL MES", True, True, True)
+    celda_monto(hoja, fila_total, f"=SUM(E9:E{fila_total - 1})", negrita=True, relleno=True)
 
-    hoja["D27"] = "FREDDY ANDRES MUÑOZ OLIVARES"
-    hoja["D27"].font = Font(bold=True, size=12)
-    hoja["D27"].alignment = Alignment(horizontal="center", vertical="center")
-    hoja["D28"] = "GERENTE GENERAL"
-    hoja["D28"].font = Font(bold=True, size=12)
-    hoja["D28"].alignment = Alignment(horizontal="center", vertical="center")
+    firma = fila_total + 3
+    hoja.cell(row=firma, column=4, value="FREDDY ANDRES MUÑOZ OLIVARES").font = Font(name=FUENTE, bold=True, size=12)
+    hoja.cell(row=firma, column=4).alignment = Alignment(horizontal="center")
+    hoja.cell(row=firma + 1, column=4, value="GERENTE GENERAL").font = Font(name=FUENTE, bold=True, size=12)
+    hoja.cell(row=firma + 1, column=4).alignment = Alignment(horizontal="center")
 
-    fila = 31
+    totales = {}
+    fila = firma + 4
     for topico in topicos:
-        hoja.cell(
+        filas = [j for j in range(len(data[1])) if data[0][j] == topico]
+        if not filas:
+            continue
+
+        titulo = hoja.cell(
             row=fila,
             column=2,
             value=f"DETALLE GASTOS EN {topico} MES {mes_txt} DEL AÑO {fecha.year}",
-        ).font = Font(bold=True, size=12)
-
-        x_inicial = fila + 2
-        encabezados = ("PROVEEDOR", "N° DE BOLETA", "FECHA", "MONTO ($)")
-        for columna, titulo in enumerate(encabezados, start=2):
-            celda = hoja.cell(row=x_inicial, column=columna, value=titulo)
-            celda.font = Font(bold=True, size=11)
-            celda.alignment = Alignment(horizontal="center", vertical="center")
-            celda.border = thin_border
-
-        contador = 1
-        hoja.cell(row=x_inicial + contador, column=2, value="-").border = thin_border
-        hoja.cell(row=x_inicial + contador, column=3, value="-").border = thin_border
-        hoja.cell(row=x_inicial + contador, column=4, value="-").border = thin_border
-        hoja.cell(row=x_inicial + contador, column=5, value=0).border = thin_border
-
-        x_final = x_inicial
-        for j in range(len(data[1])):
-            if data[0][j] == topico:
-                hoja.cell(row=x_inicial + contador, column=2, value=data[1][j]).border = thin_border
-                hoja.cell(row=x_inicial + contador, column=3, value=data[2][j]).border = thin_border
-                hoja.cell(row=x_inicial + contador, column=4, value=data[3][j]).border = thin_border
-                monto = hoja.cell(row=x_inicial + contador, column=5, value=data[4][j])
-                monto.border = thin_border
-                monto.style = accounting_style
-                contador += 1
-                x_final += 1
-
-        for columna in range(2, 6):
-            hoja.cell(row=x_final + 1, column=columna).border = thin_border
-
-        total = hoja.cell(row=x_final + 2, column=2, value="VALOR TOTAL")
-        total.font = Font(bold=True, size=12)
-        hoja.merge_cells(start_row=x_final + 2, start_column=2, end_row=x_final + 2, end_column=4)
-        hoja.cell(row=x_final + 2, column=2).alignment = Alignment(horizontal="center", vertical="center")
-        for columna in range(2, 5):
-            hoja.cell(row=x_final + 2, column=columna).border = thin_border
-
-        valor = hoja.cell(
-            row=x_final + 2,
-            column=5,
-            value=f"=IF(E{x_final}=0,0,SUM(E{x_inicial + 1}:E{x_final}))",
         )
-        valor.font = Font(bold=True, size=12)
-        valor.style = accounting_style
-        valor.border = thin_border
+        titulo.font = Font(name=FUENTE, bold=True, size=12)
 
-        monto_final.append(f"E{x_final + 2}")
-        fila += contador + 6
+        encabezado = fila + 2
+        for columna, texto in enumerate(("PROVEEDOR", "N° BOLETA", "FECHA", "MONTO"), start=2):
+            celda = hoja.cell(row=encabezado, column=columna, value=texto)
+            celda.font = Font(name=FUENTE, bold=True, size=12)
+            celda.alignment = Alignment(horizontal="center")
+            celda.fill = RELLENO_TITULO
+            celda.border = BORDE_FINO
 
-    for i in range(9, 24):
-        celda = hoja.cell(row=i, column=3, value=f"={monto_final[i - 9]}")
-        celda.style = accounting_style
-        celda.border = thin_border
+        primera = encabezado + 1
+        for desplazamiento, j in enumerate(filas):
+            actual = primera + desplazamiento
+            proveedor = hoja.cell(row=actual, column=2, value=data[1][j])
+            proveedor.font = Font(name=FUENTE, size=12)
+            proveedor.border = BORDE_FINO
+            boleta = hoja.cell(row=actual, column=3, value=data[2][j])
+            boleta.font = Font(name=FUENTE, size=12)
+            boleta.alignment = Alignment(horizontal="right")
+            boleta.border = BORDE_FINO
+            fecha_boleta = hoja.cell(row=actual, column=4, value=data[3][j])
+            fecha_boleta.font = Font(name=FUENTE, size=12)
+            fecha_boleta.alignment = Alignment(horizontal="center")
+            fecha_boleta.border = BORDE_FINO
+            celda_monto(hoja, actual, data[4][j])
+
+        ultima = primera + len(filas) - 1
+        total_fila = ultima + 1
+        combinar_etiqueta(hoja, total_fila, "VALOR TOTAL", True, True, True)
+        celda_monto(hoja, total_fila, f"=SUM(E{primera}:E{ultima})", negrita=True, relleno=True)
+        totales[topico] = f"E{total_fila}"
+        fila = total_fila + 3
+
+    for indice, topico in enumerate(topicos):
+        referencia = totales.get(topico, 0)
+        celda_monto(hoja, 9 + indice, f"={referencia}" if referencia else 0, negrita=True)
 
     return guardias
 
