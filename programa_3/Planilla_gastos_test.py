@@ -33,6 +33,21 @@ topicos = [
     "OTROS",
 ]
 
+meses = [
+    "ENERO",
+    "FEBRERO",
+    "MARZO",
+    "ABRIL",
+    "MAYO",
+    "JUNIO",
+    "JULIO",
+    "AGOSTO",
+    "SEPTIEMBRE",
+    "OCTUBRE",
+    "NOVIEMBRE",
+    "DICIEMBRE",
+]
+
 PAGE = """
 <!doctype html>
 <html lang="es">
@@ -97,7 +112,12 @@ PAGE = """
       <button type="submit">Recuperar datos</button>
     </form>
     <form method="post" action="{{ url_for('procesar') }}">
-      <input name="mes" placeholder="Mes" required>
+      <select name="mes" required>
+        <option value="">Mes</option>
+        {% for mes in meses %}
+          <option value="{{ mes }}">{{ mes }}</option>
+        {% endfor %}
+      </select>
       <button type="submit">Procesar datos</button>
     </form>
   </div>
@@ -332,6 +352,7 @@ def index():
         dia=dia,
         fecha_pro=fecha_pro,
         editar=editar,
+        meses=meses,
     )
 
 
@@ -412,8 +433,8 @@ def recuperar():
 @app.post("/procesar")
 def procesar():
     mes = request.form.get("mes", "").strip()
-    if not mes:
-        flash("Ingrese el mes para procesar los datos.")
+    if mes not in meses:
+        flash("Seleccione el mes para procesar los datos.")
         return redirect(url_for("index"))
     nombre = f"DETALLE GASTOS BERFRE {mes}_{dia}.xlsx"
     return excel_descarga(workbook_procesado(mes), nombre)
