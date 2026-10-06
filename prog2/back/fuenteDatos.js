@@ -5,10 +5,12 @@ const ExcelJS = require("exceljs");
 
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
 const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
-const COLUMNAS_OCULTAS = new Set(BODEGAS_EXTRA);
+const COLUMNA_MARCADO = "Marcado";
+const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO]);
 const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
 const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";
+const ARCHIVO_MARCADOS = path.join(__dirname, "marcados.json");
 
 function conStockCritico(matriz) {
   if (matriz.length === 0) return matriz;
@@ -24,10 +26,35 @@ function conStockCritico(matriz) {
   });
 }
 
+function leerCodigosMarcados() {
+  try {
+    const data = JSON.parse(fs.readFileSync(ARCHIVO_MARCADOS, "utf8"));
+    return new Set((Array.isArray(data) ? data : []).map((codigo) => String(codigo)));
+  } catch {
+    return new Set();
+  }
+}
+
+function conMarcado(matriz) {
+  if (matriz.length === 0) return { matriz, agregada: false };
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  if (columnas.includes(COLUMNA_MARCADO)) return { matriz, agregada: false };
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const marcados = leerCodigosMarcados();
+  const conColumna = matriz.map((fila, numero) => {
+    const copia = [...(fila || [])];
+    while (copia.length < columnas.length) copia.push("");
+    const codigo = indiceCodigo >= 0 ? String(copia[indiceCodigo] ?? "") : "";
+    copia.push(numero === 0 ? COLUMNA_MARCADO : marcados.has(codigo) ? "1" : "");
+    return copia;
+  });
+  return { matriz: conColumna, agregada: true };
+}
+
 function leerMatriz(libro) {
   const nombreHoja = libro.SheetNames[0];
-  const matriz = conStockCritico(
-    XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })
+  const { matriz } = conMarcado(
+    conStockCritico(XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" }))
   );
   return { nombreHoja, matriz };
 }
@@ -53,6 +80,7 @@ function leerTabla() {
   const encabezadoGuardado = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })[0] || [];
   const encabezadosGuardados = encabezadoGuardado.map((nombre) => String(nombre));
   const faltaFoto = !encabezadosGuardados.includes("Foto");
+  const faltaMarcado = !encabezadosGuardados.includes(COLUMNA_MARCADO);
   if (faltaFoto) {
     const columnasArchivo = (matriz[0] || []).map((nombre) => String(nombre));
     if (!columnasArchivo.includes("Foto")) {
@@ -60,10 +88,11 @@ function leerTabla() {
       matriz[0] = columnasArchivo;
     }
   }
-  if (!encabezadosGuardados.includes(COLUMNA_STOCK_CRITICO) || faltaFoto) {
+  if (!encabezadosGuardados.includes(COLUMNA_STOCK_CRITICO) || faltaFoto || faltaMarcado) {
     libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
     try {
       XLSX.writeFile(libro, archivo);
+      if (faltaMarcado && fs.existsSync(ARCHIVO_MARCADOS)) fs.unlinkSync(ARCHIVO_MARCADOS);
     } catch {
       // Si el Excel está abierto, la columna igual se usa en memoria.
     }
@@ -83,15 +112,39 @@ function leerTabla() {
 
   const visibles = columnas.filter((columna) => !COLUMNAS_OCULTAS.has(columna));
 
+  const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
   const filas = sinFilasVacias(matriz).slice(1).map((fila) => {
     const registro = {};
     visibles.forEach((columna) => {
       registro[columna] = fila[columnas.indexOf(columna)] ?? "";
     });
+    registro.Marcado = indiceMarcado >= 0 ? fila[indiceMarcado] ?? "" : "";
     return registro;
   });
 
   return { columnas: visibles, filas };
+}
+
+function marcarMaterial(codigo, marcado) {
+  const archivo = path.join(__dirname, "bd_test.xlsx");
+  const libro = XLSX.readFile(archivo);
+  const { nombreHoja, matriz } = leerMatriz(libro);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
+  if (indiceCodigo < 0 || indiceMarcado < 0) {
+    const error = new Error("La tabla no tiene las columnas esperadas.");
+    error.status = 500;
+    throw error;
+  }
+  const indiceFila = matriz.findIndex(
+    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
+  );
+  if (indiceFila < 0) return null;
+  matriz[indiceFila][indiceMarcado] = marcado ? "1" : "";
+  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
+  XLSX.writeFile(libro, archivo);
+  return buscarMaterial(codigo);
 }
 
 function stockPorBodega(codigo) {
@@ -227,7 +280,7 @@ function limpiarInventarioComentarios(clave) {
   return leerTabla();
 }
 
-const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto"]);
+const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
 const CLAVE_DATOS = "Berfre2026";
 
 function actualizarDatos(codigo, clave, datos, reemplazar) {
@@ -436,7 +489,7 @@ function agregarMaterial(clave, datos) {
       const valor = String(datos.Inventario ?? "").trim();
       return valor === "" ? "" : Number(valor);
     }
-    if (CAMPOS_IMAGEN.has(columna)) return filaPrevia[indice] ?? "";
+    if (CAMPOS_IMAGEN.has(columna) || columna === COLUMNA_MARCADO) return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";
   });
   if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
@@ -473,8 +526,10 @@ function importarPlanilla(clave, buffer) {
   }
   matriz[0] = columnas;
 
-  const faltan = columnas.filter((columna) => !encabezados.includes(columna));
-  const sobran = encabezados.filter((columna) => !columnas.includes(columna));
+  const columnasFormato = columnas.filter((columna) => columna !== COLUMNA_MARCADO);
+  const encabezadosFormato = encabezados.filter((columna) => columna !== COLUMNA_MARCADO);
+  const faltan = columnasFormato.filter((columna) => !encabezadosFormato.includes(columna));
+  const sobran = encabezadosFormato.filter((columna) => !columnasFormato.includes(columna));
   if (faltan.length || sobran.length) {
     const partes = [];
     if (faltan.length) partes.push(`faltan: ${faltan.join(", ")}`);
@@ -515,6 +570,9 @@ function importarPlanilla(clave, buffer) {
       if (columna === "Codigo") return codigoNuevo;
       if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
       const valor = fila[indicePorNombre[columna]];
+      if (columna === COLUMNA_MARCADO && indicePorNombre[columna] == null) {
+        return filaPrevia[indice] ?? "";
+      }
       if (CAMPOS_IMAGEN.has(columna) && String(valor ?? "").trim() === "") {
         return filaPrevia[indice] ?? "";
       }
@@ -1217,15 +1275,17 @@ function stockDetallado() {
     "INDICADOR",
     "Cambio de ubicación",
   ];
-  const resultado = filas
+  const resultado = [];
+  const marcados = [];
+  filas
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
-    .map((fila) => {
+    .forEach((fila) => {
       const ubicacion = String(fila["Ubicación"] ?? "").trim();
       const precioTexto = String(fila.Precio ?? "").trim();
       const precio = precioTexto === "" ? "Sin precio" : `$${precioTexto}`;
       const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
       const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
-      return [
+      resultado.push([
         ubicacion === "" || ubicacion === "          " ? "" : fila["Ubicación"],
         fila.Codigo ?? "",
         fila.Descripcion ?? "",
@@ -1242,9 +1302,10 @@ function stockDetallado() {
         "",
         "",
         "",
-      ];
+      ]);
+      marcados.push(String(fila.Marcado) === "1");
     });
-  return { columnas, filas: resultado };
+  return { columnas, filas: resultado, marcados };
 }
 
 function colorStockDetallado(valor) {
@@ -1253,8 +1314,10 @@ function colorStockDetallado(valor) {
   return "FF73C883";
 }
 
+const COLUMNAS_MARCA_DETALLADO = new Set([3, 6, 7, 8, 9, 10]);
+
 async function exportarStockDetallado(colores = true) {
-  const { columnas, filas } = stockDetallado();
+  const { columnas, filas, marcados } = stockDetallado();
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock detallado");
 
@@ -1292,7 +1355,8 @@ async function exportarStockDetallado(colores = true) {
       celda.border = borde;
       if (columna === 10) celda.font = { bold: true };
       if (!coloreadas.has(columna)) return;
-      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: colorStockDetallado(valor) } }, colores);
+      const color = marcados[indice] && COLUMNAS_MARCA_DETALLADO.has(columna) ? "FF88DC65" : colorStockDetallado(valor);
+      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
     });
   });
 
@@ -1341,6 +1405,9 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
       const comentario = String(fila.Comentario ?? "").trim();
       return inventario !== "" || comentario !== "";
     });
+  }
+  if (filtros.soloMarcados) {
+    lista = lista.filter((fila) => String(fila.Marcado) === "1");
   }
   if (filtros.ignorarNulo) {
     lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
@@ -1400,8 +1467,13 @@ async function exportarTabla(colores = true, filtros = {}) {
       const rellenoCritico = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
       columnas.forEach((columna, indice) => {
         if (columna === "Inventario" || columna === "Comentario") return;
+        if (columna === "Stock" && String(fila.Marcado) === "1") return;
         pintar(filaHoja.getCell(indice + 1), rellenoCritico, colores);
       });
+    }
+    const indiceStock = columnas.indexOf("Stock");
+    if (indiceStock >= 0 && String(fila.Marcado) === "1") {
+      pintar(filaHoja.getCell(indiceStock + 1), { type: "pattern", pattern: "solid", fgColor: { argb: "FF88DC65" } }, colores);
     }
     if (indiceInventario < 0 || indiceComentario < 0) return;
     const comentario = String(fila.Comentario ?? "").trim();
@@ -2203,6 +2275,7 @@ async function exportarRevisionPorReserva(reserva, colores = true) {
 module.exports = {
   leerTabla,
   buscarMaterial,
+  marcarMaterial,
   buscarMateriales,
   actualizarMaterial,
   limpiarInventarioComentarios,

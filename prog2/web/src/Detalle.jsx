@@ -15,6 +15,7 @@ export default function Detalle() {
   const [aviso, setAviso] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [marcando, setMarcando] = useState(false);
   const [pidiendoClave, setPidiendoClave] = useState(false);
   const [editando, setEditando] = useState(false);
   const [clave, setClave] = useState("");
@@ -493,6 +494,38 @@ export default function Detalle() {
             }}
           >
             {!editando && !pidiendoClave && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                disabled={marcando}
+                onClick={() => {
+                  const marcado = String(fila.Marcado) !== "1";
+                  setMarcando(true);
+                  fetch(`/api/material/${encodeURIComponent(codigo)}/marcado`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ marcado }),
+                  })
+                    .then(async (res) => {
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || "No se pudo marcar.");
+                      setFila(data.fila);
+                    })
+                    .catch((err) => setAvisoDatos(err.message || "No se pudo marcar."))
+                    .finally(() => setMarcando(false));
+                }}
+                style={{
+                  padding: "8px 14px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: String(fila.Marcado) === "1" ? "#88DC65" : "var(--boton)",
+                  color: String(fila.Marcado) === "1" ? "#1a1a1a" : "var(--sobre)",
+                  fontSize: 14,
+                  cursor: marcando ? "default" : "pointer",
+                }}
+              >
+                {String(fila.Marcado) === "1" ? "Quitar marca" : "Marcar material"}
+              </button>
               <button
                 data-tour="editar-material"
                 type="button"
@@ -515,6 +548,7 @@ export default function Detalle() {
               >
                 Cambiar datos de material
               </button>
+              </div>
             )}
             {pidiendoClave && (
               <form
@@ -562,8 +596,8 @@ export default function Detalle() {
             {soloLectura.includes("Stock") && (
               <div
                 style={{
-                  background: "var(--acento)",
-                  color: "var(--sobre)",
+                  background: String(fila.Marcado) === "1" ? "#88DC65" : "var(--acento)",
+                  color: String(fila.Marcado) === "1" ? "#1a1a1a" : "var(--sobre)",
                   borderRadius: 8,
                   padding: "14px 16px",
                   display: "flex",

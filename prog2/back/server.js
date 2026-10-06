@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga } = require("./fuenteDatos");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -110,6 +110,7 @@ app.get("/api/tabla/excel", async (req, res) => {
       soloConUbicacion: req.query.ubicacion === "1",
       soloStockCritico: req.query.critico === "1",
       soloInventarioOComentario: req.query.inventario === "1",
+      soloMarcados: req.query.marcado === "1",
       ignorarNulo: req.query.ignorarNulo === "1",
     });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -425,6 +426,20 @@ app.post("/api/tabla/limpiar-inventario", (req, res) => {
     res.json(tabla);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo limpiar inventario y comentarios." });
+  }
+});
+
+app.put("/api/material/:codigo/marcado", (req, res) => {
+  try {
+    const resultado = marcarMaterial(req.params.codigo, req.body.marcado === true);
+    if (!resultado) {
+      res.status(404).json({ error: "Material no encontrado." });
+      return;
+    }
+    emitir({ tipo: "fila", fila: resultado.fila });
+    res.json(resultado);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message || "No se pudo marcar el material." });
   }
 });
 

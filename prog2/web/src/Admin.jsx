@@ -993,7 +993,10 @@ export default function Admin() {
                     <tr key={`${fila[1]}-${indice}`}>
                       {fila.map((valor, columna) => {
                         const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
-                        const fondo = !coloreada
+                        const marcada = detallado.marcados?.[indice] && [3, 6, 7, 8, 9, 10].includes(columna);
+                        const fondo = marcada
+                          ? "#88DC65"
+                          : !coloreada
                           ? "var(--superficie)"
                           : valor === 0 || valor === "0"
                             ? "#d3d3d3"

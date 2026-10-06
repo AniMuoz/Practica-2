@@ -21,6 +21,7 @@ export default function App() {
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
   const [soloStockCritico, setSoloStockCritico] = useState(false);
   const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
+  const [soloMarcados, setSoloMarcados] = useState(false);
   const [ignorarNulo, setIgnorarNulo] = useState(true);
   const [limpiando, setLimpiando] = useState(false);
   const [pedirClave, setPedirClave] = useState(false);
@@ -44,6 +45,7 @@ export default function App() {
   }
 
   function colorCelda(columna, fila) {
+    if (columna === "Stock" && String(fila.Marcado) === "1") return "#88DC65";
     if (columna === "Inventario" || columna === "Comentario") return colorInventario(columna, fila);
     const textoCritico = String(fila["Stock critico"] ?? "").trim();
     if (textoCritico === "") return undefined;
@@ -116,6 +118,9 @@ export default function App() {
         return inventario !== "" || comentario !== "";
       });
     }
+    if (soloMarcados) {
+      lista = lista.filter((fila) => String(fila.Marcado) === "1");
+    }
     if (orden === "codigo" || orden === "codigo-asc") {
       const sentido = orden === "codigo" ? -1 : 1;
       lista = [...lista].sort((a, b) => {
@@ -133,11 +138,11 @@ export default function App() {
       );
     }
     return lista;
-  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, ignorarNulo]);
+  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]);
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, ignorarNulo]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -337,6 +342,7 @@ export default function App() {
                 if (soloConUbicacion) params.set("ubicacion", "1");
                 if (soloStockCritico) params.set("critico", "1");
                 if (soloInventarioOComentario) params.set("inventario", "1");
+                if (soloMarcados) params.set("marcado", "1");
                 if (ignorarNulo) params.set("ignorarNulo", "1");
                 const consulta = params.toString();
                 return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
@@ -487,6 +493,14 @@ export default function App() {
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="checkbox"
+                    checked={soloMarcados}
+                    onChange={(event) => setSoloMarcados(event.target.checked)}
+                  />
+                  Mostrar solo materiales marcados
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
                     checked={ignorarNulo}
                     onChange={(event) => setIgnorarNulo(event.target.checked)}
                   />
@@ -505,6 +519,7 @@ export default function App() {
                   setSoloConUbicacion(false);
                   setSoloStockCritico(false);
                   setSoloInventarioOComentario(false);
+                  setSoloMarcados(false);
                   setIgnorarNulo(true);
                 }}
               >
