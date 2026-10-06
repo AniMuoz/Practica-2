@@ -1,6 +1,8 @@
 import datetime
 import io
 import os
+import threading
+import webbrowser
 
 import openpyxl
 from flask import Flask, flash, redirect, render_template_string, request, send_file, send_from_directory, url_for
@@ -65,7 +67,15 @@ PAGE = """
     input, select, button { padding: 6px 8px; font-size: 14px; }
     button, .btn { background: #1f4e79; color: white; border: 0; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
     button.quitar { background: #8b2e2e; }
-    td form { display: flex; gap: 6px; }
+    td.fila-acciones { width: 1%; white-space: nowrap; padding: 4px 6px; vertical-align: middle; }
+    .fila-botones { display: inline-flex; gap: 6px; align-items: center; }
+    .fila-botones form { display: inline-flex; margin: 0; }
+    .fila-botones .btn, .fila-botones button { padding: 4px 10px; font-size: 13px; border-radius: 6px; font-weight: 600; }
+    .fila-botones .modificar { background: #e7eef5; color: #1f4e79; }
+    .fila-botones .guardar { background: #1f4e79; color: white; }
+    .fila-botones .cancelar { background: white; color: #4d5966; border: 1px solid #c5ced6; }
+    .fila-botones .quitar { background: #f8e8e8; color: #8b2e2e; }
+    tr.editando { background: #f4f8fb; }
     td input, td select { width: 100%; box-sizing: border-box; }
     .acciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
     .accion { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #d5dde6; border-radius: 8px; background: #f7fafc; }
@@ -80,7 +90,8 @@ PAGE = """
     th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
     th { background: #e8eef4; }
     .flash { background: #fff4d6; border: 1px solid #e0c36a; padding: 8px 12px; margin: 12px 0; }
-    footer { margin-top: 28px; color: #666; font-size: 13px; }
+    footer { margin-top: 28px; color: #666; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    button.apagar { background: #3d4652; padding: 6px 12px; border-radius: 6px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -149,12 +160,12 @@ PAGE = """
         <th>N° Boleta</th>
         <th>Fecha boleta</th>
         <th>Monto</th>
-        <th></th>
+        <th class="fila-acciones"></th>
       </tr>
     </thead>
     <tbody>
       {% for fila in filas %}
-        <tr>
+        <tr class="{% if editar == loop.index0 %}editando{% endif %}">
           {% if editar == loop.index0 %}
             <td>
               <select name="topico" form="editar-{{ loop.index0 }}" required>
@@ -170,10 +181,12 @@ PAGE = """
             <td><input name="nboleta" form="editar-{{ loop.index0 }}" value="{{ fila[2] }}" required></td>
             <td><input name="fecha_boleta" form="editar-{{ loop.index0 }}" type="date" value="{{ fila[3] }}" required></td>
             <td><input name="monto" form="editar-{{ loop.index0 }}" value="{{ fila[4] }}" inputmode="numeric" required></td>
-            <td>
-              <form id="editar-{{ loop.index0 }}" method="post" action="{{ url_for('modificar', indice=loop.index0) }}"></form>
-              <button type="submit" form="editar-{{ loop.index0 }}">Guardar</button>
-              <a class="btn" href="{{ url_for('index') }}">Cancelar</a>
+            <td class="fila-acciones">
+              <div class="fila-botones">
+                <form id="editar-{{ loop.index0 }}" method="post" action="{{ url_for('modificar', indice=loop.index0) }}"></form>
+                <button class="guardar" type="submit" form="editar-{{ loop.index0 }}">Guardar</button>
+                <a class="btn cancelar" href="{{ url_for('index') }}">Cancelar</a>
+              </div>
             </td>
           {% else %}
             <td>{{ fila[0] }}</td>
@@ -181,11 +194,13 @@ PAGE = """
             <td>{{ fila[2] }}</td>
             <td>{{ fila[3] }}</td>
             <td>{{ fila[4] }}</td>
-            <td>
-              <a class="btn" href="{{ url_for('index', editar=loop.index0) }}">Modificar</a>
-              <form method="post" action="{{ url_for('eliminar', indice=loop.index0) }}">
-                <button class="quitar" type="submit">Quitar</button>
-              </form>
+            <td class="fila-acciones">
+              <div class="fila-botones">
+                <a class="btn modificar" href="{{ url_for('index', editar=loop.index0) }}">Modificar</a>
+                <form method="post" action="{{ url_for('eliminar', indice=loop.index0) }}">
+                  <button class="quitar" type="submit">Quitar</button>
+                </form>
+              </div>
             </td>
           {% endif %}
         </tr>
@@ -194,7 +209,12 @@ PAGE = """
       {% endfor %}
     </tbody>
   </table>
-  <footer>© 2026 Berfre Ltda. Todos los derechos reservados.</footer>
+  <footer>
+    <span>© 2026 Berfre Ltda. Todos los derechos reservados.</span>
+    <form method="post" action="{{ url_for('apagar') }}">
+      <button class="apagar" type="submit">Apagar programa</button>
+    </form>
+  </footer>
 </body>
 </html>
 """
@@ -495,9 +515,29 @@ def procesar():
     if mes not in meses:
         flash("Seleccione el mes para procesar los datos.")
         return redirect(url_for("index"))
-    nombre = f"DETALLE GASTOS BERFRE {mes}_{dia}.xlsx"
+    nombre = f"DETALLE GASTOS BERFRE {mes} {dia}.xlsx"
     return excel_descarga(workbook_procesado(mes), nombre)
 
 
+@app.post("/apagar")
+def apagar():
+    def cerrar():
+        os._exit(0)
+
+    threading.Timer(0.4, cerrar).start()
+    return """
+    <!doctype html>
+    <html lang="es">
+    <head><meta charset="utf-8"><title>Programa apagado</title></head>
+    <body style="font-family: Segoe UI, sans-serif; margin: 24px; color: #1a1a1a;">
+      <h1>Programa apagado</h1>
+      <p>Ya puede cerrar esta pestaña.</p>
+    </body>
+    </html>
+    """
+
+
 if __name__ == "__main__":
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or os.environ.get("FLASK_DEBUG") != "1":
+        threading.Timer(1, lambda: webbrowser.open("http://127.0.0.1:5000/")).start()
     app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=5000)
