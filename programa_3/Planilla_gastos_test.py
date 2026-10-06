@@ -3,7 +3,7 @@ import io
 import os
 
 import openpyxl
-from flask import Flask, flash, redirect, render_template_string, request, send_file, url_for
+from flask import Flask, flash, redirect, render_template_string, request, send_file, send_from_directory, url_for
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 app = Flask(__name__)
@@ -54,8 +54,10 @@ PAGE = """
 <head>
   <meta charset="utf-8">
   <title>Gestión de Gastos</title>
+  <link rel="shortcut icon" href="{{ url_for('logo') }}" type="image/x-icon">
   <style>
-    body { font-family: Segoe UI, sans-serif; margin: 24px; color: #1a1a1a; }
+    body { font-family: Segoe UI, sans-serif; margin: 24px; color: #1a1a1a; position: relative; }
+    .logo { position: absolute; top: 0; right: 0; height: 72px; width: auto; }
     h1 { margin-bottom: 4px; }
     .muted { color: #555; margin-top: 0; }
     form.grid { display: grid; grid-template-columns: 160px 280px; gap: 8px 12px; max-width: 480px; align-items: center; }
@@ -65,7 +67,15 @@ PAGE = """
     button.quitar { background: #8b2e2e; }
     td form { display: flex; gap: 6px; }
     td input, td select { width: 100%; box-sizing: border-box; }
-    .actions { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .acciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+    .accion { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #d5dde6; border-radius: 8px; background: #f7fafc; }
+    .accion h2 { margin: 0; font-size: 15px; }
+    .accion p { margin: 0; color: #4d5966; font-size: 12px; line-height: 1.3; }
+    .accion input[type="file"], .accion select { width: 100%; background: white; padding: 4px 6px; }
+    .accion .btn, .accion button { margin-top: auto; text-align: center; padding: 6px 10px; border-radius: 6px; font-weight: 600; }
+    .accion.guardar .btn { background: #1f4e79; }
+    .accion.recuperar button { background: #2f6f4e; }
+    .accion.procesar button { background: #8a5a12; }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
     th { background: #e8eef4; }
@@ -74,6 +84,7 @@ PAGE = """
   </style>
 </head>
 <body>
+  <img class="logo" src="{{ url_for('logo') }}" alt="Logo">
   <h1>Gestión de Gastos</h1>
   <p class="muted">Berfre Ltda. · Hoy es {{ fecha_pro }}</p>
   <p class="muted">Codigo de dia: {{ dia }}</p>
@@ -98,22 +109,30 @@ PAGE = """
     <label for="nboleta">N° Boleta</label>
     <input id="nboleta" name="nboleta" required>
     <label for="fecha_boleta">Fecha boleta</label>
-    <input id="fecha_boleta" name="fecha_boleta" required>
+    <input id="fecha_boleta" name="fecha_boleta" type="date" required>
     <label for="monto">Monto</label>
     <input id="monto" name="monto" inputmode="numeric" required>
     <span></span>
     <button type="submit">Agregar</button>
   </form>
 
-  <div class="actions">
-    <a class="btn" href="{{ url_for('guardar') }}">Guardar datos</a>
-    <form method="post" action="{{ url_for('recuperar') }}" enctype="multipart/form-data">
+  <div class="acciones">
+    <section class="accion guardar">
+      <h2>Guardar</h2>
+      <p>Descarga las boletas cargadas, sin armar el detalle del mes.</p>
+      <a class="btn" href="{{ url_for('guardar') }}">Guardar datos</a>
+    </section>
+    <form class="accion recuperar" method="post" action="{{ url_for('recuperar') }}" enctype="multipart/form-data">
+      <h2>Recuperar</h2>
+      <p>Carga un Excel guardado antes y suma esas boletas a la tabla.</p>
       <input type="file" name="archivo" accept=".xlsx" required>
       <button type="submit">Recuperar datos</button>
     </form>
-    <form method="post" action="{{ url_for('procesar') }}">
+    <form class="accion procesar" method="post" action="{{ url_for('procesar') }}">
+      <h2>Procesar</h2>
+      <p>Elige el mes y descarga el detalle de gastos listo para revisar.</p>
       <select name="mes" required>
-        <option value="">Mes</option>
+        <option value="">Seleccione el mes</option>
         {% for mes in meses %}
           <option value="{{ mes }}">{{ mes }}</option>
         {% endfor %}
@@ -149,7 +168,7 @@ PAGE = """
             </td>
             <td><input name="proveedor" form="editar-{{ loop.index0 }}" value="{{ fila[1] }}" required></td>
             <td><input name="nboleta" form="editar-{{ loop.index0 }}" value="{{ fila[2] }}" required></td>
-            <td><input name="fecha_boleta" form="editar-{{ loop.index0 }}" value="{{ fila[3] }}" required></td>
+            <td><input name="fecha_boleta" form="editar-{{ loop.index0 }}" type="date" value="{{ fila[3] }}" required></td>
             <td><input name="monto" form="editar-{{ loop.index0 }}" value="{{ fila[4] }}" inputmode="numeric" required></td>
             <td>
               <form id="editar-{{ loop.index0 }}" method="post" action="{{ url_for('modificar', indice=loop.index0) }}"></form>
@@ -181,8 +200,25 @@ PAGE = """
 """
 
 
+def fecha_iso(valor):
+    if isinstance(valor, datetime.datetime):
+        return valor.date().isoformat()
+    if isinstance(valor, datetime.date):
+        return valor.isoformat()
+    texto = str(valor).strip()[:10]
+    for formato in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.datetime.strptime(texto, formato).date().isoformat()
+        except ValueError:
+            continue
+    return ""
+
+
 def filas_vista():
-    return list(zip(data[0], data[1], data[2], data[3], data[4]))
+    return [
+        (data[0][i], data[1][i], data[2][i], fecha_iso(data[3][i]), data[4][i])
+        for i in range(len(data[0]))
+    ]
 
 
 def leer_boleta():
@@ -193,6 +229,10 @@ def leer_boleta():
     monto = request.form.get("monto", "").strip()
     if not (topico and proveedor and nboleta and fecha_boleta and monto):
         return None, "Debe completar todos los campos."
+    try:
+        fecha_boleta = datetime.datetime.strptime(fecha_boleta, "%Y-%m-%d").date()
+    except ValueError:
+        return None, "La fecha de la boleta no es válida."
     try:
         monto = int(monto)
     except ValueError:
@@ -262,7 +302,7 @@ def workbook_procesado(mes):
 
     hoja["B3"] = "EMPRESA: BERFRE LTDA."
     hoja["B3"].font = Font(name=FUENTE, size=11)
-    hoja["B4"] = "DIRECCIÓN: 22 NORTE 1150, VIÑA DEL MAR"
+    hoja["B4"] = "DIRECCIÓN: 22 NORTE 1150 SANTA INES, VIÑA DEL MAR"
     hoja["B4"].font = Font(name=FUENTE, size=11)
     hoja["B6"] = f"DETALLE GENERAL DE GASTOS MES {mes_txt} DEL AÑO {fecha.year}"
     hoja["B6"].font = Font(name=FUENTE, bold=True, size=12)
@@ -282,9 +322,9 @@ def workbook_procesado(mes):
     celda_monto(hoja, fila_total, f"=SUM(E9:E{fila_total - 1})", negrita=True, relleno=True)
 
     firma = fila_total + 3
-    hoja.cell(row=firma, column=4, value="FREDDY ANDRES MUÑOZ OLIVARES").font = Font(name=FUENTE, bold=True, size=12)
+    hoja.cell(row=firma, column=4, value="CRISTIAN BERNAL P.").font = Font(name=FUENTE, bold=True, size=12)
     hoja.cell(row=firma, column=4).alignment = Alignment(horizontal="center")
-    hoja.cell(row=firma + 1, column=4, value="GERENTE GENERAL").font = Font(name=FUENTE, bold=True, size=12)
+    hoja.cell(row=firma + 1, column=4, value="JEFE DE OPERACIONES").font = Font(name=FUENTE, bold=True, size=12)
     hoja.cell(row=firma + 1, column=4).alignment = Alignment(horizontal="center")
 
     totales = {}
@@ -322,6 +362,7 @@ def workbook_procesado(mes):
             fecha_boleta = hoja.cell(row=actual, column=4, value=data[3][j])
             fecha_boleta.font = Font(name=FUENTE, size=12)
             fecha_boleta.alignment = Alignment(horizontal="center")
+            fecha_boleta.number_format = "DD/MM/YYYY"
             fecha_boleta.border = BORDE_FINO
             celda_monto(hoja, actual, data[4][j])
 
@@ -349,6 +390,12 @@ def excel_descarga(libro, nombre):
         download_name=nombre,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@app.get("/logo.ico")
+def logo():
+    carpeta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icono")
+    return send_from_directory(carpeta, "logo.ico")
 
 
 @app.route("/")
@@ -432,7 +479,8 @@ def recuperar():
             data[0].append(topi)
             data[1].append(prove)
             data[2].append(nbole)
-            data[3].append(febole)
+            iso = fecha_iso(febole)
+            data[3].append(datetime.date.fromisoformat(iso) if iso else febole)
             data[4].append(int(mon))
         excel.close()
         flash("Datos recuperados con éxito.")
