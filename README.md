@@ -11,3 +11,10 @@ Proyectos y programas realizados durante la practica 2 UNAB
 - Proyecto subido a google cloud run
 - BD en google cloud
 - Teoricamente el proyecto es gratis o con un valor no superior a $10000 al mes
+
+## Proyecto gastos
+- Proyecto python con frontend flask que busca generar planillas de gastos
+- Las planillas estan basadas en algunas hechas por un contador
+- Se añaden los datos de las boletas
+- Se puede exportar los datos sin procesar para reinportarlos en algun caso
+- Se debe elegir el mes del que se generara la planilla 
