@@ -1,1 +1,1 @@
-pyinstaller --onefile --windowed --add-data "images;images" --icon "./icono/logo.ico" Planilla_gastos_test.py
+pyinstaller --onefile --windowed --add-data "icono;icono" --icon "./icono/logo.ico" Planilla_gastos_test.py
