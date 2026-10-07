@@ -21,8 +21,12 @@ function Planilla({ className, children }) {
       if (!actual) return;
       const desde = Math.min(actual.desde, actual.hasta);
       const hasta = Math.max(actual.desde, actual.hasta);
+      const colDesde = Math.min(actual.colDesde, actual.colHasta);
+      const colHasta = Math.max(actual.colDesde, actual.colHasta);
       for (let fila = desde; fila <= hasta; fila += 1) {
-        tabla.rows[fila]?.cells[actual.col]?.classList.add("col-sel");
+        for (let col = colDesde; col <= colHasta; col += 1) {
+          tabla.rows[fila]?.cells[col]?.classList.add("col-sel");
+        }
       }
     };
 
@@ -39,7 +43,12 @@ function Planilla({ className, children }) {
       if (!celda || !tabla.contains(celda)) return;
       evento.preventDefault();
       arrastrando.current = true;
-      rango.current = { col: celda.cellIndex, desde: celda.parentElement.rowIndex, hasta: celda.parentElement.rowIndex };
+      rango.current = {
+        colDesde: celda.cellIndex,
+        colHasta: celda.cellIndex,
+        desde: celda.parentElement.rowIndex,
+        hasta: celda.parentElement.rowIndex,
+      };
       pintar();
     };
 
@@ -47,7 +56,11 @@ function Planilla({ className, children }) {
       if (!arrastrando.current || !rango.current) return;
       const celda = celdaEn(evento.clientX, evento.clientY);
       if (!celda) return;
-      rango.current = { ...rango.current, hasta: celda.parentElement.rowIndex };
+      rango.current = {
+        ...rango.current,
+        colHasta: celda.cellIndex,
+        hasta: celda.parentElement.rowIndex,
+      };
       pintar();
     };
 
@@ -60,9 +73,15 @@ function Planilla({ className, children }) {
       if (!actual) return;
       const desde = Math.min(actual.desde, actual.hasta);
       const hasta = Math.max(actual.desde, actual.hasta);
+      const colDesde = Math.min(actual.colDesde, actual.colHasta);
+      const colHasta = Math.max(actual.colDesde, actual.colHasta);
       const lineas = [];
       for (let fila = desde; fila <= hasta; fila += 1) {
-        lineas.push(tabla.rows[fila]?.cells[actual.col]?.textContent ?? "");
+        const celdas = [];
+        for (let col = colDesde; col <= colHasta; col += 1) {
+          celdas.push(tabla.rows[fila]?.cells[col]?.textContent ?? "");
+        }
+        lineas.push(celdas.join("\t"));
       }
       evento.preventDefault();
       evento.clipboardData.setData("text/plain", lineas.join("\n"));
