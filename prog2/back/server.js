@@ -307,6 +307,7 @@ app.post("/api/ventas", (req, res) => {
         ventasBuffer: ventas?.buffer,
         contratistaIdx: Number(req.body.contratista),
         movTipo: Number(req.body.movimiento),
+        almacen: req.body.almacen,
         codVenta: req.body.codVenta,
         colores: conColores(req.body.colores),
         itemsManuales,

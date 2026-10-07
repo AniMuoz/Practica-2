@@ -1767,7 +1767,7 @@ function itemsDesdeManual(lista) {
   });
 }
 
-async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, codVenta, colores = true, itemsManuales = null }) {
+async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, almacen, codVenta, colores = true, itemsManuales = null }) {
   const materiales = new Map();
   filasConBodegas().forEach((fila) => {
     materiales.set(String(fila.Codigo ?? "").trim(), fila);
@@ -1816,6 +1816,8 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   });
 
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
+  const bodegas = new Set(BODEGAS_EXPORT);
+  const almacenFila = mov === "VENTA" ? "M501" : (bodegas.has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
   const codcomp = mov === "TRASPASO"
     ? (numeroTraspaso || "n/a")
     : (codVenta === "" || codVenta == null ? "n/a" : codVenta);
@@ -1863,7 +1865,9 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     const concon = enteroCelda(item.concon);
     let entregar = 0;
     if (item.entregar != null && item.entregar !== "") {
-      entregar = item.entregar;
+      const textoEntregar = String(item.entregar).trim().replace(",", ".");
+      const numeroEntregar = Number(textoEntregar);
+      entregar = Number.isFinite(numeroEntregar) ? numeroEntregar : 0;
     } else if (material && cantidad <= m501) {
       entregar = cant;
     }
@@ -1886,13 +1890,15 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 13).value = 0;
     hoja.getCell(fila, 14).value = m501 - cantidad;
     hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
-    hoja.getCell(fila, 16).value = 0;
-    hoja.getCell(fila, 17).value = { formula: `P${fila}*J${fila}` };
+    const peso = Number(String(material?.Peso ?? "").replace(",", ".").trim());
+    hoja.getCell(fila, 16).value = Number.isFinite(peso) ? peso : 0;
+    hoja.getCell(fila, 17).value = { formula: `P${fila}*K${fila}` };
     const precio = enteroCelda(material?.Precio);
     hoja.getCell(fila, 18).value = precio;
     hoja.getCell(fila, 19).value = cantidad * precio;
     hoja.getCell(fila, 20).value = contratista;
     hoja.getCell(fila, 21).value = mov;
+    hoja.getCell(fila, 22).value = almacenFila;
     hoja.getCell(fila, 23).value = codcomp;
     hoja.getCell(fila, 24).value = concon > 0 ? concon : { formula: `K${fila}` };
     hoja.getCell(fila, 28).value = { formula: `X${fila}-J${fila}` };
@@ -1912,6 +1918,8 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       celda.border = borde;
       celda.font = { bold: true };
     }
+    hoja.getCell(filaTotal, 16).value = "total";
+    hoja.getCell(filaTotal, 17).value = { formula: `SUM(Q${primeraFila}:Q${lastPos})` };
     hoja.getCell(filaTotal, 18).value = "Total";
     hoja.getCell(filaTotal, 19).value = { formula: `SUM(S${primeraFila}:S${lastPos})` };
     lastPos += 1;

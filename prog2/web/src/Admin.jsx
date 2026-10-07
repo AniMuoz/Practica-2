@@ -149,6 +149,7 @@ export default function Admin() {
   const [modoVenta, setModoVenta] = useState("orden");
   const [productosVenta, setProductosVenta] = useState([{ codigo: "", cantidad: "" }]);
   const [codVenta, setCodVenta] = useState("");
+  const [almacenVenta, setAlmacenVenta] = useState("M501");
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [avisoVenta, setAvisoVenta] = useState("");
   const [baseContratistas, setBaseContratistas] = useState("[]");
@@ -283,6 +284,7 @@ export default function Admin() {
         productosVenta.some((fila) => String(fila.codigo).trim() || String(fila.cantidad).trim()) ||
         movimientoVenta !== "1" ||
         contratistaVenta !== "1" ||
+        (movimientoVenta === "2" && almacenVenta !== "M501") ||
         String(codVenta).trim() !== ""
     );
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
@@ -1349,6 +1351,7 @@ export default function Admin() {
               if (archivoVentas) cuerpo.append("ventas", archivoVentas);
               cuerpo.append("contratista", contratistaVenta);
               cuerpo.append("movimiento", movimientoVenta);
+              cuerpo.append("almacen", movimientoVenta === "2" ? almacenVenta : "M501");
               cuerpo.append("codVenta", movimientoVenta === "2" ? "n/a" : codVenta);
               cuerpo.append("colores", colores ? "1" : "0");
               fetch("/api/ventas", { method: "POST", body: cuerpo })
@@ -1371,6 +1374,7 @@ export default function Admin() {
                   setModoVenta("orden");
                   setProductosVenta([{ codigo: "", cantidad: "" }]);
                   setCodVenta("");
+                  setAlmacenVenta("M501");
                   setVentaKey((actual) => actual + 1);
                 })
                 .catch((err) => setAvisoVenta(err.message))
@@ -1480,6 +1484,20 @@ export default function Admin() {
                   onChange={(event) => setCodVenta(event.target.value)}
                   style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
                 />
+              </label>
+            )}
+            {movimientoVenta === "2" && (
+              <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                Almacén
+                <select
+                  value={almacenVenta}
+                  onChange={(event) => setAlmacenVenta(event.target.value)}
+                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
+                >
+                  {["M501", "M502", "M503", "M504", "M505"].map((bodega) => (
+                    <option key={bodega} value={bodega}>{bodega}</option>
+                  ))}
+                </select>
               </label>
             )}
             <button
