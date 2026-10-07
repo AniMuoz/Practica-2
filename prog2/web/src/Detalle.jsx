@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { estadoInventario as estadoDeInventario, textoCampo } from "./reglasPlanilla.js";
 
 export default function Detalle() {
   const { codigo } = useParams();
@@ -82,23 +83,7 @@ export default function Detalle() {
     (columna) => !["Inventario", "Comentario", "Rombo", "QR", "Foto"].includes(columna)
   );
 
-  const estadoInventario = (() => {
-    if (!fila) return null;
-    if (String(fila.Comentario ?? "").trim() !== "") {
-      return { color: "#EFA94A", texto: "Hay comentario" };
-    }
-    const inventarioFila = String(fila.Inventario ?? "").trim();
-    if (inventarioFila === "") return null;
-    const stock = String(fila.Stock ?? "").trim();
-    const iguales =
-      stock !== "" &&
-      Number(stock) === Number(inventarioFila) &&
-      Number.isFinite(Number(stock)) &&
-      Number.isFinite(Number(inventarioFila));
-    return iguales
-      ? { color: "#5DBB63", texto: "Inventario igual al stock" }
-      : { color: "#FF0000", texto: "Inventario distinto al stock" };
-  })();
+  const estadoInventario = estadoDeInventario(fila);
 
   function guardarDatos(reemplazar) {
     setAvisoDatos("");
@@ -156,10 +141,6 @@ export default function Detalle() {
         setEliminando(false);
         setEnCurso("");
       });
-  }
-
-  function textoCampo(valor) {
-    return valor == null ? "" : String(valor);
   }
 
   const inventarioSinGuardar = Boolean(

@@ -82,11 +82,11 @@ CREATE TABLE ultimas_cargas (
 );
 `;
 
-function crearBase() {
-  const db = new DatabaseSync(ARCHIVO_DB);
+function crearBase(destino = ARCHIVO_DB) {
+  const db = new DatabaseSync(destino);
   db.exec(SQL);
   db.close();
-  return ARCHIVO_DB;
+  return destino;
 }
 
 if (require.main === module) {

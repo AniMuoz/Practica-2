@@ -4,6 +4,16 @@ import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
 import Planilla from "./Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import {
+  aplicarFilaRecibida,
+  bodegasDe,
+  colorCelda as colorDeCelda,
+  columnasSinImagen,
+  consultaExcel,
+  filtrarFilas,
+  rangoPagina,
+  subUbicacionesDe,
+} from "./reglasPlanilla.js";
 
 export default function App() {
   const navigate = useNavigate();
@@ -31,116 +41,33 @@ export default function App() {
   const [avisoClave, setAvisoClave] = useState("");
   const tamano = 100;
 
-  function colorInventario(columna, fila) {
-    if (columna !== "Inventario" && columna !== "Comentario") return undefined;
-    if (String(fila.Comentario ?? "").trim() !== "") return "#EFA94A";
-    const inventario = String(fila.Inventario ?? "").trim();
-    if (inventario === "") return undefined;
-    const stock = String(fila.Stock ?? "").trim();
-    const iguales =
-      stock !== "" &&
-      inventario !== "" &&
-      Number(stock) === Number(inventario) &&
-      Number.isFinite(Number(stock)) &&
-      Number.isFinite(Number(inventario));
-    return iguales ? "#5DBB63" : "#FF0000";
-  }
-
   function colorCelda(columna, fila) {
-    if (columna === "Stock" && String(fila.Marcado) === "1") return "#88DC65";
-    if (columna === "Inventario" || columna === "Comentario") return colorInventario(columna, fila);
-    const textoCritico = String(fila["Stock critico"] ?? "").trim();
-    if (textoCritico === "") return undefined;
-    const critico = Number(textoCritico);
-    const stock = Number(String(fila.Stock ?? "").trim());
-    if (Number.isFinite(critico) && Number.isFinite(stock) && critico >= stock) return oscuro ? "#A711D0" : "#FFFF00";
-    return undefined;
+    return colorDeCelda(columna, fila, oscuro);
   }
 
-  const bodegas = useMemo(() => {
-    const valores = new Set(
-      filas
-        .map((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2))
-        .filter((valor) => valor.length === 2)
-    );
-    return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
-  }, [filas]);
+  const bodegas = useMemo(() => bodegasDe(filas), [filas]);
 
-  const subUbicaciones = useMemo(() => {
-    const origen = bodega
-      ? filas.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega)
-      : filas;
-    const valores = new Set(
-      origen.map((fila) => String(fila["Sub-ubicación"] ?? "").trim()).filter(Boolean)
-    );
-    return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
-  }, [filas, bodega]);
+  const subUbicaciones = useMemo(() => subUbicacionesDe(filas, bodega), [filas, bodega]);
 
   useEffect(() => {
     if (subUbicacion && !subUbicaciones.includes(subUbicacion)) setSubUbicacion("");
   }, [subUbicacion, subUbicaciones]);
 
-  const visibles = useMemo(() => {
-    let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
-    if (ignorarNulo) {
-      lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
-    }
-    if (bodega) {
-      lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
-    }
-    if (subUbicacion) {
-      lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
-    }
-    if (stockMinimo.trim() !== "") {
-      const minimo = Number(stockMinimo);
-      lista = lista.filter((fila) => {
-        const stock = Number(String(fila.Stock ?? "").trim());
-        return Number.isFinite(stock) && stock >= minimo;
-      });
-    }
-    if (soloConPrecio) {
-      lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
-    }
-    if (soloConUbicacion) {
-      lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
-    }
-    if (soloStockCritico) {
-      lista = lista.filter((fila) => {
-        const textoCritico = String(fila["Stock critico"] ?? "").trim();
-        if (textoCritico === "") return false;
-        const critico = Number(textoCritico);
-        const stock = Number(String(fila.Stock ?? "").trim());
-        return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
-      });
-    }
-    if (soloInventarioOComentario) {
-      lista = lista.filter((fila) => {
-        const inventario = String(fila.Inventario ?? "").trim();
-        const comentario = String(fila.Comentario ?? "").trim();
-        return inventario !== "" || comentario !== "";
-      });
-    }
-    if (soloMarcados) {
-      lista = lista.filter((fila) => String(fila.Marcado) === "1");
-    }
-    if (orden === "codigo" || orden === "codigo-asc") {
-      const sentido = orden === "codigo" ? -1 : 1;
-      lista = [...lista].sort((a, b) => {
-        const na = Number(a.Codigo);
-        const nb = Number(b.Codigo);
-        const comparado = Number.isFinite(na) && Number.isFinite(nb)
-          ? na - nb
-          : String(a.Codigo).localeCompare(String(b.Codigo), "es", { numeric: true });
-        return comparado * sentido;
-      });
-    } else if (orden === "descripcion" || orden === "descripcion-desc") {
-      const sentido = orden === "descripcion" ? 1 : -1;
-      lista = [...lista].sort((a, b) =>
-        String(a.Descripcion ?? "").localeCompare(String(b.Descripcion ?? ""), "es", { sensitivity: "base" }) * sentido
-      );
-    }
-    return lista;
-  }, [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]);
+  const visibles = useMemo(
+    () => filtrarFilas(filas, {
+      orden,
+      bodega,
+      subUbicacion,
+      stockMinimo,
+      soloConPrecio,
+      soloConUbicacion,
+      soloStockCritico,
+      soloInventarioOComentario,
+      soloMarcados,
+      ignorarNulo,
+    }),
+    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]
+  );
 
   useEffect(() => {
     setPagina(0);
@@ -179,18 +106,7 @@ export default function App() {
         return;
       }
       if (data.tipo === "fila" && data.fila) {
-        setFilas((actuales) => {
-          const codigoNuevo = String(data.fila.Codigo);
-          const codigoAnterior = data.codigoAnterior ? String(data.codigoAnterior) : codigoNuevo;
-          const indice = actuales.findIndex((fila) => String(fila.Codigo) === codigoAnterior);
-          if (indice < 0) return [...actuales, data.fila];
-          const copia = actuales.slice();
-          copia[indice] = data.fila;
-          if (codigoAnterior !== codigoNuevo) {
-            return copia.filter((fila, posicion) => posicion === indice || String(fila.Codigo) !== codigoNuevo);
-          }
-          return copia;
-        });
+        setFilas((actuales) => aplicarFilaRecibida(actuales, data));
         return;
       }
       if (data.tipo === "recarga") {
@@ -200,12 +116,9 @@ export default function App() {
     return () => fuente.close();
   }, []);
 
-  const columnasTabla = columnas.filter((columna) => !["Rombo", "QR", "Foto"].includes(columna));
+  const columnasTabla = columnasSinImagen(columnas);
   const alFinal = (pagina + 1) * tamano >= visibles.length;
-  const rango =
-    visibles.length === 0
-      ? "0 de 0"
-      : `${pagina * tamano + 1}–${Math.min((pagina + 1) * tamano, visibles.length)} de ${visibles.length}`;
+  const rango = rangoPagina(pagina, tamano, visibles.length);
 
   function limpiarInventario(event) {
     event.preventDefault();
@@ -343,22 +256,19 @@ export default function App() {
             </button>
             <a
               data-tour="descargar"
-              href={(() => {
-                const params = new URLSearchParams();
-                if (!colores) params.set("colores", "0");
-                if (orden) params.set("orden", orden);
-                if (bodega) params.set("bodega", bodega);
-                if (subUbicacion) params.set("subUbicacion", subUbicacion);
-                if (stockMinimo.trim() !== "") params.set("stockMinimo", stockMinimo.trim());
-                if (soloConPrecio) params.set("precio", "1");
-                if (soloConUbicacion) params.set("ubicacion", "1");
-                if (soloStockCritico) params.set("critico", "1");
-                if (soloInventarioOComentario) params.set("inventario", "1");
-                if (soloMarcados) params.set("marcado", "1");
-                if (ignorarNulo) params.set("ignorarNulo", "1");
-                const consulta = params.toString();
-                return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
-              })()}
+              href={consultaExcel({
+                colores,
+                orden,
+                bodega,
+                subUbicacion,
+                stockMinimo,
+                soloConPrecio,
+                soloConUbicacion,
+                soloStockCritico,
+                soloInventarioOComentario,
+                soloMarcados,
+                ignorarNulo,
+              })}
               style={{
                 display: "inline-block",
                 padding: "8px 14px",

@@ -309,7 +309,7 @@ def celda_monto(hoja, fila, valor, negrita=False, relleno=False):
     if relleno:
         celda.fill = RELLENO_TITULO
     return celda
- 
+
 
 def workbook_procesado(mes):
     guardias = openpyxl.Workbook()

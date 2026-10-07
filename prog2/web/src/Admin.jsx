@@ -4,6 +4,16 @@ import { useBlocker, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
+import {
+  claveUltimaCarga,
+  colorCantidad,
+  colorLibre,
+  colorStockDetallado,
+  filasInventarioVisibles,
+  rutaExcel,
+  rutaExcelInventario,
+  validarContratistas,
+} from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
@@ -57,7 +67,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { colores, oscuro } = useColoresPlanilla();
   const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
-  const excel = (ruta) => (colores ? ruta : `${ruta}${ruta.includes("?") ? "&" : "?"}colores=0`);
+  const excel = (ruta) => rutaExcel(ruta, colores);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -91,12 +101,7 @@ export default function Admin() {
   const [bodegasInventario, setBodegasInventario] = useState([]);
   const [cargandoInventarioBodega, setCargandoInventarioBodega] = useState(false);
   const [avisoInventarioBodega, setAvisoInventarioBodega] = useState("");
-  const excelInventario = (ruta) => {
-    const base = excel(ruta);
-    const extra = copiarInventario ? "inventario=1" : copiarExistencia ? "existencia=1" : "";
-    if (!extra) return base;
-    return `${base}${base.includes("?") ? "&" : "?"}${extra}`;
-  };
+  const excelInventario = (ruta) => rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia);
   function alternarExistencia() {
     if (copiarExistencia) {
       setCopiarExistencia(false);
@@ -117,12 +122,7 @@ export default function Admin() {
     setCopiarExistencia(false);
     setCopiarInventario(true);
   }
-  const filasInventario = inventario.filas.map((fila) => {
-    const copia = fila.slice(0, 6);
-    if (copiarInventario) copia[5] = fila[6] ?? "";
-    else if (copiarExistencia) copia[5] = fila[4];
-    return copia;
-  });
+  const filasInventario = filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia);
   const [mostrarDetallado, setMostrarDetallado] = useState(false);
   const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
@@ -233,10 +233,7 @@ export default function Admin() {
   }
 
   function textoUltimaCarga() {
-    const clave =
-      modoCarga === "dos-columnas" && columnaCarga
-        ? `dos-columnas:${columnaCarga}`
-        : modoCarga;
+    const clave = claveUltimaCarga(modoCarga, columnaCarga);
     const iso = ultimasCargas[clave];
     if (!iso) return "Todavía no hay una carga registrada para esta opción.";
     const fecha = new Date(iso);
@@ -710,9 +707,7 @@ export default function Admin() {
                 </thead>
                 <tbody>
                   {bodega.filas.map((fila, indice) => {
-                    const libre = fila[2];
-                    const fondo =
-                      libre === 0 || libre === "0" ? "#d3d3d3" : libre === "          " ? "#f9e37c" : "#73c883";
+                    const fondo = colorLibre(fila[2]);
                     return (
                       <tr key={`${fila[0]}-${indice}`}>
                         {fila.map((valor, columna) => (
@@ -791,14 +786,7 @@ export default function Admin() {
                   {regional.filas.map((fila, indice) => (
                     <tr key={`${fila[0]}-${indice}`}>
                       {fila.map((valor, columna) => {
-                        const fondo =
-                          columna < 2
-                            ? "var(--superficie)"
-                            : valor === 0 || valor === "0"
-                              ? "#d3d3d3"
-                              : valor == null || valor === "" || valor === "          "
-                                ? "#f9e37c"
-                                : "#73c883";
+                        const fondo = columna < 2 ? "var(--superficie)" : colorCantidad(valor);
                         return (
                           <td
                             key={columna}
@@ -1000,16 +988,7 @@ export default function Admin() {
                     <tr key={`${fila[1]}-${indice}`}>
                       {fila.map((valor, columna) => {
                         const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
-                        const marcada = detallado.marcados?.[indice] && [3, 6, 7, 8, 9, 10].includes(columna);
-                        const fondo = marcada
-                          ? "#00FF00"
-                          : !coloreada
-                          ? "var(--superficie)"
-                          : valor === 0 || valor === "0"
-                            ? "#d3d3d3"
-                            : valor == null || valor === "" || valor === "          " || valor === "Sin precio"
-                              ? "#f9e37c"
-                              : "#73c883";
+                        const fondo = colorStockDetallado(columna, valor, detallado.marcados?.[indice]);
                         return (
                           <td
                             key={columna}
@@ -1530,19 +1509,10 @@ export default function Admin() {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                const sinNombre = contratistas.findIndex((fila) => !String(fila.nombre ?? "").trim());
-                if (sinNombre !== -1) {
-                  setAvisoContratistas(`La fila ${sinNombre + 1} necesita un nombre.`);
+                const errorContratistas = validarContratistas(contratistas);
+                if (errorContratistas) {
+                  setAvisoContratistas(errorContratistas);
                   return;
-                }
-                const ids = new Set();
-                for (const fila of contratistas) {
-                  const id = String(fila.id ?? "").trim();
-                  if (ids.has(id)) {
-                    setAvisoContratistas(`El id ${id} está repetido.`);
-                    return;
-                  }
-                  ids.add(id);
                 }
                 setAvisoContratistas("");
                 setGuardandoContratistas(true);
