@@ -73,8 +73,95 @@ function sinFilasVacias(matriz) {
   return [encabezado, ...filas];
 }
 
-function leerTabla() {
-  const archivo = path.join(__dirname, "bd_test.xlsx");
+function archivoMateriales() {
+  return path.join(__dirname, "bd_test.xlsx");
+}
+
+function firmaArchivo(archivo) {
+  const estado = fs.statSync(archivo);
+  return `${estado.mtimeMs}:${estado.size}`;
+}
+
+function mapaPorCodigo(matriz, indiceCodigo) {
+  const mapa = new Map();
+  if (indiceCodigo < 0) return mapa;
+  for (let indice = 1; indice < matriz.length; indice += 1) {
+    const codigo = String((matriz[indice] || [])[indiceCodigo] ?? "");
+    if (!mapa.has(codigo)) mapa.set(codigo, indice);
+  }
+  return mapa;
+}
+
+function indicePorCodigo(mapa, codigo) {
+  return mapa.has(codigo) ? mapa.get(codigo) : -1;
+}
+
+function tablaDesdeMatriz(matriz) {
+  if (matriz.length === 0) return { columnas: [], filas: [] };
+  const columnas = matriz[0].map((nombre, indice) => String(nombre || `Columna ${indice + 1}`));
+  for (const extra of COLUMNAS_EXTRA) {
+    if (!columnas.includes(extra)) columnas.push(extra);
+  }
+  const visibles = columnas.filter((columna) => !COLUMNAS_OCULTAS.has(columna));
+  const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
+  const filas = sinFilasVacias(matriz).slice(1).map((fila) => {
+    const registro = {};
+    visibles.forEach((columna) => {
+      registro[columna] = fila[columnas.indexOf(columna)] ?? "";
+    });
+    registro.Marcado = indiceMarcado >= 0 ? fila[indiceMarcado] ?? "" : "";
+    return registro;
+  });
+  return { columnas: visibles, filas };
+}
+
+function filasBodegaDesdeMatriz(matriz) {
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  return sinFilasVacias(matriz).slice(1).map((fila) => {
+    const registro = {};
+    columnas.forEach((columna, indice) => {
+      registro[columna] = fila[indice] ?? "";
+    });
+    return registro;
+  });
+}
+
+let cacheMateriales = null;
+
+function recordarMateriales(matriz, nombreHoja) {
+  const limpia = sinFilasVacias(matriz);
+  const columnas = (limpia[0] || []).map((nombre) => String(nombre));
+  const indiceCodigo = columnas.indexOf("Codigo");
+  const tabla = tablaDesdeMatriz(limpia);
+  const filasBodega = filasBodegaDesdeMatriz(limpia);
+  const porFila = new Map();
+  tabla.filas.forEach((fila) => {
+    const codigo = String(fila.Codigo ?? "");
+    if (!porFila.has(codigo)) porFila.set(codigo, fila);
+  });
+  const porFilaBodega = new Map();
+  filasBodega.forEach((fila) => {
+    const codigo = String(fila.Codigo ?? "");
+    if (!porFilaBodega.has(codigo)) porFilaBodega.set(codigo, fila);
+  });
+  cacheMateriales = {
+    firma: firmaArchivo(archivoMateriales()),
+    nombreHoja,
+    matriz: limpia,
+    porCodigo: mapaPorCodigo(limpia, indiceCodigo),
+    tabla,
+    porFila,
+    filasBodega,
+    porFilaBodega,
+  };
+  return cacheMateriales;
+}
+
+function cargarMateriales() {
+  const archivo = archivoMateriales();
+  const firma = firmaArchivo(archivo);
+  if (cacheMateriales && cacheMateriales.firma === firma) return cacheMateriales;
+
   const libro = XLSX.readFile(archivo);
   const { nombreHoja, matriz } = leerMatriz(libro);
   const encabezadoGuardado = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })[0] || [];
@@ -97,38 +184,32 @@ function leerTabla() {
       // Si el Excel está abierto, la columna igual se usa en memoria.
     }
   }
+  return recordarMateriales(matriz, nombreHoja);
+}
 
-  if (matriz.length === 0) {
-    return { columnas: [], filas: [] };
-  }
+function editarMateriales() {
+  const actual = cargarMateriales();
+  return {
+    matriz: actual.matriz.map((fila) => (Array.isArray(fila) ? fila.slice() : [])),
+    porCodigo: new Map(actual.porCodigo),
+  };
+}
 
-  const columnas = matriz[0].map((nombre, indice) =>
-    String(nombre || `Columna ${indice + 1}`)
-  );
+function guardarMateriales(matriz) {
+  const nombreHoja = cacheMateriales?.nombreHoja || "Hoja1";
+  const limpia = sinFilasVacias(matriz);
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(limpia), nombreHoja);
+  XLSX.writeFile(libro, archivoMateriales());
+  return recordarMateriales(limpia, nombreHoja);
+}
 
-  for (const extra of COLUMNAS_EXTRA) {
-    if (!columnas.includes(extra)) columnas.push(extra);
-  }
-
-  const visibles = columnas.filter((columna) => !COLUMNAS_OCULTAS.has(columna));
-
-  const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
-  const filas = sinFilasVacias(matriz).slice(1).map((fila) => {
-    const registro = {};
-    visibles.forEach((columna) => {
-      registro[columna] = fila[columnas.indexOf(columna)] ?? "";
-    });
-    registro.Marcado = indiceMarcado >= 0 ? fila[indiceMarcado] ?? "" : "";
-    return registro;
-  });
-
-  return { columnas: visibles, filas };
+function leerTabla() {
+  return cargarMateriales().tabla;
 }
 
 function marcarMaterial(codigo, marcado) {
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const { nombreHoja, matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
@@ -137,39 +218,28 @@ function marcarMaterial(codigo, marcado) {
     error.status = 500;
     throw error;
   }
-  const indiceFila = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
-  );
+  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
   matriz[indiceFila][indiceMarcado] = marcado ? "1" : "";
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return buscarMaterial(codigo);
 }
 
 function stockPorBodega(codigo) {
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const { matriz } = leerMatriz(libro);
-  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  const indiceCodigo = columnas.indexOf("Codigo");
-  const fila = matriz.find(
-    (item, indice) => indice > 0 && String(item[indiceCodigo]) === String(codigo)
-  );
+  const fila = cargarMateriales().porFilaBodega.get(String(codigo));
   if (!fila) return [];
-
-  const bodegas = [["M501", columnas.indexOf("Stock")], ...BODEGAS_EXTRA.map((nombre) => [nombre, columnas.indexOf(nombre)])];
+  const bodegas = [["M501", "Stock"], ...BODEGAS_EXTRA.map((nombre) => [nombre, nombre])];
   return bodegas
-    .filter(([, indice]) => indice >= 0 && String(fila[indice] ?? "").trim() !== "")
-    .map(([bodega, indice]) => ({ bodega, stock: fila[indice] }));
+    .filter(([, campo]) => String(fila[campo] ?? "").trim() !== "")
+    .map(([bodega, campo]) => ({ bodega, stock: fila[campo] }));
 }
 
 function buscarMaterial(codigo) {
-  const { columnas, filas } = leerTabla();
+  const { tabla, porFila } = cargarMateriales();
   const buscado = String(codigo);
-  const fila = filas.find((item) => String(item.Codigo) === buscado) || null;
+  const fila = porFila.get(buscado) || null;
   const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== "M501");
-  return { columnas, fila, bodegas };
+  return { columnas: tabla.columnas, fila, bodegas };
 }
 
 function textoBusqueda(valor) {
@@ -216,11 +286,7 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const hoja = libro.Sheets[nombreHoja];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   const indiceInventario = columnas.indexOf("Inventario");
@@ -232,17 +298,14 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
     throw error;
   }
 
-  const indiceFila = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
-  );
+  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
 
   if (textoInventario !== "") {
     matriz[indiceFila][indiceInventario] = Number(textoInventario);
   }
   matriz[indiceFila][indiceComentario] = textoComentario;
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
 
   return buscarMaterial(codigo);
 }
@@ -253,10 +316,7 @@ function limpiarInventarioComentarios(clave) {
     error.status = 403;
     throw error;
   }
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceInventario = columnas.indexOf("Inventario");
   const indiceComentario = columnas.indexOf("Comentario");
@@ -275,8 +335,7 @@ function limpiarInventarioComentarios(clave) {
     matriz[indice] = fila;
   }
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return leerTabla();
 }
 
@@ -295,11 +354,7 @@ function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const hoja = libro.Sheets[nombreHoja];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   if (indiceCodigo < 0) {
@@ -308,9 +363,7 @@ function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
-  const indiceFila = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
-  );
+  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
 
   columnas.forEach((columna, indice) => {
@@ -341,8 +394,7 @@ function actualizarDatos(codigo, clave, datos, reemplazar) {
     }
   }
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return buscarMaterial(codigoNuevo);
 }
 
@@ -358,11 +410,7 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const hoja = libro.Sheets[nombreHoja];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   if (indiceCodigo < 0) {
@@ -379,9 +427,7 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
     }
   }
 
-  const indiceFila = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
-  );
+  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
 
   const indiceCampo = columnas.indexOf(campo);
@@ -392,8 +438,7 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
   }
 
   matriz[indiceFila][indiceCampo] = nombreArchivo || "";
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return buscarMaterial(codigo);
 }
 
@@ -404,10 +449,7 @@ function eliminarMaterial(codigo, clave) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
   if (indiceCodigo < 0) {
@@ -416,9 +458,7 @@ function eliminarMaterial(codigo, clave) {
     throw error;
   }
 
-  const indiceFila = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === String(codigo)
-  );
+  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
 
   for (const campo of CAMPOS_IMAGEN) {
@@ -432,8 +472,7 @@ function eliminarMaterial(codigo, clave) {
   }
 
   matriz.splice(indiceFila, 1);
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { codigo: String(codigo) };
 }
 
@@ -461,11 +500,7 @@ function agregarMaterial(clave, datos) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const hoja = libro.Sheets[nombreHoja];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -478,9 +513,7 @@ function agregarMaterial(clave, datos) {
     error.status = 500;
     throw error;
   }
-  const indiceExistente = matriz.findIndex(
-    (fila, indice) => indice > 0 && String(fila[indiceCodigo]) === codigoNuevo
-  );
+  const indiceExistente = indicePorCodigo(porCodigo, codigoNuevo);
   const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
 
   const filaNueva = columnas.map((columna, indice) => {
@@ -494,8 +527,7 @@ function agregarMaterial(clave, datos) {
   });
   if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
   else matriz.push(filaNueva);
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return buscarMaterial(codigoNuevo);
 }
 
@@ -516,10 +548,7 @@ function importarPlanilla(clave, buffer) {
   const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
   const encabezados = (matrizEntrada[0] || []).map((nombre) => String(nombre).trim()).filter(Boolean);
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -562,9 +591,7 @@ function importarPlanilla(clave, buffer) {
       throw error;
     }
 
-    const indiceExistente = matriz.findIndex(
-      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigoNuevo
-    );
+    const indiceExistente = indicePorCodigo(porCodigo, codigoNuevo);
     const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
     const filaNueva = columnas.map((columna, indice) => {
       if (columna === "Codigo") return codigoNuevo;
@@ -583,12 +610,12 @@ function importarPlanilla(clave, buffer) {
       actualizados += 1;
     } else {
       matriz.push(filaNueva);
+      porCodigo.set(codigoNuevo, matriz.length - 1);
       agregados += 1;
     }
   });
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 
@@ -608,10 +635,7 @@ function importarSap(clave, buffer) {
   }
   const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -655,9 +679,7 @@ function importarSap(clave, buffer) {
     }
 
     const indiceBodega = planta === "M501" ? indiceStock : columnas.indexOf(planta);
-    const indiceExistente = matriz.findIndex(
-      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigo
-    );
+    const indiceExistente = indicePorCodigo(porCodigo, codigo);
     if (indiceExistente >= 0) {
       if (planta === "M501") matriz[indiceExistente][indiceDescripcion] = descripcion;
       matriz[indiceExistente][indiceBodega] = stock;
@@ -670,22 +692,22 @@ function importarSap(clave, buffer) {
     filaNueva[indiceDescripcion] = descripcion;
     filaNueva[indiceBodega] = stock;
     matriz.push(filaNueva);
+    porCodigo.set(codigo, matriz.length - 1);
     agregados += 1;
   });
 
   const encabezado = matriz[0];
-  const porCodigo = new Map();
+  const filasSap = new Map();
   const fueraDelExport = [];
   for (let indice = 1; indice < matriz.length; indice += 1) {
     const codigoFila = String(matriz[indice][indiceCodigo] ?? "").trim();
-    if (vistosSap.has(codigoFila) && !porCodigo.has(codigoFila)) porCodigo.set(codigoFila, matriz[indice]);
+    if (vistosSap.has(codigoFila) && !filasSap.has(codigoFila)) filasSap.set(codigoFila, matriz[indice]);
     else if (!vistosSap.has(codigoFila)) fueraDelExport.push(matriz[indice]);
   }
-  const ordenadas = ordenSap.map((codigoFila) => porCodigo.get(codigoFila)).filter(Boolean);
+  const ordenadas = ordenSap.map((codigoFila) => filasSap.get(codigoFila)).filter(Boolean);
   matriz.splice(0, matriz.length, encabezado, ...ordenadas, ...fueraDelExport);
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { agregados, actualizados, omitidos };
 }
 
@@ -705,10 +727,7 @@ function importarPrecios(clave, buffer) {
   }
   const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -739,9 +758,7 @@ function importarPrecios(clave, buffer) {
       throw error;
     }
 
-    const indiceExistente = matriz.findIndex(
-      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigo
-    );
+    const indiceExistente = indicePorCodigo(porCodigo, codigo);
     if (indiceExistente >= 0) {
       matriz[indiceExistente][indiceDescripcion] = descripcion;
       matriz[indiceExistente][indicePrecio] = precio;
@@ -754,11 +771,11 @@ function importarPrecios(clave, buffer) {
     filaNueva[indiceDescripcion] = descripcion;
     filaNueva[indicePrecio] = precio;
     matriz.push(filaNueva);
+    porCodigo.set(codigo, matriz.length - 1);
     agregados += 1;
   });
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 
@@ -778,10 +795,7 @@ function importarUbicaciones(clave, buffer) {
   }
   const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -818,9 +832,7 @@ function importarUbicaciones(clave, buffer) {
     }
 
     const sub = ubicacion.slice(0, 4);
-    const indiceExistente = matriz.findIndex(
-      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigo
-    );
+    const indiceExistente = indicePorCodigo(porCodigo, codigo);
     if (indiceExistente >= 0) {
       matriz[indiceExistente][indiceUbicacion] = ubicacion;
       matriz[indiceExistente][indiceSub] = sub;
@@ -833,11 +845,11 @@ function importarUbicaciones(clave, buffer) {
     filaNueva[indiceUbicacion] = ubicacion;
     filaNueva[indiceSub] = sub;
     matriz.push(filaNueva);
+    porCodigo.set(codigo, matriz.length - 1);
     agregados += 1;
   });
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { agregados, actualizados, omitidos };
 }
 
@@ -869,10 +881,7 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
     throw error;
   }
 
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const nombreHoja = libro.SheetNames[0];
-  const { matriz } = leerMatriz(libro);
+  const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
   for (const extra of COLUMNAS_EXTRA) {
     if (!columnas.includes(extra)) columnas.push(extra);
@@ -901,9 +910,7 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
       throw error;
     }
 
-    const indiceExistente = matriz.findIndex(
-      (item, indice) => indice > 0 && String(item[indiceCodigo]) === codigo
-    );
+    const indiceExistente = indicePorCodigo(porCodigo, codigo);
     if (indiceExistente >= 0) {
       matriz[indiceExistente][indiceDestino] = valor;
       actualizados += 1;
@@ -914,11 +921,11 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
     filaNueva[indiceCodigo] = codigo;
     filaNueva[indiceDestino] = valor;
     matriz.push(filaNueva);
+    porCodigo.set(codigo, matriz.length - 1);
     agregados += 1;
   });
 
-  libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-  XLSX.writeFile(libro, archivo);
+  guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 
@@ -1046,17 +1053,7 @@ function valorStock(valor) {
 }
 
 function filasConBodegas() {
-  const archivo = path.join(__dirname, "bd_test.xlsx");
-  const libro = XLSX.readFile(archivo);
-  const { matriz } = leerMatriz(libro);
-  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  return sinFilasVacias(matriz).slice(1).map((fila) => {
-    const registro = {};
-    columnas.forEach((columna, indice) => {
-      registro[columna] = fila[indice] ?? "";
-    });
-    return registro;
-  });
+  return cargarMateriales().filasBodega;
 }
 
 function stockRegional() {
@@ -1942,8 +1939,13 @@ function archivoContratistas() {
   return path.join(__dirname, "bd_comp.xlsx");
 }
 
+let cacheContratistas = null;
+
 function leerContratistas() {
-  const libro = XLSX.readFile(archivoContratistas());
+  const archivo = archivoContratistas();
+  const firma = firmaArchivo(archivo);
+  if (cacheContratistas && cacheContratistas.firma === firma) return cacheContratistas.datos;
+  const libro = XLSX.readFile(archivo);
   const hoja = libro.Sheets[libro.SheetNames[0]];
   const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
   const columnas = (matriz[0] || ["id", "Nombre"]).map((nombre) => String(nombre));
@@ -1953,7 +1955,9 @@ function leerContratistas() {
       id: fila[0] ?? "",
       nombre: fila[1] ?? "",
     }));
-  return { columnas, filas };
+  const datos = { columnas, filas };
+  cacheContratistas = { firma, datos };
+  return datos;
 }
 
 function guardarContratistas(clave, filas) {
@@ -1996,6 +2000,7 @@ function guardarContratistas(clave, filas) {
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Hoja1");
   XLSX.writeFile(libro, archivoContratistas());
+  cacheContratistas = null;
   return leerContratistas();
 }
 
@@ -2034,9 +2039,13 @@ function normalizarFechas(columnas, filas) {
   });
 }
 
+let cacheReservas = null;
+
 function leerReservas() {
   const archivo = archivoReservas();
   if (!fs.existsSync(archivo)) return { columnas: [], filas: [] };
+  const firma = firmaArchivo(archivo);
+  if (cacheReservas && cacheReservas.firma === firma) return cacheReservas.datos;
   const libro = XLSX.readFile(archivo, { cellDates: true });
   const hoja = libro.Sheets[libro.SheetNames[0]];
   if (!hoja) return { columnas: [], filas: [] };
@@ -2046,7 +2055,9 @@ function leerReservas() {
     columnas,
     matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
   );
-  return { columnas, filas };
+  const datos = { columnas, filas };
+  cacheReservas = { firma, datos };
+  return datos;
 }
 
 function importarReservas(clave, buffer) {
@@ -2120,6 +2131,7 @@ function importarReservas(clave, buffer) {
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Reservas");
   XLSX.writeFile(libro, archivoReservas());
+  cacheReservas = null;
   return { agregados, actualizados, omitidos };
 }
 

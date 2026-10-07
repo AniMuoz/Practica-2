@@ -16,6 +16,54 @@ import {
 } from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
+const ALTO_FILA = 36;
+const FILAS_EXTRA = 12;
+
+function VistaPrevia({ filas, columnas, altoMaximo = 480, className, children, renderFila, vacio }) {
+  const ref = useRef(null);
+  const [corte, setCorte] = useState({ inicio: 0, fin: 40 });
+
+  function medir() {
+    const caja = ref.current;
+    if (!caja) return;
+    const inicio = Math.max(0, Math.floor(caja.scrollTop / ALTO_FILA) - FILAS_EXTRA);
+    const cupo = Math.ceil(caja.clientHeight / ALTO_FILA) + FILAS_EXTRA * 2;
+    const fin = Math.min(filas.length, inicio + cupo);
+    setCorte((actual) => (actual.inicio === inicio && actual.fin === fin ? actual : { inicio, fin }));
+  }
+
+  useEffect(() => {
+    const caja = ref.current;
+    if (caja) caja.scrollTop = 0;
+    medir();
+  }, [filas.length]);
+
+  const antes = corte.inicio * ALTO_FILA;
+  const despues = Math.max(0, filas.length - corte.fin) * ALTO_FILA;
+  const span = Math.max(columnas, 1);
+
+  return (
+    <div ref={ref} onScroll={medir} style={{ overflow: "auto", maxHeight: altoMaximo }}>
+      <Planilla className={["vista-previa", className].filter(Boolean).join(" ")}>
+        {children}
+        <tbody>
+          {antes > 0 && (
+            <tr aria-hidden="true">
+              <td colSpan={span} style={{ height: antes, padding: 0, border: 0 }} />
+            </tr>
+          )}
+          {filas.slice(corte.inicio, corte.fin).map((fila, desplazamiento) => renderFila(fila, corte.inicio + desplazamiento))}
+          {despues > 0 && (
+            <tr aria-hidden="true">
+              <td colSpan={span} style={{ height: despues, padding: 0, border: 0 }} />
+            </tr>
+          )}
+        </tbody>
+      </Planilla>
+      {filas.length === 0 && vacio && <p style={{ margin: "12px 0 0" }}>{vacio}</p>}
+    </div>
+  );
+}
 
 function Interruptor({ activo, onClick, texto }) {
   return (
@@ -684,8 +732,32 @@ export default function Admin() {
           {cargandoBodega && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoBodega && <p style={{ margin: 0 }}>{avisoBodega}</p>}
           {!cargandoBodega && !avisoBodega && (
-            <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <Planilla className={clasePlanilla}>
+            <VistaPrevia
+              filas={bodega.filas}
+              columnas={bodega.columnas.length}
+              className={clasePlanilla}
+              vacio="No hay stock de M501 cargado."
+              renderFila={(fila, indice) => {
+                const fondo = colorLibre(fila[2]);
+                return (
+                  <tr key={`${fila[0]}-${indice}`}>
+                    {fila.map((valor, columna) => (
+                      <td
+                        key={columna}
+                        className={colores && columna === 2 ? "celda-color" : undefined}
+                        style={{
+                          padding: "8px 10px",
+                          border: "1px solid var(--borde-suave)",
+                          background: colores && columna === 2 ? fondo : "var(--superficie)",
+                        }}
+                      >
+                        {valor === "" || valor == null ? "" : String(valor)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              }}
+            >
                 <thead>
                   <tr>
                     {bodega.columnas.map((columna) => (
@@ -705,31 +777,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {bodega.filas.map((fila, indice) => {
-                    const fondo = colorLibre(fila[2]);
-                    return (
-                      <tr key={`${fila[0]}-${indice}`}>
-                        {fila.map((valor, columna) => (
-                          <td
-                            key={columna}
-                            className={colores && columna === 2 ? "celda-color" : undefined}
-                            style={{
-                              padding: "8px 10px",
-                              border: "1px solid var(--borde-suave)",
-                              background: colores && columna === 2 ? fondo : "var(--superficie)",
-                            }}
-                          >
-                            {valor === "" || valor == null ? "" : String(valor)}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Planilla>
-              {bodega.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock de M501 cargado.</p>}
-            </div>
+            </VistaPrevia>
           )}
         </section>
       )}
@@ -761,8 +809,33 @@ export default function Admin() {
           {cargandoRegional && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoRegional && <p style={{ margin: 0 }}>{avisoRegional}</p>}
           {!cargandoRegional && !avisoRegional && (
-            <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <Planilla className={clasePlanilla}>
+            <VistaPrevia
+              filas={regional.filas}
+              columnas={regional.columnas.length}
+              className={clasePlanilla}
+              vacio="No hay stock regional cargado."
+              renderFila={(fila, indice) => (
+                <tr key={`${fila[0]}-${indice}`}>
+                  {fila.map((valor, columna) => {
+                    const fondo = columna < 2 ? "var(--superficie)" : colorCantidad(valor);
+                    return (
+                      <td
+                        key={columna}
+                        className={colores && columna >= 2 ? "celda-color" : undefined}
+                        style={{
+                          padding: "8px 10px",
+                          border: "1px solid var(--borde-suave)",
+                          background: colores ? fondo : "var(--superficie)",
+                          fontWeight: columna === fila.length - 1 ? 700 : 400,
+                        }}
+                      >
+                        {valor === "" || valor == null ? "" : String(valor)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )}
+            >
                 <thead>
                   <tr>
                     {regional.columnas.map((columna) => (
@@ -782,32 +855,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {regional.filas.map((fila, indice) => (
-                    <tr key={`${fila[0]}-${indice}`}>
-                      {fila.map((valor, columna) => {
-                        const fondo = columna < 2 ? "var(--superficie)" : colorCantidad(valor);
-                        return (
-                          <td
-                            key={columna}
-                            className={colores && columna >= 2 ? "celda-color" : undefined}
-                            style={{
-                              padding: "8px 10px",
-                              border: "1px solid var(--borde-suave)",
-                              background: colores ? fondo : "var(--superficie)",
-                              fontWeight: columna === fila.length - 1 ? 700 : 400,
-                            }}
-                          >
-                            {valor === "" || valor == null ? "" : String(valor)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
-              {regional.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock regional cargado.</p>}
-            </div>
+            </VistaPrevia>
           )}
         </section>
       )}
@@ -843,8 +891,30 @@ export default function Admin() {
           {cargandoInventario && <p style={{ margin: 0 }}>Cargando inventario...</p>}
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
           {!cargandoInventario && !avisoInventario && (
-            <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <Planilla className={clasePlanilla}>
+            <VistaPrevia
+              filas={filasInventario}
+              columnas={inventario.columnas.length}
+              className={clasePlanilla}
+              vacio="No hay materiales para inventariar."
+              renderFila={(fila, indice) => (
+                <tr key={`${fila[0]}-${indice}`}>
+                  {fila.map((valor, columna) => (
+                    <td
+                      key={columna}
+                      className={colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "celda-color" : undefined}
+                      style={{
+                        padding: "8px 10px",
+                        border: "1px solid var(--borde-suave)",
+                        background:
+                          colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "#f9e37c" : "var(--superficie)",
+                      }}
+                    >
+                      {valor === "" || valor == null ? "" : String(valor)}
+                    </td>
+                  ))}
+                </tr>
+              )}
+            >
                 <thead>
                   <tr>
                     {inventario.columnas.map((columna) => (
@@ -864,29 +934,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {filasInventario.map((fila, indice) => (
-                    <tr key={`${fila[0]}-${indice}`}>
-                      {fila.map((valor, columna) => (
-                        <td
-                          key={columna}
-                          className={colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "celda-color" : undefined}
-                          style={{
-                            padding: "8px 10px",
-                            border: "1px solid var(--borde-suave)",
-                            background:
-                              colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "#f9e37c" : "var(--superficie)",
-                          }}
-                        >
-                          {valor === "" || valor == null ? "" : String(valor)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
-              {inventario.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay materiales para inventariar.</p>}
-            </div>
+            </VistaPrevia>
           )}
         </section>
       )}
@@ -961,8 +1009,35 @@ export default function Admin() {
           {cargandoDetallado && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
-            <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <Planilla className={clasePlanilla}>
+            <VistaPrevia
+              filas={detallado.filas}
+              columnas={detallado.columnas.length}
+              className={clasePlanilla}
+              vacio="No hay stock detallado cargado."
+              renderFila={(fila, indice) => (
+                <tr key={`${fila[1]}-${indice}`}>
+                  {fila.map((valor, columna) => {
+                    const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
+                    const fondo = colorStockDetallado(columna, valor, detallado.marcados?.[indice]);
+                    return (
+                      <td
+                        key={columna}
+                        className={colores && coloreada ? "celda-color" : undefined}
+                        style={{
+                          padding: "8px 10px",
+                          border: "1px solid var(--borde-suave)",
+                          background: colores ? fondo : "var(--superficie)",
+                          fontWeight: columna === 10 ? 700 : 400,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {valor === "" || valor == null ? "" : String(valor)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )}
+            >
                 <thead>
                   <tr>
                     {detallado.columnas.map((columna) => (
@@ -983,34 +1058,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {detallado.filas.map((fila, indice) => (
-                    <tr key={`${fila[1]}-${indice}`}>
-                      {fila.map((valor, columna) => {
-                        const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
-                        const fondo = colorStockDetallado(columna, valor, detallado.marcados?.[indice]);
-                        return (
-                          <td
-                            key={columna}
-                            className={colores && coloreada ? "celda-color" : undefined}
-                            style={{
-                              padding: "8px 10px",
-                              border: "1px solid var(--borde-suave)",
-                              background: colores ? fondo : "var(--superficie)",
-                              fontWeight: columna === 10 ? 700 : 400,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {valor === "" || valor == null ? "" : String(valor)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
-              {detallado.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock detallado cargado.</p>}
-            </div>
+            </VistaPrevia>
           )}
         </section>
       )}
@@ -1115,8 +1163,39 @@ export default function Admin() {
             {avisoBusquedaReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoBusquedaReserva}</p>}
           </form>
           {busquedaReserva.columnas.length > 0 && (
-            <div style={{ overflow: "auto", maxHeight: 320, marginBottom: 16 }}>
-              <Planilla className={clasePlanilla}>
+            <div style={{ marginBottom: 16 }}>
+            <VistaPrevia
+              filas={busquedaReserva.filas}
+              columnas={busquedaReserva.columnas.length}
+              altoMaximo={320}
+              className={clasePlanilla}
+              renderFila={(fila, indice) => (
+                <tr key={indice}>
+                  {busquedaReserva.columnas.map((nombre, columna) => {
+                    const esEstado = nombre === "Estado";
+                    const valor = fila[columna];
+                    return (
+                      <td
+                        key={columna}
+                        style={{
+                          padding: "8px 10px",
+                          border: "1px solid var(--borde-suave)",
+                          background:
+                            colores && esEstado
+                              ? valor === "Disponible"
+                                ? "#73c883"
+                                : "#f9e37c"
+                              : "var(--superficie)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {valor === "" || valor == null ? "" : String(valor)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )}
+            >
                 <thead>
                   <tr>
                     {busquedaReserva.columnas.map((columna) => (
@@ -1137,35 +1216,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {busquedaReserva.filas.map((fila, indice) => (
-                    <tr key={indice}>
-                      {busquedaReserva.columnas.map((nombre, columna) => {
-                        const esEstado = nombre === "Estado";
-                        const valor = fila[columna];
-                        return (
-                          <td
-                            key={columna}
-                            style={{
-                              padding: "8px 10px",
-                              border: "1px solid var(--borde-suave)",
-                              background:
-                                colores && esEstado
-                                  ? valor === "Disponible"
-                                    ? "#73c883"
-                                    : "#f9e37c"
-                                  : "var(--superficie)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {valor === "" || valor == null ? "" : String(valor)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
+            </VistaPrevia>
             </div>
           )}
           <form
@@ -1253,8 +1304,31 @@ export default function Admin() {
             {avisoReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoReserva}</p>}
           </form>
           {reserva.columnas.length > 0 && (
-            <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <Planilla className={clasePlanilla}>
+            <VistaPrevia
+              filas={reserva.filas}
+              columnas={reserva.columnas.length}
+              className={clasePlanilla}
+              vacio="El PDF no tiene líneas de reserva."
+              renderFila={(fila) => (
+                <tr key={fila[0]}>
+                  {fila.map((valor, columna) => (
+                    <td
+                      key={columna}
+                      className={colores && columna === 7 ? "celda-color" : undefined}
+                      style={{
+                        padding: "8px 10px",
+                        border: "1px solid var(--borde-suave)",
+                        background:
+                          !colores || columna !== 7 ? "var(--superficie)" : valor === "Disponible" ? "#73c883" : "#f9e37c",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {valor === "" || valor == null ? "" : String(valor)}
+                    </td>
+                  ))}
+                </tr>
+              )}
+            >
                 <thead>
                   <tr>
                     {reserva.columnas.map((columna) => (
@@ -1275,30 +1349,7 @@ export default function Admin() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {reserva.filas.map((fila) => (
-                    <tr key={fila[0]}>
-                      {fila.map((valor, columna) => (
-                        <td
-                          key={columna}
-                          className={colores && columna === 7 ? "celda-color" : undefined}
-                          style={{
-                            padding: "8px 10px",
-                            border: "1px solid var(--borde-suave)",
-                            background:
-                              !colores || columna !== 7 ? "var(--superficie)" : valor === "Disponible" ? "#73c883" : "#f9e37c",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {valor === "" || valor == null ? "" : String(valor)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
-              {reserva.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>El PDF no tiene líneas de reserva.</p>}
-            </div>
+            </VistaPrevia>
           )}
         </section>
       )}
