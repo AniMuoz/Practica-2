@@ -1569,7 +1569,14 @@ export default function Admin() {
                     {["id", "Nombre", ""].map((columna) => (
                       <th
                         key={columna || "accion"}
-                        style={{ textAlign: "left", padding: "8px 10px", background: colores ? "#a9e5e5" : "var(--superficie)", border: "1px solid var(--borde)" }}
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
+                        }}
                       >
                         {columna}
                       </th>

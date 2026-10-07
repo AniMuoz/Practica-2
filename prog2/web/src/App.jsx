@@ -292,16 +292,6 @@ export default function App() {
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {!cargando && !error && filas.length > 0 && (
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={bloquearPagina}
-                onChange={(event) => setBloquearPagina(event.target.checked)}
-              />
-              Bloquear pagina de material
-            </label>
-          )}
-          {!cargando && !error && filas.length > 0 && (
             <button
               type="button"
               data-tour="filtros"
@@ -318,6 +308,16 @@ export default function App() {
             >
               {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
             </button>
+          )}
+          {!cargando && !error && filas.length > 0 && (
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={bloquearPagina}
+                onChange={(event) => setBloquearPagina(event.target.checked)}
+              />
+              Bloquear pagina de material
+            </label>
           )}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
             <button
@@ -546,19 +546,23 @@ export default function App() {
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}
       {!cargando && !error && filas.length > 0 && (
-        <div className="tabla-inventario" style={{ overflowX: "auto", background: "var(--superficie)", borderRadius: 8 }}>
+        <div className="tabla-inventario" style={{ background: "var(--superficie)", borderRadius: 8 }}>
           {paginacion()}
-          <Planilla>
+          <div style={{ overflow: "auto", maxHeight: "calc(100vh - 220px)" }}>
+          <Planilla className={oscuro && colores ? "planilla-oscura" : undefined}>
             <thead>
               <tr>
                 {columnasTabla.map((columna) => (
                   <th
                     key={columna}
                     style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
                       textAlign: "left",
                       padding: "10px 12px",
                       borderBottom: "2px solid var(--borde)",
-                      background: "var(--encabezado)",
+                      background: colores ? "#a9e5e5" : "var(--encabezado)",
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -622,6 +626,7 @@ export default function App() {
               ))}
             </tbody>
           </Planilla>
+          </div>
           {paginacion()}
         </div>
       )}
