@@ -1818,9 +1818,10 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
   const bodegas = new Set(BODEGAS_EXPORT);
   const almacenFila = mov === "VENTA" ? "M501" : (bodegas.has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
+  const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
   const codcomp = mov === "TRASPASO"
-    ? (numeroTraspaso || "n/a")
-    : (codVenta === "" || codVenta == null ? "n/a" : codVenta);
+    ? (numeroTraspaso || numeroIngresado)
+    : numeroIngresado;
   const contratista = contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
   const hoy = new Date();
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;

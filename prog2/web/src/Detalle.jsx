@@ -756,7 +756,10 @@ export default function Detalle() {
               Inventario
               <input
                 value={inventario}
+                type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
                 onChange={(event) => {
                   const valor = event.target.value;
                   if (valor === "" || /^-?\d+$/.test(valor)) setInventario(valor);

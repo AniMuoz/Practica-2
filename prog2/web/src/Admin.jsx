@@ -1352,7 +1352,7 @@ export default function Admin() {
               cuerpo.append("contratista", contratistaVenta);
               cuerpo.append("movimiento", movimientoVenta);
               cuerpo.append("almacen", movimientoVenta === "2" ? almacenVenta : "M501");
-              cuerpo.append("codVenta", movimientoVenta === "2" ? "n/a" : codVenta);
+              cuerpo.append("codVenta", movimientoVenta === "2" && modoVenta !== "manual" ? "n/a" : codVenta);
               cuerpo.append("colores", colores ? "1" : "0");
               fetch("/api/ventas", { method: "POST", body: cuerpo })
                 .then(async (res) => {
@@ -1475,7 +1475,7 @@ export default function Admin() {
                 <option value="2">Traspaso</option>
               </select>
             </label>
-            {movimientoVenta === "1" && (
+            {(movimientoVenta === "1" || (movimientoVenta === "2" && modoVenta === "manual")) && (
               <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
                 Número de venta
                 <input
