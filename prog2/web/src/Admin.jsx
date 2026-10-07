@@ -189,7 +189,7 @@ export default function Admin() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || mensaje);
-        setTabla({ columnas: data.columnas || [], filas: data.filas || [] });
+        setTabla({ columnas: data.columnas || [], filas: data.filas || [], marcados: data.marcados || [] });
       })
       .catch((err) => setAviso(err.message))
       .finally(() => setCargando(false));
@@ -1001,7 +1001,7 @@ export default function Admin() {
                         const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
                         const marcada = detallado.marcados?.[indice] && [3, 6, 7, 8, 9, 10].includes(columna);
                         const fondo = marcada
-                          ? "#88DC65"
+                          ? "#00FF00"
                           : !coloreada
                           ? "var(--superficie)"
                           : valor === 0 || valor === "0"

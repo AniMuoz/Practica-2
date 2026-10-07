@@ -1355,7 +1355,7 @@ async function exportarStockDetallado(colores = true) {
       celda.border = borde;
       if (columna === 10) celda.font = { bold: true };
       if (!coloreadas.has(columna)) return;
-      const color = marcados[indice] && COLUMNAS_MARCA_DETALLADO.has(columna) ? "FF88DC65" : colorStockDetallado(valor);
+      const color = marcados[indice] && COLUMNAS_MARCA_DETALLADO.has(columna) ? "FF00FF00" : colorStockDetallado(valor);
       pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
     });
   });
