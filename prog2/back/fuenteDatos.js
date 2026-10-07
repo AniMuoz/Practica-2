@@ -976,17 +976,21 @@ function compactarPlanilla(hoja) {
     const limpio = inicio.replace(/\$/g, "");
     if (limpio.replace(/\d/g, "") !== fin.replace(/\$/g, "").replace(/\d/g, "")) titulosCombinados.add(limpio);
   });
-  const total = hoja.actualColumnCount || hoja.columnCount;
-  for (let columna = 1; columna <= total; columna += 1) {
-    let maximo = 0;
-    hoja.getColumn(columna).eachCell({ includeEmpty: false }, (celda) => {
+  const anchos = [];
+  hoja.eachRow({ includeEmpty: false }, (fila) => {
+    fila.eachCell({ includeEmpty: false }, (celda) => {
       if (titulosCombinados.has(celda.address)) return;
+      const columna = celda.col - 1;
+      let maximo = anchos[columna] || 0;
       textoVisible(celda.value).split(/\r?\n/).forEach((linea) => {
         if (linea.length > maximo) maximo = linea.length;
       });
+      anchos[columna] = maximo;
     });
-    if (maximo > 0) hoja.getColumn(columna).width = maximo + 1;
-  }
+  });
+  anchos.forEach((maximo, indice) => {
+    if (maximo > 0) hoja.getColumn(indice + 1).width = maximo + 1;
+  });
 }
 
 async function exportarStockBodega(colores = true) {
@@ -2280,16 +2284,28 @@ function revisionReservas(reserva) {
   };
 }
 
-function buscarReservas(reserva) {
+function buscarReservas(reserva, pagina = 0, tamano = 100) {
   const revision = revisionReservas(reserva);
+  const cantidad = Number(tamano);
+  const limite = Number.isFinite(cantidad) && cantidad > 0 ? Math.min(Math.trunc(cantidad), 500) : 100;
+  const indice = Math.max(0, Math.trunc(Number(pagina) || 0));
+  const inicio = indice * limite;
   return {
     columnas: revision.columnas,
-    filas: revision.filas,
+    filas: revision.filas.slice(inicio, inicio + limite),
     total: revision.total,
+    coincidencias: revision.filas.length,
+    pagina: indice,
     fecha: revision.fecha,
     solicitante: revision.solicitante,
     movimiento: revision.movimiento,
   };
+}
+
+function precargarDatos() {
+  cargarMateriales();
+  leerContratistas();
+  leerReservas();
 }
 
 async function exportarRevisionPorReserva(reserva, colores = true) {
@@ -2429,6 +2445,7 @@ module.exports = {
   añadirVenta,
   importarReservas,
   buscarReservas,
+  precargarDatos,
   exportarRevisionPorReserva,
   leerUltimasCargas,
   registrarCarga,

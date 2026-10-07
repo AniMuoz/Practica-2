@@ -19,9 +19,10 @@ const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 const ALTO_FILA = 36;
 const FILAS_EXTRA = 12;
 
-function VistaPrevia({ filas, columnas, altoMaximo = 480, className, children, renderFila, vacio }) {
+function VistaPrevia({ filas, columnas, altoMaximo = 480, className, children, renderFila, vacio, clave, alFinal }) {
   const ref = useRef(null);
   const [corte, setCorte] = useState({ inicio: 0, fin: 40 });
+  const marca = clave === undefined ? filas.length : clave;
 
   function medir() {
     const caja = ref.current;
@@ -30,11 +31,16 @@ function VistaPrevia({ filas, columnas, altoMaximo = 480, className, children, r
     const cupo = Math.ceil(caja.clientHeight / ALTO_FILA) + FILAS_EXTRA * 2;
     const fin = Math.min(filas.length, inicio + cupo);
     setCorte((actual) => (actual.inicio === inicio && actual.fin === fin ? actual : { inicio, fin }));
+    if (alFinal && caja.scrollHeight - caja.scrollTop - caja.clientHeight < ALTO_FILA * 6) alFinal();
   }
 
   useEffect(() => {
     const caja = ref.current;
     if (caja) caja.scrollTop = 0;
+    medir();
+  }, [marca]);
+
+  useEffect(() => {
     medir();
   }, [filas.length]);
 
@@ -206,6 +212,9 @@ export default function Admin() {
   const [ventaKey, setVentaKey] = useState(0);
   const [cargaKey, setCargaKey] = useState(0);
   const permitirSalida = useRef(false);
+  const paginaReserva = useRef(0);
+  const cargandoPaginaReserva = useRef(false);
+  const hayMasReservas = useRef(false);
   const hayCambiosRef = useRef(false);
 
   function fijarContratistas(filas) {
@@ -1083,17 +1092,22 @@ export default function Admin() {
               }
               setAvisoBusquedaReserva("");
               setBuscandoReserva(true);
-              fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}`)
+              paginaReserva.current = 0;
+              hayMasReservas.current = false;
+              fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=0&tamano=100`)
                 .then(async (res) => {
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || "No se pudo buscar la reserva.");
+                  const coincidencias = data.coincidencias ?? (data.filas || []).length;
                   setBusquedaReserva({
                     columnas: data.columnas || [],
                     filas: data.filas || [],
                     total: data.total || 0,
+                    consulta: numero,
                   });
+                  hayMasReservas.current = (data.filas || []).length < coincidencias;
                   if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
-                  else if ((data.filas || []).length === 0) setAvisoBusquedaReserva("No hay reservas con ese número de reserva.");
+                  else if (coincidencias === 0) setAvisoBusquedaReserva("No hay reservas con ese número de reserva.");
                 })
                 .catch((err) => setAvisoBusquedaReserva(err.message))
                 .finally(() => setBuscandoReserva(false));
@@ -1168,6 +1182,33 @@ export default function Admin() {
               filas={busquedaReserva.filas}
               columnas={busquedaReserva.columnas.length}
               altoMaximo={320}
+              clave={busquedaReserva.consulta}
+              alFinal={() => {
+                const numero = busquedaReserva.consulta;
+                if (!numero || !hayMasReservas.current || cargandoPaginaReserva.current) return;
+                cargandoPaginaReserva.current = true;
+                const pagina = paginaReserva.current + 1;
+                fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=${pagina}&tamano=100`)
+                  .then(async (res) => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "No se pudo buscar la reserva.");
+                    const lote = data.filas || [];
+                    paginaReserva.current = pagina;
+                    const coincidencias = data.coincidencias ?? lote.length;
+                    hayMasReservas.current = (pagina + 1) * 100 < coincidencias;
+                    setBusquedaReserva((actual) => ({
+                      ...actual,
+                      columnas: data.columnas || actual.columnas,
+                      filas: actual.filas.concat(lote),
+                    }));
+                  })
+                  .catch(() => {
+                    hayMasReservas.current = false;
+                  })
+                  .finally(() => {
+                    cargandoPaginaReserva.current = false;
+                  });
+              }}
               className={clasePlanilla}
               renderFila={(fila, indice) => (
                 <tr key={indice}>
