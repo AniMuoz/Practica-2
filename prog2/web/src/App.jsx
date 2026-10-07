@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
+import Planilla from "./Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
   const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
   const [soloMarcados, setSoloMarcados] = useState(false);
   const [ignorarNulo, setIgnorarNulo] = useState(true);
+  const [bloquearPagina, setBloquearPagina] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
   const [pedirClave, setPedirClave] = useState(false);
   const [clave, setClave] = useState("");
@@ -290,6 +292,16 @@ export default function App() {
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {!cargando && !error && filas.length > 0 && (
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={bloquearPagina}
+                onChange={(event) => setBloquearPagina(event.target.checked)}
+              />
+              Bloquear pagina de material
+            </label>
+          )}
+          {!cargando && !error && filas.length > 0 && (
             <button
               type="button"
               data-tour="filtros"
@@ -536,7 +548,7 @@ export default function App() {
       {!cargando && !error && filas.length > 0 && (
         <div className="tabla-inventario" style={{ overflowX: "auto", background: "var(--superficie)", borderRadius: 8 }}>
           {paginacion()}
-          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+          <Planilla>
             <thead>
               <tr>
                 {columnasTabla.map((columna) => (
@@ -559,8 +571,12 @@ export default function App() {
               {visibles.slice(pagina * tamano, pagina * tamano + 5).map((fila) => (
                 <tr
                   key={fila.Codigo}
-                  onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}
-                  style={{ cursor: "pointer" }}
+                  onClick={(event) => {
+                    if (bloquearPagina) return;
+                    if (event.currentTarget.closest("table")?.dataset.seleccionMovida === "1") return;
+                    navigate(`/${encodeURIComponent(fila.Codigo)}`);
+                  }}
+                  style={{ cursor: bloquearPagina ? "default" : "pointer" }}
                 >
                   {columnasTabla.map((columna) => (
                     <td
@@ -582,8 +598,12 @@ export default function App() {
               {visibles.slice(pagina * tamano + 5, pagina * tamano + tamano).map((fila) => (
                 <tr
                   key={fila.Codigo}
-                  onClick={() => navigate(`/${encodeURIComponent(fila.Codigo)}`)}
-                  style={{ cursor: "pointer" }}
+                  onClick={(event) => {
+                    if (bloquearPagina) return;
+                    if (event.currentTarget.closest("table")?.dataset.seleccionMovida === "1") return;
+                    navigate(`/${encodeURIComponent(fila.Codigo)}`);
+                  }}
+                  style={{ cursor: bloquearPagina ? "default" : "pointer" }}
                 >
                   {columnasTabla.map((columna) => (
                     <td
@@ -601,7 +621,7 @@ export default function App() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Planilla>
           {paginacion()}
         </div>
       )}
