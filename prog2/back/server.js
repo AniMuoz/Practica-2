@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
+const { supabase } = require("./supabase");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -97,6 +98,15 @@ app.get("/api/eventos", (req, res) => {
 
 app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
+});
+
+app.get("/api/supabase", async (_req, res) => {
+  const { error } = await supabase.from("planillas").select("nombre").limit(1);
+  if (error && error.code !== "PGRST205" && error.code !== "42P01") {
+    res.status(502).json({ conectado: false, error: error.message });
+    return;
+  }
+  res.json({ conectado: true });
 });
 
 app.get("/api/tabla/excel", async (req, res) => {
@@ -341,7 +351,7 @@ app.get("/api/tabla/ultimas-cargas", (_req, res) => {
   try {
     res.json({ cargas: leerUltimasCargas() });
   } catch (error) {
-    res.status(500).json({ error: "No se pudieron leer las últimas cargas." });
+    res.status(error.status || 500).json({ error: error.message || "No se pudieron leer las últimas cargas." });
   }
 });
 
@@ -349,12 +359,12 @@ app.get("/api/tabla", (_req, res) => {
   try {
     res.json(leerTabla());
   } catch (error) {
-    res.status(500).json({ error: "No se pudo leer la tabla." });
+    res.status(error.status || 500).json({ error: error.message || "No se pudo leer la tabla." });
   }
 });
 
-app.post("/api/tabla/excel", (req, res) => {
-  uploadPlanilla.single("archivo")(req, res, (errorCarga) => {
+app.post("/api/tabla/excel", async (req, res) => {
+  uploadPlanilla.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       res.status(400).json({ error: errorCarga.message });
       return;
@@ -376,7 +386,7 @@ app.post("/api/tabla/excel", (req, res) => {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;
       }
-      registrarCarga(modo, req.body.columna);
+      await registrarCarga(modo, req.body.columna);
       emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {
@@ -385,9 +395,9 @@ app.post("/api/tabla/excel", (req, res) => {
   });
 });
 
-app.delete("/api/material/:codigo", (req, res) => {
+app.delete("/api/material/:codigo", async (req, res) => {
   try {
-    const resultado = eliminarMaterial(req.params.codigo, req.body.clave);
+    const resultado = await eliminarMaterial(req.params.codigo, req.body.clave);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -399,9 +409,9 @@ app.delete("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.post("/api/material", (req, res) => {
+app.post("/api/material", async (req, res) => {
   try {
-    const resultado = agregarMaterial(req.body.clave, req.body.datos);
+    const resultado = await agregarMaterial(req.body.clave, req.body.datos);
     if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.status(201).json(resultado);
   } catch (error) {
@@ -430,9 +440,9 @@ app.get("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.post("/api/tabla/limpiar-inventario", (req, res) => {
+app.post("/api/tabla/limpiar-inventario", async (req, res) => {
   try {
-    const tabla = limpiarInventarioComentarios(req.body.clave);
+    const tabla = await limpiarInventarioComentarios(req.body.clave);
     emitir({ tipo: "recarga" });
     res.json(tabla);
   } catch (error) {
@@ -440,9 +450,9 @@ app.post("/api/tabla/limpiar-inventario", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo/marcado", (req, res) => {
+app.put("/api/material/:codigo/marcado", async (req, res) => {
   try {
-    const resultado = marcarMaterial(req.params.codigo, req.body.marcado === true);
+    const resultado = await marcarMaterial(req.params.codigo, req.body.marcado === true);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -454,9 +464,9 @@ app.put("/api/material/:codigo/marcado", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo", (req, res) => {
+app.put("/api/material/:codigo", async (req, res) => {
   try {
-    const resultado = actualizarMaterial(req.params.codigo, {
+    const resultado = await actualizarMaterial(req.params.codigo, {
       inventario: req.body.inventario,
       comentario: req.body.comentario,
     });
@@ -471,9 +481,9 @@ app.put("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo/datos", (req, res) => {
+app.put("/api/material/:codigo/datos", async (req, res) => {
   try {
-    const resultado = actualizarDatos(
+    const resultado = await actualizarDatos(
       req.params.codigo,
       req.body.clave,
       req.body.datos,
@@ -494,9 +504,9 @@ app.put("/api/material/:codigo/datos", (req, res) => {
   }
 });
 
-app.delete("/api/material/:codigo/imagen", (req, res) => {
+app.delete("/api/material/:codigo/imagen", async (req, res) => {
   try {
-    const resultado = guardarImagen(req.params.codigo, req.body.campo, "", req.body.clave);
+    const resultado = await guardarImagen(req.params.codigo, req.body.campo, "", req.body.clave);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -509,7 +519,7 @@ app.delete("/api/material/:codigo/imagen", (req, res) => {
 });
 
 app.post("/api/material/:codigo/imagen", (req, res) => {
-  upload.single("archivo")(req, res, (errorCarga) => {
+  upload.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       res.status(400).json({ error: errorCarga.message });
       return;
@@ -519,7 +529,7 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
       return;
     }
     try {
-      const resultado = guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
+      const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });
         return;

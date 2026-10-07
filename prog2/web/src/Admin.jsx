@@ -240,8 +240,8 @@ export default function Admin() {
     });
   }
 
-  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje) {
-    setCargando(true);
+  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
+    if (!silencioso) setCargando(true);
     setAviso("");
     return fetch(url, { cache: "no-store" })
       .then(async (res) => {
@@ -305,15 +305,29 @@ export default function Admin() {
     return `Último cambio: ${texto}`;
   }
 
-  function refrescarVistas() {
+  function cargarInventarioBodega(silencioso = false) {
+    if (!silencioso) setCargandoInventarioBodega(true);
+    setAvisoInventarioBodega("");
+    return fetch("/api/inventario-bodega", { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
+        setBodegasInventario(data.bodegas || []);
+      })
+      .catch((err) => setAvisoInventarioBodega(err.message))
+      .finally(() => setCargandoInventarioBodega(false));
+  }
+
+  function refrescarVistas(silencioso = false) {
     fetch("/api/tabla", { cache: "no-store" })
       .then((res) => res.json())
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
-    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.");
-    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.");
-    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
-    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
+    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.", silencioso);
+    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.", silencioso);
+    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.", silencioso);
+    if (mostrarInventarioBodega) cargarInventarioBodega(silencioso);
+    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.", silencioso);
     if (mostrarContratistas || mostrarVentas) {
       cargarNombresContratistas()
         .then((filas) => {
@@ -325,6 +339,29 @@ export default function Admin() {
         });
     }
   }
+
+  const refrescarRef = useRef(() => {});
+  refrescarRef.current = () => refrescarVistas(true);
+
+  useEffect(() => {
+    const fuente = new EventSource("/api/eventos");
+    let pendiente = 0;
+    fuente.onmessage = (evento) => {
+      let data;
+      try {
+        data = JSON.parse(evento.data);
+      } catch {
+        return;
+      }
+      if (data.tipo !== "recarga" && data.tipo !== "fila") return;
+      window.clearTimeout(pendiente);
+      pendiente = window.setTimeout(() => refrescarRef.current(), 200);
+    };
+    return () => {
+      window.clearTimeout(pendiente);
+      fuente.close();
+    };
+  }, []);
 
   const formularioSinGuardar =
     mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
@@ -529,16 +566,7 @@ export default function Admin() {
                     const abrir = !mostrarInventarioBodega;
                     if (abrir) {
                       cerrarPaneles(["inventarioBodega"]);
-                      setCargandoInventarioBodega(true);
-                      setAvisoInventarioBodega("");
-                      fetch("/api/inventario-bodega", { cache: "no-store" })
-                        .then(async (res) => {
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
-                          setBodegasInventario(data.bodegas || []);
-                        })
-                        .catch((err) => setAvisoInventarioBodega(err.message))
-                        .finally(() => setCargandoInventarioBodega(false));
+                      cargarInventarioBodega();
                     }
                     setMostrarInventarioBodega(abrir);
                   }

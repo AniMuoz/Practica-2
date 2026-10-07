@@ -212,11 +212,11 @@ function estado(accion) {
   }
 }
 
-test("validaciones rechazan datos antes de abrir la planilla", () => {
-  assert.equal(estado(() => actualizarMaterial("1", { inventario: "1.5", comentario: "" })), 400);
-  assert.equal(estado(() => actualizarMaterial("1", { inventario: "1", comentario: "x".repeat(51) })), 400);
-  assert.equal(estado(() => agregarMaterial("no", { Codigo: "1" })), 403);
-  assert.equal(estado(() => agregarMaterial("Berfre2026", { Codigo: "  " })), 400);
+test("validaciones rechazan datos antes de abrir la planilla", async () => {
+  await assert.rejects(() => actualizarMaterial("1", { inventario: "1.5", comentario: "" }), (error) => error.status === 400);
+  await assert.rejects(() => actualizarMaterial("1", { inventario: "1", comentario: "x".repeat(51) }), (error) => error.status === 400);
+  await assert.rejects(() => agregarMaterial("no", { Codigo: "1" }), (error) => error.status === 403);
+  await assert.rejects(() => agregarMaterial("Berfre2026", { Codigo: "  " }), (error) => error.status === 400);
   assert.equal(estado(() => guardarContratistas("no", [])), 403);
   assert.equal(estado(() => importarPlanilla("no", Buffer.from("x"))), 403);
   assert.equal(estado(() => importarDosColumnas("Berfre2026", Buffer.from("x"), "Codigo")), 400);

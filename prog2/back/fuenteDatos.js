@@ -2,6 +2,127 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
+const { ejecutar } = require("./supabaseTablas");
+const { supabase } = require("./supabase");
+
+const CAMPOS_MATERIAL = [
+  ["Codigo", "codigo"],
+  ["Descripcion", "descripcion"],
+  ["Ubicación", "ubicacion"],
+  ["Sub-ubicación", "sub_ubicacion"],
+  ["Stock", "stock"],
+  ["Peso", "peso"],
+  ["Precio", "precio"],
+  ["Caracteristica", "caracteristica"],
+  ["Stock critico", "stock_critico"],
+  ["Rombo", "rombo"],
+  ["QR", "qr"],
+  ["Foto", "foto"],
+  ["Inventario", "inventario"],
+  ["Comentario", "comentario"],
+  ["Marcado", "marcado"],
+  ["M502", "m502"],
+  ["M503", "m503"],
+  ["M504", "m504"],
+  ["M505", "m505"],
+];
+
+const CAMPOS_RESERVA = [
+  ["Orden", "orden"],
+  ["Nº reserva", "n_reserva"],
+  ["Nº pos.reserva traslado", "n_pos_reserva_traslado"],
+  ["Clase de registro", "clase_de_registro"],
+  ["Fecha de necesidad", "fecha_de_necesidad"],
+  ["Clase de movimiento", "clase_de_movimiento"],
+  ["Indicador debe/haber", "indicador_debe_haber"],
+  ["Material", "material"],
+  ["Cantidad necesaria", "cantidad_necesaria"],
+  ["Cantid.reducidas", "cantid_reducidas"],
+  ["Cantidad diferencia", "cantidad_diferencia"],
+  ["Un.medida de entrada", "un_medida_de_entrada"],
+  ["Texto breve de material", "texto_breve_de_material"],
+  ["Almacén", "almacen"],
+  ["Centro", "centro"],
+  ["Unidad medida base", "unidad_medida_base"],
+  ["Imputación reserva", "imputacion_reserva"],
+  ["Clase de necesidad", "clase_de_necesidad"],
+  ["Ctd.en UM entrada", "ctd_en_um_entrada"],
+  ["Ctd.piezas en BR", "ctd_piezas_en_br"],
+  ["Ctd.verif.dispon", "ctd_verif_dispon"],
+  ["Movim.permitido", "movim_permitido"],
+  ["Nombre del usuario", "nombre_del_usuario"],
+  ["Operación", "operacion"],
+  ["Posición borrada", "posicion_borrada"],
+  ["Salida final", "salida_final"],
+  ["Texto de clase-mov", "texto_de_clase_mov"],
+];
+
+function claveColumna(nombre) {
+  return String(nombre ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function indiceCampo(encabezados, titulo) {
+  const buscado = claveColumna(titulo);
+  return encabezados.findIndex((nombre) => claveColumna(nombre) === buscado);
+}
+
+function registrosMaterial(matriz) {
+  const encabezados = (matriz[0] || []).map((nombre) => String(nombre));
+  const vistos = new Map();
+  matriz.slice(1).forEach((fila) => {
+    const registro = {};
+    CAMPOS_MATERIAL.forEach(([titulo, campo]) => {
+      const indice = indiceCampo(encabezados, titulo);
+      registro[campo] = indice < 0 ? "" : String(fila[indice] ?? "");
+    });
+    registro.codigo = registro.codigo.trim();
+    if (registro.codigo) vistos.set(registro.codigo, registro);
+  });
+  return [...vistos.values()];
+}
+
+function matrizMaterial(filas) {
+  return [
+    CAMPOS_MATERIAL.map(([titulo]) => titulo),
+    ...filas.map((fila) => CAMPOS_MATERIAL.map(([, campo]) => fila[campo] ?? "")),
+  ];
+}
+
+function registrosReserva(matriz) {
+  const encabezados = (matriz[0] || []).map((nombre) => String(nombre));
+  return matriz.slice(1).map((fila) => {
+    const registro = {};
+    CAMPOS_RESERVA.forEach(([titulo, campo]) => {
+      const indice = indiceCampo(encabezados, titulo);
+      const valor = indice < 0 ? "" : fila[indice] ?? "";
+      registro[campo] = String(valor ?? "");
+    });
+    return registro;
+  });
+}
+
+function matrizReserva(filas) {
+  return [
+    CAMPOS_RESERVA.map(([titulo]) => titulo),
+    ...filas.map((fila) => CAMPOS_RESERVA.map(([, campo]) => fila[campo] ?? "")),
+  ];
+}
+
+function matrizGuardada(nombre) {
+  const planillas = ejecutar("leer", { tabla: "planillas" });
+  const guardada = (planillas || []).find((fila) => fila.nombre === nombre);
+  return Array.isArray(guardada?.matriz) ? guardada.matriz : null;
+}
+
+const ENCABEZADO_MATERIALES = [
+  "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio",
+  "Caracteristica", "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario",
+  "Marcado", "M502", "M503", "M504", "M505",
+];
 
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
 const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
@@ -59,11 +180,6 @@ function leerMatriz(libro) {
   return { nombreHoja, matriz };
 }
 
-/**
- * Origen actual de la tabla. Cuando el Excel se reemplace por una base
- * de datos, solo hay que cambiar esta función: el resto de la API sigue
- * devolviendo { columnas, filas }.
- */
 function sinFilasVacias(matriz) {
   if (matriz.length === 0) return matriz;
   const encabezado = matriz[0];
@@ -71,15 +187,6 @@ function sinFilasVacias(matriz) {
     (fila || []).some((celda) => String(celda ?? "").trim() !== "")
   );
   return [encabezado, ...filas];
-}
-
-function archivoMateriales() {
-  return path.join(__dirname, "bd_test.xlsx");
-}
-
-function firmaArchivo(archivo) {
-  const estado = fs.statSync(archivo);
-  return `${estado.mtimeMs}:${estado.size}`;
 }
 
 function mapaPorCodigo(matriz, indiceCodigo) {
@@ -145,7 +252,7 @@ function recordarMateriales(matriz, nombreHoja) {
     if (!porFilaBodega.has(codigo)) porFilaBodega.set(codigo, fila);
   });
   cacheMateriales = {
-    firma: firmaArchivo(archivoMateriales()),
+    firma: "supabase",
     nombreHoja,
     matriz: limpia,
     porCodigo: mapaPorCodigo(limpia, indiceCodigo),
@@ -158,33 +265,19 @@ function recordarMateriales(matriz, nombreHoja) {
 }
 
 function cargarMateriales() {
-  const archivo = archivoMateriales();
-  const firma = firmaArchivo(archivo);
-  if (cacheMateriales && cacheMateriales.firma === firma) return cacheMateriales;
-
-  const libro = XLSX.readFile(archivo);
-  const { nombreHoja, matriz } = leerMatriz(libro);
-  const encabezadoGuardado = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "" })[0] || [];
-  const encabezadosGuardados = encabezadoGuardado.map((nombre) => String(nombre));
-  const faltaFoto = !encabezadosGuardados.includes("Foto");
-  const faltaMarcado = !encabezadosGuardados.includes(COLUMNA_MARCADO);
-  if (faltaFoto) {
-    const columnasArchivo = (matriz[0] || []).map((nombre) => String(nombre));
-    if (!columnasArchivo.includes("Foto")) {
-      columnasArchivo.push("Foto");
-      matriz[0] = columnasArchivo;
+  if (cacheMateriales) return cacheMateriales;
+  let filas = ejecutar("leer", { tabla: "materiales" }) || [];
+  if (filas.length === 0) {
+    const previa = matrizGuardada("materiales");
+    const registros = previa ? registrosMaterial(previa) : [];
+    if (registros.length > 0) {
+      ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registros });
+      filas = registros;
     }
   }
-  if (!encabezadosGuardados.includes(COLUMNA_STOCK_CRITICO) || faltaFoto || faltaMarcado) {
-    libro.Sheets[nombreHoja] = XLSX.utils.aoa_to_sheet(sinFilasVacias(matriz));
-    try {
-      XLSX.writeFile(libro, archivo);
-      if (faltaMarcado && fs.existsSync(ARCHIVO_MARCADOS)) fs.unlinkSync(ARCHIVO_MARCADOS);
-    } catch {
-      // Si el Excel está abierto, la columna igual se usa en memoria.
-    }
-  }
-  return recordarMateriales(matriz, nombreHoja);
+  const matriz = filas.length > 0 ? matrizMaterial(filas) : [ENCABEZADO_MATERIALES.slice()];
+  const { matriz: completa } = conMarcado(conStockCritico(matriz));
+  return recordarMateriales(completa, "Hoja1");
 }
 
 function editarMateriales() {
@@ -195,20 +288,41 @@ function editarMateriales() {
   };
 }
 
+function falloSupabase(error) {
+  const fallo = new Error(error.message || "Supabase no respondió.");
+  fallo.status = 502;
+  throw fallo;
+}
+
+async function persistirRegistro(registro) {
+  const { error } = await supabase.from("materiales").upsert(registro);
+  if (error) falloSupabase(error);
+}
+
+async function quitarRegistro(codigo) {
+  const { error } = await supabase.from("materiales").delete().eq("codigo", String(codigo));
+  if (error) falloSupabase(error);
+}
+
 function guardarMateriales(matriz) {
   const nombreHoja = cacheMateriales?.nombreHoja || "Hoja1";
   const limpia = sinFilasVacias(matriz);
-  const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(limpia), nombreHoja);
-  XLSX.writeFile(libro, archivoMateriales());
+  ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registrosMaterial(limpia) });
   return recordarMateriales(limpia, nombreHoja);
+}
+
+async function guardarFila(matriz, indiceFila) {
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const registro = registrosMaterial([columnas, matriz[indiceFila]])[0];
+  if (registro) await persistirRegistro(registro);
+  return recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
 }
 
 function leerTabla() {
   return cargarMateriales().tabla;
 }
 
-function marcarMaterial(codigo, marcado) {
+async function marcarMaterial(codigo, marcado) {
   const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
@@ -221,7 +335,7 @@ function marcarMaterial(codigo, marcado) {
   const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
   matriz[indiceFila][indiceMarcado] = marcado ? "1" : "";
-  guardarMateriales(matriz);
+  await guardarFila(matriz, indiceFila);
   return buscarMaterial(codigo);
 }
 
@@ -272,7 +386,7 @@ function buscarMateriales(texto) {
   return coincidencias.map(({ codigo, descripcion }) => ({ codigo, descripcion }));
 }
 
-function actualizarMaterial(codigo, { inventario, comentario }) {
+async function actualizarMaterial(codigo, { inventario, comentario }) {
   const textoInventario = String(inventario ?? "").trim();
   const textoComentario = String(comentario ?? "");
   if (textoComentario.length > 50) {
@@ -305,12 +419,12 @@ function actualizarMaterial(codigo, { inventario, comentario }) {
     matriz[indiceFila][indiceInventario] = Number(textoInventario);
   }
   matriz[indiceFila][indiceComentario] = textoComentario;
-  guardarMateriales(matriz);
+  await guardarFila(matriz, indiceFila);
 
   return buscarMaterial(codigo);
 }
 
-function limpiarInventarioComentarios(clave) {
+async function limpiarInventarioComentarios(clave) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -335,14 +449,16 @@ function limpiarInventarioComentarios(clave) {
     matriz[indice] = fila;
   }
 
-  guardarMateriales(matriz);
+  const { error } = await supabase.from("materiales").update({ inventario: "", comentario: "" }).neq("codigo", "");
+  if (error) falloSupabase(error);
+  recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
   return leerTabla();
 }
 
 const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
 const CLAVE_DATOS = "Berfre2026";
 
-function actualizarDatos(codigo, clave, datos, reemplazar) {
+async function actualizarDatos(codigo, clave, datos, reemplazar) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -394,11 +510,13 @@ function actualizarDatos(codigo, clave, datos, reemplazar) {
     }
   }
 
-  guardarMateriales(matriz);
+  if (codigoNuevo !== String(codigo)) await quitarRegistro(codigo);
+  const indiceGuardado = matriz.findIndex((fila, indice) => indice > 0 && String(fila[indiceCodigo]) === codigoNuevo);
+  await guardarFila(matriz, indiceGuardado);
   return buscarMaterial(codigoNuevo);
 }
 
-function guardarImagen(codigo, campo, nombreArchivo, clave) {
+async function guardarImagen(codigo, campo, nombreArchivo, clave) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -438,11 +556,11 @@ function guardarImagen(codigo, campo, nombreArchivo, clave) {
   }
 
   matriz[indiceFila][indiceCampo] = nombreArchivo || "";
-  guardarMateriales(matriz);
+  await guardarFila(matriz, indiceFila);
   return buscarMaterial(codigo);
 }
 
-function eliminarMaterial(codigo, clave) {
+async function eliminarMaterial(codigo, clave) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -472,11 +590,12 @@ function eliminarMaterial(codigo, clave) {
   }
 
   matriz.splice(indiceFila, 1);
-  guardarMateriales(matriz);
+  await quitarRegistro(codigo);
+  recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
   return { codigo: String(codigo) };
 }
 
-function agregarMaterial(clave, datos) {
+async function agregarMaterial(clave, datos) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
@@ -527,7 +646,8 @@ function agregarMaterial(clave, datos) {
   });
   if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
   else matriz.push(filaNueva);
-  guardarMateriales(matriz);
+  const indiceGuardado = indiceExistente >= 0 ? indiceExistente : matriz.length - 1;
+  await guardarFila(matriz, indiceGuardado);
   return buscarMaterial(codigoNuevo);
 }
 
@@ -1939,19 +2059,24 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   return { buffer, nombre: `VENTAS ${hoy.getFullYear()}.xlsx` };
 }
 
-function archivoContratistas() {
-  return path.join(__dirname, "bd_comp.xlsx");
-}
-
 let cacheContratistas = null;
 
 function leerContratistas() {
-  const archivo = archivoContratistas();
-  const firma = firmaArchivo(archivo);
-  if (cacheContratistas && cacheContratistas.firma === firma) return cacheContratistas.datos;
-  const libro = XLSX.readFile(archivo);
-  const hoja = libro.Sheets[libro.SheetNames[0]];
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  if (cacheContratistas) return cacheContratistas.datos;
+  let filasDb = ejecutar("leer", { tabla: "contratistas" }) || [];
+  if (filasDb.length === 0) {
+    const previa = matrizGuardada("contratistas");
+    if (previa && previa.length > 1) {
+      filasDb = previa.slice(1).map((fila) => ({
+        id: Number(fila[0]),
+        nombre: String(fila[1] ?? ""),
+      })).filter((fila) => Number.isInteger(fila.id) && fila.nombre);
+      if (filasDb.length > 0) {
+        ejecutar("reemplazar", { tabla: "contratistas", columna: "id", filas: filasDb });
+      }
+    }
+  }
+  const matriz = [["id", "Nombre"], ...filasDb.map((fila) => [fila.id, fila.nombre])];
   const columnas = (matriz[0] || ["id", "Nombre"]).map((nombre) => String(nombre));
   const filas = matriz.slice(1)
     .filter((fila) => (fila || []).some((celda) => String(celda ?? "").trim() !== ""))
@@ -1960,7 +2085,7 @@ function leerContratistas() {
       nombre: fila[1] ?? "",
     }));
   const datos = { columnas, filas };
-  cacheContratistas = { firma, datos };
+  cacheContratistas = { datos };
   return datos;
 }
 
@@ -2001,15 +2126,13 @@ function guardarContratistas(clave, filas) {
     matriz.push([Number(id), nombre]);
   });
 
-  const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Hoja1");
-  XLSX.writeFile(libro, archivoContratistas());
+  ejecutar("reemplazar", {
+    tabla: "contratistas",
+    columna: "id",
+    filas: matriz.slice(1).map((fila) => ({ id: Number(fila[0]), nombre: String(fila[1] ?? "") })),
+  });
   cacheContratistas = null;
   return leerContratistas();
-}
-
-function archivoReservas() {
-  return path.join(__dirname, "bd_reservas.xlsx");
 }
 
 function textoFecha(valor) {
@@ -2046,21 +2169,25 @@ function normalizarFechas(columnas, filas) {
 let cacheReservas = null;
 
 function leerReservas() {
-  const archivo = archivoReservas();
-  if (!fs.existsSync(archivo)) return { columnas: [], filas: [] };
-  const firma = firmaArchivo(archivo);
-  if (cacheReservas && cacheReservas.firma === firma) return cacheReservas.datos;
-  const libro = XLSX.readFile(archivo, { cellDates: true });
-  const hoja = libro.Sheets[libro.SheetNames[0]];
-  if (!hoja) return { columnas: [], filas: [] };
-  const matriz = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" });
+  if (cacheReservas) return cacheReservas.datos;
+  let filasDb = ejecutar("leer", { tabla: "reservas" }) || [];
+  if (filasDb.length === 0) {
+    const previa = matrizGuardada("reservas");
+    const registros = previa ? registrosReserva(previa) : [];
+    if (registros.length > 0) {
+      ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registros });
+      filasDb = registros;
+    }
+  }
+  const matriz = matrizReserva(filasDb);
+  if (matriz.length === 0) return { columnas: [], filas: [] };
   const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
   const filas = normalizarFechas(
     columnas,
     matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
   );
   const datos = { columnas, filas };
-  cacheReservas = { firma, datos };
+  cacheReservas = { datos };
   return datos;
 }
 
@@ -2084,17 +2211,17 @@ function importarReservas(clave, buffer) {
     error.status = 400;
     throw error;
   }
+  const columnas = CAMPOS_RESERVA.map(([titulo]) => titulo);
   const nuevas = normalizarFechas(
-    encabezados,
-    matrizEntrada.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
+    columnas,
+    matrizEntrada.slice(1)
+      .filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
+      .map((fila) => columnas.map((titulo) => {
+        const indice = indiceCampo(encabezados, titulo);
+        return indice < 0 ? "" : fila[indice] ?? "";
+      }))
   );
   const actual = leerReservas();
-  const columnas = actual.columnas.length === 0 ? encabezados : actual.columnas;
-  if (actual.columnas.length > 0 && encabezados.join("|") !== actual.columnas.join("|")) {
-    const error = new Error("Los encabezados no coinciden con bd_reservas.");
-    error.status = 400;
-    throw error;
-  }
   const indiceOrden = columnas.findIndex((columna) => /^orden$/i.test(String(columna).trim()));
   const indiceReserva = columnas.findIndex((columna) => /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim()));
   const indicePosicion = columnas.findIndex((columna) => /pos\.?reserva/i.test(String(columna).trim()));
@@ -2132,14 +2259,10 @@ function importarReservas(clave, buffer) {
     actualizados += 1;
   });
   const matriz = [columnas, ...guardadas];
-  const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(matriz), "Reservas");
-  XLSX.writeFile(libro, archivoReservas());
+  ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registrosReserva(matriz) });
   cacheReservas = null;
   return { agregados, actualizados, omitidos };
 }
-
-const ARCHIVO_CARGAS = path.join(__dirname, "ultimas_cargas.json");
 
 function claveCarga(modo, columna) {
   if (modo === "dos-columnas") {
@@ -2149,20 +2272,26 @@ function claveCarga(modo, columna) {
   return String(modo || "completa");
 }
 
+let cacheCargas = null;
+
 function leerUltimasCargas() {
-  try {
-    const datos = JSON.parse(fs.readFileSync(ARCHIVO_CARGAS, "utf8"));
-    return datos && typeof datos === "object" ? datos : {};
-  } catch {
-    return {};
-  }
+  if (cacheCargas) return cacheCargas;
+  const filas = ejecutar("leer", { tabla: "ultimas_cargas" }) || [];
+  const datos = {};
+  filas.forEach((fila) => {
+    datos[fila.clave] = fila.fecha;
+  });
+  cacheCargas = datos;
+  return datos;
 }
 
-function registrarCarga(modo, columna) {
-  const cargas = leerUltimasCargas();
+async function registrarCarga(modo, columna) {
+  const cargas = { ...leerUltimasCargas() };
   const clave = claveCarga(modo, columna);
   cargas[clave] = new Date().toISOString();
-  fs.writeFileSync(ARCHIVO_CARGAS, JSON.stringify(cargas, null, 2));
+  const { error } = await supabase.from("ultimas_cargas").upsert({ clave, fecha: cargas[clave] });
+  if (error) falloSupabase(error);
+  cacheCargas = cargas;
   return { clave, fecha: cargas[clave], cargas };
 }
 
@@ -2309,12 +2438,12 @@ function precargarDatos() {
 }
 
 async function exportarRevisionPorReserva(reserva, colores = true) {
-  const revision = revisionReservas(reserva);
   if (!String(reserva ?? "").trim()) {
     const error = new Error("Escribí un número de reserva.");
     error.status = 400;
     throw error;
   }
+  const revision = revisionReservas(reserva);
   if (revision.total === 0) {
     const error = new Error("Todavía no hay reservas cargadas.");
     error.status = 400;
