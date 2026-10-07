@@ -6,6 +6,101 @@ import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
+function Planilla({ className, children }) {
+  const ref = useRef(null);
+  const rango = useRef(null);
+  const arrastrando = useRef(false);
+
+  useEffect(() => {
+    const tabla = ref.current;
+    if (!tabla) return;
+
+    const pintar = () => {
+      tabla.querySelectorAll(".col-sel").forEach((celda) => celda.classList.remove("col-sel"));
+      const actual = rango.current;
+      if (!actual) return;
+      const desde = Math.min(actual.desde, actual.hasta);
+      const hasta = Math.max(actual.desde, actual.hasta);
+      for (let fila = desde; fila <= hasta; fila += 1) {
+        tabla.rows[fila]?.cells[actual.col]?.classList.add("col-sel");
+      }
+    };
+
+    const celdaEn = (x, y) => {
+      const nodo = document.elementFromPoint(x, y);
+      const celda = nodo?.closest?.("td, th");
+      if (!celda || !tabla.contains(celda)) return null;
+      return celda;
+    };
+
+    const alBajar = (evento) => {
+      if (evento.button !== 0) return;
+      const celda = evento.target.closest("td, th");
+      if (!celda || !tabla.contains(celda)) return;
+      evento.preventDefault();
+      arrastrando.current = true;
+      rango.current = { col: celda.cellIndex, desde: celda.parentElement.rowIndex, hasta: celda.parentElement.rowIndex };
+      pintar();
+    };
+
+    const alMover = (evento) => {
+      if (!arrastrando.current || !rango.current) return;
+      const celda = celdaEn(evento.clientX, evento.clientY);
+      if (!celda) return;
+      rango.current = { ...rango.current, hasta: celda.parentElement.rowIndex };
+      pintar();
+    };
+
+    const alSoltar = () => {
+      arrastrando.current = false;
+    };
+
+    const alCopiar = (evento) => {
+      const actual = rango.current;
+      if (!actual) return;
+      const desde = Math.min(actual.desde, actual.hasta);
+      const hasta = Math.max(actual.desde, actual.hasta);
+      const lineas = [];
+      for (let fila = desde; fila <= hasta; fila += 1) {
+        lineas.push(tabla.rows[fila]?.cells[actual.col]?.textContent ?? "");
+      }
+      evento.preventDefault();
+      evento.clipboardData.setData("text/plain", lineas.join("\n"));
+    };
+
+    const afuera = (evento) => {
+      if (arrastrando.current) return;
+      if (tabla.contains(evento.target)) return;
+      if (!rango.current) return;
+      rango.current = null;
+      pintar();
+    };
+
+    tabla.addEventListener("mousedown", alBajar);
+    window.addEventListener("mousemove", alMover);
+    window.addEventListener("mouseup", alSoltar);
+    document.addEventListener("copy", alCopiar);
+    document.addEventListener("mousedown", afuera);
+    return () => {
+      tabla.removeEventListener("mousedown", alBajar);
+      window.removeEventListener("mousemove", alMover);
+      window.removeEventListener("mouseup", alSoltar);
+      document.removeEventListener("copy", alCopiar);
+      document.removeEventListener("mousedown", afuera);
+    };
+  }, []);
+
+  return (
+    <table
+      ref={ref}
+      className={["planilla-columna", className].filter(Boolean).join(" ")}
+      style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}
+    >
+      {children}
+    </table>
+  );
+}
+
 function Interruptor({ activo, onClick, texto }) {
   return (
     <button
@@ -687,7 +782,7 @@ export default function Admin() {
           {avisoBodega && <p style={{ margin: 0 }}>{avisoBodega}</p>}
           {!cargandoBodega && !avisoBodega && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {bodega.columnas.map((columna) => (
@@ -731,7 +826,7 @@ export default function Admin() {
                     );
                   })}
                 </tbody>
-              </table>
+              </Planilla>
               {bodega.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock de M501 cargado.</p>}
             </div>
           )}
@@ -766,7 +861,7 @@ export default function Admin() {
           {avisoRegional && <p style={{ margin: 0 }}>{avisoRegional}</p>}
           {!cargandoRegional && !avisoRegional && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {regional.columnas.map((columna) => (
@@ -816,7 +911,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
               {regional.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock regional cargado.</p>}
             </div>
           )}
@@ -855,7 +950,7 @@ export default function Admin() {
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
           {!cargandoInventario && !avisoInventario && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {inventario.columnas.map((columna) => (
@@ -895,7 +990,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
               {inventario.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay materiales para inventariar.</p>}
             </div>
           )}
@@ -973,7 +1068,7 @@ export default function Admin() {
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {detallado.columnas.map((columna) => (
@@ -1028,7 +1123,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
               {detallado.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>No hay stock detallado cargado.</p>}
             </div>
           )}
@@ -1136,7 +1231,7 @@ export default function Admin() {
           </form>
           {busquedaReserva.columnas.length > 0 && (
             <div style={{ overflow: "auto", maxHeight: 320, marginBottom: 16 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {busquedaReserva.columnas.map((columna) => (
@@ -1185,7 +1280,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
             </div>
           )}
           <form
@@ -1274,7 +1369,7 @@ export default function Admin() {
           </form>
           {reserva.columnas.length > 0 && (
             <div style={{ overflow: "auto", maxHeight: 480 }}>
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {reserva.columnas.map((columna) => (
@@ -1316,7 +1411,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
               {reserva.filas.length === 0 && <p style={{ margin: "12px 0 0" }}>El PDF no tiene líneas de reserva.</p>}
             </div>
           )}
@@ -1562,7 +1657,7 @@ export default function Admin() {
                   .finally(() => setGuardandoContratistas(false));
               }}
             >
-              <table className={clasePlanilla} style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <Planilla className={clasePlanilla}>
                 <thead>
                   <tr>
                     {["id", "Nombre", ""].map((columna) => (
@@ -1612,7 +1707,7 @@ export default function Admin() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Planilla>
               <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
                 <button
                   type="button"
