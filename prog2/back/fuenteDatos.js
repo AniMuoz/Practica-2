@@ -4,6 +4,7 @@ const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
 const { ejecutar } = require("./supabaseTablas");
 const { supabase } = require("./supabase");
+const { quitarImagen } = require("./imagenesSupabase");
 
 const CAMPOS_MATERIAL = [
   ["Codigo", "codigo"],
@@ -553,6 +554,7 @@ async function guardarImagen(codigo, campo, nombreArchivo, clave) {
   if (!nombreArchivo && /\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
     const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
     if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+    await quitarImagen(path.basename(anterior));
   }
 
   matriz[indiceFila][indiceCampo] = nombreArchivo || "";
@@ -586,6 +588,7 @@ async function eliminarMaterial(codigo, clave) {
     if (/\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
       const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
       if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+      await quitarImagen(path.basename(anterior));
     }
   }
 

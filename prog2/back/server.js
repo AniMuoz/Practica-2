@@ -5,6 +5,7 @@ const cors = require("cors");
 const multer = require("multer");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
+const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imagenesSupabase");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -77,7 +78,30 @@ app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api/imagenes", express.static(carpetaImagenes));
+app.get("/api/imagenes/:nombre", async (req, res) => {
+  const nombre = path.basename(req.params.nombre);
+  if (!nombre || nombre === "." || nombre === "..") {
+    res.status(404).end();
+    return;
+  }
+  try {
+    const remoto = await bajarImagen(nombre);
+    if (remoto) {
+      res.type(path.extname(nombre));
+      res.send(remoto);
+      return;
+    }
+  } catch (error) {
+    res.status(error.status || 502).json({ error: error.message });
+    return;
+  }
+  const local = path.join(carpetaImagenes, nombre);
+  if (fs.existsSync(local)) {
+    res.sendFile(local);
+    return;
+  }
+  res.status(404).end();
+});
 
 app.get("/api/eventos", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -529,6 +553,7 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
       return;
     }
     try {
+      await subirImagen(req.file.filename, fs.readFileSync(req.file.path), req.file.mimetype);
       const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });
@@ -543,10 +568,25 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
 });
 
 if (require.main === module) {
-  precargarDatos();
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`API en http://localhost:${PORT}`);
-  });
+  asegurarCubo()
+    .then(async () => {
+      const archivos = fs.existsSync(carpetaImagenes) ? fs.readdirSync(carpetaImagenes) : [];
+      for (const nombre of archivos) {
+        const ruta = path.join(carpetaImagenes, nombre);
+        if (!fs.statSync(ruta).isFile()) continue;
+        if (!/\.(png|jpe?g|webp|gif)$/i.test(nombre)) continue;
+        await subirImagen(nombre, fs.readFileSync(ruta), undefined);
+      }
+    })
+    .catch((error) => {
+      console.error(error.message);
+    })
+    .finally(() => {
+      precargarDatos();
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`API en http://localhost:${PORT}`);
+      });
+    });
 }
 
 module.exports = { app, conColores };

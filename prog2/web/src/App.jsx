@@ -24,7 +24,7 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const [orden, setOrden] = useState("");
+  const [orden, setOrden] = useState("codigo-asc");
   const [bodega, setBodega] = useState("");
   const [subUbicacion, setSubUbicacion] = useState("");
   const [stockMinimo, setStockMinimo] = useState("");
@@ -433,7 +433,7 @@ export default function App() {
                 type="button"
                 className="filtros-limpiar"
                 onClick={() => {
-                  setOrden("");
+                  setOrden("codigo-asc");
                   setBodega("");
                   setSubUbicacion("");
                   setStockMinimo("");
