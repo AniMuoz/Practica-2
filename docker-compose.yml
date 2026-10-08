@@ -1,13 +1,4 @@
 services:
-  python:
-    build: ./programa_1
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./programa_1/private:/app/private
-    networks:
-      - practica
-
   back:
     build: ./prog2/back
     ports:

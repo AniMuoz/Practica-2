@@ -3,7 +3,9 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
+const { supabase } = require("./supabase");
+const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imagenesSupabase");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -76,7 +78,30 @@ app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api/imagenes", express.static(carpetaImagenes));
+app.get("/api/imagenes/:nombre", async (req, res) => {
+  const nombre = path.basename(req.params.nombre);
+  if (!nombre || nombre === "." || nombre === "..") {
+    res.status(404).end();
+    return;
+  }
+  try {
+    const remoto = await bajarImagen(nombre);
+    if (remoto) {
+      res.type(path.extname(nombre));
+      res.send(remoto);
+      return;
+    }
+  } catch (error) {
+    res.status(error.status || 502).json({ error: error.message });
+    return;
+  }
+  const local = path.join(carpetaImagenes, nombre);
+  if (fs.existsSync(local)) {
+    res.sendFile(local);
+    return;
+  }
+  res.status(404).end();
+});
 
 app.get("/api/eventos", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -99,6 +124,19 @@ app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
 });
 
+function respuestaConexion(error) {
+  if (error && error.code !== "PGRST205" && error.code !== "42P01") {
+    return { status: 502, cuerpo: { conectado: false, error: error.message } };
+  }
+  return { status: 200, cuerpo: { conectado: true } };
+}
+
+app.get("/api/supabase", async (_req, res) => {
+  const { error } = await supabase.from("planillas").select("nombre").limit(1);
+  const respuesta = respuestaConexion(error);
+  res.status(respuesta.status).json(respuesta.cuerpo);
+});
+
 app.get("/api/tabla/excel", async (req, res) => {
   try {
     const buffer = await exportarTabla(conColores(req.query.colores), {
@@ -112,6 +150,7 @@ app.get("/api/tabla/excel", async (req, res) => {
       soloInventarioOComentario: req.query.inventario === "1",
       soloMarcados: req.query.marcado === "1",
       ignorarNulo: req.query.ignorarNulo === "1",
+      texto: req.query.q,
     });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
@@ -341,7 +380,7 @@ app.get("/api/tabla/ultimas-cargas", (_req, res) => {
   try {
     res.json({ cargas: leerUltimasCargas() });
   } catch (error) {
-    res.status(500).json({ error: "No se pudieron leer las últimas cargas." });
+    res.status(error.status || 500).json({ error: error.message || "No se pudieron leer las últimas cargas." });
   }
 });
 
@@ -349,12 +388,12 @@ app.get("/api/tabla", (_req, res) => {
   try {
     res.json(leerTabla());
   } catch (error) {
-    res.status(500).json({ error: "No se pudo leer la tabla." });
+    res.status(error.status || 500).json({ error: error.message || "No se pudo leer la tabla." });
   }
 });
 
-app.post("/api/tabla/excel", (req, res) => {
-  uploadPlanilla.single("archivo")(req, res, (errorCarga) => {
+app.post("/api/tabla/excel", async (req, res) => {
+  uploadPlanilla.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       res.status(400).json({ error: errorCarga.message });
       return;
@@ -376,7 +415,7 @@ app.post("/api/tabla/excel", (req, res) => {
         res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
         return;
       }
-      registrarCarga(modo, req.body.columna);
+      await registrarCarga(modo, req.body.columna);
       emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {
@@ -385,9 +424,9 @@ app.post("/api/tabla/excel", (req, res) => {
   });
 });
 
-app.delete("/api/material/:codigo", (req, res) => {
+app.delete("/api/material/:codigo", async (req, res) => {
   try {
-    const resultado = eliminarMaterial(req.params.codigo, req.body.clave);
+    const resultado = await eliminarMaterial(req.params.codigo, req.body.clave);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -399,9 +438,9 @@ app.delete("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.post("/api/material", (req, res) => {
+app.post("/api/material", async (req, res) => {
   try {
-    const resultado = agregarMaterial(req.body.clave, req.body.datos);
+    const resultado = await agregarMaterial(req.body.clave, req.body.datos);
     if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.status(201).json(resultado);
   } catch (error) {
@@ -430,9 +469,17 @@ app.get("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.post("/api/tabla/limpiar-inventario", (req, res) => {
+app.post("/api/acceso", (req, res) => {
+  if (!claveCorrecta(req.body && req.body.clave)) {
+    res.status(403).json({ error: "Contraseña incorrecta." });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+app.post("/api/tabla/limpiar-inventario", async (req, res) => {
   try {
-    const tabla = limpiarInventarioComentarios(req.body.clave);
+    const tabla = await limpiarInventarioComentarios(req.body.clave);
     emitir({ tipo: "recarga" });
     res.json(tabla);
   } catch (error) {
@@ -440,9 +487,9 @@ app.post("/api/tabla/limpiar-inventario", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo/marcado", (req, res) => {
+app.put("/api/material/:codigo/marcado", async (req, res) => {
   try {
-    const resultado = marcarMaterial(req.params.codigo, req.body.marcado === true);
+    const resultado = await marcarMaterial(req.params.codigo, req.body.marcado === true);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -454,9 +501,9 @@ app.put("/api/material/:codigo/marcado", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo", (req, res) => {
+app.put("/api/material/:codigo", async (req, res) => {
   try {
-    const resultado = actualizarMaterial(req.params.codigo, {
+    const resultado = await actualizarMaterial(req.params.codigo, {
       inventario: req.body.inventario,
       comentario: req.body.comentario,
     });
@@ -471,9 +518,9 @@ app.put("/api/material/:codigo", (req, res) => {
   }
 });
 
-app.put("/api/material/:codigo/datos", (req, res) => {
+app.put("/api/material/:codigo/datos", async (req, res) => {
   try {
-    const resultado = actualizarDatos(
+    const resultado = await actualizarDatos(
       req.params.codigo,
       req.body.clave,
       req.body.datos,
@@ -494,9 +541,9 @@ app.put("/api/material/:codigo/datos", (req, res) => {
   }
 });
 
-app.delete("/api/material/:codigo/imagen", (req, res) => {
+app.delete("/api/material/:codigo/imagen", async (req, res) => {
   try {
-    const resultado = guardarImagen(req.params.codigo, req.body.campo, "", req.body.clave);
+    const resultado = await guardarImagen(req.params.codigo, req.body.campo, "", req.body.clave);
     if (!resultado) {
       res.status(404).json({ error: "Material no encontrado." });
       return;
@@ -509,7 +556,7 @@ app.delete("/api/material/:codigo/imagen", (req, res) => {
 });
 
 app.post("/api/material/:codigo/imagen", (req, res) => {
-  upload.single("archivo")(req, res, (errorCarga) => {
+  upload.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       res.status(400).json({ error: errorCarga.message });
       return;
@@ -519,7 +566,8 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
       return;
     }
     try {
-      const resultado = guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
+      await subirImagen(req.file.filename, fs.readFileSync(req.file.path), req.file.mimetype);
+      const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });
         return;
@@ -533,10 +581,25 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
 });
 
 if (require.main === module) {
-  precargarDatos();
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`API en http://localhost:${PORT}`);
-  });
+  asegurarCubo()
+    .then(async () => {
+      const archivos = fs.existsSync(carpetaImagenes) ? fs.readdirSync(carpetaImagenes) : [];
+      for (const nombre of archivos) {
+        const ruta = path.join(carpetaImagenes, nombre);
+        if (!fs.statSync(ruta).isFile()) continue;
+        if (!/\.(png|jpe?g|webp|gif)$/i.test(nombre)) continue;
+        await subirImagen(nombre, fs.readFileSync(ruta), undefined);
+      }
+    })
+    .catch((error) => {
+      console.error(error.message);
+    })
+    .finally(() => {
+      precargarDatos();
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`API en http://localhost:${PORT}`);
+      });
+    });
 }
 
-module.exports = { app, conColores };
+module.exports = { app, conColores, respuestaConexion };
