@@ -1540,6 +1540,14 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.ignorarNulo) {
     lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
   }
+  const consulta = textoBusqueda(filtros.texto);
+  if (consulta.length >= 2) {
+    lista = lista.filter((fila) => {
+      const codigo = textoBusqueda(fila.Codigo);
+      const descripcion = textoBusqueda(fila.Descripcion);
+      return codigo.includes(consulta) || descripcion.includes(consulta);
+    });
+  }
   const orden = String(filtros.orden ?? "");
   if (orden === "codigo" || orden === "codigo-asc") {
     const sentido = orden === "codigo" ? -1 : 1;

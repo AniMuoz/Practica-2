@@ -77,6 +77,7 @@ export function filtrarFilas(filas, filtros) {
     soloInventarioOComentario = false,
     soloMarcados = false,
     ignorarNulo = false,
+    texto = "",
   } = filtros;
   let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
   if (ignorarNulo) {
@@ -120,6 +121,14 @@ export function filtrarFilas(filas, filtros) {
   if (soloMarcados) {
     lista = lista.filter((fila) => String(fila.Marcado) === "1");
   }
+  const consulta = normalizarBusqueda(texto);
+  if (consulta.length >= 2) {
+    lista = lista.filter((fila) => {
+      const codigo = normalizarBusqueda(fila.Codigo);
+      const descripcion = normalizarBusqueda(fila.Descripcion);
+      return codigo.includes(consulta) || descripcion.includes(consulta);
+    });
+  }
   if (orden === "codigo" || orden === "codigo-asc") {
     const sentido = orden === "codigo" ? -1 : 1;
     lista = [...lista].sort((a, b) => {
@@ -152,6 +161,7 @@ export function consultaExcel(filtros) {
   if (filtros.soloInventarioOComentario) params.set("inventario", "1");
   if (filtros.soloMarcados) params.set("marcado", "1");
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
+  if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
   const consulta = params.toString();
   return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
 }
@@ -167,6 +177,14 @@ export function aplicarFilaRecibida(actuales, data) {
     return copia.filter((fila, posicion) => posicion === indice || String(fila.Codigo) !== codigoNuevo);
   }
   return copia;
+}
+
+export function normalizarBusqueda(valor) {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 export function rangoPagina(pagina, tamano, total) {

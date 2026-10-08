@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import logo from "../logo/logo.ico";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
@@ -7,6 +7,7 @@ import { iniciarRecorrido } from "./Recorrido.jsx";
 export default function Navbar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [parametros, setParametros] = useSearchParams();
   const [codigo, setCodigo] = useState("");
   const [resultados, setResultados] = useState([]);
   const [abierto, setAbierto] = useState(false);
@@ -49,6 +50,18 @@ export default function Navbar() {
     document.addEventListener("mousedown", cerrar);
     return () => document.removeEventListener("mousedown", cerrar);
   }, []);
+
+  function limpiarBusqueda() {
+    setCodigo("");
+    setResultados([]);
+    setAviso("");
+    setAbierto(false);
+    if (parametros.get("q")) {
+      const siguientes = new URLSearchParams(parametros);
+      siguientes.delete("q");
+      setParametros(siguientes);
+    }
+  }
 
   function abrirMaterial(valor) {
     const buscado = String(valor ?? "").trim();
@@ -209,38 +222,59 @@ export default function Navbar() {
             abrirMaterial(buscado);
             return;
           }
-          const exacto = resultados.find((item) => item.codigo.toLowerCase() === buscado.toLowerCase());
-          if (exacto) {
-            abrirMaterial(exacto.codigo);
-            return;
-          }
-          if (resultados.length === 1) {
-            abrirMaterial(resultados[0].codigo);
-            return;
-          }
-          setAbierto(true);
+          setAbierto(false);
+          navigate(`/?q=${encodeURIComponent(buscado)}`);
         }}
         data-tour="buscar"
         className="barra-buscar"
         ref={caja}
         style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0, position: "relative" }}
       >
-        <input
-          value={codigo}
-          onChange={(event) => setCodigo(event.target.value)}
-          onFocus={() => {
-            if (codigo.trim().length >= 2) setAbierto(true);
-          }}
-          placeholder="Código o nombre"
-          aria-label="Código o nombre de material"
-          autoComplete="off"
-          style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            fontSize: 14,
-            minWidth: 220,
-          }}
-        />
+        <span style={{ position: "relative", display: "inline-flex", minWidth: 220 }}>
+          <input
+            value={codigo}
+            onChange={(event) => setCodigo(event.target.value)}
+            onFocus={() => {
+              if (codigo.trim().length >= 2) setAbierto(true);
+            }}
+            placeholder="Código o nombre"
+            aria-label="Código o nombre de material"
+            autoComplete="off"
+            style={{
+              width: "100%",
+              padding: codigo ? "8px 32px 8px 12px" : "8px 12px",
+              borderRadius: 6,
+              fontSize: 14,
+              minWidth: 220,
+              boxSizing: "border-box",
+            }}
+          />
+          {codigo && (
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda"
+              onClick={limpiarBusqueda}
+              style={{
+                position: "absolute",
+                top: "50%",
+                right: 6,
+                transform: "translateY(-50%)",
+                width: 22,
+                height: 22,
+                padding: 0,
+                border: 0,
+                borderRadius: "50%",
+                background: "transparent",
+                color: "var(--texto)",
+                fontSize: 16,
+                lineHeight: 1,
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+          )}
+        </span>
         {abierto && (resultados.length > 0 || aviso) && (
           <ul
             style={{
