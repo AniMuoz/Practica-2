@@ -382,8 +382,11 @@ export default function Admin() {
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
   const hayCambiosSinGuardar = formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar;
   hayCambiosRef.current = hayCambiosSinGuardar;
+  const importandoRef = useRef(false);
+  importandoRef.current = importando;
 
   function intentarSalir(accion) {
+    if (importandoRef.current) return;
     if (!hayCambiosRef.current) {
       accion();
       return;
@@ -419,19 +422,19 @@ export default function Admin() {
   const bloqueo = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !permitirSalida.current &&
-      hayCambiosRef.current &&
+      (importandoRef.current || hayCambiosRef.current) &&
       currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
-    if (!hayCambiosSinGuardar) return undefined;
+    if (!hayCambiosSinGuardar && !importando) return undefined;
     function avisarCierre(event) {
       event.preventDefault();
       event.returnValue = "";
     }
     window.addEventListener("beforeunload", avisarCierre);
     return () => window.removeEventListener("beforeunload", avisarCierre);
-  }, [hayCambiosSinGuardar]);
+  }, [hayCambiosSinGuardar, importando]);
 
   useEffect(() => {
     if (!autorizado) return;
@@ -532,7 +535,9 @@ export default function Admin() {
                 key={nombre}
                 data-tour={nombre}
                 type="button"
+                disabled={importando}
                 onClick={() => {
+                  if (importando) return;
                   const cambiar = () => {
                   if (nombre === "Carga de datos") {
                     const abrir = !mostrarCarga;
@@ -626,13 +631,19 @@ export default function Admin() {
                   background: activo ? "var(--acento)" : "var(--superficie)",
                   color: activo ? "var(--sobre)" : "var(--texto)",
                   fontSize: 14,
-                  cursor: "pointer",
+                  cursor: importando ? "default" : "pointer",
+                  opacity: importando && !activo ? 0.55 : 1,
                 }}
               >
                 {nombre}
               </button>
             );
           })}
+          {importando && (
+            <p style={{ margin: 0, flexBasis: "100%", fontSize: 14 }}>
+              Importación en curso. Esperá a que termine para cambiar de función.
+            </p>
+          )}
         </div>
       )}
       {autorizado && mostrarCarga && (
@@ -1823,9 +1834,13 @@ export default function Admin() {
           }}
         >
           <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Hay cambios sin guardar</p>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>
+              {importando ? "Importación en curso" : "Hay cambios sin guardar"}
+            </p>
             <p style={{ margin: "0 0 16px", fontSize: 14 }}>
-              Si sales de esta página se pierden los datos que todavía no guardaste.
+              {importando
+                ? "Esperá a que termine la carga. Si salís ahora se interrumpe la importación."
+                : "Si sales de esta página se pierden los datos que todavía no guardaste."}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
               <button
@@ -1847,6 +1862,7 @@ export default function Admin() {
               >
                 Seguir en esta página
               </button>
+              {!importando && (
               <button
                 type="button"
                 onClick={() => {
@@ -1870,6 +1886,7 @@ export default function Admin() {
               >
                 Salir sin guardar
               </button>
+              )}
             </div>
           </div>
         </div>
