@@ -30,6 +30,22 @@ const supabase = createClient(url, clave, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+function interpretarSalida(resultado) {
+  if (resultado.status !== 0) {
+    const texto = resultado.stderr || resultado.stdout || "Supabase no respondió.";
+    const faltanTablas = texto.includes("PGRST205");
+    const error = new Error(
+      faltanTablas
+        ? "En Supabase faltan las tablas. Ejecutá prog2/back/esquema.sql en el SQL Editor y volvé a intentar."
+        : texto
+    );
+    error.status = faltanTablas ? 503 : 502;
+    throw error;
+  }
+  if (!resultado.stdout) return null;
+  return JSON.parse(resultado.stdout);
+}
+
 function consultar(ruta, opciones = {}) {
   const archivo = path.join(__dirname, ".cuerpo-supabase.json");
   const hayCuerpo = opciones.body !== undefined;
@@ -70,19 +86,7 @@ function consultar(ruta, opciones = {}) {
     maxBuffer: 64 * 1024 * 1024,
   });
   if (hayCuerpo) fs.unlinkSync(archivo);
-  if (resultado.status !== 0) {
-    const texto = resultado.stderr || resultado.stdout || "Supabase no respondió.";
-    const faltanTablas = texto.includes("PGRST205");
-    const error = new Error(
-      faltanTablas
-        ? "En Supabase faltan las tablas. Ejecutá prog2/back/esquema.sql en el SQL Editor y volvé a intentar."
-        : texto
-    );
-    error.status = faltanTablas ? 503 : 502;
-    throw error;
-  }
-  if (!resultado.stdout) return null;
-  return JSON.parse(resultado.stdout);
+  return interpretarSalida(resultado);
 }
 
-module.exports = { supabase, consultar };
+module.exports = { supabase, consultar, interpretarSalida };

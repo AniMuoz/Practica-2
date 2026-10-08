@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { app, conColores } = require("./server");
+const { app, conColores, respuestaConexion } = require("./server");
 
 function pedir(metodo, ruta, cuerpo) {
   return new Promise((resolve, reject) => {
@@ -29,6 +29,15 @@ function pedir(metodo, ruta, cuerpo) {
   });
 }
 
+test("la conexión cuenta como ok si faltan tablas todavía", () => {
+  assert.deepEqual(respuestaConexion(null), { status: 200, cuerpo: { conectado: true } });
+  assert.equal(respuestaConexion({ code: "PGRST205", message: "no" }).status, 200);
+  assert.equal(respuestaConexion({ code: "42P01", message: "no" }).status, 200);
+  const fallo = respuestaConexion({ code: "XX", message: "red" });
+  assert.equal(fallo.status, 502);
+  assert.equal(fallo.cuerpo.conectado, false);
+});
+
 test("conColores queda activo salvo que el query sea 0", () => {
   assert.equal(conColores(undefined), true);
   assert.equal(conColores("1"), true);
@@ -50,6 +59,13 @@ test("buscar con menos de dos letras no consulta materiales", async () => {
 test("agregar un material sin clave responde 403", async () => {
   const respuesta = await pedir("POST", "/api/material", { clave: "no", datos: { Codigo: "1" } });
   assert.equal(respuesta.status, 403);
+});
+
+test("el acceso con clave incorrecta no revela la contraseña", async () => {
+  const respuesta = await pedir("POST", "/api/acceso", { clave: "no" });
+  assert.equal(respuesta.status, 403);
+  assert.equal(respuesta.json.ok, undefined);
+  assert.equal(JSON.stringify(respuesta.json).includes("Berfre"), false);
 });
 
 test("limpiar inventario con clave incorrecta responde 403", async () => {

@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
+const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
 const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imagenesSupabase");
 
@@ -124,13 +124,17 @@ app.get("/api/mensaje", (_req, res) => {
   res.json({ texto: "Prueba de proyecto berfre" });
 });
 
+function respuestaConexion(error) {
+  if (error && error.code !== "PGRST205" && error.code !== "42P01") {
+    return { status: 502, cuerpo: { conectado: false, error: error.message } };
+  }
+  return { status: 200, cuerpo: { conectado: true } };
+}
+
 app.get("/api/supabase", async (_req, res) => {
   const { error } = await supabase.from("planillas").select("nombre").limit(1);
-  if (error && error.code !== "PGRST205" && error.code !== "42P01") {
-    res.status(502).json({ conectado: false, error: error.message });
-    return;
-  }
-  res.json({ conectado: true });
+  const respuesta = respuestaConexion(error);
+  res.status(respuesta.status).json(respuesta.cuerpo);
 });
 
 app.get("/api/tabla/excel", async (req, res) => {
@@ -464,6 +468,14 @@ app.get("/api/material/:codigo", (req, res) => {
   }
 });
 
+app.post("/api/acceso", (req, res) => {
+  if (!claveCorrecta(req.body && req.body.clave)) {
+    res.status(403).json({ error: "Contraseña incorrecta." });
+    return;
+  }
+  res.json({ ok: true });
+});
+
 app.post("/api/tabla/limpiar-inventario", async (req, res) => {
   try {
     const tabla = await limpiarInventarioComentarios(req.body.clave);
@@ -589,4 +601,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { app, conColores };
+module.exports = { app, conColores, respuestaConexion };

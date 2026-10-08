@@ -459,6 +459,10 @@ async function limpiarInventarioComentarios(clave) {
 const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
 const CLAVE_DATOS = "Berfre2026";
 
+function claveCorrecta(clave) {
+  return clave === CLAVE_DATOS;
+}
+
 async function actualizarDatos(codigo, clave, datos, reemplazar) {
   if (clave !== CLAVE_DATOS) {
     const error = new Error("Contraseña incorrecta.");
@@ -2549,6 +2553,7 @@ module.exports = {
   buscarMateriales,
   actualizarMaterial,
   limpiarInventarioComentarios,
+  claveCorrecta,
   actualizarDatos,
   guardarImagen,
   exportarTabla,

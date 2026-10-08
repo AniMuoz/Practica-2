@@ -535,18 +535,24 @@ export default function Detalle() {
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (clave !== "Berfre2026") {
-                    setAvisoDatos("Contraseña incorrecta.");
-                    return;
-                  }
-                  const iniciales = {};
-                  soloLectura.forEach((columna) => {
-                    iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
-                  });
-                  setDatos(iniciales);
                   setAvisoDatos("");
-                  setPidiendoClave(false);
-                  setEditando(true);
+                  fetch("/api/acceso", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clave }),
+                  })
+                    .then(async (res) => {
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
+                      const iniciales = {};
+                      soloLectura.forEach((columna) => {
+                        iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
+                      });
+                      setDatos(iniciales);
+                      setPidiendoClave(false);
+                      setEditando(true);
+                    })
+                    .catch((err) => setAvisoDatos(err.message));
                 }}
                 style={{ display: "flex", gap: 8, alignItems: "center" }}
               >

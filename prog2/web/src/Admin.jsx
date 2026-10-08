@@ -462,12 +462,18 @@ export default function Admin() {
           data-tour="admin-clave"
           onSubmit={(event) => {
             event.preventDefault();
-            if (clave !== "Berfre2026") {
-              setAviso("Contraseña incorrecta.");
-              return;
-            }
             setAviso("");
-            setAutorizado(true);
+            fetch("/api/acceso", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ clave }),
+            })
+              .then(async (res) => {
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
+                setAutorizado(true);
+              })
+              .catch((err) => setAviso(err.message));
           }}
           style={{ display: "flex", gap: 8, alignItems: "center" }}
         >
