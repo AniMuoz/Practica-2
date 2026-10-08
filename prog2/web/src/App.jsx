@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
 import Planilla from "./Planilla.jsx";
@@ -17,6 +17,8 @@ import {
 
 export default function App() {
   const navigate = useNavigate();
+  const [parametros, setParametros] = useSearchParams();
+  const texto = parametros.get("q") || "";
   const { colores, oscuro } = useColoresPlanilla();
   const [columnas, setColumnas] = useState([]);
   const [filas, setFilas] = useState([]);
@@ -24,7 +26,7 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const [orden, setOrden] = useState("");
+  const [orden, setOrden] = useState("codigo-asc");
   const [bodega, setBodega] = useState("");
   const [subUbicacion, setSubUbicacion] = useState("");
   const [stockMinimo, setStockMinimo] = useState("");
@@ -66,13 +68,14 @@ export default function App() {
       soloInventarioOComentario,
       soloMarcados,
       ignorarNulo,
+      texto,
     }),
-    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]
+    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]
   );
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -269,6 +272,7 @@ export default function App() {
                 soloInventarioOComentario,
                 soloMarcados,
                 ignorarNulo,
+                texto,
               })}
               style={{
                 display: "inline-block",
@@ -434,7 +438,7 @@ export default function App() {
                 type="button"
                 className="filtros-limpiar"
                 onClick={() => {
-                  setOrden("");
+                  setOrden("codigo-asc");
                   setBodega("");
                   setSubUbicacion("");
                   setStockMinimo("");
@@ -456,6 +460,35 @@ export default function App() {
       {cargando && <p>Cargando tabla...</p>}
       {error && <p>{error}</p>}
       {!cargando && !error && filas.length === 0 && <p>La tabla está vacía.</p>}
+      {!cargando && !error && filas.length > 0 && texto.trim().length >= 2 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "0 0 12px" }}>
+          <button
+            type="button"
+            onClick={() => {
+              const siguientes = new URLSearchParams(parametros);
+              siguientes.delete("q");
+              setParametros(siguientes);
+            }}
+            style={{
+              padding: "8px 14px",
+              border: "2px solid var(--acento)",
+              borderRadius: 6,
+              background: "var(--superficie)",
+              color: "var(--texto)",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Quitar búsqueda y ver todos los productos
+          </button>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            {visibles.length === 0
+              ? `Ningún producto coincide con «${texto.trim()}».`
+              : `${visibles.length} producto${visibles.length === 1 ? "" : "s"} para «${texto.trim()}».`}
+          </p>
+        </div>
+      )}
       {!cargando && !error && filas.length > 0 && (
         <div className="tabla-inventario" style={{ background: "var(--superficie)", borderRadius: 8 }}>
           {paginacion()}

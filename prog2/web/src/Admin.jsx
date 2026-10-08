@@ -241,8 +241,8 @@ export default function Admin() {
     });
   }
 
-  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje) {
-    setCargando(true);
+  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
+    if (!silencioso) setCargando(true);
     setAviso("");
     return fetch(url, { cache: "no-store" })
       .then(async (res) => {
@@ -306,15 +306,29 @@ export default function Admin() {
     return `Último cambio: ${texto}`;
   }
 
-  function refrescarVistas() {
+  function cargarInventarioBodega(silencioso = false) {
+    if (!silencioso) setCargandoInventarioBodega(true);
+    setAvisoInventarioBodega("");
+    return fetch("/api/inventario-bodega", { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
+        setBodegasInventario(data.bodegas || []);
+      })
+      .catch((err) => setAvisoInventarioBodega(err.message))
+      .finally(() => setCargandoInventarioBodega(false));
+  }
+
+  function refrescarVistas(silencioso = false) {
     fetch("/api/tabla", { cache: "no-store" })
       .then((res) => res.json())
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
-    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.");
-    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.");
-    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
-    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
+    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.", silencioso);
+    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.", silencioso);
+    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.", silencioso);
+    if (mostrarInventarioBodega) cargarInventarioBodega(silencioso);
+    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.", silencioso);
     if (mostrarContratistas || mostrarVentas) {
       cargarNombresContratistas()
         .then((filas) => {
@@ -326,6 +340,29 @@ export default function Admin() {
         });
     }
   }
+
+  const refrescarRef = useRef(() => {});
+  refrescarRef.current = () => refrescarVistas(true);
+
+  useEffect(() => {
+    const fuente = new EventSource("/api/eventos");
+    let pendiente = 0;
+    fuente.onmessage = (evento) => {
+      let data;
+      try {
+        data = JSON.parse(evento.data);
+      } catch {
+        return;
+      }
+      if (data.tipo !== "recarga" && data.tipo !== "fila") return;
+      window.clearTimeout(pendiente);
+      pendiente = window.setTimeout(() => refrescarRef.current(), 200);
+    };
+    return () => {
+      window.clearTimeout(pendiente);
+      fuente.close();
+    };
+  }, []);
 
   const formularioSinGuardar =
     mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
@@ -346,8 +383,11 @@ export default function Admin() {
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
   const hayCambiosSinGuardar = formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar;
   hayCambiosRef.current = hayCambiosSinGuardar;
+  const importandoRef = useRef(false);
+  importandoRef.current = importando;
 
   function intentarSalir(accion) {
+    if (importandoRef.current) return;
     if (!hayCambiosRef.current) {
       accion();
       return;
@@ -383,19 +423,19 @@ export default function Admin() {
   const bloqueo = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !permitirSalida.current &&
-      hayCambiosRef.current &&
+      (importandoRef.current || hayCambiosRef.current) &&
       currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
-    if (!hayCambiosSinGuardar) return undefined;
+    if (!hayCambiosSinGuardar && !importando) return undefined;
     function avisarCierre(event) {
       event.preventDefault();
       event.returnValue = "";
     }
     window.addEventListener("beforeunload", avisarCierre);
     return () => window.removeEventListener("beforeunload", avisarCierre);
-  }, [hayCambiosSinGuardar]);
+  }, [hayCambiosSinGuardar, importando]);
 
   useEffect(() => {
     if (!autorizado) return;
@@ -426,12 +466,18 @@ export default function Admin() {
           data-tour="admin-clave"
           onSubmit={(event) => {
             event.preventDefault();
-            if (clave !== "Berfre2026") {
-              setAviso("Contraseña incorrecta.");
-              return;
-            }
             setAviso("");
-            setAutorizado(true);
+            fetch("/api/acceso", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ clave }),
+            })
+              .then(async (res) => {
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
+                setAutorizado(true);
+              })
+              .catch((err) => setAviso(err.message));
           }}
           style={{ display: "flex", gap: 8, alignItems: "center" }}
         >
@@ -523,7 +569,9 @@ export default function Admin() {
                 key={nombre}
                 data-tour={nombre}
                 type="button"
+                disabled={importando}
                 onClick={() => {
+                  if (importando) return;
                   const cambiar = () => {
                   if (nombre === "Carga de datos") {
                     const abrir = !mostrarCarga;
@@ -563,16 +611,7 @@ export default function Admin() {
                     const abrir = !mostrarInventarioBodega;
                     if (abrir) {
                       cerrarPaneles(["inventarioBodega"]);
-                      setCargandoInventarioBodega(true);
-                      setAvisoInventarioBodega("");
-                      fetch("/api/inventario-bodega", { cache: "no-store" })
-                        .then(async (res) => {
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
-                          setBodegasInventario(data.bodegas || []);
-                        })
-                        .catch((err) => setAvisoInventarioBodega(err.message))
-                        .finally(() => setCargandoInventarioBodega(false));
+                      cargarInventarioBodega();
                     }
                     setMostrarInventarioBodega(abrir);
                   }
@@ -626,13 +665,19 @@ export default function Admin() {
                   background: activo ? "var(--acento)" : "var(--superficie)",
                   color: activo ? "var(--sobre)" : "var(--texto)",
                   fontSize: 14,
-                  cursor: "pointer",
+                  cursor: importando ? "default" : "pointer",
+                  opacity: importando && !activo ? 0.55 : 1,
                 }}
               >
                 {nombre}
               </button>
             );
           })}
+          {importando && (
+            <p style={{ margin: 0, flexBasis: "100%", fontSize: 14 }}>
+              Importación en curso. Esperá a que termine para cambiar de función.
+            </p>
+          )}
         </div>
       )}
       {autorizado && mostrarCarga && (
@@ -1823,9 +1868,13 @@ export default function Admin() {
           }}
         >
           <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Hay cambios sin guardar</p>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>
+              {importando ? "Importación en curso" : "Hay cambios sin guardar"}
+            </p>
             <p style={{ margin: "0 0 16px", fontSize: 14 }}>
-              Si sales de esta página se pierden los datos que todavía no guardaste.
+              {importando
+                ? "Esperá a que termine la carga. Si salís ahora se interrumpe la importación."
+                : "Si sales de esta página se pierden los datos que todavía no guardaste."}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
               <button
@@ -1847,6 +1896,7 @@ export default function Admin() {
               >
                 Seguir en esta página
               </button>
+              {!importando && (
               <button
                 type="button"
                 onClick={() => {
@@ -1870,6 +1920,7 @@ export default function Admin() {
               >
                 Salir sin guardar
               </button>
+              )}
             </div>
           </div>
         </div>
