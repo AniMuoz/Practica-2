@@ -36,7 +36,7 @@ function interpretarSalida(resultado) {
     const faltanTablas = texto.includes("PGRST205");
     const error = new Error(
       faltanTablas
-        ? "En Supabase faltan las tablas. Ejecutá prog2/back/esquema.sql en el SQL Editor y volvé a intentar."
+        ? "En Supabase faltan las tablas. Ejecuta prog2/back/esquema.sql en el SQL Editor y vuelve a intentar."
         : texto
     );
     error.status = faltanTablas ? 503 : 502;

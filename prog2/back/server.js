@@ -279,7 +279,7 @@ app.get("/api/reservas", (req, res) => {
   try {
     res.json(buscarReservas(req.query.reserva, req.query.pagina, req.query.tamano));
   } catch (error) {
-    res.status(500).json({ error: "No se pudo leer las reservas." });
+    res.status(500).json({ error: "No se pudieron leer las reservas." });
   }
 });
 
@@ -365,7 +365,7 @@ app.get("/api/contratistas", (_req, res) => {
   try {
     res.json(leerContratistas());
   } catch (error) {
-    res.status(500).json({ error: "No se pudo leer los contratistas." });
+    res.status(500).json({ error: "No se pudieron leer los contratistas." });
   }
 });
 
@@ -373,7 +373,7 @@ app.put("/api/contratistas", (req, res) => {
   try {
     res.json(guardarContratistas(req.body.clave, req.body.filas));
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.message || "No se pudo guardar los contratistas." });
+    res.status(error.status || 500).json({ error: error.message || "No se pudieron guardar los contratistas." });
   }
 });
 

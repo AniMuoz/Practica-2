@@ -5,55 +5,55 @@ const PASOS = {
     {
       id: "titulo",
       titulo: "Volver al inicio",
-      texto: "Al presionar el titulo del programa vuelves a la planilla principal.",
+      texto: "Al presionar el título del programa vuelves a la planilla principal.",
     },
     {
       id: "colores",
       titulo: "Colores",
-      texto: "Esta encendido por defecto. Si lo apagas, las tablas y planillas se muestran sin colores.",
+      texto: "Está encendido por defecto. Si lo apagas, las tablas y planillas se muestran sin colores.",
     },
     {
       id: "oscuro",
       titulo: "Modo oscuro",
-      texto: "Esta apagado por defecto. Al activarlo la pagina pasa a tonos negros, grises y verde agua.",
+      texto: "Está apagado por defecto. Al activarlo la página pasa a tonos negros, grises y verde agua.",
     },
     {
       id: "buscar",
       titulo: "Buscar un material",
-      texto: "Escribe un codigo o parte del nombre y elige el material para abrir su pagina.",
+      texto: "Escribe un código o parte del nombre y elige el material para abrir su página.",
     },
     {
       id: "filtros",
       titulo: "Filtros",
-      texto: "Aqui puedes ordenar y filtrar la planilla. La descarga usa los filtros que esten activos.",
+      texto: "Aquí puedes ordenar y filtrar la planilla. La descarga usa los filtros que estén activos.",
     },
     {
       id: "descargar",
       titulo: "Descargar planilla",
-      texto: "Descarga la planilla segun los filtros colocados.",
+      texto: "Descarga la planilla según los filtros colocados.",
     },
     {
       id: "limpiar",
       titulo: "Nuevo inventario",
-      texto: "Vacia las columnas de inventario y comentario para empezar de cero. Pide la contraseña de acceso.",
+      texto: "Vacía las columnas de inventario y comentario para empezar de cero. Pide la contraseña de acceso.",
     },
     {
       id: "planilla",
       titulo: "Planilla",
       texto:
-        "Muestra los datos de los materiales. Al presionar una fila se abre la pagina de ese material. Colores: inventario igual al stock pinta inventario y comentario en verde; si es mayor o menor, en rojo; si hay comentario, en naranja. Si el stock es igual o menor al stock critico, la fila se ve amarilla.",
+        "Muestra los datos de los materiales. Al presionar una fila se abre la página de ese material. Colores: inventario igual al stock pinta inventario y comentario en verde; si es mayor o menor, en rojo; si hay comentario, en naranja. Si el stock es igual o menor al stock critico, la fila se ve amarilla.",
     },
   ],
   material: [
     {
       id: "material",
-      titulo: "Pagina del material",
-      texto: "Aqui se ven los detalles del material que elegiste en la planilla.",
+      titulo: "Página del material",
+      texto: "Aquí se ven los detalles del material que elegiste en la planilla.",
     },
     {
       id: "ocultar-imagenes",
-      titulo: "Ocultar imagenes",
-      texto: "Oculta las imagenes para que no estorben al contar.",
+      titulo: "Ocultar imágenes",
+      texto: "Oculta las imágenes para que no estorben al contar.",
     },
     {
       id: "conteo",
@@ -71,13 +71,13 @@ const PASOS = {
     {
       id: "admin-clave",
       titulo: "Acceso",
-      texto: "Esta seccion solo se abre con la contraseña de acceso.",
+      texto: "Esta sección solo se abre con la contraseña de acceso.",
     },
     {
       id: "Añadir/cargar datos",
-      titulo: "Anadir o cargar datos",
+      titulo: "Añadir o cargar datos",
       texto:
-        "Anade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. Tambien se pueden actualizar las reservas.",
+        "Añade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. También se pueden actualizar las reservas.",
     },
     {
       id: "Stock en bodega",
@@ -107,12 +107,12 @@ const PASOS = {
     {
       id: "Revisar stock de reserva",
       titulo: "Revisar una reserva",
-      texto: "Revisa una reserva por numero de orden o subiendo la orden, para ver si hay stock para cubrirla.",
+      texto: "Revisa una reserva por número de orden o subiendo la orden, para ver si hay stock para cubrirla.",
     },
     {
       id: "Planilla de ventas",
       titulo: "Planilla de ventas",
-      texto: "Genera o continua una planilla de ventas. Podés subir una orden, un traspaso o cargar producto a producto. Podés elegir un contratista de la lista.",
+      texto: "Genera o continúa una planilla de ventas. Puedes subir una orden, un traspaso o cargar producto a producto. Puedes elegir un contratista de la lista.",
     },
     {
       id: "Editar contratistas",

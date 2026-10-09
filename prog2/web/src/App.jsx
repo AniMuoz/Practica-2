@@ -233,7 +233,7 @@ export default function App() {
                 checked={bloquearPagina}
                 onChange={(event) => setBloquearPagina(event.target.checked)}
               />
-              Bloquear pagina de material
+              Bloquear página de material
             </label>
           )}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>

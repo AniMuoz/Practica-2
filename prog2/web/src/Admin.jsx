@@ -164,7 +164,7 @@ export default function Admin() {
       setCopiarExistencia(false);
       return;
     }
-    const confirmar = window.confirm("¿Querés poner en la columna Existencia los datos de Libre utilización?");
+    const confirmar = window.confirm("¿Quieres poner en la columna Existencia los datos de Libre utilización?");
     if (!confirmar) return;
     setCopiarInventario(false);
     setCopiarExistencia(true);
@@ -174,7 +174,7 @@ export default function Admin() {
       setCopiarInventario(false);
       return;
     }
-    const confirmar = window.confirm("¿Querés poner en la columna Existencia los datos de la columna Inventario?");
+    const confirmar = window.confirm("¿Quieres poner en la columna Existencia los datos de la columna Inventario?");
     if (!confirmar) return;
     setCopiarExistencia(false);
     setCopiarInventario(true);
@@ -340,8 +340,8 @@ export default function Admin() {
           if (mostrarContratistas) fijarContratistas(filas);
         })
         .catch(() => {
-          if (mostrarContratistas) setAvisoContratistas("No se pudo leer los contratistas.");
-          if (mostrarVentas) setAvisoVenta("No se pudo cargar los contratistas.");
+          if (mostrarContratistas) setAvisoContratistas("No se pudieron leer los contratistas.");
+          if (mostrarVentas) setAvisoVenta("No se pudieron cargar los contratistas.");
         });
     }
   }
@@ -687,7 +687,7 @@ export default function Admin() {
                     const abrir = !mostrarVentas;
                     if (abrir) {
                       cerrarPaneles(["ventas", "contratistas"]);
-                      cargarNombresContratistas().catch(() => setAvisoVenta("No se pudo cargar los contratistas."));
+                      cargarNombresContratistas().catch(() => setAvisoVenta("No se pudieron cargar los contratistas."));
                     }
                     setMostrarVentas(abrir);
                   }
@@ -700,7 +700,7 @@ export default function Admin() {
                       fetch("/api/contratistas", { cache: "no-store" })
                         .then(async (res) => {
                           const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "No se pudo leer los contratistas.");
+                          if (!res.ok) throw new Error(data.error || "No se pudieron leer los contratistas.");
                           fijarContratistas(data.filas || []);
                           const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
                           setListaContratistas(nombres);
@@ -731,7 +731,7 @@ export default function Admin() {
                   opacity: importando && !activo ? 0.55 : 1,
                 }}
               >
-                {nombre}
+                {nombre === "Bitacora camion" ? "Bitácora camión" : nombre}
               </button>
             );
           })}
@@ -739,7 +739,7 @@ export default function Admin() {
       )}
       {autorizado && importando && (
         <p style={{ margin: "0 0 16px", fontSize: 14 }}>
-          Importación en curso. Esperá a que termine para cambiar de función.
+          Importación en curso. Espera a que termine para cambiar de función.
         </p>
       )}
       {autorizado && mostrarCarga && (
@@ -748,11 +748,11 @@ export default function Admin() {
           onSubmit={(event) => {
             event.preventDefault();
             if (!archivo) {
-              setAvisoCarga("Elegí un archivo .xlsx.");
+              setAvisoCarga("Elige un archivo .xlsx.");
               return;
             }
             if (modoCarga === "dos-columnas" && !columnaCarga) {
-              setAvisoCarga("Elegí la columna que va a llenar la planilla.");
+              setAvisoCarga("Elige la columna que va a llenar la planilla.");
               return;
             }
             const secciones = {
@@ -767,7 +767,7 @@ export default function Admin() {
             };
             const seccion = secciones[modoCarga] || modoCarga;
             const confirmar = window.confirm(
-              `¿Confirmás la carga del archivo "${archivo.name}" en la sección ${seccion}?`
+              `¿Confirmas la carga del archivo "${archivo.name}" en la sección ${seccion}?`
             );
             if (!confirmar) return;
             setAvisoCarga("");
@@ -1230,7 +1230,7 @@ export default function Admin() {
               event.preventDefault();
               const numero = ordenReserva.trim();
               if (!numero) {
-                setAvisoBusquedaReserva("Escribí un número de reserva.");
+                setAvisoBusquedaReserva("Escribe un número de reserva.");
                 setBusquedaReserva({ columnas: [], filas: [], total: 0 });
                 return;
               }
@@ -1300,7 +1300,7 @@ export default function Admin() {
                     const url = URL.createObjectURL(blob);
                     const enlace = document.createElement("a");
                     enlace.href = url;
-                    enlace.download = "Revision stock en reserva.xlsx";
+                    enlace.download = "Revisión stock en reserva.xlsx";
                     enlace.click();
                     URL.revokeObjectURL(url);
                   })
@@ -1408,7 +1408,7 @@ export default function Admin() {
             onSubmit={(event) => {
               event.preventDefault();
               if (!archivoReserva) {
-                setAvisoReserva("Elegí el PDF de la reserva.");
+                setAvisoReserva("Elige el PDF de la reserva.");
                 return;
               }
               setAvisoReserva("");
@@ -1468,7 +1468,7 @@ export default function Admin() {
                     const url = URL.createObjectURL(blob);
                     const enlace = document.createElement("a");
                     enlace.href = url;
-                    enlace.download = "Revision stock en reserva.xlsx";
+                    enlace.download = "Revisión stock en reserva.xlsx";
                     enlace.click();
                     URL.revokeObjectURL(url);
                   })
@@ -1548,11 +1548,11 @@ export default function Admin() {
               if (modoVenta === "manual") {
                 const validos = productosVenta.filter((fila) => String(fila.codigo).trim() && String(fila.cantidad).trim());
                 if (validos.length === 0) {
-                  setAvisoVenta("Agregá al menos un producto con código y cantidad.");
+                  setAvisoVenta("Agrega al menos un producto con código y cantidad.");
                   return;
                 }
               } else if (!ordenVenta) {
-                setAvisoVenta(movimientoVenta === "2" ? "Elegí el archivo de traspaso." : "Elegí el archivo de orden de venta.");
+                setAvisoVenta(movimientoVenta === "2" ? "Elige el archivo de traspaso." : "Elige el archivo de orden de venta.");
                 return;
               }
               setAvisoVenta("");
@@ -1938,7 +1938,7 @@ export default function Admin() {
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 14 }}>
               {importando
-                ? "Esperá a que termine la carga. Si salís ahora se interrumpe la importación."
+                ? "Espera a que termine la carga. Si sales ahora se interrumpe la importación."
                 : "Si sales de esta página se pierden los datos que todavía no guardaste."}
             </p>
             <div style={{ display: "grid", gap: 8 }}>

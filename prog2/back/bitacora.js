@@ -32,7 +32,7 @@ function errorHttp(status, mensaje) {
 
 function falloBd(error) {
   if (error.code === "PGRST205" || error.code === "42P01" || error.code === "42703") {
-    throw errorHttp(503, "En Supabase faltan las tablas de la bitácora. Ejecutá prog2/back/esquema.sql en el SQL Editor y volvé a intentar.");
+    throw errorHttp(503, "En Supabase faltan las tablas de la bitácora. Ejecuta prog2/back/esquema.sql en el SQL Editor y vuelve a intentar.");
   }
   throw errorHttp(502, error.message || "Supabase no respondió.");
 }
@@ -190,7 +190,7 @@ async function eliminarFolio(clave, valorFolio, confirmacion) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   if (String(confirmacion ?? "").trim() !== String(folio)) {
-    throw errorHttp(400, "La confirmación no coincide con el número de folio.");
+    throw errorHttp(400, "La confirmacion no coincide con el numero de folio.");
   }
   await folioActivo(folio);
 

@@ -988,7 +988,7 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
   }
   const destino = String(columnaDestino ?? "").trim();
   if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino)) {
-    const error = new Error("Elegí una columna válida para actualizar.");
+    const error = new Error("Elige una columna válida para actualizar.");
     error.status = 400;
     throw error;
   }
@@ -2454,7 +2454,7 @@ function precargarDatos() {
 
 async function exportarRevisionPorReserva(reserva, colores = true) {
   if (!String(reserva ?? "").trim()) {
-    const error = new Error("Escribí un número de reserva.");
+    const error = new Error("Escribe un número de reserva.");
     error.status = 400;
     throw error;
   }

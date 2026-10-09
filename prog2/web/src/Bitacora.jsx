@@ -55,6 +55,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
   const [estado, setEstado] = useState("");
   const [resumen, setResumen] = useState({ ultimo: null, total: 0 });
   const [generando, setGenerando] = useState(false);
+  const [eliminando, setEliminando] = useState(null);
   const filasRef = useRef([]);
   const folioRef = useRef(null);
   const guardadas = useRef(new Map());
@@ -116,7 +117,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
     event.preventDefault();
     const texto = consulta.trim();
     if (!/^\d+$/.test(texto) || Number(texto) < 1) {
-      setAviso("Escribí un número de folio desde 1.");
+      setAviso("Escribe un número de folio desde 1.");
       return;
     }
     setAviso("");
@@ -213,13 +214,9 @@ export default function Bitacora({ clave, colores, alPendiente }) {
 
   function eliminarFolio() {
     const numeroFolio = folioRef.current;
-    if (!window.confirm(`¿Eliminar el folio ${numeroFolio}? Se borran todas sus filas y su número no se puede volver a usar.`)) return;
-    const escrito = window.prompt(`Segunda verificación: escribí ${numeroFolio} para confirmar la eliminación.`);
-    if (escrito === null) return;
-    if (escrito.trim() !== String(numeroFolio)) {
-      setAviso("El número escrito no coincide. No se eliminó el folio.");
-      return;
-    }
+    const escrito = (eliminando?.escrito ?? "").trim();
+    if (!eliminando || eliminando.paso !== 2 || escrito !== String(numeroFolio)) return;
+    setEliminando(null);
     setAviso("");
     encolar(async () => {
       const res = await fetch(`/api/bitacora/folios/${numeroFolio}`, {
@@ -302,7 +299,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
             <button type="button" onClick={descargar} style={{ ...BOTON, background: "var(--acento)" }}>
               Descargar planilla
             </button>
-            <button type="button" onClick={eliminarFolio} style={{ ...BOTON, background: "var(--peligro)" }}>
+            <button type="button" onClick={() => setEliminando({ paso: 1, escrito: "" })} style={{ ...BOTON, background: "var(--peligro)" }}>
               Eliminar folio
             </button>
             <span style={{ fontSize: 14 }}>{textoEstado}</span>
@@ -373,8 +370,77 @@ export default function Bitacora({ clave, colores, alPendiente }) {
               </tbody>
             </table>
           </div>
-          {folio.filas.length === 0 && <p style={{ margin: "12px 0 0", fontSize: 14 }}>Este folio todavía no tiene filas. Usá "Añadir fila".</p>}
+          {folio.filas.length === 0 && <p style={{ margin: "12px 0 0", fontSize: 14 }}>Este folio todavía no tiene filas. Usa "Añadir fila".</p>}
         </>
+      )}
+      {folio && eliminando && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 90,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420, width: "100%" }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>
+              {eliminando.paso === 1 ? `Eliminar el folio ${folio.folio}` : "Segunda verificacion"}
+            </p>
+            {eliminando.paso === 1 ? (
+              <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+                Se borraran todas las filas de este folio y su numero no se podra volver a usar. Desea continuar?
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 12px", fontSize: 14 }}>
+                  Para confirmar la eliminacion, escriba el numero del folio: {folio.folio}
+                </p>
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  aria-label="Numero del folio a eliminar"
+                  value={eliminando.escrito}
+                  onChange={(event) => {
+                    const valor = event.target.value;
+                    if (valor === "" || /^\d+$/.test(valor)) setEliminando({ ...eliminando, escrito: valor });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") eliminarFolio();
+                  }}
+                  style={{ boxSizing: "border-box", width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, marginBottom: 16 }}
+                />
+              </>
+            )}
+            <div style={{ display: "grid", gap: 8 }}>
+              {eliminando.paso === 1 ? (
+                <button type="button" onClick={() => setEliminando({ paso: 2, escrito: "" })} style={{ ...BOTON, background: "var(--peligro)" }}>
+                  Continuar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={eliminando.escrito.trim() !== String(folio.folio)}
+                  onClick={eliminarFolio}
+                  style={{ ...BOTON, background: "var(--peligro)", opacity: eliminando.escrito.trim() !== String(folio.folio) ? 0.5 : 1 }}
+                >
+                  Eliminar folio definitivamente
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setEliminando(null)}
+                style={{ ...BOTON, border: "1px solid var(--borde)", background: "var(--superficie)", color: "var(--texto)" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
