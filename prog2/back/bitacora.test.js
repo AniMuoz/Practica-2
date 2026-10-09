@@ -1,8 +1,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
 const ExcelJS = require("exceljs");
 const { app } = require("./server");
-const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel } = require("./bitacora");
+const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma } = require("./bitacora");
 
 function pedir(metodo, ruta, cuerpo) {
   return new Promise((resolve, reject) => {
@@ -70,6 +72,11 @@ test("el Excel del folio respeta la estructura de la planilla", async () => {
   );
   assert.equal(hoja.getCell("A5").value, "09/10/2026");
   assert.equal(hoja.getCell("B5").value, "Ana");
+  ["A5", "B5", "J5", "K5"].forEach((direccion) => {
+    assert.equal(hoja.getCell(direccion).alignment.horizontal, "center");
+    assert.equal(hoja.getCell(direccion).alignment.vertical, "middle");
+  });
+  assert.equal(hoja.getCell("A5").alignment.shrinkToFit, true);
   assert.equal(hoja.getCell("J5").value, 150);
   assert.equal(hoja.getCell("A5").border.top.style, "thin");
   assert.equal(hoja.getCell("A6").border, undefined);
@@ -85,6 +92,42 @@ test("el Excel crece más allá de 14 filas con el mismo formato", async () => {
   const hoja = libro.getWorksheet("Hoja1");
   assert.equal(hoja.getCell("B24").value, "C20");
   assert.equal(hoja.getCell("L24").border.bottom.style, "thin");
+});
+
+test("la firma como imagen solo acepta PNG y se reconoce por su nombre", () => {
+  const logo = fs.readFileSync(path.join(__dirname, "assets", "logo-bitacora.png"));
+  const medidas = dimensionesPng(logo);
+  assert.ok(medidas.ancho > 0 && medidas.alto > 0);
+  assert.equal(dimensionesPng(Buffer.from("no es una imagen")), null);
+  assert.equal(nombreFirma("img:firma-3-2-1700000000000.png"), "firma-3-2-1700000000000.png");
+  assert.equal(nombreFirma("img:../secreto.png"), null);
+  assert.equal(nombreFirma("Juan Perez"), null);
+});
+
+test("el Excel pone la firma como imagen dentro de la celda y deja el texto como texto", async () => {
+  const logo = fs.readFileSync(path.join(__dirname, "assets", "logo-bitacora.png"));
+  const filas = [
+    { n_fila: 1, firma: "img:firma-5-1-1700000000000.png" },
+    { n_fila: 2, firma: "J. Perez" },
+  ];
+  const imagenes = new Map([["firma-5-1-1700000000000.png", logo]]);
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(await armarExcel(5, filas, imagenes));
+  const hoja = libro.getWorksheet("Hoja1");
+  assert.equal(hoja.getImages().length, 2);
+  assert.equal(hoja.getCell("L5").value, null);
+  assert.equal(hoja.getCell("L6").value, "J. Perez");
+  assert.equal(hoja.getCell("L6").alignment.horizontal, "center");
+  assert.equal(hoja.getCell("L6").alignment.vertical, "middle");
+  assert.equal(hoja.getCell("L5").alignment, undefined);
+  const firma = hoja.getImages().map((imagen) => imagen.range.tl).find((tl) => tl.nativeCol === 11);
+  assert.equal(firma.nativeRow, 4);
+});
+
+test("subir una firma sin clave, sin archivo o con otro formato se rechaza", async () => {
+  assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "no" })).status, 403);
+  assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "Berfre2026" })).status, 400);
+  assert.equal((await pedir("POST", "/api/bitacora/folios/abc/filas/1/firma", { clave: "Berfre2026" })).status, 400);
 });
 
 test("consultar un folio inválido responde 400 sin tocar la base", async () => {

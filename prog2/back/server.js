@@ -39,6 +39,15 @@ const uploadPdf = multer({
   },
 });
 
+const uploadFirma = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "image/png") cb(null, true);
+    else cb(new Error("La imagen de la firma debe ser un archivo PNG."));
+  },
+});
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: carpetaImagenes,
@@ -430,6 +439,21 @@ app.put("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
   } catch (error) {
     responderBitacora(res, error, "No se pudo guardar la fila.");
   }
+});
+
+app.post("/api/bitacora/folios/:folio/filas/:fila/firma", (req, res) => {
+  uploadFirma.single("archivo")(req, res, async (errorCarga) => {
+    if (errorCarga) {
+      const demasiado = errorCarga.code === "LIMIT_FILE_SIZE";
+      res.status(400).json({ error: demasiado ? "La imagen de la firma pesa más de 1 MB." : errorCarga.message });
+      return;
+    }
+    try {
+      res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer));
+    } catch (error) {
+      responderBitacora(res, error, "No se pudo guardar la imagen de la firma.");
+    }
+  });
 });
 
 app.delete("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {

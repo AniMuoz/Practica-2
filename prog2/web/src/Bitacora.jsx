@@ -45,6 +45,35 @@ function datosDe(fila) {
   return datos;
 }
 
+const PREFIJO_IMAGEN = "img:";
+const LADO_MAXIMO_FIRMA = { ancho: 600, alto: 200 };
+
+function imagenDeFirma(valor) {
+  const texto = String(valor ?? "");
+  return texto.startsWith(PREFIJO_IMAGEN) ? texto.slice(PREFIJO_IMAGEN.length) : "";
+}
+
+function firmaComoPng(archivo) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(archivo);
+    const imagen = new Image();
+    imagen.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, LADO_MAXIMO_FIRMA.ancho / imagen.width, LADO_MAXIMO_FIRMA.alto / imagen.height);
+      const lienzo = document.createElement("canvas");
+      lienzo.width = Math.max(1, Math.round(imagen.width * escala));
+      lienzo.height = Math.max(1, Math.round(imagen.height * escala));
+      lienzo.getContext("2d").drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
+      lienzo.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo preparar la imagen."))), "image/png");
+    };
+    imagen.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("El archivo no es una imagen válida."));
+    };
+    imagen.src = url;
+  });
+}
+
 const BOTON = { padding: "8px 14px", border: 0, borderRadius: 6, color: "var(--sobre)", fontSize: 14, cursor: "pointer" };
 
 export default function Bitacora({ clave, colores, alPendiente }) {
@@ -183,6 +212,42 @@ export default function Bitacora({ clave, colores, alPendiente }) {
           : previo
       );
     });
+  }
+
+  async function subirFirma(n, archivo) {
+    if (!archivo) return;
+    setAviso("");
+    let png;
+    try {
+      png = await firmaComoPng(archivo);
+    } catch (err) {
+      setAviso(err.message);
+      return;
+    }
+    const numeroFolio = folioRef.current;
+    encolar(async () => {
+      const cuerpo = new FormData();
+      cuerpo.append("clave", clave);
+      cuerpo.append("archivo", png, "firma.png");
+      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, { method: "POST", body: cuerpo });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar la imagen de la firma.");
+      if (folioRef.current !== numeroFolio) return;
+      const valor = data.fila.firma;
+      const previa = guardadas.current.get(n);
+      if (previa) guardadas.current.set(n, JSON.stringify({ ...JSON.parse(previa), firma: valor }));
+      filasRef.current = filasRef.current.map((fila) => (fila.n_fila === n ? { ...fila, firma: valor } : fila));
+      setFolio((actual) => ({
+        ...actual,
+        filas: actual.filas.map((fila) => (fila.n_fila === n ? { ...fila, firma: valor } : fila)),
+      }));
+    });
+  }
+
+  function quitarFirmaImagen(n) {
+    cambiar(n, "firma", "");
+    filasRef.current = filasRef.current.map((fila) => (fila.n_fila === n ? { ...fila, firma: "" } : fila));
+    guardarFila(n);
   }
 
   function anadirFila() {
@@ -332,6 +397,54 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                     <td style={{ padding: "0 10px", border: "1px solid var(--borde-suave)", textAlign: "center" }}>{fila.n_fila}</td>
                     {COLUMNAS.map((columna) => {
                       const calculada = columna.campo === "km_reco";
+                      if (columna.campo === "firma") {
+                        const imagen = imagenDeFirma(fila.firma);
+                        return (
+                          <td key={columna.campo} style={{ padding: 4, border: "1px solid var(--borde-suave)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              {imagen ? (
+                                <img
+                                  src={`/api/imagenes/${encodeURIComponent(imagen)}`}
+                                  alt={`Firma de la fila ${fila.n_fila}`}
+                                  style={{ maxWidth: 110, maxHeight: 34, background: "#fff", border: "1px solid var(--borde)", borderRadius: 4 }}
+                                />
+                              ) : (
+                                <input
+                                  value={fila.firma ?? ""}
+                                  maxLength={200}
+                                  aria-label={`FIRMA fila ${fila.n_fila}`}
+                                  onChange={(event) => cambiar(fila.n_fila, "firma", event.target.value)}
+                                  onBlur={() => guardarFila(fila.n_fila)}
+                                  style={{ boxSizing: "border-box", width: columna.ancho, padding: "6px 8px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                                />
+                              )}
+                              <label style={{ ...BOTON, padding: "6px 10px", background: "var(--boton)", whiteSpace: "nowrap" }}>
+                                {imagen ? "Cambiar imagen" : "Subir imagen"}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  aria-label={`Subir imagen de firma fila ${fila.n_fila}`}
+                                  style={{ display: "none" }}
+                                  onChange={(event) => {
+                                    const archivo = event.target.files?.[0];
+                                    event.target.value = "";
+                                    subirFirma(fila.n_fila, archivo);
+                                  }}
+                                />
+                              </label>
+                              {imagen && (
+                                <button
+                                  type="button"
+                                  onClick={() => quitarFirmaImagen(fila.n_fila)}
+                                  style={{ ...BOTON, padding: "6px 10px", background: "var(--peligro)", whiteSpace: "nowrap" }}
+                                >
+                                  Quitar imagen
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      }
                       return (
                         <td key={columna.campo} style={{ padding: 4, border: "1px solid var(--borde-suave)" }}>
                           <input

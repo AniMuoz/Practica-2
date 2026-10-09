@@ -2,9 +2,14 @@ const path = require("path");
 const ExcelJS = require("exceljs");
 const { supabase } = require("./supabase");
 const { claveCorrecta } = require("./fuenteDatos");
+const { subirImagen, bajarImagen, quitarImagen } = require("./imagenesSupabase");
 
 const LOGO = path.join(__dirname, "assets", "logo-bitacora.png");
 const LARGO_MAXIMO = 200;
+const PREFIJO_IMAGEN = "img:";
+const TAMANO_MAXIMO_FIRMA = 1024 * 1024;
+const LADO_MAXIMO_FIRMA = 2000;
+const FIRMA_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const COLUMNAS = [
   { campo: "fecha", titulo: "FECHA", ancho: 9 },
@@ -74,6 +79,33 @@ function limpiarFila(datos) {
   if (fila.fecha !== "" && !fechaValida(fila.fecha)) throw errorHttp(400, "La fecha no es válida.");
   fila.km_reco = calcularRecorrido(fila.km_ini, fila.km_term);
   return fila;
+}
+
+function nombreFirma(valor) {
+  const texto = String(valor ?? "");
+  if (!texto.startsWith(PREFIJO_IMAGEN)) return null;
+  const nombre = texto.slice(PREFIJO_IMAGEN.length);
+  return /^firma-\d+-\d+-\d+\.png$/.test(nombre) ? nombre : null;
+}
+
+function dimensionesPng(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 24 || !buffer.subarray(0, 8).equals(FIRMA_PNG)) return null;
+  const ancho = buffer.readUInt32BE(16);
+  const alto = buffer.readUInt32BE(20);
+  return ancho > 0 && alto > 0 ? { ancho, alto } : null;
+}
+
+async function firmaActual(folio, nFila) {
+  const { data, error } = await supabase.from("bitacora_filas").select("firma").eq("folio", folio).eq("n_fila", nFila).maybeSingle();
+  if (error) falloBd(error);
+  return data ? data.firma : null;
+}
+
+async function borrarFirmas(valores) {
+  for (const valor of valores) {
+    const nombre = nombreFirma(valor);
+    if (nombre) await quitarImagen(nombre).catch(() => {});
+  }
 }
 
 function fechaValida(texto) {
@@ -153,10 +185,44 @@ async function guardarFila(clave, valorFolio, valorFila, datos) {
   const maxima = ultima && ultima.length ? ultima[0].n_fila : 0;
   if (nFila > maxima + 1) throw errorHttp(400, `La siguiente fila disponible es la ${maxima + 1}.`);
 
+  const anterior = await firmaActual(folio, nFila);
+  if (fila.firma.startsWith(PREFIJO_IMAGEN) && fila.firma !== anterior) {
+    throw errorHttp(400, "La imagen de la firma se sube con el botón de imagen.");
+  }
+
   const registro = { folio, n_fila: nFila, ...fila };
   const { error } = await supabase.from("bitacora_filas").upsert(registro, { onConflict: "folio,n_fila" });
   if (error) falloBd(error);
+  if (anterior && anterior !== fila.firma) await borrarFirmas([anterior]);
   return { fila: { n_fila: nFila, ...fila } };
+}
+
+async function subirFirma(clave, valorFolio, valorFila, buffer) {
+  exigirClave(clave);
+  const folio = enteroPositivo(valorFolio, "Folio");
+  const nFila = enteroPositivo(valorFila, "Fila");
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw errorHttp(400, "Falta la imagen de la firma.");
+  if (buffer.length > TAMANO_MAXIMO_FIRMA) throw errorHttp(400, "La imagen de la firma pesa más de 1 MB.");
+  const medidas = dimensionesPng(buffer);
+  if (!medidas) throw errorHttp(400, "La imagen de la firma debe ser un archivo PNG.");
+  if (medidas.ancho > LADO_MAXIMO_FIRMA || medidas.alto > LADO_MAXIMO_FIRMA) {
+    throw errorHttp(400, `La imagen de la firma no puede superar ${LADO_MAXIMO_FIRMA} píxeles por lado.`);
+  }
+
+  await folioActivo(folio);
+  const anterior = await firmaActual(folio, nFila);
+  if (anterior === null) throw errorHttp(404, `La fila ${nFila} del folio ${folio} no existe.`);
+
+  const nombre = `firma-${folio}-${nFila}-${Date.now()}.png`;
+  await subirImagen(nombre, buffer, "image/png");
+  const valor = `${PREFIJO_IMAGEN}${nombre}`;
+  const { error } = await supabase.from("bitacora_filas").update({ firma: valor }).eq("folio", folio).eq("n_fila", nFila);
+  if (error) {
+    await quitarImagen(nombre).catch(() => {});
+    falloBd(error);
+  }
+  await borrarFirmas([anterior]);
+  return { fila: { n_fila: nFila, firma: valor } };
 }
 
 async function quitarFila(clave, valorFolio, valorFila) {
@@ -165,8 +231,10 @@ async function quitarFila(clave, valorFolio, valorFila) {
   const nFila = enteroPositivo(valorFila, "Fila");
   await folioActivo(folio);
 
+  const anterior = await firmaActual(folio, nFila);
   const { error } = await supabase.from("bitacora_filas").delete().eq("folio", folio).eq("n_fila", nFila);
   if (error) falloBd(error);
+  if (anterior) await borrarFirmas([anterior]);
 
   const { data: siguientes, error: errorSiguientes } = await supabase
     .from("bitacora_filas")
@@ -194,8 +262,10 @@ async function eliminarFolio(clave, valorFolio, confirmacion) {
   }
   await folioActivo(folio);
 
+  const firmas = (await leerFilas(folio)).map((fila) => fila.firma);
   const { error: errorFilas } = await supabase.from("bitacora_filas").delete().eq("folio", folio);
   if (errorFilas) falloBd(errorFilas);
+  await borrarFirmas(firmas);
   const { error } = await supabase.from("bitacora_folios").update({ eliminado_en: new Date().toISOString() }).eq("folio", folio);
   if (error) falloBd(error);
   return { folio, eliminado: true };
@@ -209,7 +279,27 @@ const BORDE = {
   right: { style: "thin" },
 };
 
-async function armarExcel(folio, filas) {
+const EMU_POR_PIXEL = 9525;
+
+function ponerFirmaImagen(libro, hoja, buffer, indiceFila, anchoCelda, altoCelda) {
+  const medidas = dimensionesPng(buffer);
+  if (!medidas) return;
+  const escala = Math.min(1, (anchoCelda - 4) / medidas.ancho, (altoCelda - 4) / medidas.alto);
+  const ancho = Math.max(1, Math.round(medidas.ancho * escala));
+  const alto = Math.max(1, Math.round(medidas.alto * escala));
+  const id = libro.addImage({ buffer, extension: "png" });
+  hoja.addImage(id, {
+    tl: {
+      nativeCol: COLUMNAS.length - 1,
+      nativeColOff: Math.round(((anchoCelda - ancho) / 2) * EMU_POR_PIXEL),
+      nativeRow: indiceFila,
+      nativeRowOff: Math.round(((altoCelda - alto) / 2) * EMU_POR_PIXEL),
+    },
+    ext: { width: ancho, height: alto },
+  });
+}
+
+async function armarExcel(folio, filas, imagenes = new Map()) {
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Hoja1", {
     pageSetup: { orientation: "landscape" },
@@ -251,9 +341,22 @@ async function armarExcel(folio, filas) {
         const numeroKilometros = numeroKm(valor);
         if (numeroKilometros !== null) valor = numeroKilometros;
       }
+      const firmaImagen = columna.campo === "firma" && nombreFirma(valor);
+      if (!firmaImagen) {
+        celda.alignment = { horizontal: "center", vertical: "middle", wrapText: columna.campo === "observacion" };
+      }
       if (columna.campo === "fecha") {
         valor = fechaLegible(valor);
-        celda.alignment = { shrinkToFit: true };
+        celda.alignment = { ...celda.alignment, shrinkToFit: true };
+      }
+      if (firmaImagen) {
+        const buffer = imagenes.get(nombreFirma(valor));
+        if (buffer) {
+          const anchoCelda = Math.round(columna.ancho * 7 + 5);
+          const altoCelda = Math.round((28.5 * 96) / 72);
+          ponerFirmaImagen(libro, hoja, buffer, 4 + indice, anchoCelda, altoCelda);
+        }
+        valor = "";
       }
       if (valor !== "" && valor != null) celda.value = valor;
       celda.font = { name: FUENTE, size: 11 };
@@ -265,7 +368,15 @@ async function armarExcel(folio, filas) {
 
 async function exportarFolio(valor) {
   const { folio, filas } = await leerFolio(valor);
-  const buffer = await armarExcel(folio, filas);
+  const imagenes = new Map();
+  const nombres = [...new Set(filas.map((fila) => nombreFirma(fila.firma)).filter(Boolean))];
+  await Promise.all(
+    nombres.map(async (nombre) => {
+      const buffer = await bajarImagen(nombre).catch(() => null);
+      if (buffer) imagenes.set(nombre, buffer);
+    })
+  );
+  const buffer = await armarExcel(folio, filas, imagenes);
   return { buffer, nombre: `Bitacora folio ${folio}.xlsx` };
 }
 
@@ -278,6 +389,9 @@ module.exports = {
   ultimoFolio,
   leerFolio,
   guardarFila,
+  subirFirma,
+  dimensionesPng,
+  nombreFirma,
   quitarFila,
   eliminarFolio,
   armarExcel,
