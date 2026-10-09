@@ -71,6 +71,35 @@ function indiceCampo(encabezados, titulo) {
   return encabezados.findIndex((nombre) => claveColumna(nombre) === buscado);
 }
 
+// Ubica columnas por encabezado. `requeridas` = { campo: [alternativas en orden de preferencia] }.
+// Cada alternativa se prueba primero como título exacto y luego como texto contenido en el título.
+// Busca la fila de encabezados entre las primeras 10 filas.
+function ubicarColumnas(matriz, requeridas) {
+  const campos = Object.keys(requeridas);
+  let mejor = { faltan: campos, indices: {} };
+  for (let fila = 0; fila < Math.min(matriz.length, 10); fila += 1) {
+    const claves = (matriz[fila] || []).map(claveColumna);
+    const indices = {};
+    const faltan = [];
+    for (const campo of campos) {
+      let indice = -1;
+      for (const alternativa of requeridas[campo]) {
+        const buscada = claveColumna(alternativa);
+        indice = claves.findIndex((clave) => clave === buscada);
+        if (indice < 0) indice = claves.findIndex((clave) => clave && clave.includes(buscada));
+        if (indice >= 0) break;
+      }
+      if (indice < 0) faltan.push(campo);
+      else indices[campo] = indice;
+    }
+    if (!faltan.length) return { fila, indices };
+    if (faltan.length < mejor.faltan.length) mejor = { faltan, indices };
+  }
+  const error = new Error(`El archivo no tiene los encabezados esperados (faltan: ${mejor.faltan.join(", ")}).`);
+  error.status = 400;
+  throw error;
+}
+
 function registrosMaterial(matriz) {
   const encabezados = (matriz[0] || []).map((nombre) => String(nombre));
   const vistos = new Map();
@@ -784,12 +813,18 @@ function importarSap(clave, buffer) {
   const ordenSap = [];
   const vistosSap = new Set();
 
-  matrizEntrada.slice(1).forEach((fila, desplazamiento) => {
-    const numero = desplazamiento + 2;
-    const codigo = String(fila[0] ?? "").trim();
-    const descripcion = fila[1] ?? "";
-    const planta = String(fila[2] ?? "").trim();
-    const stock = fila[3] ?? "";
+  const { indices: cols, fila: filaEncSap } = ubicarColumnas(matrizEntrada, {
+    codigo: ["Material", "matnr"],
+    descripcion: ["Texto breve de material", "Descripcion"],
+    planta: ["Almacén", "lgort"],
+    stock: ["Libre utilización", "Stock"],
+  });
+  matrizEntrada.slice(filaEncSap + 1).forEach((fila, desplazamiento) => {
+    const numero = desplazamiento + filaEncSap + 2;
+    const codigo = String(fila[cols.codigo] ?? "").trim();
+    const descripcion = fila[cols.descripcion] ?? "";
+    const planta = String(fila[cols.planta] ?? "").trim();
+    const stock = fila[cols.stock] ?? "";
     if (!codigo && planta === "" && String(descripcion).trim() === "" && String(stock).trim() === "") return;
     if (!BODEGAS_EXPORT.includes(planta)) {
       omitidos += 1;
@@ -873,11 +908,16 @@ function importarPrecios(clave, buffer) {
   let agregados = 0;
   let actualizados = 0;
 
-  matrizEntrada.slice(1).forEach((fila, desplazamiento) => {
-    const numero = desplazamiento + 2;
-    const codigo = String(fila[0] ?? "").trim();
-    const descripcion = fila[1] ?? "";
-    const precio = fila[3] ?? "";
+  const { indices: cols, fila: filaEnc } = ubicarColumnas(matrizEntrada, {
+    codigo: ["Material", "matnr"],
+    descripcion: ["Texto breve de material", "Descripcion"],
+    precio: ["Nuevos precios", "Precio"],
+  });
+  matrizEntrada.slice(filaEnc + 1).forEach((fila, desplazamiento) => {
+    const numero = desplazamiento + filaEnc + 2;
+    const codigo = String(fila[cols.codigo] ?? "").trim();
+    const descripcion = fila[cols.descripcion] ?? "";
+    const precio = fila[cols.precio] ?? "";
     if (!codigo && String(descripcion).trim() === "" && String(precio).trim() === "") return;
     if (!codigo) {
       const error = new Error(`La fila ${numero} no tiene código.`);
@@ -942,11 +982,16 @@ function importarUbicaciones(clave, buffer) {
   let actualizados = 0;
   let omitidos = 0;
 
-  matrizEntrada.slice(1).forEach((fila, desplazamiento) => {
-    const numero = desplazamiento + 2;
-    const codigo = String(fila[0] ?? "").trim();
-    const planta = String(fila[2] ?? "").trim();
-    const ubicacion = String(fila[3] ?? "").trim();
+  const { indices: cols, fila: filaEnc } = ubicarColumnas(matrizEntrada, {
+    codigo: ["matnr", "Material"],
+    planta: ["lgort", "Almacén"],
+    ubicacion: ["lgpbe", "Ubicación"],
+  });
+  matrizEntrada.slice(filaEnc + 1).forEach((fila, desplazamiento) => {
+    const numero = desplazamiento + filaEnc + 2;
+    const codigo = String(fila[cols.codigo] ?? "").trim();
+    const planta = String(fila[cols.planta] ?? "").trim();
+    const ubicacion = String(fila[cols.ubicacion] ?? "").trim();
     if (!codigo && planta === "" && ubicacion === "") return;
     if (planta !== "M501") {
       omitidos += 1;
@@ -1834,23 +1879,31 @@ function escribirEncabezadoVentas(hoja, fila, colores) {
   });
 }
 
+function columnaPorTitulo(claves, ...opciones) {
+  for (const opcion of opciones) {
+    const indice = claves.findIndex((clave) => (typeof opcion === "function" ? opcion(clave) : clave === opcion));
+    if (indice >= 0) return indice;
+  }
+  return -1;
+}
+
 function itemsDesdeOrden(ordenBuffer) {
   const libroOrden = XLSX.read(ordenBuffer, { type: "buffer" });
   const nombrePedido = libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
   const orden = XLSX.utils.sheet_to_json(libroOrden.Sheets[nombrePedido], { header: 1, defval: null });
-  const encabezado = orden.findIndex((fila) =>
-    (fila || []).some((celda) => String(celda ?? "").trim().toLowerCase() === "solicitado")
-  );
-  const titulos = (orden[encabezado] || []).map((celda) => String(celda ?? "").trim().toLowerCase());
-  const colCodigo = Math.max(titulos.indexOf("código"), titulos.indexOf("codigo"), 0);
-  const colUnidad = titulos.indexOf("un") >= 0 ? titulos.indexOf("un") : 2;
-  const colSolicitado = titulos.indexOf("solicitado") >= 0 ? titulos.indexOf("solicitado") : 3;
+  const encabezado = orden.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "solicitado"));
+  if (encabezado < 0) throw new Error("No se encontró el encabezado \"Solicitado\" en la orden de venta.");
+  const claves = (orden[encabezado] || []).map(claveColumna);
+  const colCodigo = columnaPorTitulo(claves, "codigo");
+  const colUnidad = columnaPorTitulo(claves, "un", "med", "unidad");
+  const colSolicitado = columnaPorTitulo(claves, "solicitado");
+  if (colCodigo < 0) throw new Error("No se encontró el encabezado \"Código\" en la orden de venta.");
   return orden.slice(encabezado + 1).flatMap((fila) => {
     const cantidad = fila?.[colSolicitado];
     if (cantidad == null || cantidad === "" || Number(cantidad) === 0) return [];
     return [{
       codigo: fila?.[colCodigo],
-      unidad: fila?.[colUnidad],
+      unidad: colUnidad >= 0 ? fila?.[colUnidad] : "",
       cantidad,
     }];
   });
@@ -1865,25 +1918,33 @@ function numeroEnTitulo(titulo) {
 }
 
 function itemsDesdeTraspaso(traspasoBuffer) {
-  // Encabezados en la fila 3. C1 trae el título con el número de traspaso.
-  // Col 2 código, col 3 descripción, col 4 med, col 5 solicitado,
-  // col 8 cantidad a entregar, col 10 cantidad a entregar desde CONCON.
+  // Las columnas se ubican por el nombre del encabezado (la posición puede cambiar).
   const libro = XLSX.read(traspasoBuffer, { type: "buffer" });
   const hoja = libro.Sheets[libro.SheetNames[0]];
   const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null });
   const numero = numeroEnTitulo(filas[0]?.[2]);
-  const items = filas.slice(3).flatMap((fila) => {
-    const codigo = fila?.[1];
+  const filaEnc = filas.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "codigo"));
+  if (filaEnc < 0) throw new Error("No se encontró el encabezado \"Código\" en el traspaso.");
+  const claves = (filas[filaEnc] || []).map(claveColumna);
+  const colCodigo = columnaPorTitulo(claves, "codigo");
+  const colDescripcion = columnaPorTitulo(claves, (c) => c.startsWith("descrip"));
+  const colUnidad = columnaPorTitulo(claves, "med", "un", "unidad");
+  const colCantidad = columnaPorTitulo(claves, (c) => c.startsWith("solicit"));
+  const colConcon = columnaPorTitulo(claves, (c) => c.includes("concon"));
+  const colEntregar = columnaPorTitulo(claves, (c) => c.includes("entregar") && !c.includes("concon"));
+  const valorEn = (fila, indice) => (indice >= 0 ? fila?.[indice] : undefined);
+  const items = filas.slice(filaEnc + 1).flatMap((fila) => {
+    const codigo = valorEn(fila, colCodigo);
     if (codigo == null || String(codigo).trim() === "") return [];
-    const cantidad = fila?.[4];
-    const entregar = fila?.[7];
-    const concon = fila?.[9];
+    const cantidad = valorEn(fila, colCantidad);
+    const entregar = valorEn(fila, colEntregar);
+    const concon = valorEn(fila, colConcon);
     const hayCantidad = [cantidad, entregar, concon].some((valor) => valor != null && valor !== "" && Number(valor) !== 0);
     if (!hayCantidad) return [];
     return [{
       codigo,
-      descripcion: fila?.[2] ?? "",
-      unidad: fila?.[3] ?? "",
+      descripcion: valorEn(fila, colDescripcion) ?? "",
+      unidad: valorEn(fila, colUnidad) ?? "",
       cantidad: cantidad ?? 0,
       entregar,
       concon,

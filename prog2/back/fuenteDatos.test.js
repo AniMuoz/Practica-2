@@ -176,7 +176,7 @@ test("itemsDesdeTraspaso lee cantidades y el número del título", () => {
   const buffer = libroBuffer([
     [null, null, "Traspaso N° 77"],
     [],
-    ["t1", "t2", "t3"],
+    ["Pos", "Código", "Descripción", "Med", "Solicitado", "x", "y", "Cantidad a entregar", "z", "Entregar CONCON"],
     [],
     [null, "200", "Codo", "UN", 4, null, null, 2, null, 1],
     [null, "", "", "", "", "", "", "", "", ""],
