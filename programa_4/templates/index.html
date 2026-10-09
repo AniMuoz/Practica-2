@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Bitácora camión</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="/favicon.png?v=2">
+<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f3f4f6; color: #111827; }
+  section { background: #fff; border-radius: 8px; padding: 16px; }
+  h1 { margin: 0 0 12px; font-size: 20px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+  button, label.btn { padding: 8px 14px; border: 0; border-radius: 6px; color: #fff; font-size: 14px; cursor: pointer; background: #2563eb; }
+  .verde { background: #059669; } .rojo { background: #dc2626; }
+  input[type=text], input[type=date], input[type=number] { box-sizing: border-box; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+  table { border-collapse: collapse; font-size: 14px; }
+  th { background: #a9e5e5; border: 1px solid #d1d5db; padding: 8px 10px; white-space: nowrap; }
+  td { border: 1px solid #e5e7eb; padding: 4px; }
+  #aviso { color: #b91c1c; margin: 0 0 12px; font-size: 14px; }
+  .firma { display: flex; align-items: center; gap: 6px; }
+  .firma img { max-width: 110px; max-height: 34px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; }
+</style>
+</head>
+<body>
+<section>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="/logo.png" alt="Logo" style="height:48px" onerror="this.style.display='none'">
+      <h1 style="margin:0">Bitácora camión</h1>
+    </div>
+    <button id="apagar" class="rojo">Apagar programa</button>
+  </div>
+  <div class="barra">
+    <input type="number" id="folio" min="1" step="1" placeholder="N.º de folio" style="width:140px">
+    <button id="nuevo">Iniciar folio</button>
+    <label class="btn verde">Subir folio (.xlsx)
+      <input type="file" id="subir" accept=".xlsx" hidden>
+    </label>
+    <span style="font-size:14px">Elige el número de folio o sube una planilla para seguir editándola.</span>
+  </div>
+  <p id="aviso"></p>
+  <div id="editor" hidden>
+    <div class="barra">
+      <strong id="titulo"></strong>
+      <button id="anadir">Añadir fila</button>
+      <button id="descargar" class="verde">Descargar planilla</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th>{% for c in columnas %}<th>{{ c.titulo }}</th>{% endfor %}<th></th></tr></thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+    <p id="vacio" style="font-size:14px" hidden>Todavía no hay filas. Usa "Añadir fila".</p>
+  </div>
+  <footer>
+      <span>© 2026 Berfre Ltda. Todos los derechos reservados.</span>
+      </footer>
+</section>
+<script>
+const COLUMNAS = {{ columnas|tojson }};
+const ANCHOS = { fecha: 140, chofer: 130, rut: 110, patente: 90, ruta: 130, h_salida: 80, h_llegada: 80, km_ini: 90, km_term: 90, km_reco: 90, observacion: 240 };
+let folio = null;
+let filas = [];
+const $ = (id) => document.getElementById(id);
+
+function aviso(t) { $("aviso").textContent = t || ""; }
+function num(v) { v = String(v ?? "").trim().replace(",", "."); return /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : null; }
+function reco(f) {
+  const a = num(f.km_ini), b = num(f.km_term);
+  return a === null || b === null ? "" : String(Math.round((b - a) * 1000) / 1000);
+}
+function vacia() { const f = {}; COLUMNAS.forEach((c) => (f[c.campo] = "")); return f; }
+
+function abrir(n, datos) {
+  folio = n; filas = datos;
+  $("folio").value = n;
+  $("editor").hidden = false;
+  dibujar();
+}
+
+function dibujar() {
+  $("titulo").textContent = `Folio N.º ${folio}`;
+  $("vacio").hidden = filas.length > 0;
+  const cuerpo = $("cuerpo");
+  cuerpo.innerHTML = "";
+  filas.forEach((f, i) => {
+    const tr = document.createElement("tr");
+    const n = document.createElement("td");
+    n.textContent = i + 1; n.style.textAlign = "center";
+    tr.appendChild(n);
+    COLUMNAS.forEach((c) => {
+      const td = document.createElement("td");
+      if (c.campo === "firma") {
+        const d = document.createElement("div"); d.className = "firma";
+        if (f.firma.startsWith("data:image")) {
+          const im = document.createElement("img"); im.src = f.firma; d.appendChild(im);
+          const q = document.createElement("button"); q.className = "rojo"; q.textContent = "Quitar imagen";
+          q.onclick = () => { f.firma = ""; dibujar(); };
+          d.appendChild(q);
+        } else {
+          const l = document.createElement("label"); l.className = "btn"; l.textContent = "Subir imagen";
+          const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.hidden = true;
+          inp.onchange = async () => {
+            try { f.firma = await comoPng(inp.files[0]); dibujar(); } catch (e) { aviso(e.message); }
+          };
+          l.appendChild(inp); d.appendChild(l);
+        }
+        td.appendChild(d);
+      } else {
+        const inp = document.createElement("input");
+        inp.type = c.campo === "fecha" ? "date" : "text";
+        inp.maxLength = 200;
+        inp.style.width = ANCHOS[c.campo] + "px";
+        if (c.campo === "km_reco") { inp.readOnly = true; inp.tabIndex = -1; inp.style.opacity = .75; inp.value = reco(f); }
+        else inp.value = f[c.campo] ?? "";
+        inp.oninput = () => {
+          f[c.campo] = inp.value;
+          if (c.campo === "km_ini" || c.campo === "km_term") {
+            f.km_reco = reco(f);
+            const r = tr.querySelector("[data-reco]"); if (r) r.value = f.km_reco;
+          }
+        };
+        if (c.campo === "km_reco") inp.dataset.reco = "1";
+        td.appendChild(inp);
+      }
+      tr.appendChild(td);
+    });
+    const tq = document.createElement("td");
+    const b = document.createElement("button"); b.className = "rojo"; b.textContent = "Quitar";
+    b.onclick = () => { if (confirm(`¿Quitar la fila ${i + 1}?`)) { filas.splice(i, 1); dibujar(); } };
+    tq.appendChild(b); tr.appendChild(tq);
+    cuerpo.appendChild(tr);
+  });
+}
+
+function comoPng(archivo) {
+  return new Promise((ok, mal) => {
+    const url = URL.createObjectURL(archivo), im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const e = Math.min(1, 600 / im.width, 200 / im.height);
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(im.width * e)); c.height = Math.max(1, Math.round(im.height * e));
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      ok(c.toDataURL("image/png"));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); mal(new Error("El archivo no es una imagen válida.")); };
+    im.src = url;
+  });
+}
+
+$("nuevo").onclick = () => {
+  const t = $("folio").value.trim();
+  if (!/^[1-9]\d*$/.test(t)) return aviso("Escribe un número de folio desde 1.");
+  if (folio !== null && !confirm("Se descartará lo que no hayas descargado. ¿Continuar?")) return;
+  aviso(""); abrir(Number(t), []);
+};
+
+$("subir").onchange = async (e) => {
+  const archivo = e.target.files[0]; e.target.value = "";
+  if (!archivo) return;
+  const cuerpo = new FormData(); cuerpo.append("archivo", archivo);
+  const res = await fetch("/api/importar", { method: "POST", body: cuerpo });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return aviso(data.error || "No se pudo subir el folio.");
+  let n = data.folio;
+  if (!n) {
+    const t = prompt("No se encontró el número de folio en el archivo. Escríbelo:");
+    if (!/^[1-9]\d*$/.test((t || "").trim())) return aviso("Folio inválido.");
+    n = Number(t);
+  }
+  aviso(""); abrir(n, data.filas);
+};
+
+$("apagar").onclick = async () => {
+  if (!confirm("¿Apagar el programa? Lo que no hayas descargado se perderá.")) return;
+  await fetch("/api/apagar", { method: "POST" }).catch(() => {});
+  document.body.innerHTML = "<p style='padding:24px;font-family:system-ui'>Programa apagado. Ya puedes cerrar esta pestaña.</p>";
+};
+
+$("anadir").onclick = () => { filas.push(vacia()); dibujar(); };
+
+$("descargar").onclick = async () => {
+  aviso("");
+  const res = await fetch("/api/exportar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folio, filas }),
+  });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); return aviso(d.error || "No se pudo descargar."); }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a"); a.href = url; a.download = `Bitacora folio ${folio}.xlsx`; a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
