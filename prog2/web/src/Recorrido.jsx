@@ -74,15 +74,10 @@ const PASOS = {
       texto: "Esta seccion solo se abre con la contraseña de acceso.",
     },
     {
-      id: "Añadir un dato",
-      titulo: "Anadir o editar un dato",
-      texto: "Anade o edita un solo dato de la base de inventario.",
-    },
-    {
-      id: "Carga de datos",
-      titulo: "Actualizar bases",
+      id: "Añadir/cargar datos",
+      titulo: "Anadir o cargar datos",
       texto:
-        "Actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. Tambien se pueden actualizar las reservas.",
+        "Anade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. Tambien se pueden actualizar las reservas.",
     },
     {
       id: "Stock en bodega",

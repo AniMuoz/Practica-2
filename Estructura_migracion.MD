@@ -1,6 +1,6 @@
 # Estructura para migración (base vacía)
 
-SQL para **Cloud SQL con motor PostgreSQL**. Crea las cinco tablas vacías, con las mismas columnas que usa el programa. No incluye datos ni el bucket de imágenes: Cloud SQL no tiene Storage.
+SQL para **Cloud SQL con motor PostgreSQL**. Crea las siete tablas vacías, con las mismas columnas que usa el programa. No incluye datos ni el bucket de imágenes: Cloud SQL no tiene Storage.
 
 Pegar este script deja la base lista en cuanto a tablas. El programa, hoy, no se conecta a Cloud SQL: habla con Supabase (`SUPABASE_URL` y la clave de servicio) y sube las fotos al bucket `imagenes` de Supabase. Hasta cambiar esa conexión y el guardado de imágenes (por ejemplo a Cloud Storage), la app sigue usando Supabase aunque esta base ya exista.
 
@@ -74,6 +74,39 @@ create table if not exists public.ultimas_cargas (
   clave text primary key,
   fecha text not null
 );
+
+create table if not exists public.bitacora_folios (
+  folio bigint generated always as identity primary key,
+  creado_en timestamptz not null default now(),
+  eliminado_en timestamptz
+);
+
+alter table public.bitacora_folios add column if not exists eliminado_en timestamptz;
+
+create table if not exists public.bitacora_filas (
+  folio bigint not null references public.bitacora_folios(folio) on delete cascade,
+  n_fila integer not null check (n_fila > 0),
+  fecha text not null default '',
+  chofer text not null default '',
+  rut text not null default '',
+  patente text not null default '',
+  ruta text not null default '',
+  h_salida text not null default '',
+  h_llegada text not null default '',
+  km_ini text not null default '',
+  km_term text not null default '',
+  km_reco text not null default '',
+  observacion text not null default '',
+  firma text not null default '',
+  primary key (folio, n_fila)
+);
 ```
+
+Bitácora camión (Admin, botón "Bitacora camion"): usa dos tablas relacionadas.
+
+- `bitacora_folios`: un registro por folio. `folio` es una identidad generada (1, 2, 3, ...), así que la numeración arranca en 1 y no se repite aunque se pidan folios a la vez.
+- Eliminar un folio no borra su registro de `bitacora_folios`: se marca con la fecha en `eliminado_en` y se borran sus filas de `bitacora_filas`. Así el número no se puede reutilizar y, al consultarlo, el programa responde "Folio eliminado". La línea `alter table ... add column if not exists` sirve para bases que ya tenían la tabla creada sin esa columna.
+- `bitacora_filas`: las filas de cada folio, con la misma estructura de la planilla "PLANILLA CONTROL DE VIAJE" (FECHA, CHOFER, RUT, PATENTE, RUTA, H.SALIDA, H.LLEGADA, KM/INI, KM/TERM, KM/RECO, OBSERVACION, FIRMA). La clave primaria `(folio, n_fila)` mantiene juntas y ordenadas las filas de un mismo folio, evita posiciones duplicadas y hace rápida la consulta por folio aunque haya muchos folios. `on delete cascade` borra las filas si se borra el folio.
+- El programa nunca reemplaza estas tablas completas: solo inserta o actualiza las filas del folio abierto, sin tocar los demás folios.
 
 Las columnas `rombo`, `qr` y `foto` guardan el nombre del archivo, igual que ahora. El archivo en sí va a un bucket de Cloud Storage, fuera de este SQL.

@@ -5,6 +5,7 @@ const cors = require("cors");
 const multer = require("multer");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
+const bitacora = require("./bitacora");
 const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imagenesSupabase");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
@@ -373,6 +374,69 @@ app.put("/api/contratistas", (req, res) => {
     res.json(guardarContratistas(req.body.clave, req.body.filas));
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message || "No se pudo guardar los contratistas." });
+  }
+});
+
+function responderBitacora(res, error, mensaje) {
+  res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
+}
+
+app.post("/api/bitacora/folios", async (req, res) => {
+  try {
+    res.status(201).json(await bitacora.crearFolio(req.body && req.body.clave));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo generar el folio.");
+  }
+});
+
+app.get("/api/bitacora/folios/ultimo", async (_req, res) => {
+  try {
+    res.json(await bitacora.ultimoFolio());
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo leer el último folio.");
+  }
+});
+
+app.get("/api/bitacora/folios/:folio/excel", async (req, res) => {
+  try {
+    const { buffer, nombre } = await bitacora.exportarFolio(req.params.folio);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo generar la planilla del folio.");
+  }
+});
+
+app.get("/api/bitacora/folios/:folio", async (req, res) => {
+  try {
+    res.json(await bitacora.leerFolio(req.params.folio));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo leer el folio.");
+  }
+});
+
+app.delete("/api/bitacora/folios/:folio", async (req, res) => {
+  try {
+    res.json(await bitacora.eliminarFolio(req.body && req.body.clave, req.params.folio, req.body && req.body.confirmacion));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo eliminar el folio.");
+  }
+});
+
+app.put("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
+  try {
+    res.json(await bitacora.guardarFila(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.datos));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo guardar la fila.");
+  }
+});
+
+app.delete("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
+  try {
+    res.json(await bitacora.quitarFila(req.body && req.body.clave, req.params.folio, req.params.fila));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo quitar la fila.");
   }
 });
 

@@ -4,6 +4,7 @@ import { useBlocker, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
+import Bitacora from "./Bitacora.jsx";
 import {
   claveUltimaCarga,
   colorCantidad,
@@ -136,6 +137,7 @@ export default function Admin() {
   const [modoCarga, setModoCarga] = useState("completa");
   const [columnaCarga, setColumnaCarga] = useState("");
   const [columnasDestino, setColumnasDestino] = useState([]);
+  const [agrandarBotones, setAgrandarBotones] = useState(false);
   const [mostrarCarga, setMostrarCarga] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarBodega, setMostrarBodega] = useState(false);
@@ -196,6 +198,8 @@ export default function Admin() {
   const [cargandoContratistas, setCargandoContratistas] = useState(false);
   const [guardandoContratistas, setGuardandoContratistas] = useState(false);
   const [avisoContratistas, setAvisoContratistas] = useState("");
+  const [mostrarBitacora, setMostrarBitacora] = useState(false);
+  const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
   const [mostrarVentas, setMostrarVentas] = useState(false);
   const [ordenVenta, setOrdenVenta] = useState(null);
   const [archivoVentas, setArchivoVentas] = useState(null);
@@ -281,6 +285,7 @@ export default function Admin() {
     if (!ok.has("reserva")) setMostrarReserva(false);
     if (!ok.has("ventas")) setMostrarVentas(false);
     if (!ok.has("contratistas")) setMostrarContratistas(false);
+    if (!ok.has("bitacora")) setMostrarBitacora(false);
   }
 
   function cargarUltimasCargas() {
@@ -381,7 +386,8 @@ export default function Admin() {
         String(codVenta).trim() !== ""
     );
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
-  const hayCambiosSinGuardar = formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar;
+  const hayCambiosSinGuardar =
+    formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
   hayCambiosRef.current = hayCambiosSinGuardar;
   const importandoRef = useRef(false);
   importandoRef.current = importando;
@@ -460,7 +466,46 @@ export default function Admin() {
       }}
     >
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Agregar material</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 16px" }}>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Agregar material</h1>
+        {autorizado && (
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer", userSelect: "none" }}>
+            Agrandar
+            <span style={{ position: "relative", width: 42, height: 24, flex: "0 0 auto" }}>
+              <input
+                type="checkbox"
+                checked={agrandarBotones}
+                onChange={(event) => setAgrandarBotones(event.target.checked)}
+                aria-label="Agrandar"
+                style={{ position: "absolute", inset: 0, margin: 0, opacity: 0, cursor: "pointer", zIndex: 1 }}
+              />
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: 999,
+                  background: agrandarBotones ? "var(--acento)" : "var(--borde)",
+                  transition: "background .15s",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 3,
+                    left: agrandarBotones ? 21 : 3,
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    transition: "left .15s",
+                  }}
+                />
+              </span>
+            </span>
+          </label>
+        )}
+      </div>
       {!autorizado && (
         <form
           data-tour="admin-clave"
@@ -540,10 +585,18 @@ export default function Admin() {
         </form>
       )}
       {autorizado && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: agrandarBotones ? "wrap" : "nowrap",
+            gap: agrandarBotones ? 10 : 6,
+            marginBottom: 16,
+            alignItems: "stretch",
+          }}
+        >
           {[
-            "Añadir un dato",
-            "Carga de datos",
+            "Añadir/cargar datos",
+            "Bitacora camion",
             "Stock en bodega",
             "Stock regional",
             "Planilla de inventario",
@@ -554,8 +607,8 @@ export default function Admin() {
             "Editar contratistas",
           ].map((nombre) => {
             const activo =
-              (nombre === "Carga de datos" && mostrarCarga) ||
-              (nombre === "Añadir un dato" && mostrarFormulario) ||
+              (nombre === "Añadir/cargar datos" && (mostrarCarga || mostrarFormulario)) ||
+              (nombre === "Bitacora camion" && mostrarBitacora) ||
               (nombre === "Stock en bodega" && mostrarBodega) ||
               (nombre === "Stock regional" && mostrarRegional) ||
               (nombre === "Planilla de inventario" && mostrarInventario) ||
@@ -573,14 +626,16 @@ export default function Admin() {
                 onClick={() => {
                   if (importando) return;
                   const cambiar = () => {
-                  if (nombre === "Carga de datos") {
-                    const abrir = !mostrarCarga;
+                  if (nombre === "Bitacora camion") {
+                    const abrir = !mostrarBitacora;
+                    if (abrir) cerrarPaneles(["bitacora"]);
+                    else setBitacoraSinGuardar(false);
+                    setMostrarBitacora(abrir);
+                  }
+                  if (nombre === "Añadir/cargar datos") {
+                    const abrir = !(mostrarCarga && mostrarFormulario);
                     if (abrir) cerrarPaneles(["carga", "formulario"]);
                     setMostrarCarga(abrir);
-                  }
-                  if (nombre === "Añadir un dato") {
-                    const abrir = !mostrarFormulario;
-                    if (abrir) cerrarPaneles(["carga", "formulario"]);
                     setMostrarFormulario(abrir);
                   }
                   if (nombre === "Stock en bodega") {
@@ -659,12 +714,19 @@ export default function Admin() {
                   intentarSalir(cambiar);
                 }}
                 style={{
-                  padding: "8px 14px",
+                  boxSizing: "border-box",
+                  flex: agrandarBotones ? "1 1 calc((100% - 40px) / 5)" : "1 1 0",
+                  maxWidth: agrandarBotones ? "calc((100% - 40px) / 5)" : undefined,
+                  minWidth: agrandarBotones ? 140 : 0,
+                  padding: agrandarBotones ? "14px 12px" : "6px 4px",
                   border: activo ? "1px solid var(--acento)" : "1px solid var(--borde)",
                   borderRadius: 6,
                   background: activo ? "var(--acento)" : "var(--superficie)",
                   color: activo ? "var(--sobre)" : "var(--texto)",
-                  fontSize: 14,
+                  fontSize: agrandarBotones ? 15 : 12,
+                  lineHeight: 1.25,
+                  textAlign: "center",
+                  whiteSpace: "normal",
                   cursor: importando ? "default" : "pointer",
                   opacity: importando && !activo ? 0.55 : 1,
                 }}
@@ -673,12 +735,12 @@ export default function Admin() {
               </button>
             );
           })}
-          {importando && (
-            <p style={{ margin: 0, flexBasis: "100%", fontSize: 14 }}>
-              Importación en curso. Esperá a que termine para cambiar de función.
-            </p>
-          )}
         </div>
+      )}
+      {autorizado && importando && (
+        <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+          Importación en curso. Esperá a que termine para cambiar de función.
+        </p>
       )}
       {autorizado && mostrarCarga && (
         <form
@@ -791,6 +853,9 @@ export default function Admin() {
           <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
         </form>
+      )}
+      {autorizado && mostrarBitacora && (
+        <Bitacora clave={clave} colores={colores} alPendiente={setBitacoraSinGuardar} />
       )}
       {autorizado && mostrarBodega && (
         <section
