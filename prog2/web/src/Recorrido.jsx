@@ -83,7 +83,7 @@ const PASOS = {
       id: "Bitacora camion",
       titulo: "Bitácora de camiones",
       texto:
-        "Abre la bitácora de camiones. Ahí se consultan o crean folios y se registran los viajes: fecha, chofer, patente, ruta, horarios, kilómetros y firma. Al subir la imagen de la firma hay que confirmar el RUT de la fila. Queda marcada como Vigente, con la hora. Si después cambian los datos del viaje, pasa a Vencida. Para quitarla hay que indicar un motivo: ese historial se ve en la pantalla y no sale en el Excel. El folio se puede descargar igual que antes.",
+        "Abre la bitácora de camiones. Ahí se consultan o crean folios y se registran los viajes: fecha, chofer, patente, ruta, horarios, kilómetros y firma. Al subir la imagen de la firma hay que confirmar el RUT de la fila. Queda marcada como Vigente, con la hora. Si después cambian los datos del viaje, pasa a Vencida. Para quitarla hay que indicar un motivo: ese historial se ve en la pantalla y no sale en el Excel. El folio se puede descargar.",
     },
     {
       id: "Stock en bodega",
