@@ -80,6 +80,12 @@ const PASOS = {
         "Añade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. También se pueden actualizar las reservas.",
     },
     {
+      id: "Bitacora camion",
+      titulo: "Bitácora de camiones",
+      texto:
+        "Abre la bitácora de camiones. Ahí se consultan o crean folios y se registran los viajes: fecha, chofer, patente, ruta, horarios, kilómetros y firma. El folio se puede descargar.",
+    },
+    {
       id: "Stock en bodega",
       titulo: "Stock M501",
       texto: "Genera una planilla con el stock de la bodega M501.",
