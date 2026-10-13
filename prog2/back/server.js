@@ -6,6 +6,7 @@ const multer = require("multer");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, exportarTabla, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado, revisarReserva, exportarRevisionReserva, leerContratistas, guardarContratistas, añadirVenta, importarReservas, buscarReservas, exportarRevisionPorReserva, leerUltimasCargas, registrarCarga, precargarDatos } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
 const bitacora = require("./bitacora");
+const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
 const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imagenesSupabase");
 
 const carpetaImagenes = path.join(__dirname, "imagenes");
@@ -80,6 +81,10 @@ function emitir(evento) {
 
 app.use(cors());
 app.use(express.json());
+if (require.main === module) {
+  app.use("/api", protegerApi);
+}
+rutasAuth(app);
 app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
@@ -707,8 +712,15 @@ if (require.main === module) {
     .catch((error) => {
       console.error(error.message);
     })
-    .finally(() => {
+    .finally(async () => {
       precargarDatos();
+      try {
+        if ((await contarUsuarios()) === 0) {
+          console.warn("No hay usuarios: nadie podrá iniciar sesión. Crea uno con: node crearUsuario.js <usuario> <contraseña>");
+        }
+      } catch (error) {
+        console.warn(error.message);
+      }
       app.listen(PORT, "0.0.0.0", () => {
         console.log(`API en http://localhost:${PORT}`);
       });

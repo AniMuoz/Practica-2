@@ -5,6 +5,8 @@ private/*
 *.xlsx
 *zip
 
+prog2/back/.sesion-secreto
+
 node_modules/
 
 # Byte-compiled / optimized / DLL files

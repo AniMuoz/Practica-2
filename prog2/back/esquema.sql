@@ -3,6 +3,14 @@ create table if not exists public.planillas (
   matriz jsonb not null default '[]'::jsonb
 );
 
+create table if not exists public.usuarios (
+  usuario text primary key,
+  clave_hash text not null,
+  creado_en timestamptz not null default now()
+);
+
+alter table public.usuarios enable row level security;
+
 create table if not exists public.ultimas_cargas (
   clave text primary key,
   fecha text not null

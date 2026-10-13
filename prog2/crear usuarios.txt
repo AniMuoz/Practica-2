@@ -1,0 +1,1 @@
+node CrearUsuario.js {nombre} {contraseña}
