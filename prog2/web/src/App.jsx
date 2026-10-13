@@ -44,6 +44,18 @@ export default function App() {
   const [avisoClave, setAvisoClave] = useState("");
   const tamano = 100;
 
+  function estiloBoton(habilitado, fondo = "var(--boton)", padding = "8px 14px") {
+    return {
+      padding,
+      border: 0,
+      borderRadius: 6,
+      background: habilitado ? fondo : "var(--apagado)",
+      color: habilitado ? "var(--sobre)" : "var(--apagado-texto)",
+      fontSize: 14,
+      cursor: habilitado ? "pointer" : "default",
+    };
+  }
+
   function colorCelda(columna, fila) {
     return colorDeCelda(columna, fila, oscuro);
   }
@@ -161,15 +173,7 @@ export default function App() {
         type="button"
         disabled={pagina === 0}
         onClick={() => setPagina((actual) => actual - 1)}
-        style={{
-          padding: "6px 12px",
-          border: 0,
-          borderRadius: 6,
-          background: pagina === 0 ? "var(--apagado)" : "var(--boton)",
-          color: pagina === 0 ? "var(--apagado-texto)" : "var(--sobre)",
-          fontSize: 14,
-          cursor: pagina === 0 ? "default" : "pointer",
-        }}
+        style={estiloBoton(pagina !== 0, "var(--boton)", "6px 12px")}
       >
         Anterior
       </button>
@@ -178,15 +182,7 @@ export default function App() {
         type="button"
         disabled={alFinal}
         onClick={() => setPagina((actual) => actual + 1)}
-        style={{
-          padding: "6px 12px",
-          border: 0,
-          borderRadius: 6,
-          background: alFinal ? "var(--apagado)" : "var(--boton)",
-          color: alFinal ? "var(--apagado-texto)" : "var(--sobre)",
-          fontSize: 14,
-          cursor: alFinal ? "default" : "pointer",
-        }}
+        style={estiloBoton(!alFinal, "var(--boton)", "6px 12px")}
       >
         Siguiente
       </button>
@@ -213,15 +209,7 @@ export default function App() {
               type="button"
               data-tour="filtros"
               onClick={() => setFiltrosAbiertos((abierto) => !abierto)}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
+              style={estiloBoton(true)}
             >
               {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
             </button>
@@ -246,15 +234,7 @@ export default function App() {
                 setClave("");
                 setPedirClave(true);
               }}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: cargando || limpiando ? "var(--apagado)" : "var(--peligro)",
-                color: cargando || limpiando ? "var(--apagado-texto)" : "var(--sobre)",
-                fontSize: 14,
-                cursor: cargando || limpiando ? "default" : "pointer",
-              }}
+              style={estiloBoton(!(cargando || limpiando), "var(--peligro)")}
             >
               {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
             </button>
@@ -667,15 +647,7 @@ export default function App() {
               <button
                 type="submit"
                 disabled={limpiando || clave.trim() === ""}
-                style={{
-                  padding: "8px 14px",
-                  border: 0,
-                  borderRadius: 6,
-                  background: limpiando || clave.trim() === "" ? "var(--apagado)" : "var(--peligro)",
-                  color: limpiando || clave.trim() === "" ? "var(--apagado-texto)" : "var(--sobre)",
-                  fontSize: 14,
-                  cursor: limpiando || clave.trim() === "" ? "default" : "pointer",
-                }}
+                style={estiloBoton(!(limpiando || clave.trim() === ""), "var(--peligro)")}
               >
                 {limpiando ? "Limpiando..." : "Confirmar"}
               </button>

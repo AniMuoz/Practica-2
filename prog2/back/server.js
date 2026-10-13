@@ -60,6 +60,12 @@ function conColores(valor) {
   return valor !== "0";
 }
 
+function enviarPlanilla(res, buffer, disposition) {
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", disposition);
+  res.send(Buffer.from(buffer));
+}
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -153,9 +159,7 @@ app.get("/api/tabla/excel", async (req, res) => {
       ignorarNulo: req.query.ignorarNulo === "1",
       texto: req.query.q,
     });
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=inventario.xlsx");
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla." });
@@ -174,9 +178,7 @@ app.get("/api/bodega", (_req, res) => {
 app.get("/api/bodega/excel", async (req, res) => {
   try {
     const buffer = await exportarStockBodega(conColores(req.query.colores));
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20M501.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20M501.xlsx");
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
@@ -195,9 +197,7 @@ app.get("/api/regional", (_req, res) => {
 app.get("/api/regional/excel", async (req, res) => {
   try {
     const buffer = await exportarStockRegional(conColores(req.query.colores));
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla regional." });
@@ -217,9 +217,7 @@ app.get("/api/inventario/excel", async (req, res) => {
   try {
     const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
     const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen);
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de inventario." });
@@ -242,9 +240,7 @@ app.get("/api/inventario-bodega/excel", async (req, res) => {
     const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
     const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores), origen);
     const nombre = `PLANILLA DE INVENTARIO ${codigo}.xlsx`;
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
   } catch (error) {
     console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo generar la planilla de la bodega." });
@@ -263,9 +259,7 @@ app.get("/api/stock-detallado", (_req, res) => {
 app.get("/api/stock-detallado/excel", async (req, res) => {
   try {
     const buffer = await exportarStockDetallado(conColores(req.query.colores));
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=Prueba_de_stock_detallado.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=Prueba_de_stock_detallado.xlsx");
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar el stock detallado." });
@@ -298,9 +292,7 @@ app.get("/api/reservas", (req, res) => {
 app.get("/api/reservas/excel", async (req, res) => {
   try {
     const buffer = await exportarRevisionPorReserva(req.query.reserva, conColores(req.query.colores));
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
   } catch (error) {
     console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo generar la revisión de reserva." });
@@ -322,9 +314,7 @@ app.post("/api/reserva/excel", (req, res) => {
   recibirReserva(req, res, async () => {
     try {
       const buffer = await exportarRevisionReserva(req.file.buffer, conColores(req.body.colores));
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
-      res.send(Buffer.from(buffer));
+      enviarPlanilla(res, buffer, "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo generar la revisión de reserva." });
@@ -367,9 +357,7 @@ app.post("/api/ventas", (req, res) => {
         colores: conColores(req.body.colores),
         itemsManuales,
       });
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
-      res.send(Buffer.from(buffer));
+      enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo generar la planilla de ventas." });
@@ -420,9 +408,7 @@ app.get("/api/bitacora/folios/ultimo", async (_req, res) => {
 app.get("/api/bitacora/folios/:folio/excel", async (req, res) => {
   try {
     const { buffer, nombre } = await bitacora.exportarFolio(req.params.folio);
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
-    res.send(Buffer.from(buffer));
+    enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
   } catch (error) {
     console.error(error);
     responderBitacora(res, error, "No se pudo generar la planilla del folio.");
