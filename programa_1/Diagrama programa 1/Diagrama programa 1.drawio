@@ -1,0 +1,48 @@
+<mxfile host="app.diagrams.net"><diagram name="Programa 1" id="p1"><mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1100" pageHeight="1100"><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="t" value="Programa 1 - Berfre (Flask + Excel)" style="text;html=1;fontStyle=1;fontSize=18;align=center;" vertex="1" parent="1"><mxGeometry x="300" y="0" width="300" height="30" as="geometry"/></mxCell>
+<mxCell id="n1" value="Inicio&#xa;python front_flask.py" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="340" y="40" width="220" height="60" as="geometry"/></mxCell>
+<mxCell id="n2" value="Inicializar diccionarios&#xa;(materiales, ubicaciones, precios, stock, comprometido)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="330" y="130" width="240" height="60" as="geometry"/></mxCell>
+<mxCell id="n3" value="Abrir navegador (Timer)&#xa;Mostrar home" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="340" y="220" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="n4" value="Usuario sube archivo Excel" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="340" y="300" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="n5" value="¿Qué operación?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="350" y="380" width="200" height="100" as="geometry"/></mxCell>
+<mxCell id="o1" value="Stock&#xa;filtro1 / total" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="20" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o2" value="Stock detallado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="170" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o3" value="Bodega" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="320" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o4" value="Inventario" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="470" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o5" value="Reserva&#xa;cont_reserva" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="620" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o6" value="Ventas&#xa;añadir_venta" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="770" y="530" width="130" height="60" as="geometry"/></mxCell>
+<mxCell id="o7" value="Diccionarios&#xa;agregar / modificar / eliminar / importar / exportar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="930" y="525" width="150" height="70" as="geometry"/></mxCell>
+<mxCell id="n6" value="Procesar con openpyxl&#xa;(Berfre.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="340" y="640" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="db" value="Diccionarios .py / Excel" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="640" y="630" width="120" height="80" as="geometry"/></mxCell>
+<mxCell id="n7" value="Vista previa en pantalla" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="340" y="720" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="n8" value="¿Descargar?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="350" y="800" width="200" height="90" as="geometry"/></mxCell>
+<mxCell id="n9" value="Generar y descargar Excel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="340" y="930" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="n10" value="¿Otra operación o salir?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="340" y="1010" width="220" height="90" as="geometry"/></mxCell>
+<mxCell id="n11" value="/apagar - cerrar servidor&#xa;Fin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="340" y="1130" width="220" height="60" as="geometry"/></mxCell>
+<mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="f7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="o7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o1" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o2" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o3" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o4" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o5" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o6" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="g7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="o7" target="db"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="db" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h4" value="Sí" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h5" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n8" target="n10"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="620" y="845"/><mxPoint x="620" y="1055"/></Array></mxGeometry></mxCell>
+<mxCell id="h6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n9" target="n10"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h7" value="Salir" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n10" target="n11"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="h8" value="Otra operación" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n10" target="n4"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="280" y="1055"/><mxPoint x="280" y="325"/></Array></mxGeometry></mxCell>
+</root></mxGraphModel></diagram></mxfile>
