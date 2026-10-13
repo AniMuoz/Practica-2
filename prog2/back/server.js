@@ -449,11 +449,19 @@ app.post("/api/bitacora/folios/:folio/filas/:fila/firma", (req, res) => {
       return;
     }
     try {
-      res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer));
+      res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer, req.body && req.body.rut));
     } catch (error) {
       responderBitacora(res, error, "No se pudo guardar la imagen de la firma.");
     }
   });
+});
+
+app.delete("/api/bitacora/folios/:folio/filas/:fila/firma", async (req, res) => {
+  try {
+    res.json(await bitacora.quitarFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.motivo));
+  } catch (error) {
+    responderBitacora(res, error, "No se pudo quitar la firma.");
+  }
 });
 
 app.delete("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {

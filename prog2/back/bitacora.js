@@ -1,4 +1,5 @@
 const path = require("path");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 const { supabase } = require("./supabase");
 const { claveCorrecta } = require("./fuenteDatos");
@@ -28,6 +29,8 @@ const COLUMNAS = [
 
 const CAMPOS = COLUMNAS.map((columna) => columna.campo);
 const CAMPOS_KM = new Set(["km_ini", "km_term", "km_reco"]);
+const CAMPOS_RESUMEN_FIRMA = ["fecha", "chofer", "rut", "patente", "ruta", "h_salida", "h_llegada", "km_ini", "km_term", "km_reco"];
+const CAMPOS_VERIFICACION = ["firma_hash", "firma_datos", "firma_en"];
 
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
@@ -81,6 +84,32 @@ function limpiarFila(datos) {
   return fila;
 }
 
+function resumenFirma(fila) {
+  return CAMPOS_RESUMEN_FIRMA.map((campo) => String(fila?.[campo] ?? "").trim()).join("|");
+}
+
+function hashTexto(texto) {
+  return crypto.createHash("sha256").update(String(texto), "utf8").digest("hex");
+}
+
+function hashBuffer(buffer) {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function rutNormalizado(valor) {
+  return String(valor ?? "").replace(/[.\s]/g, "").toLowerCase();
+}
+
+function estadoFirma(fila) {
+  if (!nombreFirma(fila?.firma)) return "sin_firma";
+  if (!fila.firma_hash || !fila.firma_datos) return "sin_verificacion";
+  return fila.firma_datos === hashTexto(resumenFirma(fila)) ? "vigente" : "vencida";
+}
+
+function conEstadoFirma(fila) {
+  return { ...fila, firma_estado: estadoFirma(fila) };
+}
+
 function nombreFirma(valor) {
   const texto = String(valor ?? "");
   if (!texto.startsWith(PREFIJO_IMAGEN)) return null;
@@ -96,9 +125,14 @@ function dimensionesPng(buffer) {
 }
 
 async function firmaActual(folio, nFila) {
-  const { data, error } = await supabase.from("bitacora_filas").select("firma").eq("folio", folio).eq("n_fila", nFila).maybeSingle();
+  const { data, error } = await supabase
+    .from("bitacora_filas")
+    .select(["firma", ...CAMPOS_VERIFICACION].join(", "))
+    .eq("folio", folio)
+    .eq("n_fila", nFila)
+    .maybeSingle();
   if (error) falloBd(error);
-  return data ? data.firma : null;
+  return data;
 }
 
 async function borrarFirmas(valores) {
@@ -150,7 +184,7 @@ async function leerFilas(folio) {
   for (let desde = 0; ; desde += 1000) {
     const { data, error } = await supabase
       .from("bitacora_filas")
-      .select(["n_fila", ...CAMPOS].join(", "))
+      .select(["n_fila", ...CAMPOS, ...CAMPOS_VERIFICACION].join(", "))
       .eq("folio", folio)
       .order("n_fila", { ascending: true })
       .range(desde, desde + 999);
@@ -158,13 +192,24 @@ async function leerFilas(folio) {
     filas.push(...(data || []));
     if (!data || data.length < 1000) break;
   }
-  return filas;
+  return filas.map(conEstadoFirma);
+}
+
+async function leerHistorialFirmas(folio) {
+  const { data, error } = await supabase
+    .from("bitacora_firmas_historial")
+    .select("id, n_fila, firma, firma_hash, firma_en, quitada_en, motivo")
+    .eq("folio", folio)
+    .order("quitada_en", { ascending: false });
+  if (error) falloBd(error);
+  return data || [];
 }
 
 async function leerFolio(valor) {
   const folio = enteroPositivo(valor, "Folio");
   const data = await folioActivo(folio);
-  return { folio: data.folio, creado_en: data.creado_en, filas: await leerFilas(folio) };
+  const [filas, historial_firmas] = await Promise.all([leerFilas(folio), leerHistorialFirmas(folio)]);
+  return { folio: data.folio, creado_en: data.creado_en, filas, historial_firmas };
 }
 
 async function guardarFila(clave, valorFolio, valorFila, datos) {
@@ -186,18 +231,23 @@ async function guardarFila(clave, valorFolio, valorFila, datos) {
   if (nFila > maxima + 1) throw errorHttp(400, `La siguiente fila disponible es la ${maxima + 1}.`);
 
   const anterior = await firmaActual(folio, nFila);
-  if (fila.firma.startsWith(PREFIJO_IMAGEN) && fila.firma !== anterior) {
+  const firmaGuardada = anterior ? anterior.firma : "";
+  if (nombreFirma(firmaGuardada) && fila.firma !== firmaGuardada) {
+    throw errorHttp(400, "La imagen de la firma se quita con el botón Quitar imagen.");
+  }
+  if (fila.firma.startsWith(PREFIJO_IMAGEN) && fila.firma !== firmaGuardada) {
     throw errorHttp(400, "La imagen de la firma se sube con el botón de imagen.");
   }
 
   const registro = { folio, n_fila: nFila, ...fila };
   const { error } = await supabase.from("bitacora_filas").upsert(registro, { onConflict: "folio,n_fila" });
   if (error) falloBd(error);
-  if (anterior && anterior !== fila.firma) await borrarFirmas([anterior]);
-  return { fila: { n_fila: nFila, ...fila } };
+  if (firmaGuardada && firmaGuardada !== fila.firma) await borrarFirmas([firmaGuardada]);
+  const guardada = { ...fila, firma_hash: anterior?.firma_hash || "", firma_datos: anterior?.firma_datos || "", firma_en: anterior?.firma_en || null };
+  return { fila: conEstadoFirma({ n_fila: nFila, ...guardada }) };
 }
 
-async function subirFirma(clave, valorFolio, valorFila, buffer) {
+async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
@@ -210,19 +260,68 @@ async function subirFirma(clave, valorFolio, valorFila, buffer) {
   }
 
   await folioActivo(folio);
-  const anterior = await firmaActual(folio, nFila);
-  if (anterior === null) throw errorHttp(404, `La fila ${nFila} del folio ${folio} no existe.`);
+  const { data: fila, error: errorFila } = await supabase
+    .from("bitacora_filas")
+    .select(["n_fila", ...CAMPOS, ...CAMPOS_VERIFICACION].join(", "))
+    .eq("folio", folio)
+    .eq("n_fila", nFila)
+    .maybeSingle();
+  if (errorFila) falloBd(errorFila);
+  if (!fila) throw errorHttp(404, `La fila ${nFila} del folio ${folio} no existe.`);
+  if (nombreFirma(fila.firma)) {
+    throw errorHttp(409, "Esta fila ya tiene una firma. Quítala antes de subir otra.");
+  }
+  if (rutNormalizado(fila.rut) === "") throw errorHttp(400, "La fila debe tener RUT antes de subir la firma.");
+  if (rutNormalizado(rutConfirmado) !== rutNormalizado(fila.rut)) {
+    throw errorHttp(400, "El RUT confirmado no coincide con el de la fila.");
+  }
 
   const nombre = `firma-${folio}-${nFila}-${Date.now()}.png`;
   await subirImagen(nombre, buffer, "image/png");
   const valor = `${PREFIJO_IMAGEN}${nombre}`;
-  const { error } = await supabase.from("bitacora_filas").update({ firma: valor }).eq("folio", folio).eq("n_fila", nFila);
+  const firmaEn = new Date().toISOString();
+  const verificacion = {
+    firma: valor,
+    firma_hash: hashBuffer(buffer),
+    firma_datos: hashTexto(resumenFirma(fila)),
+    firma_en: firmaEn,
+  };
+  const { error } = await supabase.from("bitacora_filas").update(verificacion).eq("folio", folio).eq("n_fila", nFila);
   if (error) {
     await quitarImagen(nombre).catch(() => {});
     falloBd(error);
   }
-  await borrarFirmas([anterior]);
-  return { fila: { n_fila: nFila, firma: valor } };
+  return { fila: conEstadoFirma({ ...fila, ...verificacion }) };
+}
+
+async function quitarFirma(clave, valorFolio, valorFila, motivo) {
+  exigirClave(clave);
+  const folio = enteroPositivo(valorFolio, "Folio");
+  const nFila = enteroPositivo(valorFila, "Fila");
+  const texto = String(motivo ?? "").trim().slice(0, LARGO_MAXIMO);
+  if (texto === "") throw errorHttp(400, "Indica el motivo para quitar la firma.");
+  await folioActivo(folio);
+  const anterior = await firmaActual(folio, nFila);
+  if (!anterior) throw errorHttp(404, `La fila ${nFila} del folio ${folio} no existe.`);
+  if (!nombreFirma(anterior.firma)) throw errorHttp(400, "Esta fila no tiene una imagen de firma.");
+
+  const { error: errorHistorial } = await supabase.from("bitacora_firmas_historial").insert({
+    folio,
+    n_fila: nFila,
+    firma: anterior.firma,
+    firma_hash: anterior.firma_hash || "",
+    firma_en: anterior.firma_en,
+    motivo: texto,
+  });
+  if (errorHistorial) falloBd(errorHistorial);
+
+  const { error } = await supabase
+    .from("bitacora_filas")
+    .update({ firma: "", firma_hash: "", firma_datos: "", firma_en: null })
+    .eq("folio", folio)
+    .eq("n_fila", nFila);
+  if (error) falloBd(error);
+  return { fila: { n_fila: nFila, firma: "", firma_hash: "", firma_datos: "", firma_en: null, firma_estado: "sin_firma" }, historial_firmas: await leerHistorialFirmas(folio) };
 }
 
 async function quitarFila(clave, valorFolio, valorFila) {
@@ -232,9 +331,17 @@ async function quitarFila(clave, valorFolio, valorFila) {
   await folioActivo(folio);
 
   const anterior = await firmaActual(folio, nFila);
+  const { data: historialFila, error: errorLeerHistorial } = await supabase
+    .from("bitacora_firmas_historial")
+    .select("firma")
+    .eq("folio", folio)
+    .eq("n_fila", nFila);
+  if (errorLeerHistorial) falloBd(errorLeerHistorial);
   const { error } = await supabase.from("bitacora_filas").delete().eq("folio", folio).eq("n_fila", nFila);
   if (error) falloBd(error);
-  if (anterior) await borrarFirmas([anterior]);
+  const { error: errorHistorial } = await supabase.from("bitacora_firmas_historial").delete().eq("folio", folio).eq("n_fila", nFila);
+  if (errorHistorial) falloBd(errorHistorial);
+  await borrarFirmas([anterior?.firma, ...(historialFila || []).map((item) => item.firma)]);
 
   const { data: siguientes, error: errorSiguientes } = await supabase
     .from("bitacora_filas")
@@ -250,6 +357,12 @@ async function quitarFila(clave, valorFolio, valorFila) {
       .eq("folio", folio)
       .eq("n_fila", actual);
     if (errorMover) falloBd(errorMover);
+    const { error: errorHistorial } = await supabase
+      .from("bitacora_firmas_historial")
+      .update({ n_fila: actual - 1 })
+      .eq("folio", folio)
+      .eq("n_fila", actual);
+    if (errorHistorial) falloBd(errorHistorial);
   }
   return leerFolio(folio);
 }
@@ -262,7 +375,11 @@ async function eliminarFolio(clave, valorFolio, confirmacion) {
   }
   await folioActivo(folio);
 
-  const firmas = (await leerFilas(folio)).map((fila) => fila.firma);
+  const filas = await leerFilas(folio);
+  const historial = await leerHistorialFirmas(folio);
+  const firmas = [...filas.map((fila) => fila.firma), ...historial.map((item) => item.firma)];
+  const { error: errorHistorial } = await supabase.from("bitacora_firmas_historial").delete().eq("folio", folio);
+  if (errorHistorial) falloBd(errorHistorial);
   const { error: errorFilas } = await supabase.from("bitacora_filas").delete().eq("folio", folio);
   if (errorFilas) falloBd(errorFilas);
   await borrarFirmas(firmas);
@@ -390,6 +507,11 @@ module.exports = {
   leerFolio,
   guardarFila,
   subirFirma,
+  quitarFirma,
+  estadoFirma,
+  resumenFirma,
+  hashTexto,
+  rutNormalizado,
   dimensionesPng,
   nombreFirma,
   quitarFila,

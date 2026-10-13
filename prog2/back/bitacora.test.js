@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ExcelJS = require("exceljs");
 const { app } = require("./server");
-const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma } = require("./bitacora");
+const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("./bitacora");
 
 function pedir(metodo, ruta, cuerpo) {
   return new Promise((resolve, reject) => {
@@ -124,6 +124,28 @@ test("el Excel pone la firma como imagen dentro de la celda y deja el texto como
   assert.equal(firma.nativeRow, 4);
 });
 
+test("la firma vigente deja de serlo si cambian los datos del viaje", () => {
+  const fila = { fecha: "2026-10-09", chofer: "Ana", rut: "12.345.678-9", patente: "AB1234", ruta: "Norte", h_salida: "08:00", h_llegada: "18:00", km_ini: "100", km_term: "250", km_reco: "150", firma: "img:firma-1-1-1700000000000.png", firma_hash: "abc", firma_datos: "" };
+  fila.firma_datos = hashTexto(resumenFirma(fila));
+  assert.equal(estadoFirma(fila), "vigente");
+  assert.equal(estadoFirma({ ...fila, km_term: "300", km_reco: "200" }), "vencida");
+  assert.equal(estadoFirma({ ...fila, firma: "" }), "sin_firma");
+  assert.equal(estadoFirma({ ...fila, firma_hash: "", firma_datos: "" }), "sin_verificacion");
+  assert.equal(rutNormalizado("12.345.678-9"), rutNormalizado("12345678-9"));
+});
+
+test("el Excel no incluye el historial ni el estado de la firma", async () => {
+  const filas = [{ n_fila: 1, chofer: "Ana", firma: "J. Perez", firma_estado: "vencida", firma_en: "2026-10-13T12:00:00.000Z" }];
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(await armarExcel(8, filas));
+  const hoja = libro.getWorksheet("Hoja1");
+  assert.equal(hoja.getCell("L5").value, "J. Perez");
+  assert.equal(hoja.getCell("A6").value, null);
+  const textos = [];
+  hoja.eachRow((fila) => fila.eachCell((celda) => textos.push(String(celda.value ?? ""))));
+  assert.equal(textos.some((texto) => texto.includes("Vencida") || texto.includes("Quitada")), false);
+});
+
 test("subir una firma sin clave, sin archivo o con otro formato se rechaza", async () => {
   assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "no" })).status, 403);
   assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "Berfre2026" })).status, 400);
@@ -139,6 +161,8 @@ test("generar un folio o guardar una fila sin clave responde 403", async () => {
   assert.equal((await pedir("POST", "/api/bitacora/folios", { clave: "no" })).status, 403);
   assert.equal((await pedir("PUT", "/api/bitacora/folios/1/filas/1", { clave: "no", datos: {} })).status, 403);
   assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1", { clave: "no" })).status, 403);
+  assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1/firma", { clave: "no", motivo: "error" })).status, 403);
+  assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1/firma", { clave: "Berfre2026", motivo: "  " })).status, 400);
   assert.equal((await pedir("DELETE", "/api/bitacora/folios/1", { clave: "no", confirmacion: "1" })).status, 403);
 });
 

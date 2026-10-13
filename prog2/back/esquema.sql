@@ -31,5 +31,23 @@ create table if not exists public.bitacora_filas (
   km_reco text not null default '',
   observacion text not null default '',
   firma text not null default '',
+  firma_hash text not null default '',
+  firma_datos text not null default '',
+  firma_en timestamptz,
   primary key (folio, n_fila)
+);
+
+alter table public.bitacora_filas add column if not exists firma_hash text not null default '';
+alter table public.bitacora_filas add column if not exists firma_datos text not null default '';
+alter table public.bitacora_filas add column if not exists firma_en timestamptz;
+
+create table if not exists public.bitacora_firmas_historial (
+  id bigint generated always as identity primary key,
+  folio bigint not null,
+  n_fila integer not null check (n_fila > 0),
+  firma text not null default '',
+  firma_hash text not null default '',
+  firma_en timestamptz,
+  quitada_en timestamptz not null default now(),
+  motivo text not null default ''
 );

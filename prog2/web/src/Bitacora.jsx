@@ -12,7 +12,7 @@ const COLUMNAS = [
   { campo: "km_term", titulo: "KM/TERM", ancho: 90 },
   { campo: "km_reco", titulo: "KM/RECO", ancho: 90 },
   { campo: "observacion", titulo: "OBSERVACION", ancho: 240 },
-  { campo: "firma", titulo: "FIRMA", ancho: 130 },
+  { campo: "firma", titulo: "FIRMA", ancho: 220 },
 ];
 
 const CAMPOS_EDITABLES = COLUMNAS.map((columna) => columna.campo).filter((campo) => campo !== "km_reco");
@@ -47,6 +47,20 @@ function datosDe(fila) {
 
 const PREFIJO_IMAGEN = "img:";
 const LADO_MAXIMO_FIRMA = { ancho: 600, alto: 200 };
+
+function horaFirma(valor) {
+  if (!valor) return "";
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return "";
+  return fecha.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
+}
+
+function textoEstadoFirma(fila) {
+  if (fila.firma_estado === "vigente") return `Vigente · ${horaFirma(fila.firma_en)}`;
+  if (fila.firma_estado === "vencida") return "Vencida: los datos del viaje cambiaron después de la firma";
+  if (fila.firma_estado === "sin_verificacion") return "Sin verificación";
+  return "";
+}
 
 function imagenDeFirma(valor) {
   const texto = String(valor ?? "");
@@ -85,6 +99,8 @@ export default function Bitacora({ clave, colores, alPendiente }) {
   const [resumen, setResumen] = useState({ ultimo: null, total: 0 });
   const [generando, setGenerando] = useState(false);
   const [eliminando, setEliminando] = useState(null);
+  const [firmaPendiente, setFirmaPendiente] = useState(null);
+  const [quitarPendiente, setQuitarPendiente] = useState(null);
   const filasRef = useRef([]);
   const folioRef = useRef(null);
   const guardadas = useRef(new Map());
@@ -137,7 +153,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
 
   function mostrarFolio(data) {
     recordarGuardadas(data.filas || []);
-    setFolio({ folio: data.folio, filas: data.filas || [] });
+    setFolio({ folio: data.folio, filas: data.filas || [], historial_firmas: data.historial_firmas || [] });
     setConsulta(String(data.folio));
     setEstado("");
   }
@@ -208,14 +224,20 @@ export default function Bitacora({ clave, colores, alPendiente }) {
       guardadas.current.set(n, JSON.stringify(datos));
       setFolio((previo) =>
         previo && previo.folio === numeroFolio
-          ? { ...previo, filas: previo.filas.map((item) => (item.n_fila === n ? { ...item, km_reco: data.fila.km_reco } : item)) }
+          ? {
+              ...previo,
+              filas: previo.filas.map((item) =>
+                item.n_fila === n ? { ...item, km_reco: data.fila.km_reco, firma_estado: data.fila.firma_estado } : item
+              ),
+            }
           : previo
       );
     });
   }
 
-  async function subirFirma(n, archivo) {
+  async function subirFirma(n, archivo, rut) {
     if (!archivo) return;
+    setFirmaPendiente(null);
     setAviso("");
     let png;
     try {
@@ -228,6 +250,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
     encolar(async () => {
       const cuerpo = new FormData();
       cuerpo.append("clave", clave);
+      cuerpo.append("rut", rut.trim());
       cuerpo.append("archivo", png, "firma.png");
       const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, { method: "POST", body: cuerpo });
       const data = await res.json().catch(() => ({}));
@@ -236,18 +259,37 @@ export default function Bitacora({ clave, colores, alPendiente }) {
       const valor = data.fila.firma;
       const previa = guardadas.current.get(n);
       if (previa) guardadas.current.set(n, JSON.stringify({ ...JSON.parse(previa), firma: valor }));
-      filasRef.current = filasRef.current.map((fila) => (fila.n_fila === n ? { ...fila, firma: valor } : fila));
+      const aplicada = { ...data.fila, firma: valor };
+      filasRef.current = filasRef.current.map((item) => (item.n_fila === n ? { ...item, ...aplicada } : item));
       setFolio((actual) => ({
         ...actual,
-        filas: actual.filas.map((fila) => (fila.n_fila === n ? { ...fila, firma: valor } : fila)),
+        filas: actual.filas.map((item) => (item.n_fila === n ? { ...item, ...aplicada } : item)),
       }));
     });
   }
 
-  function quitarFirmaImagen(n) {
-    cambiar(n, "firma", "");
-    filasRef.current = filasRef.current.map((fila) => (fila.n_fila === n ? { ...fila, firma: "" } : fila));
-    guardarFila(n);
+  function quitarFirmaImagen(n, motivo) {
+    setQuitarPendiente(null);
+    const numeroFolio = folioRef.current;
+    setAviso("");
+    encolar(async () => {
+      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clave, motivo: motivo.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo quitar la firma.");
+      if (folioRef.current !== numeroFolio) return;
+      const previa = guardadas.current.get(n);
+      if (previa) guardadas.current.set(n, JSON.stringify({ ...JSON.parse(previa), firma: "" }));
+      filasRef.current = filasRef.current.map((item) => (item.n_fila === n ? { ...item, ...data.fila } : item));
+      setFolio((actual) => ({
+        ...actual,
+        historial_firmas: data.historial_firmas || [],
+        filas: actual.filas.map((item) => (item.n_fila === n ? { ...item, ...data.fila } : item)),
+      }));
+    });
   }
 
   function anadirFila() {
@@ -273,7 +315,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
       if (folioRef.current !== numeroFolio) return;
       recordarGuardadas(data.filas || []);
       filasRef.current = data.filas || [];
-      setFolio({ folio: data.folio, filas: data.filas || [] });
+      setFolio({ folio: data.folio, filas: data.filas || [], historial_firmas: data.historial_firmas || [] });
     });
   }
 
@@ -399,13 +441,16 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                       const calculada = columna.campo === "km_reco";
                       if (columna.campo === "firma") {
                         const imagen = imagenDeFirma(fila.firma);
+                        const estado = textoEstadoFirma(fila);
+                        const historial = (folio.historial_firmas || []).filter((item) => item.n_fila === fila.n_fila);
                         return (
                           <td key={columna.campo} style={{ padding: 4, border: "1px solid var(--borde-suave)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               {imagen ? (
                                 <img
                                   src={`/api/imagenes/${encodeURIComponent(imagen)}`}
                                   alt={`Firma de la fila ${fila.n_fila}`}
+                                  title={fila.firma_hash ? `Hash ${fila.firma_hash.slice(-8)}` : undefined}
                                   style={{ maxWidth: 110, maxHeight: 34, background: "#fff", border: "1px solid var(--borde)", borderRadius: 4 }}
                                 />
                               ) : (
@@ -415,33 +460,53 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                                   aria-label={`FIRMA fila ${fila.n_fila}`}
                                   onChange={(event) => cambiar(fila.n_fila, "firma", event.target.value)}
                                   onBlur={() => guardarFila(fila.n_fila)}
-                                  style={{ boxSizing: "border-box", width: columna.ancho, padding: "6px 8px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                                  style={{ boxSizing: "border-box", width: 110, padding: "6px 8px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
                                 />
                               )}
-                              <label style={{ ...BOTON, padding: "6px 10px", background: "var(--boton)", whiteSpace: "nowrap" }}>
-                                {imagen ? "Cambiar imagen" : "Subir imagen"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  aria-label={`Subir imagen de firma fila ${fila.n_fila}`}
-                                  style={{ display: "none" }}
-                                  onChange={(event) => {
-                                    const archivo = event.target.files?.[0];
-                                    event.target.value = "";
-                                    subirFirma(fila.n_fila, archivo);
-                                  }}
-                                />
-                              </label>
+                              {!imagen && (
+                                <label style={{ ...BOTON, padding: "6px 10px", background: "var(--boton)", whiteSpace: "nowrap" }}>
+                                  Subir imagen
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    aria-label={`Subir imagen de firma fila ${fila.n_fila}`}
+                                    style={{ display: "none" }}
+                                    onChange={(event) => {
+                                      const archivo = event.target.files?.[0];
+                                      event.target.value = "";
+                                      if (archivo) setFirmaPendiente({ n: fila.n_fila, archivo, rut: "" });
+                                    }}
+                                  />
+                                </label>
+                              )}
                               {imagen && (
                                 <button
                                   type="button"
-                                  onClick={() => quitarFirmaImagen(fila.n_fila)}
+                                  onClick={() => setQuitarPendiente({ n: fila.n_fila, motivo: "" })}
                                   style={{ ...BOTON, padding: "6px 10px", background: "var(--peligro)", whiteSpace: "nowrap" }}
                                 >
                                   Quitar imagen
                                 </button>
                               )}
                             </div>
+                            {estado && (
+                              <p style={{ margin: "4px 0 0", fontSize: 12, color: fila.firma_estado === "vencida" ? "var(--peligro)" : "var(--texto)" }}>{estado}</p>
+                            )}
+                            {historial[0] && (
+                              <p style={{ margin: "2px 0 0", fontSize: 12 }}>
+                                Quitada {horaFirma(historial[0].quitada_en)} — {historial[0].motivo}
+                              </p>
+                            )}
+                            {historial.length > 1 && (
+                              <details style={{ marginTop: 2, fontSize: 12 }}>
+                                <summary style={{ cursor: "pointer" }}>Ver {historial.length - 1} anteriores</summary>
+                                {historial.slice(1).map((item) => (
+                                  <p key={item.id} style={{ margin: "2px 0 0" }}>
+                                    Quitada {horaFirma(item.quitada_en)} — {item.motivo}
+                                  </p>
+                                ))}
+                              </details>
+                            )}
                           </td>
                         );
                       }
@@ -485,6 +550,100 @@ export default function Bitacora({ clave, colores, alPendiente }) {
           </div>
           {folio.filas.length === 0 && <p style={{ margin: "12px 0 0", fontSize: 14 }}>Este folio todavía no tiene filas. Usa "Añadir fila".</p>}
         </>
+      )}
+      {firmaPendiente && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 90,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420, width: "100%" }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Confirmar firma de la fila {firmaPendiente.n}</p>
+            <p style={{ margin: "0 0 12px", fontSize: 14 }}>Escribe el RUT del chofer de esta fila para asociar la imagen.</p>
+            <input
+              autoFocus
+              aria-label="RUT del chofer"
+              value={firmaPendiente.rut}
+              onChange={(event) => setFirmaPendiente({ ...firmaPendiente, rut: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && firmaPendiente.rut.trim() !== "") subirFirma(firmaPendiente.n, firmaPendiente.archivo, firmaPendiente.rut);
+              }}
+              style={{ boxSizing: "border-box", width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, marginBottom: 16 }}
+            />
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                disabled={firmaPendiente.rut.trim() === ""}
+                onClick={() => subirFirma(firmaPendiente.n, firmaPendiente.archivo, firmaPendiente.rut)}
+                style={{ ...BOTON, background: "var(--boton)", opacity: firmaPendiente.rut.trim() === "" ? 0.5 : 1 }}
+              >
+                Subir firma
+              </button>
+              <button
+                type="button"
+                onClick={() => setFirmaPendiente(null)}
+                style={{ ...BOTON, border: "1px solid var(--borde)", background: "var(--superficie)", color: "var(--texto)" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {quitarPendiente && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(17, 24, 39, 0.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 90,
+          }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420, width: "100%" }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>Quitar firma de la fila {quitarPendiente.n}</p>
+            <p style={{ margin: "0 0 12px", fontSize: 14 }}>Escribe el motivo. Quedará en el historial de esta pantalla y no sale en el Excel.</p>
+            <input
+              autoFocus
+              aria-label="Motivo para quitar la firma"
+              value={quitarPendiente.motivo}
+              onChange={(event) => setQuitarPendiente({ ...quitarPendiente, motivo: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && quitarPendiente.motivo.trim() !== "") quitarFirmaImagen(quitarPendiente.n, quitarPendiente.motivo);
+              }}
+              style={{ boxSizing: "border-box", width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, marginBottom: 16 }}
+            />
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                disabled={quitarPendiente.motivo.trim() === ""}
+                onClick={() => quitarFirmaImagen(quitarPendiente.n, quitarPendiente.motivo)}
+                style={{ ...BOTON, background: "var(--peligro)", opacity: quitarPendiente.motivo.trim() === "" ? 0.5 : 1 }}
+              >
+                Quitar firma
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuitarPendiente(null)}
+                style={{ ...BOTON, border: "1px solid var(--borde)", background: "var(--superficie)", color: "var(--texto)" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {folio && eliminando && (
         <div
