@@ -403,7 +403,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 12).value = item.unidad;
     const descFila = descripcionDe(item);
     if (/^ca[ñn]er[ií]a/i.test(descFila)) {
-      hoja.getCell(fila, 13).value = Number((Number(String(cant).replace(",", ".")) / 6).toFixed(2));
+      hoja.getCell(fila, 13).value = Math.round(Number(String(cant).replace(",", ".")) / 6);
     }
     hoja.getCell(fila, 14).value = m501 - cantidad;
     hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
