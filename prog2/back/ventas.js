@@ -236,7 +236,7 @@ function itemsDesdeTraspaso(traspasoBuffer) {
   const claves = (filas[filaEnc] || []).map(claveColumna);
   const colCodigo = columnaPorTitulo(claves, "codigo");
   const colDescripcion = columnaPorTitulo(claves, (c) => c.startsWith("descrip"));
-  const colUnidad = columnaPorTitulo(claves, "med", "un", "unidad");
+  const colUnidad = columnaPorTitulo(claves, "medida", "med", "un", "unidad", (c) => c.startsWith("medida"));
   const colCantidad = columnaPorTitulo(claves, (c) => c.startsWith("solicit"));
   const colConcon = columnaPorTitulo(claves, (c) => c.includes("concon"));
   const colEntregar = columnaPorTitulo(claves, (c) => c.includes("entregar") && !c.includes("concon"));
@@ -336,6 +336,14 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
 
   let cont = 10;
   const primeraFila = lastPos + 1;
+  const descripcionDe = (item) => String(
+    materiales.get(String(item.codigo ?? ""))?.Descripcion || item.descripcion || "",
+  ).trim();
+  items = items
+    .map((item) => ({ item, desc: descripcionDe(item) }))
+    .sort((a, b) => a.desc.localeCompare(b.desc, "es", { sensitivity: "base" }))
+    .map(({ item }) => item);
+
   for (const item of items) {
     const cant = item.cantidad;
     const codMat = String(item.codigo ?? "");
@@ -393,7 +401,10 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       hoja.getCell(fila, 31).value = `CONCON ${concon}`;
     }
     hoja.getCell(fila, 12).value = item.unidad;
-    hoja.getCell(fila, 13).value = 0;
+    const descFila = descripcionDe(item);
+    if (/^ca[ñn]er[ií]a/i.test(descFila)) {
+      hoja.getCell(fila, 13).value = Number((Number(String(cant).replace(",", ".")) / 6).toFixed(2));
+    }
     hoja.getCell(fila, 14).value = m501 - cantidad;
     hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
     const peso = Number(String(material?.Peso ?? "").replace(",", ".").trim());
