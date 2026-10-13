@@ -114,6 +114,29 @@ export default function App() {
 
   useEffect(() => {
     const fuente = new EventSource("/api/eventos");
+    let sondeo = null;
+    const iniciarSondeo = () => {
+      if (sondeo) return;
+      sondeo = setInterval(() => {
+        if (document.visibilityState === "visible") cargarTabla().catch(() => {});
+      }, 5000);
+    };
+    const detenerSondeo = () => {
+      if (!sondeo) return;
+      clearInterval(sondeo);
+      sondeo = null;
+    };
+    fuente.onopen = () => {
+      cargarTabla().catch(() => {});
+    };
+    fuente.onerror = () => {};
+    // Cloudflare puede almacenar en búfer el SSE sin disparar error:
+    // se sondea siempre como respaldo.
+    iniciarSondeo();
+    const alVolver = () => {
+      if (document.visibilityState === "visible") cargarTabla().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", alVolver);
     fuente.onmessage = (evento) => {
       let data;
       try {
@@ -129,7 +152,11 @@ export default function App() {
         cargarTabla().catch(() => setError("No se pudo actualizar la tabla."));
       }
     };
-    return () => fuente.close();
+    return () => {
+      fuente.close();
+      detenerSondeo();
+      document.removeEventListener("visibilitychange", alVolver);
+    };
   }, []);
 
   const columnasTabla = columnasSinImagen(columnas);
