@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
@@ -455,11 +456,7 @@ async function actualizarMaterial(codigo, { inventario, comentario }) {
 }
 
 async function limpiarInventarioComentarios(clave) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   const { matriz } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceInventario = columnas.indexOf("Inventario");
@@ -486,18 +483,31 @@ async function limpiarInventarioComentarios(clave) {
 }
 
 const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
-const CLAVE_DATOS = "Berfre2026";
-
-function claveCorrecta(clave) {
-  return clave === CLAVE_DATOS;
+const CLAVE_DATOS = process.env.CLAVE_DATOS;
+if (!CLAVE_DATOS) {
+  throw new Error("Falta CLAVE_DATOS en prog2/back/.env");
 }
 
-async function actualizarDatos(codigo, clave, datos, reemplazar) {
-  if (clave !== CLAVE_DATOS) {
+function claveCorrecta(clave) {
+  const esperada = Buffer.from(CLAVE_DATOS);
+  const recibida = Buffer.from(String(clave ?? ""));
+  if (esperada.length !== recibida.length) {
+    crypto.timingSafeEqual(esperada, esperada);
+    return false;
+  }
+  return crypto.timingSafeEqual(esperada, recibida);
+}
+
+function exigirClave(clave) {
+  if (!claveCorrecta(clave)) {
     const error = new Error("Contraseña incorrecta.");
     error.status = 403;
     throw error;
   }
+}
+
+async function actualizarDatos(codigo, clave, datos, reemplazar) {
+  exigirClave(clave);
   if (!datos || typeof datos !== "object") {
     const error = new Error("No hay datos para guardar.");
     error.status = 400;
@@ -551,11 +561,7 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
 }
 
 async function guardarImagen(codigo, campo, nombreArchivo, clave) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   if (!CAMPOS_IMAGEN.has(campo)) {
     const error = new Error("La imagen debe ser Rombo, QR o Foto.");
     error.status = 400;
@@ -596,11 +602,7 @@ async function guardarImagen(codigo, campo, nombreArchivo, clave) {
 }
 
 async function eliminarMaterial(codigo, clave) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
 
   const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
@@ -632,11 +634,7 @@ async function eliminarMaterial(codigo, clave) {
 }
 
 async function agregarMaterial(clave, datos) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   if (!datos || typeof datos !== "object") {
     const error = new Error("No hay datos para guardar.");
     error.status = 400;
@@ -688,11 +686,7 @@ async function agregarMaterial(clave, datos) {
 }
 
 function importarPlanilla(clave, buffer) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
@@ -776,11 +770,7 @@ function importarPlanilla(clave, buffer) {
 }
 
 function importarSap(clave, buffer) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
@@ -874,11 +864,7 @@ function importarSap(clave, buffer) {
 }
 
 function importarPrecios(clave, buffer) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
@@ -947,11 +933,7 @@ function importarPrecios(clave, buffer) {
 }
 
 function importarUbicaciones(clave, buffer) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
@@ -1026,11 +1008,7 @@ function importarUbicaciones(clave, buffer) {
 }
 
 function importarDosColumnas(clave, buffer, columnaDestino) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   const destino = String(columnaDestino ?? "").trim();
   if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino)) {
     const error = new Error("Elige una columna válida para actualizar.");
@@ -2166,11 +2144,7 @@ function leerContratistas() {
 }
 
 function guardarContratistas(clave, filas) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   if (!Array.isArray(filas)) {
     const error = new Error("No hay contratistas para guardar.");
     error.status = 400;
@@ -2268,11 +2242,7 @@ function leerReservas() {
 }
 
 function importarReservas(clave, buffer) {
-  if (clave !== CLAVE_DATOS) {
-    const error = new Error("Contraseña incorrecta.");
-    error.status = 403;
-    throw error;
-  }
+  exigirClave(clave);
   const libroEntrada = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
   if (!hojaEntrada) {

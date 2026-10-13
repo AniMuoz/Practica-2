@@ -27,6 +27,7 @@ const {
   textoFecha,
   claveCarga,
   actualizarMaterial,
+  claveCorrecta,
   agregarMaterial,
   guardarContratistas,
   importarPlanilla,
@@ -211,6 +212,13 @@ function estado(accion) {
     return error.status;
   }
 }
+
+test("una clave distinta se rechaza aunque tenga otro largo", () => {
+  assert.equal(claveCorrecta("no"), false);
+  assert.equal(claveCorrecta(""), false);
+  assert.equal(claveCorrecta(undefined), false);
+  assert.equal(claveCorrecta(process.env.CLAVE_DATOS), true);
+});
 
 test("validaciones rechazan datos antes de abrir la planilla", async () => {
   await assert.rejects(() => actualizarMaterial("1", { inventario: "1.5", comentario: "" }), (error) => error.status === 400);

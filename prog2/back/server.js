@@ -11,17 +11,7 @@ const { subirImagen, bajarImagen, quitarImagen, asegurarCubo } = require("./imag
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
 
-const uploadPlanilla = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const nombre = file.originalname.toLowerCase();
-    if (nombre.endsWith(".xlsx")) cb(null, true);
-    else cb(new Error("Solo se aceptan archivos .xlsx."));
-  },
-});
-
-const uploadVenta = multer({
+const uploadXlsx = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
@@ -102,6 +92,7 @@ app.get("/api/imagenes/:nombre", async (req, res) => {
       return;
     }
   } catch (error) {
+    console.error(error);
     res.status(error.status || 502).json({ error: error.message });
     return;
   }
@@ -166,6 +157,7 @@ app.get("/api/tabla/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=inventario.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla." });
   }
 });
@@ -174,6 +166,7 @@ app.get("/api/bodega", (_req, res) => {
   try {
     res.json(stockEnBodega());
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer el stock de bodega." });
   }
 });
@@ -185,6 +178,7 @@ app.get("/api/bodega/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20M501.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
   }
 });
@@ -193,6 +187,7 @@ app.get("/api/regional", (_req, res) => {
   try {
     res.json(stockRegional());
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer el stock regional." });
   }
 });
@@ -204,6 +199,7 @@ app.get("/api/regional/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla regional." });
   }
 });
@@ -212,6 +208,7 @@ app.get("/api/inventario", (_req, res) => {
   try {
     res.json(planillaInventario());
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer la planilla de inventario." });
   }
 });
@@ -224,6 +221,7 @@ app.get("/api/inventario/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de inventario." });
   }
 });
@@ -233,6 +231,7 @@ app.get("/api/inventario-bodega", (_req, res) => {
     const { bodegas } = planillaInventarioPorBodega();
     res.json({ bodegas });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer el inventario por bodega." });
   }
 });
@@ -247,6 +246,7 @@ app.get("/api/inventario-bodega/excel", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo generar la planilla de la bodega." });
   }
 });
@@ -255,6 +255,7 @@ app.get("/api/stock-detallado", (_req, res) => {
   try {
     res.json(stockDetallado());
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer el stock detallado." });
   }
 });
@@ -266,6 +267,7 @@ app.get("/api/stock-detallado/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=Prueba_de_stock_detallado.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo generar el stock detallado." });
   }
 });
@@ -288,6 +290,7 @@ app.get("/api/reservas", (req, res) => {
   try {
     res.json(buscarReservas(req.query.reserva, req.query.pagina, req.query.tamano));
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudieron leer las reservas." });
   }
 });
@@ -299,6 +302,7 @@ app.get("/api/reservas/excel", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo generar la revisión de reserva." });
   }
 });
@@ -308,6 +312,7 @@ app.post("/api/reserva", (req, res) => {
     try {
       res.json(await revisarReserva(req.file.buffer));
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "No se pudo leer la reserva." });
     }
   });
@@ -321,13 +326,14 @@ app.post("/api/reserva/excel", (req, res) => {
       res.setHeader("Content-Disposition", "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
       res.send(Buffer.from(buffer));
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "No se pudo generar la revisión de reserva." });
     }
   });
 });
 
 app.post("/api/ventas", (req, res) => {
-  uploadVenta.fields([
+  uploadXlsx.fields([
     { name: "orden", maxCount: 1 },
     { name: "ventas", maxCount: 1 },
   ])(req, res, async (errorCarga) => {
@@ -365,6 +371,7 @@ app.post("/api/ventas", (req, res) => {
       res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
       res.send(Buffer.from(buffer));
     } catch (error) {
+      console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo generar la planilla de ventas." });
     }
   });
@@ -374,6 +381,7 @@ app.get("/api/contratistas", (_req, res) => {
   try {
     res.json(leerContratistas());
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudieron leer los contratistas." });
   }
 });
@@ -382,6 +390,7 @@ app.put("/api/contratistas", (req, res) => {
   try {
     res.json(guardarContratistas(req.body.clave, req.body.filas));
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudieron guardar los contratistas." });
   }
 });
@@ -394,6 +403,7 @@ app.post("/api/bitacora/folios", async (req, res) => {
   try {
     res.status(201).json(await bitacora.crearFolio(req.body && req.body.clave));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo generar el folio.");
   }
 });
@@ -402,6 +412,7 @@ app.get("/api/bitacora/folios/ultimo", async (_req, res) => {
   try {
     res.json(await bitacora.ultimoFolio());
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo leer el último folio.");
   }
 });
@@ -413,6 +424,7 @@ app.get("/api/bitacora/folios/:folio/excel", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(nombre)}`);
     res.send(Buffer.from(buffer));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo generar la planilla del folio.");
   }
 });
@@ -421,6 +433,7 @@ app.get("/api/bitacora/folios/:folio", async (req, res) => {
   try {
     res.json(await bitacora.leerFolio(req.params.folio));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo leer el folio.");
   }
 });
@@ -429,6 +442,7 @@ app.delete("/api/bitacora/folios/:folio", async (req, res) => {
   try {
     res.json(await bitacora.eliminarFolio(req.body && req.body.clave, req.params.folio, req.body && req.body.confirmacion));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo eliminar el folio.");
   }
 });
@@ -437,6 +451,7 @@ app.put("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
   try {
     res.json(await bitacora.guardarFila(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.datos));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo guardar la fila.");
   }
 });
@@ -451,6 +466,7 @@ app.post("/api/bitacora/folios/:folio/filas/:fila/firma", (req, res) => {
     try {
       res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer, req.body && req.body.rut));
     } catch (error) {
+      console.error(error);
       responderBitacora(res, error, "No se pudo guardar la imagen de la firma.");
     }
   });
@@ -460,6 +476,7 @@ app.delete("/api/bitacora/folios/:folio/filas/:fila/firma", async (req, res) => 
   try {
     res.json(await bitacora.quitarFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.motivo));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo quitar la firma.");
   }
 });
@@ -468,6 +485,7 @@ app.delete("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
   try {
     res.json(await bitacora.quitarFila(req.body && req.body.clave, req.params.folio, req.params.fila));
   } catch (error) {
+    console.error(error);
     responderBitacora(res, error, "No se pudo quitar la fila.");
   }
 });
@@ -476,6 +494,7 @@ app.get("/api/tabla/ultimas-cargas", (_req, res) => {
   try {
     res.json({ cargas: leerUltimasCargas() });
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudieron leer las últimas cargas." });
   }
 });
@@ -484,12 +503,13 @@ app.get("/api/tabla", (_req, res) => {
   try {
     res.json(leerTabla());
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo leer la tabla." });
   }
 });
 
 app.post("/api/tabla/excel", async (req, res) => {
-  uploadPlanilla.single("archivo")(req, res, async (errorCarga) => {
+  uploadXlsx.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       res.status(400).json({ error: errorCarga.message });
       return;
@@ -515,6 +535,7 @@ app.post("/api/tabla/excel", async (req, res) => {
       emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {
+      console.error(error);
       res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });
     }
   });
@@ -530,6 +551,7 @@ app.delete("/api/material/:codigo", async (req, res) => {
     emitir({ tipo: "recarga" });
     res.json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo eliminar el material." });
   }
 });
@@ -540,6 +562,7 @@ app.post("/api/material", async (req, res) => {
     if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.status(201).json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo agregar el material." });
   }
 });
@@ -548,6 +571,7 @@ app.get("/api/buscar", (req, res) => {
   try {
     res.json({ resultados: buscarMateriales(req.query.q) });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo buscar el material." });
   }
 });
@@ -561,6 +585,7 @@ app.get("/api/material/:codigo", (req, res) => {
     }
     res.json({ columnas, fila, bodegas });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "No se pudo leer el material." });
   }
 });
@@ -579,6 +604,7 @@ app.post("/api/tabla/limpiar-inventario", async (req, res) => {
     emitir({ tipo: "recarga" });
     res.json(tabla);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo limpiar inventario y comentarios." });
   }
 });
@@ -593,6 +619,7 @@ app.put("/api/material/:codigo/marcado", async (req, res) => {
     emitir({ tipo: "fila", fila: resultado.fila });
     res.json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo marcar el material." });
   }
 });
@@ -610,6 +637,7 @@ app.put("/api/material/:codigo", async (req, res) => {
     emitir({ tipo: "fila", fila: resultado.fila });
     res.json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo guardar." });
   }
 });
@@ -633,6 +661,7 @@ app.put("/api/material/:codigo/datos", async (req, res) => {
     });
     res.json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo guardar." });
   }
 });
@@ -647,6 +676,7 @@ app.delete("/api/material/:codigo/imagen", async (req, res) => {
     if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
     res.json(resultado);
   } catch (error) {
+    console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo quitar la imagen." });
   }
 });
@@ -671,6 +701,7 @@ app.post("/api/material/:codigo/imagen", (req, res) => {
       if (resultado?.fila) emitir({ tipo: "fila", fila: resultado.fila });
       res.json(resultado);
     } catch (error) {
+      console.error(error);
       res.status(error.status || 500).json({ error: error.message || "No se pudo guardar la imagen." });
     }
   });
