@@ -292,8 +292,6 @@ function Login({ alEntrar }) {
 export default function Acceso({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [verificando, setVerificando] = useState(true);
-  const [cambiandoClave, setCambiandoClave] = useState(false);
-
   useEffect(() => {
     originalFetch("/api/sesion", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
@@ -311,48 +309,5 @@ export default function Acceso({ children }) {
   if (verificando) return null;
   if (!usuario) return <Login alEntrar={setUsuario} />;
 
-  return (
-    <>
-      {children}
-      <div style={{ position: "fixed", right: 10, bottom: 10, zIndex: 30, display: "flex", gap: 6 }}>
-        <button
-          type="button"
-          onClick={() => setCambiandoClave(true)}
-          title={`Sesión de ${usuario}`}
-          style={{
-            padding: "6px 10px",
-            border: "1px solid var(--borde)",
-            borderRadius: 6,
-            background: "var(--superficie)",
-            color: "var(--texto)",
-            fontSize: 12,
-            cursor: "pointer",
-            opacity: 0.85,
-          }}
-        >
-          Cambiar contraseña
-        </button>
-      </div>
-      {cambiandoClave && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 40,
-          }}
-        >
-          <CambiarClave
-            usuarioInicial={usuario}
-            alTerminar={() => setCambiandoClave(false)}
-            alCancelar={() => setCambiandoClave(false)}
-          />
-        </div>
-      )}
-    </>
-  );
+  return <>{children}</>;
 }

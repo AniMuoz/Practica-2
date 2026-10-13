@@ -1,0 +1,33 @@
+# Cloudflare Tunnel para prog2 (front + back).
+# Reemplaza:
+#   - TUNNEL_ID          -> ID del tunel (cloudflared tunnel create prog2)
+#   - prog2.TUDOMINIO.com -> tu hostname publico
+#   - la ruta de credentials-file segun tu usuario
+#
+# Uso:  cloudflared tunnel --config prog2/cloudflared/config.yml run prog2
+#
+# Puertos: back Express = 3001 | front Vite = 5173
+
+tunnel: TUNEL_ID
+credentials-file: C:\Users\Anibal M\.cloudflared\TUNEL_ID.json
+
+ingress:
+  # Back: todo lo que empiece con /api va directo al Express
+  # (incluye /api/eventos, que es streaming SSE).
+  - hostname: prog2.TUDOMINIO.com
+    path: ^/api(/.*)?$
+    service: http://localhost:3001
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+
+  # Front: el resto va a Vite
+  - hostname: prog2.TUDOMINIO.com
+    service: http://localhost:5173
+    originRequest:
+      connectTimeout: 30s
+      # Vite valida el header Host; lo dejamos tal cual llega.
+      noTLSVerify: false
+
+  # Regla obligatoria final
+  - service: http_status:404

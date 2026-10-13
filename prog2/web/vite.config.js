@@ -6,7 +6,8 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: [".trycloudflare.com"],
+    // Agrega aqui tu dominio de Cloudflare (el punto inicial permite subdominios).
+    allowedHosts: [".trycloudflare.com", ".TUDOMINIO.com"],
     proxy: {
       "/api": {
         target: process.env.API_PROXY || "http://localhost:3001",
