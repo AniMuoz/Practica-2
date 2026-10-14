@@ -42,6 +42,7 @@ export default function App() {
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
   const [avisoClave, setAvisoClave] = useState("");
+  const [enDescanso, setEnDescanso] = useState(false);
   const tamano = 100;
 
   function estiloBoton(habilitado, fondo = "var(--boton)", padding = "8px 14px") {
@@ -131,7 +132,10 @@ export default function App() {
     };
     const programarPausa = () => {
       clearTimeout(inactividad);
-      inactividad = setTimeout(detenerSondeo, INACTIVIDAD);
+      inactividad = setTimeout(() => {
+        detenerSondeo();
+        setEnDescanso(true);
+      }, INACTIVIDAD);
     };
     const reanudar = (leerAhora) => {
       programarPausa();
@@ -141,6 +145,7 @@ export default function App() {
       }
       const estabaDetenido = !sondeo;
       iniciarSondeo();
+      if (sondeo) setEnDescanso(false);
       if (leerAhora && estabaDetenido) cargarTabla().catch(() => {});
     };
     fuente.onopen = () => {
@@ -157,6 +162,7 @@ export default function App() {
       }
       programarPausa();
       iniciarSondeo();
+      setEnDescanso(false);
       cargarTabla().catch(() => {});
     };
     const alUsar = () => reanudar(true);
@@ -531,6 +537,25 @@ export default function App() {
         <div className="tabla-inventario" style={{ background: "var(--superficie)", borderRadius: 8 }}>
           {paginacion()}
           <div style={{ overflow: "auto", maxHeight: "calc(100vh - 220px)" }}>
+          {enDescanso && (
+            <p
+              style={{
+                position: "sticky",
+                top: 8,
+                zIndex: 2,
+                width: "fit-content",
+                margin: "8px auto",
+                padding: "8px 14px",
+                borderRadius: 6,
+                background: "var(--acento)",
+                color: "var(--sobre)",
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
+              Tabla en descanso por no uso
+            </p>
+          )}
           <Planilla className={oscuro && colores ? "planilla-oscura" : undefined}>
             <thead>
               <tr>
