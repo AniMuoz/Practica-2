@@ -113,30 +113,57 @@ export default function App() {
   }, [cargando, error, filas.length]);
 
   useEffect(() => {
+    const INTERVALO = 60000;
+    const INACTIVIDAD = 120000;
     const fuente = new EventSource("/api/eventos");
     let sondeo = null;
+    let inactividad = null;
     const iniciarSondeo = () => {
-      if (sondeo) return;
+      if (sondeo || document.visibilityState !== "visible") return;
       sondeo = setInterval(() => {
         if (document.visibilityState === "visible") cargarTabla().catch(() => {});
-      }, 5000);
+      }, INTERVALO);
     };
     const detenerSondeo = () => {
       if (!sondeo) return;
       clearInterval(sondeo);
       sondeo = null;
     };
+    const programarPausa = () => {
+      clearTimeout(inactividad);
+      inactividad = setTimeout(detenerSondeo, INACTIVIDAD);
+    };
+    const reanudar = (leerAhora) => {
+      programarPausa();
+      if (document.visibilityState !== "visible") {
+        detenerSondeo();
+        return;
+      }
+      const estabaDetenido = !sondeo;
+      iniciarSondeo();
+      if (leerAhora && estabaDetenido) cargarTabla().catch(() => {});
+    };
     fuente.onopen = () => {
       cargarTabla().catch(() => {});
     };
     fuente.onerror = () => {};
     // Cloudflare puede almacenar en búfer el SSE sin disparar error:
-    // se sondea siempre como respaldo.
-    iniciarSondeo();
+    // se sondea como respaldo, cada 60 s, y se pausa tras 2 min sin uso.
+    reanudar(false);
     const alVolver = () => {
-      if (document.visibilityState === "visible") cargarTabla().catch(() => {});
+      if (document.visibilityState !== "visible") {
+        detenerSondeo();
+        return;
+      }
+      programarPausa();
+      iniciarSondeo();
+      cargarTabla().catch(() => {});
     };
+    const alUsar = () => reanudar(true);
     document.addEventListener("visibilitychange", alVolver);
+    document.addEventListener("pointerdown", alUsar);
+    document.addEventListener("keydown", alUsar);
+    document.addEventListener("scroll", alUsar, true);
     fuente.onmessage = (evento) => {
       let data;
       try {
@@ -155,7 +182,11 @@ export default function App() {
     return () => {
       fuente.close();
       detenerSondeo();
+      clearTimeout(inactividad);
       document.removeEventListener("visibilitychange", alVolver);
+      document.removeEventListener("pointerdown", alUsar);
+      document.removeEventListener("keydown", alUsar);
+      document.removeEventListener("scroll", alUsar, true);
     };
   }, []);
 
