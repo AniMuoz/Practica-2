@@ -404,6 +404,13 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     const descFila = descripcionDe(item);
     if (/^ca[ñn]er[ií]a/i.test(descFila)) {
       hoja.getCell(fila, 13).value = Math.round(Number(String(cant).replace(",", ".")) / 6);
+    } else if (/^\s*kgs?\.?\s*$/i.test(String(item.unidad ?? ""))) {
+      const mg = descFila.match(/(\d+(?:[.,]\d+)?)\s*GRS?\b/i);
+      if (mg) {
+        const gramos = Number(mg[1].replace(",", "."));
+        const total = (gramos * Number(String(cant).replace(",", "."))) / 1000;
+        if (Number.isFinite(total)) hoja.getCell(fila, 13).value = Math.round(total * 1000) / 1000;
+      }
     }
     hoja.getCell(fila, 14).value = m501 - cantidad;
     hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
