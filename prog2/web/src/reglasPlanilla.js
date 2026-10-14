@@ -74,6 +74,7 @@ export function filtrarFilas(filas, filtros) {
     soloConPrecio = false,
     soloConUbicacion = false,
     soloStockCritico = false,
+    soloStockCero = false,
     soloInventarioOComentario = false,
     soloMarcados = false,
     ignorarNulo = false,
@@ -110,6 +111,9 @@ export function filtrarFilas(filas, filtros) {
       const stock = Number(String(fila.Stock ?? "").trim());
       return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
     });
+  }
+  if (soloStockCero) {
+    lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
   }
   if (soloInventarioOComentario) {
     lista = lista.filter((fila) => {
@@ -158,6 +162,7 @@ export function consultaExcel(filtros) {
   if (filtros.soloConPrecio) params.set("precio", "1");
   if (filtros.soloConUbicacion) params.set("ubicacion", "1");
   if (filtros.soloStockCritico) params.set("critico", "1");
+  if (filtros.soloStockCero) params.set("stockCero", "1");
   if (filtros.soloInventarioOComentario) params.set("inventario", "1");
   if (filtros.soloMarcados) params.set("marcado", "1");
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");

@@ -75,6 +75,11 @@ test("los filtros de la planilla descartan stock vacío y nulos", () => {
   ];
   const visibles = filtrarFilas(filas, { ignorarNulo: true, orden: "codigo-asc" });
   assert.deepEqual(visibles.map((item) => item.Codigo), ["10"]);
+  const sinStock = filtrarFilas(
+    [fila, { ...fila, Codigo: "0", Stock: "0" }, { ...fila, Codigo: "1", Stock: "0.0" }],
+    { soloStockCero: true }
+  );
+  assert.deepEqual(sinStock.map((item) => item.Codigo), ["0", "1"]);
 });
 
 test("la descarga lleva los filtros activos", () => {

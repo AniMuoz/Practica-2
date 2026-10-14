@@ -477,6 +477,9 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
       return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
     });
   }
+  if (filtros.soloStockCero) {
+    lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
+  }
   if (filtros.soloInventarioOComentario) {
     lista = lista.filter((fila) => {
       const inventario = String(fila.Inventario ?? "").trim();

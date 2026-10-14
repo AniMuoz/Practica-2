@@ -33,6 +33,7 @@ export default function App() {
   const [soloConPrecio, setSoloConPrecio] = useState(false);
   const [soloConUbicacion, setSoloConUbicacion] = useState(false);
   const [soloStockCritico, setSoloStockCritico] = useState(false);
+  const [soloStockCero, setSoloStockCero] = useState(false);
   const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
   const [soloMarcados, setSoloMarcados] = useState(false);
   const [ignorarNulo, setIgnorarNulo] = useState(true);
@@ -78,17 +79,18 @@ export default function App() {
       soloConPrecio,
       soloConUbicacion,
       soloStockCritico,
+      soloStockCero,
       soloInventarioOComentario,
       soloMarcados,
       ignorarNulo,
       texto,
     }),
-    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]
+    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]
   );
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]);
 
   function cargarTabla() {
     return fetch("/api/tabla", { cache: "no-store" })
@@ -313,6 +315,7 @@ export default function App() {
                 soloConPrecio,
                 soloConUbicacion,
                 soloStockCritico,
+                soloStockCero,
                 soloInventarioOComentario,
                 soloMarcados,
                 ignorarNulo,
@@ -456,6 +459,14 @@ export default function App() {
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="checkbox"
+                    checked={soloStockCero}
+                    onChange={(event) => setSoloStockCero(event.target.checked)}
+                  />
+                  Mostrar solo materiales con stock igual a 0
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
                     checked={soloInventarioOComentario}
                     onChange={(event) => setSoloInventarioOComentario(event.target.checked)}
                   />
@@ -489,6 +500,7 @@ export default function App() {
                   setSoloConPrecio(false);
                   setSoloConUbicacion(false);
                   setSoloStockCritico(false);
+                  setSoloStockCero(false);
                   setSoloInventarioOComentario(false);
                   setSoloMarcados(false);
                   setIgnorarNulo(true);

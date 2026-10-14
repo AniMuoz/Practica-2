@@ -159,6 +159,7 @@ app.get("/api/tabla/excel", async (req, res) => {
       soloConPrecio: req.query.precio === "1",
       soloConUbicacion: req.query.ubicacion === "1",
       soloStockCritico: req.query.critico === "1",
+      soloStockCero: req.query.stockCero === "1",
       soloInventarioOComentario: req.query.inventario === "1",
       soloMarcados: req.query.marcado === "1",
       ignorarNulo: req.query.ignorarNulo === "1",
