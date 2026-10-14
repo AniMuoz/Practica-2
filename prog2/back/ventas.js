@@ -406,9 +406,17 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       hoja.getCell(fila, 13).value = Math.round(Number(String(cant).replace(",", ".")) / 6);
     } else if (/^\s*kgs?\.?\s*$/i.test(String(item.unidad ?? ""))) {
       const mg = descFila.match(/(\d+(?:[.,]\d+)?)\s*GRS?\b/i);
+      const mk = descFila.match(/(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)\s*KGS?\b|(\d+(?:[.,]\d+)?)\s*KGS?\b/i);
+      let kilosUnidad = null;
       if (mg) {
-        const gramos = Number(mg[1].replace(",", "."));
-        const total = (gramos * Number(String(cant).replace(",", "."))) / 1000;
+        kilosUnidad = Number(mg[1].replace(",", ".")) / 1000;
+      } else if (mk) {
+        kilosUnidad = mk[2]
+          ? Number(mk[1] || 0) + Number(mk[2]) / Number(mk[3])
+          : Number(mk[4].replace(",", "."));
+      }
+      if (kilosUnidad != null) {
+        const total = kilosUnidad * Number(String(cant).replace(",", "."));
         if (Number.isFinite(total)) hoja.getCell(fila, 13).value = Math.round(total * 1000) / 1000;
       }
     }
