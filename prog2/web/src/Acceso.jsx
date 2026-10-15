@@ -293,11 +293,34 @@ export default function Acceso({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [verificando, setVerificando] = useState(true);
   useEffect(() => {
-    originalFetch("/api/sesion", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setUsuario(data ? data.usuario : null))
-      .catch(() => setUsuario(null))
-      .finally(() => setVerificando(false));
+    let cancelado = false;
+    const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+    // Solo un 401 significa "sin sesión". Otros fallos (backend de Render
+    // despertando: 502/503/504, red) se reintentan sin mostrar el login.
+    async function verificar() {
+      for (let intento = 0; intento < 12 && !cancelado; intento++) {
+        try {
+          const res = await originalFetch("/api/sesion", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            return data ? data.usuario : null;
+          }
+          if (res.status === 401) return null;
+        } catch {
+          // error de red: reintentar
+        }
+        await espera(5000);
+      }
+      return null;
+    }
+    verificar().then((u) => {
+      if (cancelado) return;
+      setUsuario(u);
+      setVerificando(false);
+    });
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   useEffect(() => {
