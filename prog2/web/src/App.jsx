@@ -39,6 +39,9 @@ export default function App() {
   const [ignorarNulo, setIgnorarNulo] = useState(true);
   const [bloquearPagina, setBloquearPagina] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
+  const [urlDescarga, setUrlDescarga] = useState("");
+  const [nombreArchivo, setNombreArchivo] = useState("");
+  const [nombrePersonalizado, setNombrePersonalizado] = useState(false);
   const [pedirClave, setPedirClave] = useState(false);
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -306,6 +309,12 @@ export default function App() {
             </button>
             <a
               data-tour="descargar"
+              onClick={(e) => {
+                e.preventDefault();
+                setUrlDescarga(e.currentTarget.getAttribute("href"));
+                setNombreArchivo("");
+                setNombrePersonalizado(false);
+              }}
               href={consultaExcel({
                 colores,
                 orden,
@@ -647,6 +656,95 @@ export default function App() {
           </Planilla>
           </div>
           {paginacion()}
+        </div>
+      )}
+      {urlDescarga && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 20,
+          }}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const nombre = nombrePersonalizado ? nombreArchivo.trim().replace(/\.xlsx$/i, "") : "";
+              let url = urlDescarga;
+              if (nombre) url += `${url.includes("?") ? "&" : "?"}nombre=${encodeURIComponent(nombre)}`;
+              setUrlDescarga("");
+              window.location.assign(url);
+            }}
+            style={{
+              width: "min(420px, 100%)",
+              background: "var(--superficie)",
+              borderRadius: 8,
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: 16 }}>Nombre del archivo</h3>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+              <input
+                type="radio"
+                name="modo-nombre"
+                checked={nombrePersonalizado === false}
+                onChange={() => setNombrePersonalizado(false)}
+              />
+              <span>
+                {(() => {
+                  const hoy = new Date();
+                  const dd = String(hoy.getDate()).padStart(2, "0");
+                  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+                  return `INVENTARIO ${dd}-${mm}-${hoy.getFullYear()}`;
+                })()}{" "}
+                <span style={{ opacity: 0.7 }}>(por defecto)</span>
+              </span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+              <input
+                type="radio"
+                name="modo-nombre"
+                checked={nombrePersonalizado}
+                onChange={() => setNombrePersonalizado(true)}
+              />
+              <input
+                type="text"
+                value={nombreArchivo}
+                placeholder="Escribir otro nombre"
+                onFocus={() => setNombrePersonalizado(true)}
+                onChange={(event) => {
+                  setNombreArchivo(event.target.value);
+                  setNombrePersonalizado(true);
+                }}
+                style={{ flex: 1, boxSizing: "border-box", padding: "8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+              />
+              <span style={{ fontSize: 14 }}>.xlsx</span>
+            </label>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setUrlDescarga("")}
+                style={estiloBoton(true, "var(--borde)")}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={nombrePersonalizado && nombreArchivo.trim() === ""}
+                style={estiloBoton(!(nombrePersonalizado && nombreArchivo.trim() === ""), "var(--descarga)")}
+              >
+                Descargar
+              </button>
+            </div>
+          </form>
         </div>
       )}
       {pedirClave && (

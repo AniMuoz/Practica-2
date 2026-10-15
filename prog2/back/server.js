@@ -61,6 +61,17 @@ function conColores(valor) {
   return valor !== "0";
 }
 
+function fechaArchivo() {
+  const hoy = new Date();
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  return `${dia}-${mes}-${hoy.getFullYear()}`;
+}
+
+function nombreConFecha(nombre) {
+  return `attachment; filename=${encodeURIComponent(`${nombre} ${fechaArchivo()}.xlsx`)}`;
+}
+
 function enviarPlanilla(res, buffer, disposition) {
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", disposition);
@@ -165,7 +176,14 @@ app.get("/api/tabla/excel", async (req, res) => {
       ignorarNulo: req.query.ignorarNulo === "1",
       texto: req.query.q,
     });
-    enviarPlanilla(res, buffer, "attachment; filename=inventario.xlsx");
+    const personalizado = String(req.query.nombre ?? "").replace(/[\\/:*?"<>|]/g, "").trim();
+    enviarPlanilla(
+      res,
+      buffer,
+      personalizado
+        ? `attachment; filename=${encodeURIComponent(`${personalizado}.xlsx`)}`
+        : nombreConFecha("INVENTARIO")
+    );
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla." });
@@ -184,7 +202,7 @@ app.get("/api/bodega", (_req, res) => {
 app.get("/api/bodega/excel", async (req, res) => {
   try {
     const buffer = await exportarStockBodega(conColores(req.query.colores));
-    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20M501.xlsx");
+    enviarPlanilla(res, buffer, nombreConFecha("PLANILLA M501"));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
@@ -203,7 +221,7 @@ app.get("/api/regional", (_req, res) => {
 app.get("/api/regional/excel", async (req, res) => {
   try {
     const buffer = await exportarStockRegional(conColores(req.query.colores));
-    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20STOCK%20REGIONAL.xlsx");
+    enviarPlanilla(res, buffer, nombreConFecha("PLANILLA STOCK REGIONAL"));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla regional." });
@@ -223,7 +241,7 @@ app.get("/api/inventario/excel", async (req, res) => {
   try {
     const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
     const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen);
-    enviarPlanilla(res, buffer, "attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501.xlsx");
+    enviarPlanilla(res, buffer, nombreConFecha("PLANILLA DE INVENTARIO M501"));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar la planilla de inventario." });
@@ -245,8 +263,7 @@ app.get("/api/inventario-bodega/excel", async (req, res) => {
     const codigo = String(req.query.bodega ?? "").trim();
     const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
     const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores), origen);
-    const nombre = `PLANILLA DE INVENTARIO ${codigo}.xlsx`;
-    enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+    enviarPlanilla(res, buffer, nombreConFecha(`PLANILLA DE INVENTARIO ${codigo}`));
   } catch (error) {
     console.error(error);
     res.status(error.status || 500).json({ error: error.message || "No se pudo generar la planilla de la bodega." });
@@ -265,7 +282,7 @@ app.get("/api/stock-detallado", (_req, res) => {
 app.get("/api/stock-detallado/excel", async (req, res) => {
   try {
     const buffer = await exportarStockDetallado(conColores(req.query.colores));
-    enviarPlanilla(res, buffer, "attachment; filename=Prueba_de_stock_detallado.xlsx");
+    enviarPlanilla(res, buffer, nombreConFecha("Prueba_de_stock_detallado"));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo generar el stock detallado." });
