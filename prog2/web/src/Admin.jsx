@@ -131,6 +131,7 @@ export default function Admin() {
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [archivo, setArchivo] = useState(null);
+  const [archivosQr, setArchivosQr] = useState([]);
   const [importando, setImportando] = useState(false);
   const [avisoCarga, setAvisoCarga] = useState("");
   const [ultimasCargas, setUltimasCargas] = useState({});
@@ -747,6 +748,49 @@ export default function Admin() {
           key={cargaKey}
           onSubmit={(event) => {
             event.preventDefault();
+            if (modoCarga === "qr") {
+              const validos = archivosQr
+                .map((f) => ({ f, m: /^qr_(.+)\.png$/i.exec(f.name) }))
+                .filter((x) => x.m);
+              if (!validos.length) {
+                setAvisoCarga("La carpeta no tiene imágenes con formato qr_{codigo}.png.");
+                return;
+              }
+              if (!window.confirm(`¿Subir ${validos.length} imágenes QR a sus materiales?`)) return;
+              const formulario = event.target;
+              setAvisoCarga("");
+              setImportando(true);
+              (async () => {
+                let ok = 0;
+                const fallidos = [];
+                for (let i = 0; i < validos.length; i++) {
+                  const { f, m } = validos[i];
+                  setAvisoCarga(`Subiendo ${i + 1} de ${validos.length}...`);
+                  try {
+                    const cuerpo = new FormData();
+                    cuerpo.append("clave", clave);
+                    cuerpo.append("campo", "QR");
+                    cuerpo.append("archivo", f);
+                    const res = await fetch(`/api/material/${encodeURIComponent(m[1])}/imagen`, {
+                      method: "POST",
+                      body: cuerpo,
+                    });
+                    if (!res.ok) throw new Error();
+                    ok++;
+                  } catch {
+                    fallidos.push(m[1]);
+                  }
+                }
+                setArchivosQr([]);
+                formulario.reset();
+                const detalle = fallidos.length
+                  ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
+                  : "";
+                setAvisoCarga(`Listo: ${ok} QR subidos${detalle}.`);
+                refrescarVistas();
+              })().finally(() => setImportando(false));
+              return;
+            }
             if (!archivo) {
               setAvisoCarga("Elige un archivo .xlsx.");
               return;
@@ -815,6 +859,7 @@ export default function Admin() {
             <option value="precios">Planilla de precios</option>
             <option value="dos-columnas">Planilla de 2 columnas</option>
             <option value="reservas">Añadir reservas</option>
+            <option value="qr">Cargar QR</option>
           </select>
           {modoCarga === "dos-columnas" && (
             <select
@@ -830,11 +875,21 @@ export default function Admin() {
               ))}
             </select>
           )}
-          <input
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(event) => setArchivo(event.target.files?.[0] || null)}
-          />
+          {modoCarga === "qr" ? (
+            <input
+              type="file"
+              webkitdirectory=""
+              directory=""
+              multiple
+              onChange={(event) => setArchivosQr(Array.from(event.target.files || []))}
+            />
+          ) : (
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(event) => setArchivo(event.target.files?.[0] || null)}
+            />
+          )}
           <button
             type="submit"
             disabled={importando}
@@ -848,7 +903,7 @@ export default function Admin() {
               cursor: "pointer",
             }}
           >
-            {importando ? "Importando..." : "Importar planilla"}
+            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : "Importar planilla"}
           </button>
           <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
