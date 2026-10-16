@@ -35,7 +35,11 @@ export default function Detalle() {
   const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
   const [imagenGrande, setImagenGrande] = useState(null);
   const [ocultarImagenes, setOcultarImagenes] = useState(
-    () => localStorage.getItem("ocultarImagenes") === "1"
+    () => {
+      const guardado = localStorage.getItem("ocultarImagenes");
+      if (guardado !== null) return guardado === "1";
+      return window.matchMedia("(max-width: 768px)").matches;
+    }
   );
 
   function cambiarOcultarImagenes(activo) {
