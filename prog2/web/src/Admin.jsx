@@ -748,11 +748,11 @@ export default function Admin() {
           key={cargaKey}
           onSubmit={(event) => {
             event.preventDefault();
-            if (modoCarga === "qr" || modoCarga === "rombo") {
-              const prefijo = modoCarga === "qr" ? "qr" : "rombo";
-              const campoImagen = modoCarga === "qr" ? "QR" : "Rombo";
+            if (modoCarga === "qr" || modoCarga === "rombo" || modoCarga === "foto") {
+              const prefijo = modoCarga;
+              const campoImagen = { qr: "QR", rombo: "Rombo", foto: "Foto" }[modoCarga];
               const maxBytes = 100 * 1024;
-              const patron = new RegExp(`^${prefijo}_(.+)\\.png$`, "i");
+              const patron = new RegExp(`^${prefijo}_(.+)\\.(png|jpe?g)$`, "i");
               const coincidentes = archivosQr
                 .map((f) => ({ f, m: patron.exec(f.name) }))
                 .filter((x) => x.m);
@@ -762,7 +762,7 @@ export default function Admin() {
                 setAvisoCarga(
                   coincidentes.length
                     ? "Todas las imágenes superan los 100 KB."
-                    : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png.`
+                    : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png o .jpg.`
                 );
                 return;
               }
@@ -873,6 +873,7 @@ export default function Admin() {
             <option value="reservas">Añadir reservas</option>
             <option value="qr">Cargar QR</option>
             <option value="rombo">Cargar rombo</option>
+            <option value="foto">Cargar fotos</option>
           </select>
           {modoCarga === "dos-columnas" && (
             <select
@@ -888,7 +889,7 @@ export default function Admin() {
               ))}
             </select>
           )}
-          {modoCarga === "qr" || modoCarga === "rombo" ? (
+          {["qr", "rombo", "foto"].includes(modoCarga) ? (
             <input
               type="file"
               webkitdirectory=""
@@ -916,7 +917,7 @@ export default function Admin() {
               cursor: "pointer",
             }}
           >
-            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : modoCarga === "rombo" ? "Subir rombo" : "Importar planilla"}
+            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : modoCarga === "rombo" ? "Subir rombo" : modoCarga === "foto" ? "Subir fotos" : "Importar planilla"}
           </button>
           <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}

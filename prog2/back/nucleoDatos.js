@@ -590,14 +590,19 @@ async function guardarImagen(codigo, campo, nombreArchivo, clave) {
 
   const indiceCampo = columnas.indexOf(campo);
   const anterior = String(matriz[indiceFila][indiceCampo] ?? "");
-  if (!nombreArchivo && /\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
-    const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
-    if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
-    await quitarImagen(path.basename(anterior));
-  }
-
   matriz[indiceFila][indiceCampo] = nombreArchivo || "";
   await guardarFila(matriz, indiceFila);
+
+  // Borra la imagen anterior (si es otro archivo) para ahorrar espacio.
+  if (/\.(png|jpe?g|webp|gif)$/i.test(anterior) && path.basename(anterior) !== nombreArchivo) {
+    const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
+    try {
+      if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+      await quitarImagen(path.basename(anterior));
+    } catch (error) {
+      console.error(error);
+    }
+  }
   return buscarMaterial(codigo);
 }
 

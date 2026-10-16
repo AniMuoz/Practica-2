@@ -21,7 +21,9 @@ tablas.ejecutar = (operacion, carga) => {
 
 const imagenes = require("../imagenesSupabase");
 let quitadas = [];
+let quitarFalla = false;
 imagenes.quitarImagen = async (nombre) => {
+  if (quitarFalla) throw new Error("fallo simulado");
   quitadas.push(nombre);
 };
 
@@ -316,13 +318,43 @@ test("quitar una imagen que no es un archivo de imagen no borra nada", async () 
   assert.deepEqual(quitadas, []);
 });
 
-test("reemplazar una imagen por otra no borra la anterior desde esta función", async () => {
+test("reemplazar una imagen por otra borra la anterior local y de Supabase", async () => {
   const nucleo = cargar();
   fs.writeFileSync(rutaImagen, "x");
   const resultado = await nucleo.guardarImagen("100", "Rombo", "100-rombo-nuevo.png", nucleo.CLAVE_DATOS);
   assert.equal(resultado.fila.Rombo, "100-rombo-nuevo.png");
+  assert.equal(fs.existsSync(rutaImagen), false);
+  assert.deepEqual(quitadas, [IMAGEN_PRUEBA]);
+});
+
+test("reemplazar una imagen por una con el mismo nombre no la borra", async () => {
+  const nucleo = cargar();
+  fs.writeFileSync(rutaImagen, "x");
+  await nucleo.guardarImagen("100", "Rombo", IMAGEN_PRUEBA, nucleo.CLAVE_DATOS);
   assert.equal(fs.existsSync(rutaImagen), true);
   assert.deepEqual(quitadas, []);
+});
+
+test("reemplazar un .png por un .jpg del mismo material borra el .png anterior", async () => {
+  const nucleo = cargar();
+  fs.writeFileSync(rutaImagen, "x");
+  const resultado = await nucleo.guardarImagen("100", "Rombo", "100-rombo.jpg", nucleo.CLAVE_DATOS);
+  assert.equal(resultado.fila.Rombo, "100-rombo.jpg");
+  assert.deepEqual(quitadas, [IMAGEN_PRUEBA]);
+});
+
+test("si falla el borrado de la imagen anterior, la nueva igual se guarda", async () => {
+  const nucleo = cargar();
+  const original = console.error;
+  console.error = () => {};
+  try {
+    quitarFalla = true;
+    const resultado = await nucleo.guardarImagen("100", "Rombo", "100-rombo-nuevo.png", nucleo.CLAVE_DATOS);
+    assert.equal(resultado.fila.Rombo, "100-rombo-nuevo.png");
+  } finally {
+    quitarFalla = false;
+    console.error = original;
+  }
 });
 
 // ---------- eliminar y agregar ----------
