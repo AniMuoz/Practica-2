@@ -6,6 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import openpyxl
 import qrcode
+from PIL import ImageDraw, ImageFont
 
 URL_BASE = "https://practica-2.anibalmunoz74.workers.dev/"
 CARPETA_DEFECTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "QRmateriales")
@@ -147,8 +148,17 @@ class App(tk.Tk):
                                    error_correction=qrcode.constants.ERROR_CORRECT_M)
                 qr.add_data(f"{base}{material}")
                 qr.make(fit=True)
-                qr.make_image(fill_color="black", back_color="white").save(
-                    os.path.join(carpeta, f"qr_{material}.png"))
+                img = qr.make_image(fill_color="black", back_color="white").get_image().convert("RGB")
+                draw = ImageDraw.Draw(img)
+                try:
+                    fuente = ImageFont.truetype("arialbd.ttf", 30)
+                except OSError:
+                    fuente = ImageFont.load_default()
+                ancho, alto = img.size
+                # zona blanca inferior: borde de 5 módulos * 10 px = 50 px
+                draw.text((ancho / 2, alto - 27), str(material), fill="black",
+                          font=fuente, anchor="mm")
+                img.save(os.path.join(carpeta, f"qr_{material}.png"))
                 self.after(0, self.barra.configure, {"value": n})
                 self.after(0, self.var_estado.set, f"Generando {n}/{total}")
 
