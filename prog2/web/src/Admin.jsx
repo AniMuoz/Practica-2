@@ -748,15 +748,26 @@ export default function Admin() {
           key={cargaKey}
           onSubmit={(event) => {
             event.preventDefault();
-            if (modoCarga === "qr") {
-              const validos = archivosQr
-                .map((f) => ({ f, m: /^qr_(.+)\.png$/i.exec(f.name) }))
+            if (modoCarga === "qr" || modoCarga === "rombo") {
+              const prefijo = modoCarga === "qr" ? "qr" : "rombo";
+              const campoImagen = modoCarga === "qr" ? "QR" : "Rombo";
+              const maxBytes = 100 * 1024;
+              const patron = new RegExp(`^${prefijo}_(.+)\\.png$`, "i");
+              const coincidentes = archivosQr
+                .map((f) => ({ f, m: patron.exec(f.name) }))
                 .filter((x) => x.m);
+              const grandes = coincidentes.filter((x) => x.f.size > maxBytes);
+              const validos = coincidentes.filter((x) => x.f.size <= maxBytes);
               if (!validos.length) {
-                setAvisoCarga("La carpeta no tiene imágenes con formato qr_{codigo}.png.");
+                setAvisoCarga(
+                  coincidentes.length
+                    ? "Todas las imágenes superan los 100 KB."
+                    : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png.`
+                );
                 return;
               }
-              if (!window.confirm(`¿Subir ${validos.length} imágenes QR a sus materiales?`)) return;
+              const omitidasTxt = grandes.length ? ` (${grandes.length} se omiten por superar 100 KB)` : "";
+              if (!window.confirm(`¿Subir ${validos.length} imágenes de ${campoImagen} a sus materiales?${omitidasTxt}`)) return;
               const formulario = event.target;
               setAvisoCarga("");
               setImportando(true);
@@ -769,7 +780,7 @@ export default function Admin() {
                   try {
                     const cuerpo = new FormData();
                     cuerpo.append("clave", clave);
-                    cuerpo.append("campo", "QR");
+                    cuerpo.append("campo", campoImagen);
                     cuerpo.append("archivo", f);
                     const res = await fetch(`/api/material/${encodeURIComponent(m[1])}/imagen`, {
                       method: "POST",
@@ -783,10 +794,11 @@ export default function Admin() {
                 }
                 setArchivosQr([]);
                 formulario.reset();
-                const detalle = fallidos.length
-                  ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
-                  : "";
-                setAvisoCarga(`Listo: ${ok} QR subidos${detalle}.`);
+                const detalle =
+                  (fallidos.length
+                    ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
+                    : "") + (grandes.length ? `, ${grandes.length} omitidos por superar 100 KB` : "");
+                setAvisoCarga(`Listo: ${ok} imágenes de ${campoImagen} subidas${detalle}.`);
                 refrescarVistas();
               })().finally(() => setImportando(false));
               return;
@@ -860,6 +872,7 @@ export default function Admin() {
             <option value="dos-columnas">Planilla de 2 columnas</option>
             <option value="reservas">Añadir reservas</option>
             <option value="qr">Cargar QR</option>
+            <option value="rombo">Cargar rombo</option>
           </select>
           {modoCarga === "dos-columnas" && (
             <select
@@ -875,7 +888,7 @@ export default function Admin() {
               ))}
             </select>
           )}
-          {modoCarga === "qr" ? (
+          {modoCarga === "qr" || modoCarga === "rombo" ? (
             <input
               type="file"
               webkitdirectory=""
@@ -903,7 +916,7 @@ export default function Admin() {
               cursor: "pointer",
             }}
           >
-            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : "Importar planilla"}
+            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : modoCarga === "rombo" ? "Subir rombo" : "Importar planilla"}
           </button>
           <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
