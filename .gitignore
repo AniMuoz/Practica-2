@@ -5,6 +5,8 @@ private/*
 *.xlsx
 *zip
 
+programa_5/QRmateriales
+
 prog2/back/.sesion-secreto
 
 node_modules/
