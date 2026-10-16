@@ -1,9 +1,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { leer, reemplazar, guardarCarga, main } = require("./supabaseTarea");
-const { subirImagen, bajarImagen, quitarImagen } = require("./imagenesSupabase");
-const { interpretarSalida } = require("./supabase");
-const { interpretarProceso } = require("./supabaseTablas");
+const { leer, reemplazar, guardarCarga, main } = require("../supabaseTarea");
+const { subirImagen, bajarImagen, quitarImagen } = require("../imagenesSupabase");
+const { interpretarSalida } = require("../supabase");
+const { interpretarProceso } = require("../supabaseTablas");
 
 function clienteTablas(tablas = {}) {
   const llamadas = [];

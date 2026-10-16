@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const XLSX = require("xlsx");
 const { DatabaseSync } = require("node:sqlite");
-const { crearBase } = require("./crearBase");
+const { crearBase } = require("../crearBase");
 const {
   conStockCritico,
   conMarcado,
@@ -34,7 +34,7 @@ const {
   importarDosColumnas,
   importarReservas,
   buscarMateriales,
-} = require("./fuenteDatos");
+} = require("../fuenteDatos");
 
 test("conStockCritico inserta la columna antes de Rombo", () => {
   const matriz = conStockCritico([

@@ -1,10 +1,10 @@
-const assert = require("node:assert/strict");
+﻿const assert = require("node:assert/strict");
 const test = require("node:test");
 const fs = require("node:fs");
 const path = require("node:path");
 const ExcelJS = require("exceljs");
-const { app } = require("./server");
-const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("./bitacora");
+const { app } = require("../server");
+const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("../bitacora");
 
 // Los rechazos esperados (403, 400) imprimen su traza con console.error; se silencian aquí.
 test.mock.method(console, "error", () => {});
@@ -98,7 +98,7 @@ test("el Excel crece más allá de 14 filas con el mismo formato", async () => {
 });
 
 test("la firma como imagen solo acepta PNG y se reconoce por su nombre", () => {
-  const logo = fs.readFileSync(path.join(__dirname, "assets", "logo-bitacora.png"));
+  const logo = fs.readFileSync(path.join(__dirname, "..", "assets", "logo-bitacora.png"));
   const medidas = dimensionesPng(logo);
   assert.ok(medidas.ancho > 0 && medidas.alto > 0);
   assert.equal(dimensionesPng(Buffer.from("no es una imagen")), null);
@@ -108,7 +108,7 @@ test("la firma como imagen solo acepta PNG y se reconoce por su nombre", () => {
 });
 
 test("el Excel pone la firma como imagen dentro de la celda y deja el texto como texto", async () => {
-  const logo = fs.readFileSync(path.join(__dirname, "assets", "logo-bitacora.png"));
+  const logo = fs.readFileSync(path.join(__dirname, "..", "assets", "logo-bitacora.png"));
   const filas = [
     { n_fila: 1, firma: "img:firma-5-1-1700000000000.png" },
     { n_fila: 2, firma: "J. Perez" },

@@ -20,7 +20,7 @@ import {
   subUbicacionesDe,
   textoCampo,
   validarContratistas,
-} from "./reglasPlanilla.js";
+} from "../src/reglasPlanilla.js";
 
 const fila = {
   Codigo: "10",

@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { app, conColores, respuestaConexion } = require("./server");
+const { app, conColores, respuestaConexion } = require("../server");
 
 // Los rechazos esperados (403, 400) imprimen su traza con console.error; se silencian aquí.
 test.mock.method(console, "error", () => {});

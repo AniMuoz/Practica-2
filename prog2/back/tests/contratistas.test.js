@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 // contratistas.js toma `ejecutar` al cargarse, así que se reemplaza antes de requerirlo.
-const tablas = require("./supabaseTablas");
+const tablas = require("../supabaseTablas");
 const llamadas = [];
 let bd = { contratistas: [], planillas: [] };
 tablas.ejecutar = (operacion, carga) => {
@@ -19,13 +19,13 @@ tablas.ejecutar = (operacion, carga) => {
   throw new Error(`operación inesperada: ${operacion}`);
 };
 
-const { CLAVE_DATOS } = require("./nucleoDatos");
+const { CLAVE_DATOS } = require("../nucleoDatos");
 
 function cargar(inicial) {
   bd = { contratistas: [], planillas: [], ...inicial };
   llamadas.length = 0;
-  delete require.cache[require.resolve("./contratistas")];
-  return require("./contratistas");
+  delete require.cache[require.resolve("../contratistas")];
+  return require("../contratistas");
 }
 
 test("leerContratistas arma columnas y filas desde la base", () => {

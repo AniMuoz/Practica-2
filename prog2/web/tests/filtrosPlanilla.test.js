@@ -16,7 +16,7 @@ import {
   rangoPagina,
   rutaExcelInventario,
   subUbicacionesDe,
-} from "./reglasPlanilla.js";
+} from "../src/reglasPlanilla.js";
 
 const A = {
   Codigo: "10", Descripcion: "Codo PVC", Stock: "4", Precio: "100", "Ubicación": "01-A", "Sub-ubicación": "01-A",

@@ -47,11 +47,9 @@ function compactarPlanilla(hoja) {
   const vista = { ...(hoja.views && hoja.views[0] ? hoja.views[0] : {}), zoomScale: 80, zoomScaleNormal: 80 };
   hoja.views = [vista];
   const titulosCombinados = new Set();
-  Object.keys(hoja._merges || {}).forEach((rango) => {
-    const [inicio, fin] = String(rango).split(":");
-    if (!fin) return;
-    const limpio = inicio.replace(/\$/g, "");
-    if (limpio.replace(/\d/g, "") !== fin.replace(/\$/g, "").replace(/\d/g, "")) titulosCombinados.add(limpio);
+  Object.entries(hoja._merges || {}).forEach(([direccion, rango]) => {
+    const modelo = rango && rango.model;
+    if (modelo && modelo.left !== modelo.right) titulosCombinados.add(String(direccion).replace(/\$/g, ""));
   });
   const anchos = [];
   hoja.eachRow({ includeEmpty: false }, (fila) => {

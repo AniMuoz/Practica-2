@@ -7,7 +7,7 @@ const test = require("node:test");
 const XLSX = require("xlsx");
 
 // importaciones.js toma estas funciones al cargarse: se reemplazan antes por una tabla en memoria.
-const nucleo = require("./nucleoDatos");
+const nucleo = require("../nucleoDatos");
 const COLS = nucleo.ENCABEZADO_MATERIALES;
 const CLAVE = nucleo.CLAVE_DATOS;
 
@@ -27,7 +27,7 @@ const {
   importarPrecios,
   importarUbicaciones,
   importarDosColumnas,
-} = require("./importaciones");
+} = require("../importaciones");
 
 function fila(datos) {
   return COLS.map((columna) => datos[columna] ?? "");

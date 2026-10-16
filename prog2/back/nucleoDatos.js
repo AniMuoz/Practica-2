@@ -536,6 +536,7 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
     error.status = 400;
     throw error;
   }
+  matriz[indiceFila][indiceCodigo] = codigoNuevo;
   const duplicado = matriz.some(
     (fila, indice) =>
       indice > 0 && indice !== indiceFila && String(fila[indiceCodigo]) === codigoNuevo
