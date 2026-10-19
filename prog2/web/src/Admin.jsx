@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useBlocker, useNavigate } from "react-router-dom";
+import { useSesion } from "./Acceso.jsx";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
@@ -142,6 +143,7 @@ export default function Admin() {
     (nombre === "Revisar stock de reserva" && mostrarReserva) ||
     (nombre === "Editar contratistas" && mostrarContratistas) ||
     (nombre === "Planilla de ventas" && mostrarVentas);
+  const { rol } = useSesion();
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -462,6 +464,17 @@ export default function Admin() {
     window.addEventListener("beforeunload", avisarCierre);
     return () => window.removeEventListener("beforeunload", avisarCierre);
   }, [hayCambiosSinGuardar, importando]);
+
+  useEffect(() => {
+    if (rol !== "admin") return;
+    fetch("/api/acceso", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        setClave(data.clave);
+        setAutorizado(true);
+      })
+      .catch(() => {});
+  }, [rol]);
 
   useEffect(() => {
     if (!autorizado) return;

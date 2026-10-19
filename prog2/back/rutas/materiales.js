@@ -3,6 +3,8 @@ const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
 const { uploadXlsx, upload, emitir } = require("../compartido");
 const { subirImagen } = require("../imagenesSupabase");
+const { exigirAdmin } = require("../auth");
+const { CLAVE_DATOS } = require("../nucleoDatos");
 
 module.exports = function rutasMateriales(app) {
   app.get("/api/tabla/ultimas-cargas", (_req, res) => {
@@ -111,6 +113,16 @@ module.exports = function rutasMateriales(app) {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo leer el material." });
+    }
+  });
+
+  // El admin con sesión abierta no digita la clave de operación: el servidor se la entrega.
+  app.get("/api/acceso", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json({ ok: true, clave: CLAVE_DATOS });
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo verificar el acceso." });
     }
   });
 
