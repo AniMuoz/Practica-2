@@ -47,12 +47,6 @@ test("conColores queda activo salvo que el query sea 0", () => {
   assert.equal(conColores("0"), false);
 });
 
-test("la API de prueba responde el mensaje fijo", async () => {
-  const respuesta = await pedir("GET", "/api/mensaje");
-  assert.equal(respuesta.status, 200);
-  assert.equal(respuesta.json.texto, "Prueba de proyecto berfre");
-});
-
 test("buscar con menos de dos letras no consulta materiales", async () => {
   const respuesta = await pedir("GET", "/api/buscar?q=a");
   assert.equal(respuesta.status, 200);

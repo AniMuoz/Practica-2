@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
@@ -14,6 +14,12 @@ import {
   rangoPagina,
   subUbicacionesDe,
 } from "./reglasPlanilla.js";
+
+function nombreInventarioPorDefecto(fecha = new Date()) {
+  const dd = String(fecha.getDate()).padStart(2, "0");
+  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+  return `INVENTARIO ${dd}-${mm}-${fecha.getFullYear()}`;
+}
 
 export default function App() {
   const navigate = useNavigate();
@@ -48,6 +54,7 @@ export default function App() {
   const [avisoClave, setAvisoClave] = useState("");
   const [enDescanso, setEnDescanso] = useState(false);
   const tamano = 100;
+  const etagTabla = useRef("");
 
   function estiloBoton(habilitado, fondo = "var(--boton)", padding = "8px 14px") {
     return {
@@ -96,12 +103,18 @@ export default function App() {
   }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]);
 
   function cargarTabla() {
-    return fetch("/api/tabla", { cache: "no-store" })
+    const headers = {};
+    if (etagTabla.current) headers["If-None-Match"] = etagTabla.current;
+    return fetch("/api/tabla", { cache: "no-store", headers })
       .then((res) => {
+        if (res.status === 304) return null;
         if (!res.ok) throw new Error("No se pudo leer la API");
+        const etag = res.headers.get("etag");
+        if (etag) etagTabla.current = etag;
         return res.json();
       })
       .then((data) => {
+        if (!data) return;
         setColumnas(data.columnas || []);
         setFilas(data.filas || []);
       });
@@ -699,13 +712,7 @@ export default function App() {
                 onChange={() => setNombrePersonalizado(false)}
               />
               <span>
-                {(() => {
-                  const hoy = new Date();
-                  const dd = String(hoy.getDate()).padStart(2, "0");
-                  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
-                  return `INVENTARIO ${dd}-${mm}-${hoy.getFullYear()}`;
-                })()}{" "}
-                <span style={{ opacity: 0.7 }}>(por defecto)</span>
+                {nombreInventarioPorDefecto()} <span style={{ opacity: 0.7 }}>(por defecto)</span>
               </span>
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>

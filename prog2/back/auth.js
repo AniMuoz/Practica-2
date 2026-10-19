@@ -43,16 +43,23 @@ async function contarUsuarios() {
   return count || 0;
 }
 
-function hashClave(clave, sal = crypto.randomBytes(16).toString("hex")) {
-  const hash = crypto.scryptSync(String(clave), sal, 64).toString("hex");
+function scrypt(clave, sal, largo) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(String(clave), sal, largo, (error, hash) => (error ? reject(error) : resolve(hash)));
+  });
+}
+
+async function hashClave(clave, sal = crypto.randomBytes(16).toString("hex")) {
+  const hash = (await scrypt(clave, sal, 64)).toString("hex");
   return `${sal}:${hash}`;
 }
 
-function claveValida(clave, guardado) {
+async function claveValida(clave, guardado) {
   const [sal, hash] = String(guardado || "").split(":");
   if (!sal || !hash) return false;
   const esperado = Buffer.from(hash, "hex");
-  const obtenido = crypto.scryptSync(String(clave), sal, esperado.length);
+  const obtenido = await scrypt(clave, sal, esperado.length);
+  if (esperado.length !== obtenido.length) return false;
   return crypto.timingSafeEqual(esperado, obtenido);
 }
 
@@ -65,7 +72,7 @@ function validarClaveNueva(clave) {
 async function guardarUsuario(nombre, clave) {
   validarClaveNueva(clave);
   const usuario = String(nombre).trim().toLowerCase();
-  const { error } = await supabase.from("usuarios").upsert({ usuario, clave_hash: hashClave(clave) }, { onConflict: "usuario" });
+  const { error } = await supabase.from("usuarios").upsert({ usuario, clave_hash: await hashClave(clave) }, { onConflict: "usuario" });
   if (error) falloBd(error);
   cacheUsuarios.delete(usuario);
   return usuario;
@@ -215,7 +222,7 @@ function rutasAuth(app) {
       const llave = clienteDe(req);
       if (bloqueado(llave)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
-      const correcta = registro ? claveValida(clave, registro.clave_hash) : (hashClave(clave), false);
+      const correcta = registro ? await claveValida(clave, registro.clave_hash) : await hashClave(clave).then(() => false);
       if (!correcta) {
         registrarFallo(llave);
         throw errorHttp(401, "Usuario o contraseña incorrectos.");
@@ -236,7 +243,7 @@ function rutasAuth(app) {
       const llave = clienteDe(req);
       if (bloqueado(llave)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
-      const correcta = registro ? claveValida(claveActual, registro.clave_hash) : (hashClave(claveActual), false);
+      const correcta = registro ? await claveValida(claveActual, registro.clave_hash) : await hashClave(claveActual).then(() => false);
       if (!correcta) {
         registrarFallo(llave);
         throw errorHttp(401, "Usuario o contraseña actual incorrectos.");

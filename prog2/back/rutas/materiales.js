@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
 const { uploadXlsx, upload, emitir } = require("../compartido");
@@ -13,9 +14,18 @@ module.exports = function rutasMateriales(app) {
     }
   });
 
-  app.get("/api/tabla", (_req, res) => {
+  app.get("/api/tabla", (req, res) => {
     try {
-      res.json(leerTabla());
+      const tabla = leerTabla();
+      const cuerpo = JSON.stringify(tabla);
+      const etag = `W/"${crypto.createHash("sha1").update(cuerpo).digest("base64url")}"`;
+      res.set("ETag", etag);
+      // Se compara a mano: el sondeo del navegador manda Cache-Control y Express no lo trata como fresco.
+      if (req.get("If-None-Match") === etag) {
+        res.status(304).end();
+        return;
+      }
+      res.type("json").send(cuerpo);
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.message || "No se pudo leer la tabla." });

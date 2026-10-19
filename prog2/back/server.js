@@ -76,10 +76,6 @@ app.get("/api/eventos", (req, res) => {
   });
 });
 
-app.get("/api/mensaje", (_req, res) => {
-  res.json({ texto: "Prueba de proyecto berfre" });
-});
-
 function respuestaConexion(error) {
   if (error && error.code !== "PGRST205" && error.code !== "42P01") {
     return { status: 502, cuerpo: { conectado: false, error: error.message } };

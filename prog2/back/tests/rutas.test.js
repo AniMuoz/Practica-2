@@ -117,6 +117,16 @@ const LECTURAS = [
   ["/api/contratistas", "leerContratistas", "No se pudieron leer los contratistas."],
 ];
 
+test("GET /api/tabla no reenvía el cuerpo si el ETag coincide", async () => {
+  responder({ leerTabla: { dato: 1 } });
+  const primera = await pedir("GET", "/api/tabla");
+  const etag = primera.headers.get("etag");
+  assert.ok(etag);
+  const segunda = await fetch(base + "/api/tabla", { headers: { "If-None-Match": etag } });
+  assert.equal(segunda.status, 304);
+  assert.equal(await segunda.text(), "");
+});
+
 for (const [ruta, funcion, mensajeGenerico] of LECTURAS) {
   test(`GET ${ruta} entrega lo que lee y no deja cachear`, async () => {
     responder({ [funcion]: { dato: 1 } });
