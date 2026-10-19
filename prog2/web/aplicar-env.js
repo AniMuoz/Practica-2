@@ -1,7 +1,8 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const raiz = __dirname;
+const raiz = path.dirname(fileURLToPath(import.meta.url));
 const archivo = path.join(raiz, ".env");
 if (!fs.existsSync(archivo)) {
   console.error("Falta prog2/web/.env con API=https://...");
