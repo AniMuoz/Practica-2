@@ -8,7 +8,7 @@ const { subirImagen, bajarImagen, quitarImagen } = require("./imagenesSupabase")
 const LOGO = path.join(__dirname, "assets", "logo-bitacora.png");
 const LARGO_MAXIMO = 200;
 const PREFIJO_IMAGEN = "img:";
-const TAMANO_MAXIMO_FIRMA = 1024 * 1024;
+const TAMANO_MAXIMO_FIRMA = 100 * 1024;
 const LADO_MAXIMO_FIRMA = 2000;
 const FIRMA_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -114,7 +114,34 @@ function nombreFirma(valor) {
   const texto = String(valor ?? "");
   if (!texto.startsWith(PREFIJO_IMAGEN)) return null;
   const nombre = texto.slice(PREFIJO_IMAGEN.length);
-  return /^firma-\d+-\d+-\d+\.png$/.test(nombre) ? nombre : null;
+  return /^firma-\d+-\d+-\d+\.(png|jpg)$/.test(nombre) ? nombre : null;
+}
+
+function dimensionesJpg(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+  let pos = 2;
+  while (pos + 9 < buffer.length) {
+    if (buffer[pos] !== 0xff) { pos += 1; continue; }
+    const marca = buffer[pos + 1];
+    if (marca === 0xff) { pos += 1; continue; }
+    if (marca === 0xd8 || marca === 0x01 || (marca >= 0xd0 && marca <= 0xd7)) { pos += 2; continue; }
+    const largo = buffer.readUInt16BE(pos + 2);
+    if (marca >= 0xc0 && marca <= 0xcf && marca !== 0xc4 && marca !== 0xc8 && marca !== 0xcc) {
+      const alto = buffer.readUInt16BE(pos + 5);
+      const ancho = buffer.readUInt16BE(pos + 7);
+      return ancho > 0 && alto > 0 ? { ancho, alto } : null;
+    }
+    if (largo < 2) return null;
+    pos += 2 + largo;
+  }
+  return null;
+}
+
+function tipoImagen(buffer) {
+  if (dimensionesPng(buffer)) return { extension: "png", mime: "image/png", medidas: dimensionesPng(buffer) };
+  const jpg = dimensionesJpg(buffer);
+  if (jpg) return { extension: "jpg", mime: "image/jpeg", medidas: jpg };
+  return null;
 }
 
 function dimensionesPng(buffer) {
@@ -252,9 +279,10 @@ async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado) {
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
   if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw errorHttp(400, "Falta la imagen de la firma.");
-  if (buffer.length > TAMANO_MAXIMO_FIRMA) throw errorHttp(400, "La imagen de la firma pesa más de 1 MB.");
-  const medidas = dimensionesPng(buffer);
-  if (!medidas) throw errorHttp(400, "La imagen de la firma debe ser un archivo PNG.");
+  if (buffer.length > TAMANO_MAXIMO_FIRMA) throw errorHttp(400, "La imagen de la firma pesa más de 100 KB.");
+  const tipo = tipoImagen(buffer);
+  if (!tipo) throw errorHttp(400, "La imagen de la firma debe ser un archivo PNG o JPG.");
+  const medidas = tipo.medidas;
   if (medidas.ancho > LADO_MAXIMO_FIRMA || medidas.alto > LADO_MAXIMO_FIRMA) {
     throw errorHttp(400, `La imagen de la firma no puede superar ${LADO_MAXIMO_FIRMA} píxeles por lado.`);
   }
@@ -276,8 +304,8 @@ async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado) {
     throw errorHttp(400, "El RUT confirmado no coincide con el de la fila.");
   }
 
-  const nombre = `firma-${folio}-${nFila}-${Date.now()}.png`;
-  await subirImagen(nombre, buffer, "image/png");
+  const nombre = `firma-${folio}-${nFila}-${Date.now()}.${tipo.extension}`;
+  await subirImagen(nombre, buffer, tipo.mime);
   const valor = `${PREFIJO_IMAGEN}${nombre}`;
   const firmaEn = new Date().toISOString();
   const verificacion = {
@@ -399,12 +427,13 @@ const BORDE = {
 const EMU_POR_PIXEL = 9525;
 
 function ponerFirmaImagen(libro, hoja, buffer, indiceFila, anchoCelda, altoCelda) {
-  const medidas = dimensionesPng(buffer);
-  if (!medidas) return;
+  const tipo = tipoImagen(buffer);
+  if (!tipo) return;
+  const medidas = tipo.medidas;
   const escala = Math.min(1, (anchoCelda - 4) / medidas.ancho, (altoCelda - 4) / medidas.alto);
   const ancho = Math.max(1, Math.round(medidas.ancho * escala));
   const alto = Math.max(1, Math.round(medidas.alto * escala));
-  const id = libro.addImage({ buffer, extension: "png" });
+  const id = libro.addImage({ buffer, extension: tipo.extension === "jpg" ? "jpeg" : "png" });
   hoja.addImage(id, {
     tl: {
       nativeCol: COLUMNAS.length - 1,

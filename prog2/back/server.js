@@ -32,10 +32,10 @@ const uploadPdf = multer({
 
 const uploadFirma = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "image/png") cb(null, true);
-    else cb(new Error("La imagen de la firma debe ser un archivo PNG."));
+    if (file.mimetype === "image/png" || file.mimetype === "image/jpeg") cb(null, true);
+    else cb(new Error("La imagen de la firma debe ser un archivo PNG o JPG."));
   },
 });
 
@@ -469,7 +469,7 @@ app.post("/api/bitacora/folios/:folio/filas/:fila/firma", (req, res) => {
   uploadFirma.single("archivo")(req, res, async (errorCarga) => {
     if (errorCarga) {
       const demasiado = errorCarga.code === "LIMIT_FILE_SIZE";
-      res.status(400).json({ error: demasiado ? "La imagen de la firma pesa más de 1 MB." : errorCarga.message });
+      res.status(400).json({ error: demasiado ? "La imagen de la firma pesa más de 100 KB." : errorCarga.message });
       return;
     }
     try {

@@ -239,19 +239,21 @@ export default function Bitacora({ clave, colores, alPendiente }) {
     if (!archivo) return;
     setFirmaPendiente(null);
     setAviso("");
-    let png;
-    try {
-      png = await firmaComoPng(archivo);
-    } catch (err) {
-      setAviso(err.message);
+    if (archivo.type !== "image/png" && archivo.type !== "image/jpeg") {
+      setAviso("La imagen de la firma debe ser un archivo PNG o JPG.");
       return;
     }
+    if (archivo.size > 100 * 1024) {
+      setAviso("La imagen de la firma pesa más de 100 KB.");
+      return;
+    }
+    const png = archivo;
     const numeroFolio = folioRef.current;
     encolar(async () => {
       const cuerpo = new FormData();
       cuerpo.append("clave", clave);
       cuerpo.append("rut", rut.trim());
-      cuerpo.append("archivo", png, "firma.png");
+      cuerpo.append("archivo", png, archivo.type === "image/jpeg" ? "firma.jpg" : "firma.png");
       const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, { method: "POST", body: cuerpo });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar la imagen de la firma.");
@@ -468,7 +470,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                                   Subir imagen
                                   <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/png,image/jpeg"
                                     aria-label={`Subir imagen de firma fila ${fila.n_fila}`}
                                     style={{ display: "none" }}
                                     onChange={(event) => {

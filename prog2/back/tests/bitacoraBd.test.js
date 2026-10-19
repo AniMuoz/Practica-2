@@ -285,8 +285,8 @@ test("subirFirma valida clave, imagen y tamaño antes de tocar la base", async (
   await assert.rejects(bitacora.subirFirma("mala", folio, 1, png(), VIAJE.rut), { status: 403 });
   await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, undefined, VIAJE.rut), { status: 400, message: /Falta la imagen/ });
   await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, Buffer.alloc(0), VIAJE.rut), { status: 400, message: /Falta la imagen/ });
-  await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, png(100, 50, 1024 * 1024 + 1), VIAJE.rut), { status: 400, message: /1 MB/ });
-  await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, Buffer.from("no es png de verdad, es texto largo"), VIAJE.rut), { status: 400, message: /PNG/ });
+  await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, png(100, 50, 100 * 1024 + 1), VIAJE.rut), { status: 400, message: /100 KB/ });
+  await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, Buffer.from("no es png de verdad, es texto largo"), VIAJE.rut), { status: 400, message: /PNG o JPG/ });
   await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, png(2001, 50), VIAJE.rut), { status: 400, message: /2000 píxeles/ });
   await assert.rejects(bitacora.subirFirma(CLAVE, folio, 1, png(50, 2001), VIAJE.rut), { status: 400, message: /2000 píxeles/ });
   assert.equal((await bitacora.subirFirma(CLAVE, folio, 1, png(2000, 2000), VIAJE.rut)).fila.firma_estado, "vigente");
