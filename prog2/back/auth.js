@@ -77,6 +77,9 @@ function obtenerSecreto() {
     return fs.readFileSync(ARCHIVO_SECRETO, "utf8").trim();
   } catch {
     const nuevo = crypto.randomBytes(48).toString("hex");
+    if (process.env.RENDER || process.env.NODE_ENV === "production") {
+      console.warn("Falta SESSION_SECRET: el secreto se guarda en disco efimero y las sesiones se cerraran en cada reinicio. Defínelo en las variables de entorno de Render.");
+    }
     fs.writeFileSync(ARCHIVO_SECRETO, nuevo, { mode: 0o600 });
     return nuevo;
   }

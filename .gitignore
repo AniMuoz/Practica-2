@@ -230,3 +230,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+prog2/back/usuarios.json
+prog2/back/*.sqlite
+prog2/back/ultimas_cargas.json
