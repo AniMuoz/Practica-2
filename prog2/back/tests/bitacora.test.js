@@ -1,9 +1,14 @@
-﻿const assert = require("node:assert/strict");
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
+process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
+
+const assert = require("node:assert/strict");
 const test = require("node:test");
 const fs = require("node:fs");
 const path = require("node:path");
 const ExcelJS = require("exceljs");
 const { app } = require("../server");
+const CLAVE = require("../nucleoDatos").CLAVE_DATOS;
 const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("../bitacora");
 
 // Los rechazos esperados (403, 400) imprimen su traza con console.error; se silencian aquí.
@@ -151,8 +156,8 @@ test("el Excel no incluye el historial ni el estado de la firma", async () => {
 
 test("subir una firma sin clave, sin archivo o con otro formato se rechaza", async () => {
   assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "no" })).status, 403);
-  assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: "Berfre2026" })).status, 400);
-  assert.equal((await pedir("POST", "/api/bitacora/folios/abc/filas/1/firma", { clave: "Berfre2026" })).status, 400);
+  assert.equal((await pedir("POST", "/api/bitacora/folios/1/filas/1/firma", { clave: CLAVE })).status, 400);
+  assert.equal((await pedir("POST", "/api/bitacora/folios/abc/filas/1/firma", { clave: CLAVE })).status, 400);
 });
 
 test("consultar un folio inválido responde 400 sin tocar la base", async () => {
@@ -165,15 +170,15 @@ test("generar un folio o guardar una fila sin clave responde 403", async () => {
   assert.equal((await pedir("PUT", "/api/bitacora/folios/1/filas/1", { clave: "no", datos: {} })).status, 403);
   assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1", { clave: "no" })).status, 403);
   assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1/firma", { clave: "no", motivo: "error" })).status, 403);
-  assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1/firma", { clave: "Berfre2026", motivo: "  " })).status, 400);
+  assert.equal((await pedir("DELETE", "/api/bitacora/folios/1/filas/1/firma", { clave: CLAVE, motivo: "  " })).status, 400);
   assert.equal((await pedir("DELETE", "/api/bitacora/folios/1", { clave: "no", confirmacion: "1" })).status, 403);
 });
 
 test("eliminar un folio exige que la confirmación coincida con su número", async () => {
-  const sinConfirmar = await pedir("DELETE", "/api/bitacora/folios/5", { clave: "Berfre2026" });
+  const sinConfirmar = await pedir("DELETE", "/api/bitacora/folios/5", { clave: CLAVE });
   assert.equal(sinConfirmar.status, 400);
-  const distinta = await pedir("DELETE", "/api/bitacora/folios/5", { clave: "Berfre2026", confirmacion: "6" });
+  const distinta = await pedir("DELETE", "/api/bitacora/folios/5", { clave: CLAVE, confirmacion: "6" });
   assert.equal(distinta.status, 400);
-  const invalido = await pedir("DELETE", "/api/bitacora/folios/abc", { clave: "Berfre2026", confirmacion: "abc" });
+  const invalido = await pedir("DELETE", "/api/bitacora/folios/abc", { clave: CLAVE, confirmacion: "abc" });
   assert.equal(invalido.status, 400);
 });

@@ -1,3 +1,7 @@
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
+process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -6,6 +10,7 @@ const test = require("node:test");
 const XLSX = require("xlsx");
 const { DatabaseSync } = require("node:sqlite");
 const { crearBase } = require("../crearBase");
+const CLAVE = require("../nucleoDatos").CLAVE_DATOS;
 const {
   conStockCritico,
   conMarcado,
@@ -224,10 +229,10 @@ test("validaciones rechazan datos antes de abrir la planilla", async () => {
   await assert.rejects(() => actualizarMaterial("1", { inventario: "1.5", comentario: "" }), (error) => error.status === 400);
   await assert.rejects(() => actualizarMaterial("1", { inventario: "1", comentario: "x".repeat(51) }), (error) => error.status === 400);
   await assert.rejects(() => agregarMaterial("no", { Codigo: "1" }), (error) => error.status === 403);
-  await assert.rejects(() => agregarMaterial("Berfre2026", { Codigo: "  " }), (error) => error.status === 400);
+  await assert.rejects(() => agregarMaterial(CLAVE, { Codigo: "  " }), (error) => error.status === 400);
   assert.equal(estado(() => guardarContratistas("no", [])), 403);
   assert.equal(estado(() => importarPlanilla("no", Buffer.from("x"))), 403);
-  assert.equal(estado(() => importarDosColumnas("Berfre2026", Buffer.from("x"), "Codigo")), 400);
+  assert.equal(estado(() => importarDosColumnas(CLAVE, Buffer.from("x"), "Codigo")), 400);
   assert.equal(estado(() => importarReservas("no", Buffer.from("x"))), 403);
 });
 

@@ -51,3 +51,19 @@ El flujo es: el navegador pide todo a Cloudflare, que reenvía lo que empieza co
 - Se añaden los datos de las boletas.
 - Se pueden exportar los datos sin procesar para reimportarlos en algún caso.
 - Se debe elegir el mes del que se generará la planilla.
+
+## Proyecto bitácora de camión (programa_4)
+- Programa con pantalla web (Flask) para llenar la bitácora de un camión: fecha, chofer, RUT, patente, ruta, horas, kilómetros, observación y firma.
+- No usa base de datos: lo que se escribe vive en el navegador y el programa solo genera el Excel.
+- Calcula solo el recorrido a partir del kilómetro inicial y el final.
+- Permite abrir un Excel generado antes para seguir editando ese folio.
+- Se puede empaquetar como programa de escritorio (ver `programa_4/build.txt`).
+- La versión web de la bitácora está dentro del proyecto React (`prog2`).
+
+## Proyecto códigos QR (programa_5)
+- Genera un código QR por cada material para pegarlo en la bodega.
+- Se elige el Excel de inventario y se toman los materiales de la bodega M501 que tienen stock.
+- Cada QR abre la página del material en la aplicación web (`.../<código del material>`).
+- Tiene una ventana sencilla (`frontend_qr.py`) donde se elige el archivo, la carpeta de destino, la bodega y la dirección web, con barra de progreso.
+- Las imágenes se guardan en la carpeta `QRmateriales`, que no se sube a git.
+- Instrucciones para crear el ejecutable en `programa_5/build.txt`.
