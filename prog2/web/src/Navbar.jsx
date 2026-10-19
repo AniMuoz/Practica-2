@@ -13,6 +13,7 @@ export default function Navbar() {
   const [abierto, setAbierto] = useState(false);
   const [aviso, setAviso] = useState("");
   const caja = useRef(null);
+  const campo = useRef(null);
 
   useEffect(() => {
     const consulta = codigo.trim();
@@ -68,6 +69,7 @@ export default function Navbar() {
     if (!buscado) return;
     setAbierto(false);
     setCodigo("");
+    campo.current?.blur();
     navigate(`/${encodeURIComponent(buscado)}`);
   }
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
@@ -255,6 +257,7 @@ export default function Navbar() {
             return;
           }
           setAbierto(false);
+          campo.current?.blur();
           navigate(`/?q=${encodeURIComponent(buscado)}`);
         }}
         data-tour="buscar"
@@ -264,6 +267,7 @@ export default function Navbar() {
       >
         <span style={{ position: "relative", display: "inline-flex", minWidth: 220 }}>
           <input
+            ref={campo}
             value={codigo}
             onChange={(event) => setCodigo(event.target.value)}
             onFocus={() => {
