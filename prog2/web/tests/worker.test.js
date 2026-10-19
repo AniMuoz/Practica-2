@@ -57,10 +57,22 @@ test("el worker devuelve tal cual la respuesta de la API, incluidos los errores"
   assert.equal(resultado.status, 403);
 });
 
-test("sin la variable API responde 500", async () => {
-  const resultado = await worker.fetch(new Request("https://miapp.example.com/api/sesion"), {});
-  assert.equal(resultado.status, 500);
-  assert.equal(await resultado.text(), "Falta la variable API");
+test("sin env.API usa la URL de .env", async () => {
+  const { llamadas } = await (async () => {
+    const original = globalThis.fetch;
+    const llamadas = [];
+    globalThis.fetch = async (url, opciones) => {
+      llamadas.push({ url, opciones });
+      return new Response("ok");
+    };
+    try {
+      await worker.fetch(new Request("https://miapp.example.com/api/sesion"), {});
+      return { llamadas };
+    } finally {
+      globalThis.fetch = original;
+    }
+  })();
+  assert.equal(String(llamadas[0].url), `${DESTINO}/api/sesion`);
 });
 
 test("el worker no modifica los encabezados originales de la solicitud", async () => {
