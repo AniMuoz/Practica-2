@@ -19,6 +19,11 @@ jobs:
           cache-dependency-path: prog2/back/package-lock.json
       - run: npm ci
       - run: npm test
+        env:
+          # Valores de prueba: los tests no se conectan a Supabase.
+          SUPABASE_URL: http://127.0.0.1:1
+          SUPABASE_SERVICE_ROLE_KEY: clave-de-prueba
+          CLAVE_DATOS: clave-datos-de-prueba
 
   web:
     runs-on: ubuntu-latest

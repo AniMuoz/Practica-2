@@ -3,7 +3,10 @@
 ```mermaid
 flowchart TD
     A([Inicio: main.jsx]) --> B[Router + App.jsx]
-    B --> C[Cargar datos desde /api/tabla]
+    B --> AC{¿Sesión iniciada?<br/>/api/sesion}
+    AC -- No --> LG[Acceso.jsx: login<br/>o cambio de contraseña]
+    LG --> AC
+    AC -- Sí --> C[Cargar datos desde /api/tabla]
     C --> D{¿Error?}
     D -- Sí --> E[Mostrar mensaje de error]
     D -- No --> F[Guardar columnas y filas]
@@ -20,4 +23,7 @@ flowchart TD
     Q --> C
     J --> R[Admin / Bitácora] --> S[Admin.jsx / Bitacora.jsx]
     J --> T[Recorrido guiado] --> U[Recorrido.jsx]
+    J --> X[Cerrar sesión] --> LG
+    EV[/api/eventos:<br/>cambios de otros usuarios/] -.-> C
+    I -. Las peticiones /api pasan por el Worker de Cloudflare hacia Render .-> Q
 ```
