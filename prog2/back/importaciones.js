@@ -33,7 +33,9 @@ function importarPlanilla(clave, buffer) {
 
   const columnasFormato = columnas.filter((columna) => columna !== COLUMNA_MARCADO);
   const encabezadosFormato = encabezados.filter((columna) => columna !== COLUMNA_MARCADO);
-  const faltan = columnasFormato.filter((columna) => !encabezadosFormato.includes(columna));
+  const faltan = columnasFormato.filter(
+    (columna) => !COLUMNAS_EXTRA.includes(columna) && !encabezadosFormato.includes(columna),
+  );
   const sobran = encabezadosFormato.filter((columna) => !columnasFormato.includes(columna));
   if (faltan.length || sobran.length) {
     const partes = [];
@@ -73,7 +75,7 @@ function importarPlanilla(clave, buffer) {
       if (columna === "Codigo") return codigoNuevo;
       if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
       const valor = fila[indicePorNombre[columna]];
-      if (columna === COLUMNA_MARCADO && indicePorNombre[columna] == null) {
+      if ((columna === COLUMNA_MARCADO || COLUMNAS_EXTRA.includes(columna)) && indicePorNombre[columna] == null) {
         return filaPrevia[indice] ?? "";
       }
       if (CAMPOS_IMAGEN.has(columna) && String(valor ?? "").trim() === "") {
