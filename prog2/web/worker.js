@@ -1,7 +1,7 @@
-const API = "https://practica-2-vnu7.onrender.com";
-
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
+    const API = env?.API;
+    if (!API) return new Response("Falta la variable API", { status: 500 });
     const url = new URL(request.url);
     const destino = new URL(url.pathname + url.search, API);
     const headers = new Headers(request.headers);

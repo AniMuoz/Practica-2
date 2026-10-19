@@ -12,7 +12,7 @@ async function conFetchFalso(solicitud, respuesta = new Response("ok")) {
     return respuesta;
   };
   try {
-    const resultado = await worker.fetch(solicitud);
+    const resultado = await worker.fetch(solicitud, { API: DESTINO });
     return { llamadas, resultado };
   } finally {
     globalThis.fetch = original;
