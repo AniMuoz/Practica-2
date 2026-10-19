@@ -123,6 +123,13 @@ export default function Admin() {
   const { colores, oscuro } = useColoresPlanilla();
   const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
   const excel = (ruta) => rutaExcel(ruta, colores);
+  const [esMovilCarga, setEsMovilCarga] = useState(() => window.matchMedia("(max-width: 800px)").matches);
+  useEffect(() => {
+    const consulta = window.matchMedia("(max-width: 800px)");
+    const alCambiar = (e) => setEsMovilCarga(e.matches);
+    consulta.addEventListener("change", alCambiar);
+    return () => consulta.removeEventListener("change", alCambiar);
+  }, []);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -871,9 +878,17 @@ export default function Admin() {
             <option value="precios">Planilla de precios</option>
             <option value="dos-columnas">Planilla de 2 columnas</option>
             <option value="reservas">Añadir reservas</option>
-            <option value="qr">Cargar QR</option>
-            <option value="rombo">Cargar rombo</option>
-            <option value="foto">Cargar fotos</option>
+            {esMovilCarga ? (
+              <option value="" disabled>
+                Opción no disponible para la versión móvil, intente desde un PC
+              </option>
+            ) : (
+              <>
+                <option value="qr">Cargar QR</option>
+                <option value="rombo">Cargar rombo</option>
+                <option value="foto">Cargar fotos</option>
+              </>
+            )}
           </select>
           {modoCarga === "dos-columnas" && (
             <select
