@@ -1,6 +1,4 @@
 name = "berfre-web"
 main = "worker.js"
 compatibility_date = "2026-10-19"
-
-[vars]
-API = "https://practica-2-vnu7.onrender.com"
+pages_build_output_dir = "dist"
