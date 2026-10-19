@@ -8,7 +8,7 @@ import openpyxl
 import qrcode
 from PIL import ImageDraw, ImageFont
 
-URL_BASE = "https://practica-2.anibalmunoz74.workers.dev/"
+URL_BASE = "https://inventariom501.proyectobodegam501.workers.dev/"
 CARPETA_DEFECTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "QRmateriales")
 
 

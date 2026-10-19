@@ -1,4 +1,4 @@
-process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.SESSION_SECRET = "secreto-de-prueba";
 
@@ -16,34 +16,54 @@ test.mock.method(console, "error", () => {});
 const usuarios = new Map();
 let errorBd = null;
 
+const roles = new Map();
+
 supabase.from = (tabla) => {
   assert.equal(tabla, "usuarios");
-  return {
-    select(_columnas, opciones) {
-      if (opciones && opciones.head) {
-        return Promise.resolve(errorBd ? { count: null, error: errorBd } : { count: usuarios.size, error: null });
-      }
-      return {
-        eq: (_campo, valor) => ({
-          maybeSingle: async () => {
-            if (errorBd) return { data: null, error: errorBd };
-            return { data: usuarios.has(valor) ? { usuario: valor, clave_hash: usuarios.get(valor) } : null, error: null };
-          },
-        }),
-      };
-    },
-    async upsert(fila) {
-      if (errorBd) return { error: errorBd };
-      usuarios.set(fila.usuario, fila.clave_hash);
-      return { error: null };
-    },
+  const e = { op: "select", filtros: [], valores: null, head: false, unico: false, orden: false };
+  const fila = (nombre) => ({ usuario: nombre, clave_hash: usuarios.get(nombre), rol: roles.get(nombre) || "operador", creado_en: "2026-01-01T00:00:00Z" });
+  const b = {
+    select(columnas, opciones) { e.cols = String(columnas).split(",").map((c) => c.trim()); if (opciones && opciones.head) e.head = true; return b; },
+    insert(valores) { e.op = "insert"; e.valores = valores; return b; },
+    update(valores) { e.op = "update"; e.valores = valores; return b; },
+    delete() { e.op = "delete"; return b; },
+    upsert(valores) { e.op = "upsert"; e.valores = valores; return b; },
+    eq(campo, valor) { e.filtros.push([campo, valor]); return b; },
+    order() { e.orden = true; return b; },
+    maybeSingle() { e.unico = true; return b; },
+    then(resolver, rechazar) { return Promise.resolve(ejecutar()).then(resolver, rechazar); },
   };
+  function ejecutar() {
+    if (errorBd) return { data: null, count: null, error: errorBd };
+    const coincide = (n) => e.filtros.every(([campo, valor]) => fila(n)[campo] === valor);
+    if (e.op === "insert" || e.op === "upsert") {
+      const v = e.valores;
+      if (e.op === "insert" && usuarios.has(v.usuario)) return { error: { code: "23505", message: "duplicado" } };
+      usuarios.set(v.usuario, v.clave_hash);
+      if (v.rol) roles.set(v.usuario, v.rol);
+      return { error: null };
+    }
+    if (e.op === "update") {
+      for (const n of [...usuarios.keys()].filter(coincide)) if (e.valores.clave_hash) usuarios.set(n, e.valores.clave_hash);
+      return { error: null };
+    }
+    if (e.op === "delete") {
+      for (const n of [...usuarios.keys()].filter(coincide)) { usuarios.delete(n); roles.delete(n); }
+      return { error: null };
+    }
+    const nombres = [...usuarios.keys()].filter(coincide).sort();
+    if (e.head) return { count: nombres.length, error: null };
+    const recorte = (n) => Object.fromEntries(e.cols.map((c) => [c, fila(n)[c]]));
+    if (e.unico) return { data: nombres.length ? recorte(nombres[0]) : null, error: null };
+    return { data: nombres.map(recorte), error: null };
+  }
+  return b;
 };
-
 const app = express();
 app.use(express.json());
 app.use("/api", protegerApi);
 rutasAuth(app);
+require("../rutas/usuarios")(app);
 app.get("/api/privado", (req, res) => res.json({ usuario: req.usuario }));
 
 let contadorClientes = 0;
@@ -130,7 +150,7 @@ test("login correcto responde el usuario y entrega una cookie HttpOnly", async (
   await guardarUsuario("luis", "clave-segura-1");
   const respuesta = await pedir("POST", "/api/login", { cuerpo: { usuario: " LUIS ", clave: "clave-segura-1" } });
   assert.equal(respuesta.status, 200);
-  assert.deepEqual(respuesta.json, { usuario: "luis" });
+  assert.deepEqual(respuesta.json, { usuario: "luis", rol: "operador" });
   const cookie = respuesta.cookies[0];
   assert.match(cookie, /^sesion=[^;]+/);
   assert.match(cookie, /HttpOnly/);
@@ -257,7 +277,7 @@ test("/api/sesion informa el usuario o responde 401", async () => {
   await guardarUsuario("sesionada", "clave-segura-1");
   const login = await pedir("POST", "/api/login", { cuerpo: { usuario: "sesionada", clave: "clave-segura-1" } });
   const con = await pedir("GET", "/api/sesion", { cookie: login.cookie });
-  assert.deepEqual(con.json, { usuario: "sesionada" });
+  assert.deepEqual(con.json, { usuario: "sesionada", rol: "operador" });
   assert.equal((await pedir("GET", "/api/sesion")).status, 401);
 });
 
@@ -312,4 +332,107 @@ test("cambiar la clave también se bloquea tras demasiados fallos", async () => 
   });
   for (let i = 0; i < 10; i += 1) assert.equal((await intento("mala")).status, 401);
   assert.equal((await intento("clave-vieja-1")).status, 429);
+});
+
+
+// ---------- gestión de personal ----------
+
+async function entrar(usuario, clave) {
+  const r = await pedir("POST", "/api/login", { cuerpo: { usuario, clave } });
+  assert.equal(r.status, 200);
+  return r.cookie;
+}
+
+async function sesionAdmin(nombre = "jefe") {
+  await guardarUsuario(nombre, "clave-admin-1", "admin");
+  return entrar(nombre, "clave-admin-1");
+}
+
+test("login y /api/sesion incluyen el rol", async () => {
+  await guardarUsuario("rolado", "clave-segura-1", "admin");
+  const login = await pedir("POST", "/api/login", { cuerpo: { usuario: "rolado", clave: "clave-segura-1" } });
+  assert.equal(login.json.rol, "admin");
+  assert.equal((await pedir("GET", "/api/sesion", { cookie: login.cookie })).json.rol, "admin");
+});
+
+test("un operador recibe 403 en todas las rutas de personal", async () => {
+  await guardarUsuario("oper", "clave-segura-1");
+  const cookie = await entrar("oper", "clave-segura-1");
+  assert.equal((await pedir("GET", "/api/usuarios", { cookie })).status, 403);
+  assert.equal((await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "x", clave: "clave-segura-1" } })).status, 403);
+  assert.equal((await pedir("DELETE", "/api/usuarios/oper", { cookie })).status, 403);
+  assert.equal((await pedir("POST", "/api/usuarios/oper/clave", { cookie, cuerpo: { clave: "clave-segura-2" } })).status, 403);
+  assert.equal((await pedir("GET", "/api/usuarios")).status, 401);
+});
+
+test("el admin crea un operador y aparece en el listado sin clave_hash", async () => {
+  const cookie = await sesionAdmin("jefe1");
+  const creado = await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "  Nuevo1 ", clave: "clave-segura-1" } });
+  assert.equal(creado.status, 201);
+  assert.deepEqual(creado.json, { usuario: "nuevo1", rol: "operador" });
+  const lista = await pedir("GET", "/api/usuarios", { cookie });
+  const fila = lista.json.usuarios.find((u) => u.usuario === "nuevo1");
+  assert.equal(fila.rol, "operador");
+  assert.ok(lista.json.usuarios.every((u) => !("clave_hash" in u)));
+  await entrar("nuevo1", "clave-segura-1");
+});
+
+test("crear con un nombre repetido da 409 y no pisa la clave", async () => {
+  const cookie = await sesionAdmin("jefe2");
+  await guardarUsuario("repetido", "clave-original-1");
+  const r = await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "repetido", clave: "clave-otra-123" } });
+  assert.equal(r.status, 409);
+  await entrar("repetido", "clave-original-1");
+});
+
+test("crear valida nombre, rol y largo de la clave", async () => {
+  const cookie = await sesionAdmin("jefe3");
+  assert.equal((await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "  ", clave: "clave-segura-1" } })).status, 400);
+  assert.equal((await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "corta1", clave: "1234567" } })).status, 400);
+  assert.equal((await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "rolmalo", clave: "clave-segura-1", rol: "dios" } })).status, 400);
+  assert.equal(usuarios.has("corta1"), false);
+});
+
+test("el admin no puede borrarse y no se borra al último admin", async () => {
+  const cookie = await sesionAdmin("unico");
+  for (const [nombre] of [...usuarios]) if (nombre !== "unico" && roles.get(nombre) === "admin") roles.delete(nombre);
+  assert.equal((await pedir("DELETE", "/api/usuarios/unico", { cookie })).status, 400);
+  assert.equal((await pedir("DELETE", "/api/usuarios/fantasma", { cookie })).status, 404);
+  // otro admin para poder intentar borrar al "último": se degrada al primero.
+  await guardarUsuario("segundo", "clave-admin-1", "admin");
+  const cookie2 = await entrar("segundo", "clave-admin-1");
+  roles.set("unico", "operador");
+  roles.set("segundo", "admin");
+  roles.set("unico", "admin");
+  const r = await pedir("DELETE", "/api/usuarios/unico", { cookie: cookie2 });
+  assert.equal(r.status, 200);
+  // ahora "segundo" es el único admin y otro admin ficticio no existe: crear uno y quitar al resto.
+  for (const n of [...roles.keys()]) if (n !== "segundo") roles.delete(n);
+  usuarios.set("tercero", usuarios.get("segundo"));
+  roles.set("tercero", "operador");
+  assert.equal((await pedir("DELETE", "/api/usuarios/segundo", { cookie: cookie2 })).status, 400);
+});
+
+test("el admin borra a otro y su login y cookie dejan de valer", async () => {
+  const cookie = await sesionAdmin("jefe4");
+  await guardarUsuario("victima", "clave-segura-1");
+  const cookieVictima = await entrar("victima", "clave-segura-1");
+  const r = await pedir("DELETE", "/api/usuarios/victima", { cookie });
+  assert.equal(r.status, 200);
+  assert.equal((await pedir("POST", "/api/login", { cuerpo: { usuario: "victima", clave: "clave-segura-1" } })).status, 401);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: cookieVictima })).status, 401);
+});
+
+test("el admin resetea la clave de otro y la cookie anterior queda inválida", async () => {
+  const cookie = await sesionAdmin("jefe5");
+  await guardarUsuario("olvidadizo", "clave-vieja-1");
+  const cookieVieja = await entrar("olvidadizo", "clave-vieja-1");
+  assert.equal((await pedir("POST", "/api/usuarios/olvidadizo/clave", { cookie, cuerpo: { clave: "corta" } })).status, 400);
+  assert.equal((await pedir("POST", "/api/usuarios/nadie/clave", { cookie, cuerpo: { clave: "clave-nueva-1" } })).status, 404);
+  assert.equal((await pedir("POST", "/api/usuarios/jefe5/clave", { cookie, cuerpo: { clave: "clave-nueva-1" } })).status, 400);
+  const r = await pedir("POST", "/api/usuarios/olvidadizo/clave", { cookie, cuerpo: { clave: "clave-nueva-1" } });
+  assert.deepEqual(r.json, { ok: true, usuario: "olvidadizo" });
+  assert.equal((await pedir("POST", "/api/login", { cuerpo: { usuario: "olvidadizo", clave: "clave-vieja-1" } })).status, 401);
+  await entrar("olvidadizo", "clave-nueva-1");
+  assert.equal((await pedir("GET", "/api/privado", { cookie: cookieVieja })).status, 401);
 });

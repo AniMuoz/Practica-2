@@ -1,9 +1,11 @@
-import { StrictMode } from "react";
+﻿import { StrictMode } from "react";
 import logo from "../logo/logo.ico";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Acceso from "./Acceso.jsx";
 import Admin from "./Admin.jsx";
+import Auditoria from "./Auditoria.jsx";
+import Personal from "./Personal.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
 import Detalle from "./Detalle.jsx";
@@ -36,6 +38,8 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <App /> },
       { path: "/admin", element: <Admin /> },
+      { path: "/personal", element: <Personal /> },
+      { path: "/auditoria", element: <Auditoria /> },
       { path: "/:codigo", element: <Detalle /> },
     ],
   },

@@ -31,7 +31,7 @@ const cacheUsuarios = new Map();
 async function buscarUsuario(nombre) {
   const guardado = cacheUsuarios.get(nombre);
   if (guardado && guardado.hasta > Date.now()) return guardado.registro;
-  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash").eq("usuario", nombre).maybeSingle();
+  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash, rol").eq("usuario", nombre).maybeSingle();
   if (error) falloBd(error);
   cacheUsuarios.set(nombre, { registro: data, hasta: Date.now() + CACHE_USUARIO_MS });
   return data;
@@ -69,10 +69,10 @@ function validarClaveNueva(clave) {
   }
 }
 
-async function guardarUsuario(nombre, clave) {
+async function guardarUsuario(nombre, clave, rol) {
   validarClaveNueva(clave);
   const usuario = String(nombre).trim().toLowerCase();
-  const { error } = await supabase.from("usuarios").upsert({ usuario, clave_hash: await hashClave(clave) }, { onConflict: "usuario" });
+  const { error } = await supabase.from("usuarios").upsert({ usuario, clave_hash: await hashClave(clave), ...(rol ? { rol } : {}) }, { onConflict: "usuario" });
   if (error) falloBd(error);
   cacheUsuarios.delete(usuario);
   return usuario;
@@ -214,6 +214,12 @@ async function protegerApi(req, res, next) {
   }
 }
 
+async function exigirAdmin(req) {
+  if (!req.usuario) throw errorHttp(401, "Sesión no iniciada.");
+  const registro = await buscarUsuario(req.usuario);
+  if (!registro || registro.rol !== "admin") throw errorHttp(403, "Solo un administrador puede hacer esto.");
+}
+
 function rutasAuth(app) {
   app.post("/api/login", async (req, res) => {
     try {
@@ -229,7 +235,7 @@ function rutasAuth(app) {
       }
       intentos.delete(llave);
       ponerCookie(req, res, crearToken(registro), DURACION_MS);
-      res.json({ usuario: registro.usuario });
+      res.json({ usuario: registro.usuario, rol: registro.rol || "operador" });
     } catch (error) {
       responderError(res, error, "No se pudo iniciar sesión.");
     }
@@ -269,11 +275,24 @@ function rutasAuth(app) {
     try {
       const sesion = await sesionDe(req);
       if (!sesion) throw errorHttp(401, "Sesión no iniciada.");
-      res.json({ usuario: sesion.registro.usuario });
+      res.json({ usuario: sesion.registro.usuario, rol: sesion.registro.rol || "operador" });
     } catch (error) {
       responderError(res, error, "No se pudo verificar la sesión.");
     }
   });
 }
 
-module.exports = { protegerApi, rutasAuth, guardarUsuario, contarUsuarios };
+module.exports = {
+  protegerApi,
+  rutasAuth,
+  guardarUsuario,
+  contarUsuarios,
+  exigirAdmin,
+  buscarUsuario,
+  hashClave,
+  validarClaveNueva,
+  errorHttp,
+  falloBd,
+  responderError,
+  cacheUsuarios,
+};

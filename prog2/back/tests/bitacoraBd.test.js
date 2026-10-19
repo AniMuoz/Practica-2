@@ -1,4 +1,4 @@
-process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 
@@ -463,4 +463,20 @@ test("exportarFolio rechaza folios inválidos, inexistentes o eliminados", async
   const { folio } = await bitacora.crearFolio(CLAVE);
   await bitacora.eliminarFolio(CLAVE, folio, String(folio));
   await assert.rejects(bitacora.exportarFolio(folio), { status: 410 });
+});
+
+test("la auditor�a lista folios activos y eliminados y abre el detalle de uno eliminado", async () => {
+  const activo = await folioConFila();
+  const eliminado = await folioConFila();
+  await bitacora.eliminarFolio(CLAVE, eliminado, String(eliminado));
+  const lista = await bitacora.listarAuditoria();
+  assert.deepEqual(lista.map((f) => f.folio), [eliminado, activo]);
+  assert.ok(lista[0].eliminado_en);
+  assert.equal(lista[1].eliminado_en, null);
+  const detalle = await bitacora.leerAuditoria(eliminado);
+  assert.ok(detalle.eliminado_en);
+  assert.equal((await bitacora.leerAuditoria(activo)).filas.length, 1);
+  assert.ok(Array.isArray(detalle.historial_firmas));
+  await assert.rejects(bitacora.leerFolio(eliminado), { status: 410 });
+  await assert.rejects(bitacora.leerAuditoria(999), { status: 404 });
 });

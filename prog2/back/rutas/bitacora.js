@@ -1,10 +1,31 @@
 const { uploadFirma, enviarPlanilla } = require("../compartido");
 const bitacora = require("../bitacora");
+const { exigirAdmin } = require("../auth");
 
 module.exports = function rutasBitacora(app) {
   function responderBitacora(res, error, mensaje) {
     res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
   }
+
+  app.get("/api/bitacora/auditoria", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json({ folios: await bitacora.listarAuditoria() });
+    } catch (error) {
+      console.error(error);
+      responderBitacora(res, error, "No se pudo leer la auditoría.");
+    }
+  });
+
+  app.get("/api/bitacora/auditoria/:folio", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json(await bitacora.leerAuditoria(req.params.folio));
+    } catch (error) {
+      console.error(error);
+      responderBitacora(res, error, "No se pudo leer el folio.");
+    }
+  });
 
   app.post("/api/bitacora/folios", async (req, res) => {
     try {

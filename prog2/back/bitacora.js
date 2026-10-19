@@ -239,6 +239,21 @@ async function leerFolio(valor) {
   return { folio: data.folio, creado_en: data.creado_en, filas, historial_firmas };
 }
 
+async function listarAuditoria() {
+  const { data, error } = await supabase.from("bitacora_folios").select("folio, creado_en, eliminado_en").order("folio", { ascending: false });
+  if (error) falloBd(error);
+  return data || [];
+}
+
+async function leerAuditoria(valor) {
+  const folio = enteroPositivo(valor, "Folio");
+  const { data, error } = await supabase.from("bitacora_folios").select("folio, creado_en, eliminado_en").eq("folio", folio).maybeSingle();
+  if (error) falloBd(error);
+  if (!data) throw errorHttp(404, `El folio ${folio} no existe.`);
+  const [filas, historial_firmas] = await Promise.all([leerFilas(folio), leerHistorialFirmas(folio)]);
+  return { folio: data.folio, creado_en: data.creado_en, eliminado_en: data.eliminado_en || null, filas, historial_firmas };
+}
+
 async function guardarFila(clave, valorFolio, valorFila, datos) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
@@ -534,6 +549,8 @@ module.exports = {
   crearFolio,
   ultimoFolio,
   leerFolio,
+  listarAuditoria,
+  leerAuditoria,
   guardarFila,
   subirFirma,
   quitarFirma,

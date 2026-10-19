@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { createContext, useContext, useEffect, useState } from "react";
+
+const SesionContext = createContext({ usuario: "", rol: "operador" });
+export function useSesion() {
+  return useContext(SesionContext);
+}
 
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
@@ -207,7 +212,7 @@ function Login({ alEntrar }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo iniciar sesión.");
-      alEntrar(data.usuario);
+      alEntrar({ usuario: data.usuario, rol: data.rol || "operador" });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -290,7 +295,7 @@ function Login({ alEntrar }) {
 }
 
 export default function Acceso({ children }) {
-  const [usuario, setUsuario] = useState(null);
+  const [sesion, setSesion] = useState(null);
   const [verificando, setVerificando] = useState(true);
   useEffect(() => {
     let cancelado = false;
@@ -303,7 +308,7 @@ export default function Acceso({ children }) {
           const res = await originalFetch("/api/sesion", { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
-            return data ? data.usuario : null;
+            return data ? { usuario: data.usuario, rol: data.rol || "operador" } : null;
           }
           if (res.status === 401) return null;
         } catch {
@@ -315,7 +320,7 @@ export default function Acceso({ children }) {
     }
     verificar().then((u) => {
       if (cancelado) return;
-      setUsuario(u);
+      setSesion(u);
       setVerificando(false);
     });
     return () => {
@@ -324,13 +329,13 @@ export default function Acceso({ children }) {
   }, []);
 
   useEffect(() => {
-    const vencida = () => setUsuario(null);
+    const vencida = () => setSesion(null);
     window.addEventListener("sesion-vencida", vencida);
     return () => window.removeEventListener("sesion-vencida", vencida);
   }, []);
 
   if (verificando) return null;
-  if (!usuario) return <Login alEntrar={setUsuario} />;
+  if (!sesion) return <Login alEntrar={setSesion} />;
 
-  return <>{children}</>;
+  return <SesionContext.Provider value={sesion}>{children}</SesionContext.Provider>;
 }
