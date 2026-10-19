@@ -130,6 +130,18 @@ export default function Admin() {
     consulta.addEventListener("change", alCambiar);
     return () => consulta.removeEventListener("change", alCambiar);
   }, []);
+  const [botonesMinimizados, setBotonesMinimizados] = useState(false);
+  const esBotonActivo = (nombre) =>
+    (nombre === "Añadir/cargar datos" && (mostrarCarga || mostrarFormulario)) ||
+    (nombre === "Bitacora camion" && mostrarBitacora) ||
+    (nombre === "Stock en bodega" && mostrarBodega) ||
+    (nombre === "Stock regional" && mostrarRegional) ||
+    (nombre === "Planilla de inventario" && mostrarInventario) ||
+    (nombre === "Inventario por bodega" && mostrarInventarioBodega) ||
+    (nombre === "Stock detallado" && mostrarDetallado) ||
+    (nombre === "Revisar stock de reserva" && mostrarReserva) ||
+    (nombre === "Editar contratistas" && mostrarContratistas) ||
+    (nombre === "Planilla de ventas" && mostrarVentas);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -592,12 +604,31 @@ export default function Admin() {
           {aviso && <p style={{ margin: 0 }}>{aviso}</p>}
         </form>
       )}
+      {autorizado && esMovilCarga && (
+        <button
+          type="button"
+          onClick={() => setBotonesMinimizados((v) => !v)}
+          style={{
+            width: "100%",
+            marginBottom: 8,
+            padding: "8px",
+            border: "1px solid var(--borde)",
+            borderRadius: 6,
+            background: "var(--superficie)",
+            color: "var(--texto)",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          {botonesMinimizados ? "▼ Mostrar todos los botones" : "▲ Minimizar botones"}
+        </button>
+      )}
       {autorizado && (
         <div
           style={{
             display: "flex",
-            flexWrap: agrandarBotones ? "wrap" : "nowrap",
-            gap: agrandarBotones ? 10 : 6,
+            flexWrap: agrandarBotones || esMovilCarga ? "wrap" : "nowrap",
+            gap: esMovilCarga ? 8 : agrandarBotones ? 10 : 6,
             marginBottom: 16,
             alignItems: "stretch",
           }}
@@ -613,18 +644,12 @@ export default function Admin() {
             "Revisar stock de reserva",
             "Planilla de ventas",
             "Editar contratistas",
-          ].map((nombre) => {
-            const activo =
-              (nombre === "Añadir/cargar datos" && (mostrarCarga || mostrarFormulario)) ||
-              (nombre === "Bitacora camion" && mostrarBitacora) ||
-              (nombre === "Stock en bodega" && mostrarBodega) ||
-              (nombre === "Stock regional" && mostrarRegional) ||
-              (nombre === "Planilla de inventario" && mostrarInventario) ||
-              (nombre === "Inventario por bodega" && mostrarInventarioBodega) ||
-              (nombre === "Stock detallado" && mostrarDetallado) ||
-              (nombre === "Revisar stock de reserva" && mostrarReserva) ||
-              (nombre === "Editar contratistas" && mostrarContratistas) ||
-              (nombre === "Planilla de ventas" && mostrarVentas);
+          ].map((nombre, indice, lista) => {
+            const activo = esBotonActivo(nombre);
+            if (esMovilCarga && botonesMinimizados) {
+              const filaActiva = lista.findIndex(esBotonActivo);
+              if (filaActiva < 0 || Math.floor(indice / 2) !== Math.floor(filaActiva / 2)) return null;
+            }
             return (
               <button
                 key={nombre}
@@ -723,10 +748,10 @@ export default function Admin() {
                 }}
                 style={{
                   boxSizing: "border-box",
-                  flex: agrandarBotones ? "1 1 calc((100% - 40px) / 5)" : "1 1 0",
-                  maxWidth: agrandarBotones ? "calc((100% - 40px) / 5)" : undefined,
-                  minWidth: agrandarBotones ? 140 : 0,
-                  padding: agrandarBotones ? "14px 12px" : "6px 4px",
+                  flex: esMovilCarga ? "1 1 calc((100% - 8px) / 2)" : agrandarBotones ? "1 1 calc((100% - 40px) / 5)" : "1 1 0",
+                  maxWidth: esMovilCarga ? "calc((100% - 8px) / 2)" : agrandarBotones ? "calc((100% - 40px) / 5)" : undefined,
+                  minWidth: esMovilCarga ? 0 : agrandarBotones ? 140 : 0,
+                  padding: esMovilCarga ? "12px 8px" : agrandarBotones ? "14px 12px" : "6px 4px",
                   border: activo ? "1px solid var(--acento)" : "1px solid var(--borde)",
                   borderRadius: 6,
                   background: activo ? "var(--acento)" : "var(--superficie)",
