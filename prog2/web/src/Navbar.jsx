@@ -52,6 +52,16 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", cerrar);
   }, []);
 
+  function soltarFoco() {
+    const quitar = () => {
+      campo.current?.blur();
+      const activo = document.activeElement;
+      if (activo instanceof HTMLElement && activo !== document.body) activo.blur();
+    };
+    quitar();
+    setTimeout(quitar, 0);
+  }
+
   function limpiarBusqueda() {
     setCodigo("");
     setResultados([]);
@@ -69,7 +79,7 @@ export default function Navbar() {
     if (!buscado) return;
     setAbierto(false);
     setCodigo("");
-    campo.current?.blur();
+    soltarFoco();
     navigate(`/${encodeURIComponent(buscado)}`);
   }
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
@@ -257,7 +267,7 @@ export default function Navbar() {
             return;
           }
           setAbierto(false);
-          campo.current?.blur();
+          soltarFoco();
           navigate(`/?q=${encodeURIComponent(buscado)}`);
         }}
         data-tour="buscar"
@@ -360,6 +370,7 @@ export default function Navbar() {
         )}
         <button
           type="submit"
+          onMouseDown={(event) => event.preventDefault()}
           style={{
             padding: "8px 14px",
             border: 0,
