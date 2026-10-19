@@ -26,7 +26,7 @@ test("el worker reenvía la ruta y el query a la API real cambiando el host", as
   assert.equal(llamadas.length, 1);
   assert.equal(String(llamadas[0].url), `${DESTINO}/api/tabla?orden=codigo&q=a%20b`);
   assert.equal(llamadas[0].opciones.method, "GET");
-  assert.equal(llamadas[0].opciones.headers.get("host"), "practica-2-vnu7.onrender.com");
+  assert.equal(llamadas[0].opciones.headers.get("host"), null);
   assert.equal(llamadas[0].opciones.headers.get("x-prueba"), "1");
   assert.equal(llamadas[0].opciones.headers.get("cookie"), "sesion=abc");
   assert.equal(llamadas[0].opciones.redirect, "manual");
@@ -55,6 +55,12 @@ test("el worker devuelve tal cual la respuesta de la API, incluidos los errores"
   const { resultado } = await conFetchFalso(new Request("https://miapp.example.com/api/acceso", { method: "POST", body: "{}" }), respuesta);
   assert.equal(resultado, respuesta);
   assert.equal(resultado.status, 403);
+});
+
+test("sin la variable API responde 500", async () => {
+  const resultado = await worker.fetch(new Request("https://miapp.example.com/api/sesion"), {});
+  assert.equal(resultado.status, 500);
+  assert.equal(await resultado.text(), "Falta la variable API");
 });
 
 test("el worker no modifica los encabezados originales de la solicitud", async () => {
