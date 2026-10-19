@@ -1,4 +1,5 @@
 name = "berfre-web"
 main = "worker.js"
 compatibility_date = "2026-10-19"
+keep_vars = true
 pages_build_output_dir = "dist"

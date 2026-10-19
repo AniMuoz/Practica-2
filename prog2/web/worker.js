@@ -1,6 +1,8 @@
+import { API_BUILD } from "./api-build.js";
+
 export default {
   async fetch(request, env) {
-    const API = String(env?.API || "").trim();
+    const API = String(env?.API || API_BUILD || "").trim();
     if (!API) return new Response("Falta la variable API en Cloudflare", { status: 500 });
     try {
       const url = new URL(request.url);

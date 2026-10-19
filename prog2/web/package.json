@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node incrustar-api.js && vite build",
     "preview": "vite preview",
     "test": "node --test \"tests/**/*.test.js\""
   },
