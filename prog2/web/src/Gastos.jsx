@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
+import Planilla from "./Planilla.jsx";
 
-const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const CLAVE_GUARDADO = "gastosPendientes";
 const VACIO = { topico: "", proveedor: "", nboleta: "", fecha: "", monto: "" };
+const ES_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 const boton = {
   padding: "8px 14px",
@@ -15,13 +16,24 @@ const boton = {
   cursor: "pointer",
 };
 
+const campo = { padding: "8px 12px", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
+
+function mesActual() {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function leerGuardados() {
   try {
     const datos = JSON.parse(localStorage.getItem(CLAVE_GUARDADO) || "[]");
-    return Array.isArray(datos) ? datos : [];
+    return Array.isArray(datos) ? datos.filter((g) => g && ES_FECHA.test(g.fecha)) : [];
   } catch {
     return [];
   }
+}
+
+function fechaLegible(iso) {
+  return ES_FECHA.test(iso) ? iso.split("-").reverse().join("/") : iso;
 }
 
 function descargar(blob, nombre) {
@@ -43,7 +55,7 @@ export default function Gastos() {
   const [topicos, setTopicos] = useState([]);
   const [gastos, setGastos] = useState(leerGuardados);
   const [form, setForm] = useState(VACIO);
-  const [mes, setMes] = useState(MESES[new Date().getMonth()]);
+  const [mes, setMes] = useState(mesActual);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const archivo = useRef(null);
@@ -64,8 +76,8 @@ export default function Gastos() {
     setError(esError ? texto : "");
   }
 
-  function cambiar(campo) {
-    return (event) => setForm((anterior) => ({ ...anterior, [campo]: event.target.value }));
+  function cambiar(nombre) {
+    return (event) => setForm((anterior) => ({ ...anterior, [nombre]: event.target.value }));
   }
 
   function agregar(event) {
@@ -114,6 +126,7 @@ export default function Gastos() {
 
   async function procesar() {
     if (!gastos.length) return aviso("No hay datos para procesar.", true);
+    if (!mes) return aviso("Seleccione el mes para procesar los datos.", true);
     try {
       await pedirArchivo("/api/gastos/procesar", { gastos, mes }, "Detalle_gastos.xlsx");
       aviso("Planilla generada.");
@@ -140,67 +153,89 @@ export default function Gastos() {
     }
   }
 
-  const campo = { padding: "8px 12px", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
+  const columnas = ["Tópico", "Proveedor", "N° Boleta", "Fecha Boleta", "Monto", ""];
 
   return (
-    <div style={{ padding: 16 }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        boxSizing: "border-box",
+        margin: 0,
+        padding: 16,
+        fontFamily: "Segoe UI, sans-serif",
+        background: "var(--fondo)",
+        color: "var(--texto)",
+      }}
+    >
       <Navbar />
-      <h2 style={{ marginTop: 0 }}>Planilla de gastos</h2>
-      <form onSubmit={agregar} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-        <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campo}>
-          <option value="">Tópico</option>
-          {topicos.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <input aria-label="Proveedor" placeholder="Proveedor" value={form.proveedor} onChange={cambiar("proveedor")} style={campo} />
-        <input aria-label="N° Boleta" placeholder="N° Boleta" value={form.nboleta} onChange={cambiar("nboleta")} style={campo} />
-        <input aria-label="Fecha Boleta" placeholder="Fecha (dd-mm-aaaa)" value={form.fecha} onChange={cambiar("fecha")} style={campo} />
-        <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={form.monto} onChange={cambiar("monto")} style={campo} />
-        <button type="submit" style={boton}>Agregar</button>
-      </form>
-
-      {error && <p role="alert" style={{ color: "#d32f2f" }}>{error}</p>}
-      {mensaje && <p role="status">{mensaje}</p>}
-
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              {["Tópico", "Proveedor", "N° Boleta", "Fecha Boleta", "Monto", ""].map((c) => (
-                <th key={c || "acciones"} style={{ textAlign: "left", padding: 6, borderBottom: "1px solid var(--borde)" }}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {gastos.map((g, i) => (
-              <tr key={`${g.nboleta}-${i}`}>
-                <td style={{ padding: 6 }}>{g.topico}</td>
-                <td style={{ padding: 6 }}>{g.proveedor}</td>
-                <td style={{ padding: 6 }}>{g.nboleta}</td>
-                <td style={{ padding: 6 }}>{g.fecha}</td>
-                <td style={{ padding: 6 }}>{g.monto}</td>
-                <td style={{ padding: 6 }}>
-                  <button type="button" aria-label={`Quitar fila ${i + 1}`} onClick={() => quitar(i)} style={{ ...boton, padding: "2px 8px" }}>×</button>
-                </td>
-              </tr>
+      <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
+        <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</h1>
+        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campo}>
+            <option value="">Tópico</option>
+            {topicos.map((t) => (
+              <option key={t} value={t}>{t}</option>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </select>
+          <input aria-label="Proveedor" placeholder="Proveedor" value={form.proveedor} onChange={cambiar("proveedor")} style={campo} />
+          <input aria-label="N° Boleta" placeholder="N° Boleta" value={form.nboleta} onChange={cambiar("nboleta")} style={campo} />
+          <input aria-label="Fecha Boleta" type="date" value={form.fecha} onChange={cambiar("fecha")} style={campo} />
+          <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={form.monto} onChange={cambiar("monto")} style={campo} />
+          <button type="submit" style={boton}>Agregar</button>
+        </form>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16, alignItems: "center" }}>
-        <button type="button" style={boton} onClick={guardar}>Guardar Datos</button>
-        <button type="button" style={boton} onClick={() => archivo.current?.click()}>Recuperar Datos</button>
-        <input ref={archivo} type="file" accept=".xlsx" onChange={recuperar} hidden data-testid="archivo-gastos" />
-        <select aria-label="Mes" value={mes} onChange={(e) => setMes(e.target.value)} style={campo}>
-          {MESES.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-        <button type="button" style={boton} onClick={procesar}>Procesar Datos</button>
-        <button type="button" style={{ ...boton, background: "#d32f2f" }} onClick={() => setGastos([])}>Vaciar</button>
+        {error && <p role="alert" style={{ color: "var(--peligro)" }}>{error}</p>}
+        {mensaje && <p role="status">{mensaje}</p>}
+
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16, alignItems: "center" }}>
+          <button type="button" style={boton} onClick={guardar}>Guardar Datos sin procesar</button>
+          <button type="button" style={boton} onClick={() => archivo.current?.click()}>Recuperar Datos</button>
+          <input ref={archivo} type="file" accept=".xlsx" onChange={recuperar} hidden data-testid="archivo-gastos" />
+          <input aria-label="Mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} style={campo} />
+          <button type="button" style={boton} onClick={procesar}>Procesar Datos</button>
+          <button type="button" style={{ ...boton, background: "var(--peligro)" }} onClick={() => setGastos([])}>Vaciar</button>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <Planilla style={{ textAlign: "center" }}>
+            <thead>
+              <tr>
+                {columnas.map((c, i) => (
+                  <th
+                    key={c || `acciones-${i}`}
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      textAlign: "center",
+                      padding: "10px 12px",
+                      borderBottom: "2px solid var(--borde)",
+                      background: "var(--encabezado)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {gastos.map((g, i) => (
+                <tr key={`${g.nboleta}-${i}`}>
+                  {[g.topico, g.proveedor, g.nboleta, fechaLegible(g.fecha), g.monto].map((valor, j) => (
+                    <td key={columnas[j]} style={{ padding: "8px 12px", borderBottom: "1px solid var(--borde-suave)", whiteSpace: "nowrap" }}>
+                      {valor}
+                    </td>
+                  ))}
+                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--borde-suave)" }}>
+                    <button type="button" aria-label={`Quitar fila ${i + 1}`} onClick={() => quitar(i)} style={{ ...boton, padding: "2px 8px", background: "var(--peligro)" }}>×</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Planilla>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

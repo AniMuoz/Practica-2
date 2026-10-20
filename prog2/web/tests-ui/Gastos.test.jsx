@@ -14,7 +14,7 @@ function llenar(monto) {
   fireEvent.change(screen.getByLabelText("Tópico"), { target: { value: "COMBUSTIBLE" } });
   fireEvent.change(screen.getByLabelText("Proveedor"), { target: { value: "Copec" } });
   fireEvent.change(screen.getByLabelText("N° Boleta"), { target: { value: "123" } });
-  fireEvent.change(screen.getByLabelText("Fecha Boleta"), { target: { value: "01-12-2024" } });
+  fireEvent.change(screen.getByLabelText("Fecha Boleta"), { target: { value: "2024-12-01" } });
   fireEvent.change(screen.getByLabelText("Monto"), { target: { value: monto } });
   fireEvent.click(screen.getByText("Agregar"));
 }
@@ -25,6 +25,8 @@ describe("Gastos", () => {
     await screen.findByText("OTROS");
     llenar("15000");
     expect(await screen.findByText("Copec")).toBeTruthy();
+    expect(screen.getByText("01/12/2024")).toBeTruthy();
+    expect(screen.getByText("Guardar Datos sin procesar")).toBeTruthy();
   });
   it("rechaza un monto no entero", async () => {
     render(<Gastos />);

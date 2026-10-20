@@ -2,6 +2,11 @@ const { uploadXlsx, enviarPlanilla } = require("../compartido");
 const gastos = require("../gastos");
 const { exigirAdmin } = require("../auth");
 
+function nombreMes(mes) {
+  const periodo = /^\d{4}-(\d{2})$/.exec(mes);
+  return periodo ? gastos.MESES[Number(periodo[1]) - 1] || mes : mes.toUpperCase();
+}
+
 module.exports = function rutasGastos(app) {
   function responder(res, error, mensaje) {
     console.error(error);
@@ -17,7 +22,7 @@ module.exports = function rutasGastos(app) {
       await exigirAdmin(req);
       const mes = String((req.body && req.body.mes) || "").trim();
       const buffer = await gastos.armarDetalle(req.body && req.body.gastos, mes);
-      const nombre = `Detalle_gastos_pretorianos_${mes}_${gastos.nombreDia()}.xlsx`;
+      const nombre = `DETALLE GASTOS BERFRE ${nombreMes(mes)} ${gastos.nombreDia()}.xlsx`;
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de gastos.");

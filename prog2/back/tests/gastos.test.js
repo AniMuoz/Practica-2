@@ -8,15 +8,17 @@ const ExcelJS = require("exceljs");
 const { TOPICOS, validarGasto, armarDetalle, guardarDatos, recuperarDatos } = require("../gastos");
 
 const GASTOS = [
-  { topico: "COMBUSTIBLE", proveedor: "Copec", nboleta: "123", fecha: "01-12-2024", monto: "15000" },
-  { topico: "COMBUSTIBLE", proveedor: "Shell", nboleta: "124", fecha: "02-12-2024", monto: 5000 },
-  { topico: "OTROS", proveedor: "Ferretería", nboleta: "9", fecha: "03-12-2024", monto: "700" },
+  { topico: "COMBUSTIBLE", proveedor: "Copec", nboleta: "123", fecha: "2024-12-01", monto: "15000" },
+  { topico: "COMBUSTIBLE", proveedor: "Shell", nboleta: "124", fecha: "2024-12-02", monto: 5000 },
+  { topico: "OTROS", proveedor: "Ferretería", nboleta: "9", fecha: "2024-12-03", monto: "700" },
 ];
 
 test("validarGasto exige campos y monto entero", () => {
   assert.throws(() => validarGasto({ ...GASTOS[0], proveedor: "" }), /completar/);
   assert.throws(() => validarGasto({ ...GASTOS[0], monto: "12,5" }), /entero/);
   assert.throws(() => validarGasto({ ...GASTOS[0], topico: "NADA" }), /Tópico/);
+  assert.throws(() => validarGasto({ ...GASTOS[0], fecha: "2024-02-31" }), /fecha/);
+  assert.equal(validarGasto({ ...GASTOS[0], fecha: "05/12/2024" }).fecha, "2024-12-05");
   assert.equal(validarGasto(GASTOS[0]).monto, 15000);
 });
 
@@ -26,7 +28,7 @@ test("armarDetalle genera resumen, detalle y fórmulas por tópico", async () =>
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
   assert.equal(hoja.name, "GASTOS DICIEMBRE 2024");
-  assert.equal(hoja.getCell("B3").value, "EMPRESA: PRETORIANOS SEGURIDAD");
+  assert.equal(hoja.getCell("B3").value, "EMPRESA: BERFRE LTDA.");
   assert.equal(hoja.getCell("B8").value, "CLASIFICACION DEL GASTO");
   const filaCombustible = 9 + TOPICOS.indexOf("COMBUSTIBLE");
   assert.equal(hoja.getCell(filaCombustible, 2).value, "COMBUSTIBLE");
@@ -48,15 +50,15 @@ test("guardarDatos y recuperarDatos son inversos", async () => {
   const buffer = await guardarDatos(GASTOS);
   const recuperados = await recuperarDatos(buffer);
   assert.equal(recuperados.length, 3);
-  assert.deepEqual(recuperados[0], { topico: "COMBUSTIBLE", proveedor: "Copec", nboleta: "123", fecha: "01-12-2024", monto: 15000 });
+  assert.deepEqual(recuperados[0], { topico: "COMBUSTIBLE", proveedor: "Copec", nboleta: "123", fecha: "2024-12-01", monto: 15000 });
 });
 
 test("recuperarDatos lee el formato antiguo de programa_3 y corta en fila incompleta", async () => {
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Sheet");
-  hoja.addRow(["ALIMENTACIÓN", "Casino", 55, "05-12-2024", 4500]);
-  hoja.addRow(["ALIMENTACIÓN", "Casino", 56, "06-12-2024", null]);
-  hoja.addRow(["OTROS", "X", 1, "07-12-2024", 10]);
+  hoja.addRow(["ALIMENTACIÓN", "Casino", 55, "2024-12-05", 4500]);
+  hoja.addRow(["ALIMENTACIÓN", "Casino", 56, "2024-12-06", null]);
+  hoja.addRow(["OTROS", "X", 1, "2024-12-07", 10]);
   const recuperados = await recuperarDatos(Buffer.from(await libro.xlsx.writeBuffer()));
   assert.equal(recuperados.length, 1);
   assert.equal(recuperados[0].nboleta, "55");

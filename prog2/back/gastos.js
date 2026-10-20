@@ -1,4 +1,4 @@
-// Planilla de gastos mensual (portada de programa_3, Planilla_gastos_final.py).
+// Planilla de gastos mensual (portada de programa_3, Planilla_gastos_test.py).
 const ExcelJS = require("exceljs");
 
 const TOPICOS = [
@@ -9,12 +9,13 @@ const TOPICOS = [
 ];
 
 const EMPRESA = {
-  nombre: "PRETORIANOS SEGURIDAD",
-  direccion: "MANUEL BULNES Nº 920, OFICINA 208, QUILPUÉ",
-  gerente: "FREDDY ANDRES MUÑOZ OLIVARES",
-  cargo: "GERENTE GENERAL",
+  nombre: "BERFRE LTDA.",
+  direccion: "22 NORTE 1150 SANTA INES, VIÑA DEL MAR",
+  gerente: "CRISTIAN BERNAL P.",
+  cargo: "JEFE DE OPERACIONES",
 };
 
+const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 const FORMATO_PESOS = '_-[$$-340A]* #,##0_-;-[$$-340A]* #,##0_-;_-[$$-340A]* "-"??_-;_-@_-';
 const FUENTE = "Calibri";
 const RELLENO = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
@@ -31,15 +32,37 @@ function fuente(negrita = false, size = 12) {
   return { name: FUENTE, bold: negrita, size };
 }
 
+// Devuelve la fecha como "aaaa-mm-dd" o "" si no es válida (equivale a fecha_iso).
+function fechaIso(valor) {
+  if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? "" : valor.toISOString().slice(0, 10);
+  const texto = String(valor ?? "").trim().slice(0, 10);
+  let d;
+  let m;
+  let a;
+  let r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+  if (r) [, a, m, d] = r;
+  else if ((r = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(texto))) [, d, m, a] = r;
+  else return "";
+  const fecha = new Date(Date.UTC(Number(a), Number(m) - 1, Number(d)));
+  if (fecha.getUTCFullYear() !== Number(a) || fecha.getUTCMonth() !== Number(m) - 1 || fecha.getUTCDate() !== Number(d)) return "";
+  return fecha.toISOString().slice(0, 10);
+}
+
+function fechaComoDate(iso) {
+  return new Date(`${iso}T00:00:00.000Z`);
+}
+
 // Valida y normaliza una boleta. Devuelve { topico, proveedor, nboleta, fecha, monto }.
 function validarGasto(gasto) {
   const g = gasto || {};
   const topico = String(g.topico ?? "").trim();
   const proveedor = String(g.proveedor ?? "").trim();
   const nboleta = String(g.nboleta ?? "").trim();
-  const fecha = String(g.fecha ?? "").trim();
+  const fechaTxt = String(g.fecha ?? "").trim();
   const montoTxt = String(g.monto ?? "").trim();
-  if (!topico || !proveedor || !nboleta || !fecha || !montoTxt) throw errorHttp(400, "Debe completar todos los campos.");
+  if (!topico || !proveedor || !nboleta || !fechaTxt || !montoTxt) throw errorHttp(400, "Debe completar todos los campos.");
+  const fecha = fechaIso(fechaTxt);
+  if (!fecha) throw errorHttp(400, "La fecha de la boleta no es válida.");
   if (!TOPICOS.includes(topico)) throw errorHttp(400, `Tópico no válido: ${topico}.`);
   if (!/^-?\d+$/.test(montoTxt)) throw errorHttp(400, "El monto debe ser un número entero.");
   return { topico, proveedor, nboleta, fecha, monto: Number(montoTxt) };
@@ -127,7 +150,7 @@ async function armarDetalle(gastos, mes, anio = new Date().getFullYear()) {
       const actual = primera + i;
       celda(hoja, actual, 2, g.proveedor, { borde: true });
       celda(hoja, actual, 3, g.nboleta, { alinear: "right", borde: true });
-      celda(hoja, actual, 4, g.fecha, { alinear: "center", borde: true });
+      celda(hoja, actual, 4, fechaComoDate(g.fecha), { alinear: "center", borde: true }).numFmt = "DD/MM/YYYY";
       monto(hoja, actual, g.monto);
     });
     const ultima = primera + propios.length - 1;
@@ -152,14 +175,14 @@ async function guardarDatos(gastos) {
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Sheet");
   datos.forEach((g, i) => {
-    hoja.getRow(i + 1).values = [g.topico, g.proveedor, g.nboleta, g.fecha, g.monto];
+    hoja.getRow(i + 1).values = [g.topico, g.proveedor, g.nboleta, fechaComoDate(g.fecha), g.monto];
   });
   return Buffer.from(await libro.xlsx.writeBuffer());
 }
 
 function textoCelda(valor) {
   if (valor === null || valor === undefined) return "";
-  if (valor instanceof Date) return valor.toLocaleDateString("es-CL");
+  if (valor instanceof Date) return fechaIso(valor);
   if (typeof valor === "object") return String(valor.text ?? valor.result ?? "");
   return String(valor);
 }
@@ -178,9 +201,11 @@ async function recuperarDatos(buffer) {
   for (let i = 1; i <= hoja.rowCount; i += 1) {
     const [topico, proveedor, nboleta, fecha, montoCelda] = [1, 2, 3, 4, 5].map((c) => textoCelda(hoja.getCell(i, c).value).trim());
     if (!topico || !proveedor || !nboleta || !fecha || !montoCelda) break;
+    const fechaOk = fechaIso(fecha);
+    if (!fechaOk) throw errorHttp(400, `Fecha no válida en la fila ${i}.`);
     const montoNum = Math.trunc(Number(montoCelda));
     if (!Number.isFinite(montoNum)) throw errorHttp(400, `Monto no válido en la fila ${i}.`);
-    gastos.push({ topico, proveedor, nboleta, fecha, monto: montoNum });
+    gastos.push({ topico, proveedor, nboleta, fecha: fechaOk, monto: montoNum });
   }
   return gastos;
 }
@@ -189,4 +214,4 @@ function nombreDia(fecha = new Date()) {
   return `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, "0")}${String(fecha.getDate()).padStart(2, "0")}`;
 }
 
-module.exports = { TOPICOS, EMPRESA, validarGasto, validarGastos, armarDetalle, guardarDatos, recuperarDatos, nombreDia };
+module.exports = { TOPICOS, MESES, fechaIso, EMPRESA, validarGasto, validarGastos, armarDetalle, guardarDatos, recuperarDatos, nombreDia };
