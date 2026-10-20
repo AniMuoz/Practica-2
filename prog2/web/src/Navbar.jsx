@@ -14,6 +14,7 @@ export default function Navbar() {
   const [resultados, setResultados] = useState([]);
   const [abierto, setAbierto] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [menuVisible, setMenuVisible] = useState(true);
   const caja = useRef(null);
   const campo = useRef(null);
 
@@ -386,6 +387,21 @@ export default function Navbar() {
           Buscar
         </button>
       </form>
+      {(
+        <button
+          type="button"
+          aria-label={menuVisible ? "Ocultar botones" : "Mostrar botones"}
+          title={menuVisible ? "Ocultar botones" : "Mostrar botones"}
+          aria-expanded={menuVisible}
+          onClick={() => setMenuVisible(!menuVisible)}
+          style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", cursor: "pointer", lineHeight: 0 }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: menuVisible ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      )}
+      {menuVisible && (
       <Link
         to="/admin"
         className="barra-admin"
@@ -400,7 +416,8 @@ export default function Navbar() {
       >
         Admin
       </Link>
-      {rol === "admin" && (
+      )}
+      {rol === "admin" && menuVisible && (
         <>
           <Link to="/personal" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Personal
