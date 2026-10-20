@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Navbar from "./Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 async function leer(url) {
   const res = await fetch(url);
@@ -18,7 +19,10 @@ export default function Auditoria() {
 
   useEffect(() => {
     leer("/api/bitacora/auditoria")
-      .then((data) => setFolios(data.folios || []))
+      .then((data) => {
+        setFolios(data.folios || []);
+        if (recorridoPendiente("auditoria")) iniciarRecorrido("auditoria");
+      })
       .catch((e) => setError(e.message));
   }, []);
 
@@ -40,7 +44,7 @@ export default function Auditoria() {
         <p style={{ color: "var(--peligro)" }}>{error}</p>
       ) : (
         <>
-          <div style={{ overflowX: "auto" }}>
+          <div data-tour="auditoria-folios" style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
               <thead>
                 <tr>
@@ -68,7 +72,7 @@ export default function Auditoria() {
               <h2 style={{ fontSize: 18 }}>
                 Folio {detalle.folio} {detalle.eliminado_en ? "(eliminado)" : ""}
               </h2>
-              <h3 style={{ fontSize: 16 }}>Filas</h3>
+              <h3 data-tour="auditoria-filas" style={{ fontSize: 16 }}>Filas</h3>
               {detalle.filas.length === 0 ? (
                 <p>Sin filas.</p>
               ) : (
@@ -109,7 +113,7 @@ export default function Auditoria() {
                   </table>
                 </div>
               )}
-              <h3 style={{ fontSize: 16 }}>Historial de firmas</h3>
+              <h3 data-tour="auditoria-firmas" style={{ fontSize: 16 }}>Historial de firmas</h3>
               {detalle.historial_firmas.length === 0 ? (
                 <p>Sin firmas quitadas.</p>
               ) : (

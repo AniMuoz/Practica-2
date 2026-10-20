@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSesion } from "./Acceso.jsx";
 import Navbar from "./Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const campo = {
   padding: "8px 10px",
@@ -108,6 +109,7 @@ export default function Personal() {
 
   useEffect(() => {
     cargar();
+    if (recorridoPendiente("personal")) iniciarRecorrido("personal");
   }, [cargar]);
 
   async function crear(event) {
@@ -144,12 +146,13 @@ export default function Personal() {
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Personal</h1>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <h1 style={{ margin: "0 0 16px", fontSize: 22, textAlign: "center" }}>Personal</h1>
       {errorCarga ? (
         <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
       ) : (
         <>
-          <form onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          <form data-tour="personal-crear" onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
             <input value={nombre} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
             <input type="password" value={clave} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
             <input type="password" value={repetir} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
@@ -163,14 +166,14 @@ export default function Personal() {
           </form>
           {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
           {aviso && <p>{aviso}</p>}
-          <div style={{ overflowX: "auto" }}>
+          <div data-tour="personal-tabla" style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
               <thead>
                 <tr>
                   <th>Usuario</th>
                   <th>Rol</th>
                   <th>Alta</th>
-                  <th>Acciones</th>
+                  <th data-tour="personal-acciones">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,6 +185,7 @@ export default function Personal() {
           </div>
         </>
       )}
+      </div>
     </main>
   );
 }

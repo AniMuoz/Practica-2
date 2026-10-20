@@ -152,7 +152,7 @@ export default function Navbar() {
         type="button"
         className="barra-ayuda"
         aria-label="Ayuda"
-        onClick={() => iniciarRecorrido(pathname === "/admin" ? "admin" : pathname === "/" ? "principal" : "material")}
+        onClick={() => iniciarRecorrido(({ "/admin": "admin", "/personal": "personal", "/qr": "qr", "/auditoria": "auditoria", "/": "principal" })[pathname] || "material")}
         style={{
           width: 28,
           height: 28,

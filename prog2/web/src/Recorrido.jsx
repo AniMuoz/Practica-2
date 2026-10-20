@@ -126,6 +126,67 @@ const PASOS = {
       texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta.",
     },
   ],
+  personal: [
+    {
+      id: "personal-crear",
+      titulo: "Crear usuario",
+      texto:
+        "Escribe el nombre de usuario, la contraseña inicial y repítela. Elige el rol: Operador o Admin. Luego presiona Crear usuario.",
+    },
+    {
+      id: "personal-tabla",
+      titulo: "Lista de personal",
+      texto: "Muestra todos los usuarios con su rol y la fecha de alta.",
+    },
+    {
+      id: "personal-acciones",
+      titulo: "Acciones",
+      texto:
+        "En cada usuario puedes cambiar su contraseña escribiéndola dos veces, o eliminarlo. Sobre tu propio usuario no hay acciones.",
+    },
+  ],
+  qr: [
+    {
+      id: "qr-resumen",
+      titulo: "Resumen",
+      texto: "Muestra cuántos materiales hay según los filtros, cuántos tienen QR y cuántos faltan.",
+    },
+    {
+      id: "qr-avance",
+      titulo: "Avance",
+      texto: "La barra indica el porcentaje de materiales filtrados que ya tiene QR.",
+    },
+    {
+      id: "qr-acciones",
+      titulo: "Acciones",
+      texto:
+        "Primero ingresa la contraseña de datos para habilitar los botones. Puedes generar y subir los QR que faltan, o descargar un ZIP con los QR de los materiales filtrados. Mientras se suben puedes cancelar.",
+    },
+    {
+      id: "qr-filtros",
+      titulo: "Filtros",
+      texto: "Limitan los materiales sobre los que se cuentan, suben o descargan los QR.",
+    },
+  ],
+  auditoria: [
+    {
+      id: "auditoria-folios",
+      titulo: "Folios de bitácora",
+      texto:
+        "Lista todos los folios, incluso los eliminados, con su fecha de alta, estado y fecha de eliminación. Presiona un folio para ver su detalle.",
+    },
+    {
+      id: "auditoria-filas",
+      titulo: "Filas del folio",
+      texto: "Muestra los viajes registrados en el folio elegido: chofer, patente, ruta, horarios y kilómetros.",
+    },
+    {
+      id: "auditoria-firmas",
+      titulo: "Historial de firmas",
+      texto:
+        "Muestra las firmas que fueron quitadas, con la fecha en que se firmaron y se quitaron, el motivo y una huella de la firma.",
+    },
+  ],
 };
 
 function claveVista(nombre) {

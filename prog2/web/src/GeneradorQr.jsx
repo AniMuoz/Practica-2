@@ -5,6 +5,7 @@ import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import Navbar from "./Navbar.jsx";
 import { crearQrPng, sinQr } from "./generarQr.js";
 import { filtrarFilas } from "./reglasPlanilla.js";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const boton = {
   padding: "8px 14px",
@@ -40,7 +41,10 @@ export default function GeneradorQr() {
   }
 
   useEffect(() => {
-    if (rol === "admin") cargar();
+    if (rol === "admin") {
+      cargar();
+      if (recorridoPendiente("qr")) iniciarRecorrido("qr");
+    }
   }, [rol]);
 
   const filtradas = useMemo(() => filtrarFilas(filas, filtros), [filas, filtros]);
@@ -151,7 +155,7 @@ export default function GeneradorQr() {
       </p>
       {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
 
-      <section style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
+      <section data-tour="qr-resumen" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
         <div style={tarjeta}>
           <div style={numero("inherit")}>{filtradas.length}</div>
           <div style={{ fontSize: 13 }}>Materiales filtrados</div>
@@ -165,12 +169,12 @@ export default function GeneradorQr() {
           <div style={{ fontSize: 13 }}>Sin QR (faltan)</div>
         </div>
       </section>
-      <div style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520, margin: "0 auto" }} aria-label="Avance de QR">
+      <div data-tour="qr-avance" style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520, margin: "0 auto" }} aria-label="Avance de QR">
         <div style={{ width: `${pct}%`, height: "100%", background: "#16a34a", transition: "width .3s" }} />
       </div>
       <p style={{ fontSize: 13, margin: "6px 0 16px" }}>{pct}% de los materiales filtrados ya tiene QR.</p>
 
-      <section style={{ border: "2px solid var(--boton)", borderRadius: 12, padding: 16, margin: "0 auto 20px", maxWidth: 760 }}>
+      <section data-tour="qr-acciones" style={{ border: "2px solid var(--boton)", borderRadius: 12, padding: 16, margin: "0 auto 20px", maxWidth: 760 }}>
       <h2 style={{ fontSize: 18, margin: "0 0 10px" }}>Acciones</h2>
       {!desbloqueado && (
         <form onSubmit={aceptarClave} style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
@@ -215,7 +219,9 @@ export default function GeneradorQr() {
       </section>
 
       <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>
-      <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
+      <div data-tour="qr-filtros">
+        <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
+      </div>
 
       </div>
     </main>
