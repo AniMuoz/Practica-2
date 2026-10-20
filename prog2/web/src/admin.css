@@ -1,0 +1,49 @@
+.admin-pagina button:not(nav button),
+.admin-pagina a[href*="/excel"] {
+  border-radius: 8px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.admin-pagina button:not(nav button):not(:disabled):hover,
+.admin-pagina a[href*="/excel"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.08);
+}
+
+.admin-pagina button:not(nav button):not(:disabled):active,
+.admin-pagina a[href*="/excel"]:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  filter: brightness(0.95);
+}
+
+.admin-pagina button:not(nav button):focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.admin-pagina button:not(nav button):disabled {
+  box-shadow: none;
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+.admin-reserva {
+  max-width: 1000px;
+  width: 100%;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box;
+}
+
+.admin-reserva h2 {
+  text-align: center;
+}
+
+.admin-reserva form {
+  justify-content: center;
+}

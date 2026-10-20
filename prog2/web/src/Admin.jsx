@@ -7,6 +7,7 @@ import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
 import Bitacora from "./Bitacora.jsx";
 import VistaPrevia from "./admin/VistaPrevia.jsx";
+import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
 import {
   claveUltimaCarga,
@@ -390,6 +391,7 @@ export default function Admin() {
 
   return (
     <main
+      className="admin-pagina"
       style={{
         minHeight: "100vh",
         boxSizing: "border-box",
@@ -1241,6 +1243,7 @@ export default function Admin() {
       )}
       {autorizado && mostrarReserva && (
         <section
+          className="admin-reserva"
           style={{
             background: "var(--superficie)",
             borderRadius: 8,
