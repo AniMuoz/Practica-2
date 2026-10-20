@@ -21,7 +21,7 @@ module.exports = function rutasGastos(app) {
     try {
       await exigirAdmin(req);
       const mes = String((req.body && req.body.mes) || "").trim();
-      const buffer = await gastos.armarDetalle(req.body && req.body.gastos, mes);
+      const buffer = await gastos.armarDetalle(req.body && req.body.gastos, mes, req.body && Number(req.body.anio));
       enviarPlanilla(res, buffer, nombreConFecha(`DETALLE GASTOS BERFRE ${nombreMes(mes)}`));
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de gastos.");

@@ -44,8 +44,12 @@ test("armarDetalle genera resumen, detalle y fórmulas por tópico", async () =>
   assert.ok(textos.includes("DETALLE GASTOS EN OTROS MES DICIEMBRE DEL AÑO 2024"));
 });
 
-test("armarDetalle rechaza mes vacío", async () => {
+test("armarDetalle rechaza mes vacío o inválido, y usa el año pedido", async () => {
   await assert.rejects(() => armarDetalle(GASTOS, " "), /mes/);
+  await assert.rejects(() => armarDetalle(GASTOS, "otro"), /mes/);
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(await armarDetalle(GASTOS, "MARZO", 2025));
+  assert.equal(libro.worksheets[0].name, "GASTOS MARZO 2025");
 });
 
 test("guardarDatos y recuperarDatos son inversos", async () => {

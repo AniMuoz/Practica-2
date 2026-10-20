@@ -104,10 +104,17 @@ function celda(hoja, fila, columna, valor, opciones = {}) {
 }
 
 // Hoja de detalle mensual (equivale a armar_detalle).
-async function armarDetalle(gastos, mes, anio = new Date().getFullYear()) {
+// `mes` es el nombre ("diciembre"); también se acepta "aaaa-mm". `anioPedido` es opcional.
+async function armarDetalle(gastos, mes, anioPedido) {
   const datos = validarGastos(gastos);
-  const mesTxt = String(mes ?? "").trim().toUpperCase();
-  if (!mesTxt) throw errorHttp(400, "Debe indicar el mes.");
+  let mesTxt = String(mes ?? "").trim().toUpperCase();
+  let anio = Number.isInteger(anioPedido) && anioPedido >= 2000 && anioPedido <= 2100 ? anioPedido : new Date().getFullYear();
+  const periodo = /^(\d{4})-(\d{2})$/.exec(mesTxt);
+  if (periodo) {
+    anio = Number(periodo[1]);
+    mesTxt = MESES[Number(periodo[2]) - 1] || "";
+  }
+  if (!MESES.includes(mesTxt)) throw errorHttp(400, "Debe indicar un mes válido.");
 
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet(`GASTOS ${mesTxt} ${anio}`.slice(0, 31));

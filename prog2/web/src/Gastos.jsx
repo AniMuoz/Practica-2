@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import Planilla from "./Planilla.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const CLAVE_GUARDADO = "gastosPendientes";
 const VACIO = { topico: "", proveedor: "", nboleta: "", fecha: "", monto: "" };
@@ -20,9 +21,16 @@ const campo = { padding: "8px 12px", borderRadius: 6, fontSize: 14, boxSizing: "
 // Campos del formulario: se encogen para que la fila entre completa sin scroll.
 const campoFila = { ...campo, flex: "1 1 0", minWidth: 0, padding: "8px 6px" };
 
+const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+
 function mesActual() {
-  const hoy = new Date();
-  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+  return MESES[new Date().getMonth()];
+}
+
+// El año de la planilla es el de la boleta más reciente (o el actual si no hay datos).
+function anioDe(gastos) {
+  const fechas = gastos.map((g) => g.fecha).filter((f) => ES_FECHA.test(f)).sort();
+  return fechas.length ? Number(fechas[fechas.length - 1].slice(0, 4)) : new Date().getFullYear();
 }
 
 function leerGuardados() {
@@ -67,6 +75,10 @@ export default function Gastos() {
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => setTopicos(data.topicos || []))
       .catch(() => setError("No se pudieron cargar los tópicos."));
+  }, []);
+
+  useEffect(() => {
+    if (recorridoPendiente("gastos")) iniciarRecorrido("gastos");
   }, []);
 
   useEffect(() => {
@@ -130,7 +142,7 @@ export default function Gastos() {
     if (!gastos.length) return aviso("No hay datos para procesar.", true);
     if (!mes) return aviso("Seleccione el mes para procesar los datos.", true);
     try {
-      await pedirArchivo("/api/gastos/procesar", { gastos, mes }, "Detalle_gastos.xlsx");
+      await pedirArchivo("/api/gastos/procesar", { gastos, mes, anio: anioDe(gastos) }, "Detalle_gastos.xlsx");
       aviso("Planilla generada.");
     } catch (e) {
       aviso(e.message, true);
@@ -172,7 +184,7 @@ export default function Gastos() {
       <Navbar />
       <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
         <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</h1>
-        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+        <form data-tour="gastos-formulario" onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
           <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campoFila}>
             <option value="">Tópico</option>
             {topicos.map((t) => (
@@ -189,16 +201,20 @@ export default function Gastos() {
         {error && <p role="alert" style={{ color: "var(--peligro)" }}>{error}</p>}
         {mensaje && <p role="status">{mensaje}</p>}
 
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16, alignItems: "center" }}>
+        <div data-tour="gastos-acciones" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16, alignItems: "center" }}>
           <button type="button" style={boton} onClick={guardar}>Guardar Datos sin procesar</button>
           <button type="button" style={boton} onClick={() => archivo.current?.click()}>Recuperar Datos</button>
           <input ref={archivo} type="file" accept=".xlsx" onChange={recuperar} hidden data-testid="archivo-gastos" />
-          <input aria-label="Mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} style={campo} />
+          <select aria-label="Mes" value={mes} onChange={(e) => setMes(e.target.value)} style={campo}>
+            {MESES.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
           <button type="button" style={boton} onClick={procesar}>Procesar Datos</button>
           <button type="button" style={{ ...boton, background: "var(--peligro)" }} onClick={() => setGastos([])}>Vaciar</button>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
+        <div data-tour="gastos-tabla" style={{ overflowX: "auto" }}>
           <Planilla style={{ textAlign: "center" }}>
             <thead>
               <tr>

@@ -168,6 +168,24 @@ const PASOS = {
       texto: "Limitan los materiales sobre los que se cuentan, suben o descargan los QR.",
     },
   ],
+  gastos: [
+    {
+      id: "gastos-formulario",
+      titulo: "Datos de la boleta",
+      texto: "Elige el tópico, escribe proveedor, N° de boleta y monto (entero), elige la fecha en el calendario y presiona Agregar para sumarla a la tabla.",
+    },
+    {
+      id: "gastos-acciones",
+      titulo: "Acciones",
+      texto:
+        "Guardar Datos sin procesar descarga las boletas cargadas en un Excel. Recuperar Datos suma las boletas de un Excel guardado antes. Elige el mes y presiona Procesar Datos para descargar el detalle de gastos.",
+    },
+    {
+      id: "gastos-tabla",
+      titulo: "Tabla de boletas",
+      texto: "Muestra las boletas cargadas. Con la × quitas una fila; Vaciar borra todas. Los datos quedan guardados en este navegador.",
+    },
+  ],
   auditoria: [
     {
       id: "auditoria-folios",
