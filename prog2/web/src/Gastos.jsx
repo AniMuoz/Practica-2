@@ -17,6 +17,8 @@ const boton = {
 };
 
 const campo = { padding: "8px 12px", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
+// Campos del formulario: se encogen para que la fila entre completa sin scroll.
+const campoFila = { ...campo, flex: "1 1 0", minWidth: 0, padding: "8px 6px" };
 
 function mesActual() {
   const hoy = new Date();
@@ -170,18 +172,18 @@ export default function Gastos() {
       <Navbar />
       <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
         <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</h1>
-        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16, overflowX: "auto" }}>
-          <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campo}>
+        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campoFila}>
             <option value="">Tópico</option>
             {topicos.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
-          <input aria-label="Proveedor" placeholder="Proveedor" value={form.proveedor} onChange={cambiar("proveedor")} style={campo} />
-          <input aria-label="N° Boleta" placeholder="N° Boleta" value={form.nboleta} onChange={cambiar("nboleta")} style={campo} />
-          <input aria-label="Fecha Boleta" type="date" value={form.fecha} onChange={cambiar("fecha")} style={campo} />
-          <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={form.monto} onChange={cambiar("monto")} style={campo} />
-          <button type="submit" style={boton}>Agregar</button>
+          <input aria-label="Proveedor" placeholder="Proveedor" value={form.proveedor} onChange={cambiar("proveedor")} style={campoFila} />
+          <input aria-label="N° Boleta" placeholder="N° Boleta" value={form.nboleta} onChange={cambiar("nboleta")} style={campoFila} />
+          <input aria-label="Fecha Boleta" type="date" value={form.fecha} onChange={cambiar("fecha")} style={campoFila} />
+          <input aria-label="Monto" placeholder="Monto" inputMode="numeric" value={form.monto} onChange={cambiar("monto")} style={campoFila} />
+          <button type="submit" style={{ ...boton, flexShrink: 0 }}>Agregar</button>
         </form>
 
         {error && <p role="alert" style={{ color: "var(--peligro)" }}>{error}</p>}
