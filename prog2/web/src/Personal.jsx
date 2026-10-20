@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSesion } from "./Acceso.jsx";
 import Navbar from "./Navbar.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
 const campo = {
   padding: "8px 10px",
@@ -34,34 +33,45 @@ const enviarJson = (metodo, cuerpo) => ({
   body: JSON.stringify(cuerpo),
 });
 
-function FilaPersonal({ persona, propia, alCambiar, alError }) {
+function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar, alError }) {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
+
+  useEffect(() => {
+    alSucio(persona.usuario, Boolean(clave || repetir));
+    return () => alSucio(persona.usuario, false);
+  }, [clave, repetir, persona.usuario, alSucio]);
 
   async function resetear() {
     if (clave !== repetir) {
       alError("Las contraseñas nuevas no coinciden.");
       return;
     }
-    try {
-      await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}/clave`, enviarJson("POST", { clave }));
-      setClave("");
-      setRepetir("");
-      alCambiar(`Contraseña de ${persona.usuario} actualizada.`);
-    } catch (e) {
-      alError(e.message);
-    }
+    await alEjecutar(async () => {
+      try {
+        await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}/clave`, enviarJson("POST", { clave }));
+        setClave("");
+        setRepetir("");
+        alCambiar(`Contraseña de ${persona.usuario} actualizada.`);
+      } catch (e) {
+        alError(e.message);
+      }
+    });
   }
 
   async function eliminar() {
     if (!window.confirm(`¿Eliminar al usuario ${persona.usuario}?`)) return;
-    try {
-      await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}`, { method: "DELETE" });
-      alCambiar(`Usuario ${persona.usuario} eliminado.`);
-    } catch (e) {
-      alError(e.message);
-    }
+    await alEjecutar(async () => {
+      try {
+        await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}`, { method: "DELETE" });
+        alCambiar(`Usuario ${persona.usuario} eliminado.`);
+      } catch (e) {
+        alError(e.message);
+      }
+    });
   }
+
+  const sinDatos = !clave || !repetir;
 
   return (
     <tr>
@@ -71,12 +81,12 @@ function FilaPersonal({ persona, propia, alCambiar, alError }) {
       <td>
         {!propia && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <input type="password" autoComplete="new-password" placeholder="Nueva contraseña" value={clave} onChange={(e) => setClave(e.target.value)} style={{ ...campo, width: 150 }} />
-            <input type="password" autoComplete="new-password" placeholder="Repetir" value={repetir} onChange={(e) => setRepetir(e.target.value)} style={{ ...campo, width: 110 }} />
-            <button type="button" onClick={resetear} disabled={!clave || !repetir} style={{ ...boton, opacity: !clave || !repetir ? 0.6 : 1 }}>
+            <input type="password" autoComplete="new-password" placeholder="Nueva contraseña" value={clave} disabled={ocupado} onChange={(e) => setClave(e.target.value)} style={{ ...campo, width: 150 }} />
+            <input type="password" autoComplete="new-password" placeholder="Repetir" value={repetir} disabled={ocupado} onChange={(e) => setRepetir(e.target.value)} style={{ ...campo, width: 110 }} />
+            <button type="button" onClick={resetear} disabled={ocupado || sinDatos} style={{ ...boton, opacity: ocupado || sinDatos ? 0.6 : 1 }}>
               Cambiar
             </button>
-            <button type="button" onClick={eliminar} style={{ ...boton, background: "#d32f2f", color: "#fff" }}>
+            <button type="button" onClick={eliminar} disabled={ocupado} style={{ ...boton, background: "#d32f2f", color: "#fff", opacity: ocupado ? 0.6 : 1 }}>
               Eliminar
             </button>
           </div>
@@ -96,6 +106,41 @@ export default function Personal() {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
   const [rol, setRol] = useState("operador");
+  const [ocupado, setOcupado] = useState(false);
+
+  const ocupadoRef = useRef(false);
+  const sucias = useRef(new Set());
+  const formSucioRef = useRef(false);
+  formSucioRef.current = Boolean(nombre || clave || repetir);
+
+  const alSucio = useCallback((id, sucio) => {
+    if (sucio) sucias.current.add(id);
+    else sucias.current.delete(id);
+  }, []);
+
+  const alEjecutar = useCallback(async (fn) => {
+    if (ocupadoRef.current) return;
+    ocupadoRef.current = true;
+    setOcupado(true);
+    try {
+      await fn();
+    } finally {
+      ocupadoRef.current = false;
+      setOcupado(false);
+    }
+  }, []);
+
+  // Pregunta antes de cerrar/recargar la pestaña mientras hay operaciones o datos sin guardar.
+  useEffect(() => {
+    const avisar = (e) => {
+      if (ocupadoRef.current || formSucioRef.current || sucias.current.size > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, []);
 
   const cargar = useCallback(async () => {
     try {
@@ -109,7 +154,6 @@ export default function Personal() {
 
   useEffect(() => {
     cargar();
-    if (recorridoPendiente("personal")) iniciarRecorrido("personal");
   }, [cargar]);
 
   async function crear(event) {
@@ -120,17 +164,19 @@ export default function Personal() {
       setError("Las contraseñas no coinciden.");
       return;
     }
-    try {
-      await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol }));
-      setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
-      setNombre("");
-      setClave("");
-      setRepetir("");
-      setRol("operador");
-      cargar();
-    } catch (e) {
-      setError(e.message);
-    }
+    await alEjecutar(async () => {
+      try {
+        await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol }));
+        setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
+        setNombre("");
+        setClave("");
+        setRepetir("");
+        setRol("operador");
+        cargar();
+      } catch (e) {
+        setError(e.message);
+      }
+    });
   }
 
   const tras = (mensaje) => {
@@ -143,48 +189,59 @@ export default function Personal() {
     setError(mensaje);
   };
 
+  const sinDatos = !nombre.trim() || !clave || !repetir;
+
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ margin: "0 0 16px", fontSize: 22, textAlign: "center" }}>Personal</h1>
-      {errorCarga ? (
-        <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
-      ) : (
-        <>
-          <form data-tour="personal-crear" onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
-            <input value={nombre} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
-            <input type="password" value={clave} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
-            <input type="password" value={repetir} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
-            <select value={rol} onChange={(e) => setRol(e.target.value)} style={campo}>
-              <option value="operador">Operador</option>
-              <option value="admin">Admin</option>
-            </select>
-            <button type="submit" disabled={!nombre.trim() || !clave || !repetir} style={{ ...boton, opacity: !nombre.trim() || !clave || !repetir ? 0.6 : 1 }}>
-              Crear usuario
-            </button>
-          </form>
-          {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
-          {aviso && <p>{aviso}</p>}
-          <div data-tour="personal-tabla" style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Rol</th>
-                  <th>Alta</th>
-                  <th data-tour="personal-acciones">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {personas.map((persona) => (
-                  <FilaPersonal key={persona.usuario} persona={persona} propia={persona.usuario === yo} alCambiar={tras} alError={fallo} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+        <h1 style={{ margin: "0 0 16px", fontSize: 22, textAlign: "center" }}>Personal</h1>
+        {errorCarga ? (
+          <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
+        ) : (
+          <>
+            <form onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
+              <input value={nombre} disabled={ocupado} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
+              <input type="password" value={clave} disabled={ocupado} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
+              <input type="password" value={repetir} disabled={ocupado} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
+              <select value={rol} disabled={ocupado} onChange={(e) => setRol(e.target.value)} style={campo}>
+                <option value="operador">Operador</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button type="submit" disabled={ocupado || sinDatos} style={{ ...boton, opacity: ocupado || sinDatos ? 0.6 : 1 }}>
+                {ocupado ? "Procesando..." : "Crear usuario"}
+              </button>
+            </form>
+            {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
+            {aviso && <p>{aviso}</p>}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Alta</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {personas.map((persona) => (
+                    <FilaPersonal
+                      key={persona.usuario}
+                      persona={persona}
+                      propia={persona.usuario === yo}
+                      ocupado={ocupado}
+                      alEjecutar={alEjecutar}
+                      alSucio={alSucio}
+                      alCambiar={tras}
+                      alError={fallo}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
