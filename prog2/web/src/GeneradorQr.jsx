@@ -144,13 +144,14 @@ export default function GeneradorQr() {
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
+      <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 22 }}>Generador de QR</h1>
       <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75 }}>
         Revisa qué materiales ya tienen QR y cuáles faltan. Los QR nuevos se suben solo a las filas que no tienen uno.
       </p>
       {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
 
-      <section style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+      <section style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
         <div style={tarjeta}>
           <div style={numero("inherit")}>{filtradas.length}</div>
           <div style={{ fontSize: 13 }}>Materiales filtrados</div>
@@ -164,17 +165,15 @@ export default function GeneradorQr() {
           <div style={{ fontSize: 13 }}>Sin QR (faltan)</div>
         </div>
       </section>
-      <div style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520 }} aria-label="Avance de QR">
+      <div style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520, margin: "0 auto" }} aria-label="Avance de QR">
         <div style={{ width: `${pct}%`, height: "100%", background: "#16a34a", transition: "width .3s" }} />
       </div>
       <p style={{ fontSize: 13, margin: "6px 0 16px" }}>{pct}% de los materiales filtrados ya tiene QR.</p>
 
-      <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>
-      <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
-
-      <h2 style={{ fontSize: 16, margin: "16px 0 8px" }}>Acciones</h2>
+      <section style={{ border: "2px solid var(--boton)", borderRadius: 12, padding: 16, margin: "0 auto 20px", maxWidth: 760 }}>
+      <h2 style={{ fontSize: 18, margin: "0 0 10px" }}>Acciones</h2>
       {!desbloqueado && (
-        <form onSubmit={aceptarClave} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+        <form onSubmit={aceptarClave} style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ position: "relative" }}>
             <input
               type={verClave ? "text" : "password"}
@@ -199,7 +198,7 @@ export default function GeneradorQr() {
         </form>
       )}
       {desbloqueado && <p style={{ fontSize: 14, color: "#16a34a", margin: "0 0 12px" }}>Contraseña aceptada.</p>}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
         <button type="button" style={botonAccion(habilitado)} disabled={!habilitado} onClick={generarYSubir}>
           Generar y subir {pendientes.length} QR faltantes
         </button>
@@ -213,6 +212,12 @@ export default function GeneradorQr() {
         )}
       </div>
       {aviso && <p style={{ fontSize: 14 }}>{aviso}</p>}
+      </section>
+
+      <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>
+      <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
+
+      </div>
     </main>
   );
 }
