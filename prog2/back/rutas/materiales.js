@@ -228,6 +228,7 @@ module.exports = function rutasMateriales(app) {
         return;
       }
       try {
+        if (req.body.campo === "QR") await exigirAdmin(req);
         await subirImagen(req.file.filename, await fs.promises.readFile(req.file.path), req.file.mimetype);
         const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
         if (!resultado) {

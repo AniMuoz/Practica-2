@@ -1,10 +1,11 @@
-﻿import { StrictMode } from "react";
+import { StrictMode } from "react";
 import logo from "../logo/logo.ico";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Acceso from "./Acceso.jsx";
 import Admin from "./Admin.jsx";
 import Auditoria from "./Auditoria.jsx";
+import GeneradorQr from "./GeneradorQr.jsx";
 import Personal from "./Personal.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
       { path: "/admin", element: <Admin /> },
       { path: "/personal", element: <Personal /> },
       { path: "/auditoria", element: <Auditoria /> },
+      { path: "/qr", element: <GeneradorQr /> },
       { path: "/:codigo", element: <Detalle /> },
     ],
   },

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import logo from "../logo/logo.ico";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
@@ -404,6 +404,9 @@ export default function Navbar() {
         <>
           <Link to="/personal" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Personal
+          </Link>
+          <Link to="/qr" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+            QR
           </Link>
           <Link to="/auditoria" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Auditoría
