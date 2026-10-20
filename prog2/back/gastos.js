@@ -127,9 +127,11 @@ async function armarDetalle(gastos, mes, anio = new Date().getFullYear()) {
   celda(hoja, 8, 5, "MONTO", { negrita: true, alinear: "center", borde: true, relleno: true });
   TOPICOS.forEach((topico, i) => etiqueta(hoja, 9 + i, topico, false, false));
 
+  // Se guarda también el resultado de cada fórmula: así los valores se ven sin habilitar la edición.
+  const sumaDe = (topico) => datos.filter((g) => g.topico === topico).reduce((acc, g) => acc + g.monto, 0);
   const filaTotal = 9 + TOPICOS.length;
   etiqueta(hoja, filaTotal, "TOTAL GASTOS DEL MES", true, true, true);
-  monto(hoja, filaTotal, { formula: `SUM(E9:E${filaTotal - 1})` }, true, true);
+  monto(hoja, filaTotal, { formula: `SUM(E9:E${filaTotal - 1})`, result: datos.reduce((acc, g) => acc + g.monto, 0) }, true, true);
 
   const firma = filaTotal + 3;
   celda(hoja, firma, 4, EMPRESA.gerente, { negrita: true, alinear: "center" });
@@ -156,14 +158,14 @@ async function armarDetalle(gastos, mes, anio = new Date().getFullYear()) {
     const ultima = primera + propios.length - 1;
     const totalFila = ultima + 1;
     etiqueta(hoja, totalFila, "VALOR TOTAL", true, true, true);
-    monto(hoja, totalFila, { formula: `SUM(E${primera}:E${ultima})` }, true, true);
+    monto(hoja, totalFila, { formula: `SUM(E${primera}:E${ultima})`, result: sumaDe(topico) }, true, true);
     totales[topico] = `E${totalFila}`;
     fila = totalFila + 3;
   }
 
   TOPICOS.forEach((topico, i) => {
     const ref = totales[topico];
-    monto(hoja, 9 + i, ref ? { formula: ref } : 0, true);
+    monto(hoja, 9 + i, ref ? { formula: ref, result: sumaDe(topico) } : 0, true);
   });
 
   return Buffer.from(await libro.xlsx.writeBuffer());

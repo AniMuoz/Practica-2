@@ -36,6 +36,8 @@ test("armarDetalle genera resumen, detalle y fórmulas por tópico", async () =>
   assert.equal(hoja.getCell(9, 5).value, 0);
   const total = hoja.getCell(9 + TOPICOS.length, 5).value;
   assert.equal(total.formula, `SUM(E9:E${8 + TOPICOS.length})`);
+  assert.equal(total.result, 20700);
+  assert.equal(hoja.getCell(filaCombustible, 5).value.result, 20000);
   const textos = [];
   hoja.eachRow((fila) => fila.eachCell((c) => textos.push(c.value)));
   assert.ok(textos.includes("Copec"));
