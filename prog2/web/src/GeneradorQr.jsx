@@ -22,6 +22,9 @@ export default function GeneradorQr() {
   const [error, setError] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
   const [clave, setClave] = useState("");
+  const [verClave, setVerClave] = useState(false);
+  const [desbloqueado, setDesbloqueado] = useState(false);
+  const [errorClave, setErrorClave] = useState("");
   const [trabajando, setTrabajando] = useState(false);
   const [aviso, setAviso] = useState("");
   const cancelar = useRef(false);
@@ -44,6 +47,22 @@ export default function GeneradorQr() {
   const pendientes = useMemo(() => sinQr(filtradas), [filtradas]);
 
   if (rol !== "admin") return <Navigate to="/" replace />;
+
+  function aceptarClave(event) {
+    event.preventDefault();
+    setErrorClave("");
+    fetch("/api/acceso", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
+        setDesbloqueado(true);
+      })
+      .catch((e) => setErrorClave(e.message));
+  }
 
   async function generarYSubir() {
     if (!clave) return setAviso("Escribe la contraseña de datos.");
@@ -102,27 +121,89 @@ export default function GeneradorQr() {
     setTrabajando(false);
   }
 
+  const conQr = filtradas.length - pendientes.length;
+  const pct = filtradas.length ? Math.round((conQr / filtradas.length) * 100) : 0;
+  const tarjeta = { background: "var(--fondo-tarjeta, rgba(127,127,127,0.08))", border: "1px solid var(--borde)", borderRadius: 10, padding: "14px 18px", minWidth: 150 };
+  const numero = (color) => ({ fontSize: 30, fontWeight: 700, color });
+  const botonAccion = (activo) => ({ ...boton, padding: "10px 18px", opacity: activo ? 1 : 0.45, cursor: activo ? "pointer" : "not-allowed" });
+  const habilitado = desbloqueado && !trabajando;
+  const ojo = verClave ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.6A2 2 0 0 0 13.4 13.4" />
+      <path d="M9.9 5.1A10.8 10.8 0 0 1 12 5c5.5 0 9.5 4.5 10.5 7-.4 1-1.2 2.4-2.4 3.6" />
+      <path d="M6.1 6.1C4.2 7.4 2.8 9.2 1.5 12c1 2.5 5 7 10.5 7 1.6 0 3-.4 4.3-1" />
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Generador de QR</h1>
-      {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
-      <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
-      <p style={{ fontSize: 14 }}>
-        Cumplen el filtro: {filtradas.length}. Con QR: {filtradas.length - pendientes.length}. Sin QR: {pendientes.length}.
+      <h1 style={{ margin: "0 0 4px", fontSize: 22 }}>Generador de QR</h1>
+      <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75 }}>
+        Revisa qué materiales ya tienen QR y cuáles faltan. Los QR nuevos se suben solo a las filas que no tienen uno.
       </p>
+      {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
+
+      <section style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <div style={tarjeta}>
+          <div style={numero("inherit")}>{filtradas.length}</div>
+          <div style={{ fontSize: 13 }}>Materiales filtrados</div>
+        </div>
+        <div style={{ ...tarjeta, borderColor: "#16a34a" }}>
+          <div style={numero("#16a34a")}>{conQr}</div>
+          <div style={{ fontSize: 13 }}>Con QR</div>
+        </div>
+        <div style={{ ...tarjeta, borderColor: "#dc2626" }}>
+          <div style={numero("#dc2626")}>{pendientes.length}</div>
+          <div style={{ fontSize: 13 }}>Sin QR (faltan)</div>
+        </div>
+      </section>
+      <div style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520 }} aria-label="Avance de QR">
+        <div style={{ width: `${pct}%`, height: "100%", background: "#16a34a", transition: "width .3s" }} />
+      </div>
+      <p style={{ fontSize: 13, margin: "6px 0 16px" }}>{pct}% de los materiales filtrados ya tiene QR.</p>
+
+      <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>
+      <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} />
+
+      <h2 style={{ fontSize: 16, margin: "16px 0 8px" }}>Acciones</h2>
+      {!desbloqueado && (
+        <form onSubmit={aceptarClave} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+          <div style={{ position: "relative" }}>
+            <input
+              type={verClave ? "text" : "password"}
+              value={clave}
+              placeholder="Contraseña de datos"
+              autoFocus
+              onChange={(e) => setClave(e.target.value)}
+              style={{ padding: "8px 36px 8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+            />
+            <button
+              type="button"
+              aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
+              onClick={() => setVerClave((v) => !v)}
+              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", padding: 4, cursor: "pointer", color: "var(--texto)", display: "flex" }}
+            >
+              {ojo}
+            </button>
+          </div>
+          <button type="submit" style={boton}>Aceptar</button>
+          {errorClave && <span style={{ color: "var(--peligro)", fontSize: 14 }}>{errorClave}</span>}
+          <span style={{ fontSize: 13, opacity: 0.75, flexBasis: "100%" }}>Ingresa la contraseña para habilitar los botones de acción.</span>
+        </form>
+      )}
+      {desbloqueado && <p style={{ fontSize: 14, color: "#16a34a", margin: "0 0 12px" }}>Contraseña aceptada.</p>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input
-          type="password"
-          placeholder="Contraseña de datos"
-          value={clave}
-          onChange={(e) => setClave(e.target.value)}
-          style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-        />
-        <button type="button" style={boton} disabled={trabajando} onClick={generarYSubir}>
-          Generar y subir QR nuevos
+        <button type="button" style={botonAccion(habilitado)} disabled={!habilitado} onClick={generarYSubir}>
+          Generar y subir {pendientes.length} QR faltantes
         </button>
-        <button type="button" style={boton} disabled={trabajando} onClick={descargarZip}>
+        <button type="button" style={botonAccion(habilitado)} disabled={!habilitado} onClick={descargarZip}>
           Descargar ZIP de los filtrados
         </button>
         {trabajando && (
