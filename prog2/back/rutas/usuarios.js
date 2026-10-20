@@ -3,7 +3,9 @@ const { exigirAdmin, hashClave, validarClaveNueva, errorHttp, falloBd, responder
 
 // Los contadores de intentos y la cache de usuarios viven en memoria: asumen una sola instancia del servidor.
 // Cada alta, cambio de rol o de clave debe llamar a cacheUsuarios.delete para que surta efecto al instante.
-const ROLES = new Set(["admin", "operador"]);
+const ROLES = new Set(["admin", "operador", "desactivado"]);
+// Usuario protegido: ningun otro usuario puede modificarlo ni eliminarlo.
+const USUARIO_PROTEGIDO = "adminm501";
 
 function normalizar(valor) {
   return String(valor || "").trim().toLowerCase();
@@ -49,10 +51,30 @@ module.exports = function rutasUsuarios(app) {
     }
   });
 
+  app.post("/api/usuarios/:nombre/rol", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const usuario = normalizar(req.params.nombre);
+      const rol = req.body && req.body.rol;
+      if (usuario === USUARIO_PROTEGIDO) throw errorHttp(403, "Este usuario no se puede modificar.");
+      if (usuario === req.usuario) throw errorHttp(400, "No puedes cambiar tu propio rol.");
+      if (!ROLES.has(rol)) throw errorHttp(400, "Rol no válido.");
+      const objetivo = await leerUsuario(usuario);
+      if (!objetivo) throw errorHttp(404, "El usuario no existe.");
+      const { error } = await supabase.from("usuarios").update({ rol }).eq("usuario", usuario);
+      if (error) falloBd(error);
+      cacheUsuarios.delete(usuario);
+      res.json({ ok: true, usuario, rol });
+    } catch (error) {
+      responderError(res, error, "No se pudo cambiar el rol.");
+    }
+  });
+
   app.post("/api/usuarios/:nombre/clave", async (req, res) => {
     try {
       await exigirAdmin(req);
       const usuario = normalizar(req.params.nombre);
+      if (usuario === USUARIO_PROTEGIDO && usuario !== req.usuario) throw errorHttp(403, "Este usuario no se puede modificar.");
       if (usuario === req.usuario) throw errorHttp(400, "Tu propia contraseña se cambia desde «Cambiar contraseña».");
       validarClaveNueva(req.body && req.body.clave);
       if (!(await leerUsuario(usuario))) throw errorHttp(404, "El usuario no existe.");
@@ -69,6 +91,7 @@ module.exports = function rutasUsuarios(app) {
     try {
       await exigirAdmin(req);
       const usuario = normalizar(req.params.nombre);
+      if (usuario === USUARIO_PROTEGIDO) throw errorHttp(403, "Este usuario no se puede eliminar.");
       const objetivo = await leerUsuario(usuario);
       if (!objetivo) throw errorHttp(404, "El usuario no existe.");
       if (usuario === req.usuario) throw errorHttp(400, "No puedes eliminarte a ti mismo.");

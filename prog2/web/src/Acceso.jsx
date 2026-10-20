@@ -5,9 +5,15 @@ export function useSesion() {
   return useContext(SesionContext);
 }
 
+const MENSAJE_DESACTIVADA = "Cuenta desactivada, contactese con un administrador";
+
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
   const respuesta = await originalFetch(...args);
+  if (respuesta.status === 403) {
+    const data = await respuesta.clone().json().catch(() => ({}));
+    if (data && data.desactivada) window.dispatchEvent(new Event("cuenta-desactivada"));
+  }
   if (respuesta.status === 401) {
     const url = String(typeof args[0] === "string" ? args[0] : args[0]?.url || "");
     if (!/\/api\/(login|logout|sesion)/.test(url)) window.dispatchEvent(new Event("sesion-vencida"));
@@ -193,11 +199,11 @@ function CambiarClave({ usuarioInicial = "", alTerminar, alCancelar }) {
   );
 }
 
-function Login({ alEntrar }) {
+function Login({ alEntrar, avisoInicial = "" }) {
   const [cambiando, setCambiando] = useState(false);
   const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(avisoInicial);
   const [enviando, setEnviando] = useState(false);
 
   async function enviar(event) {
@@ -212,6 +218,10 @@ function Login({ alEntrar }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo iniciar sesión.");
+      if (data.rol === "desactivado") {
+        setError(MENSAJE_DESACTIVADA);
+        return;
+      }
       alEntrar({ usuario: data.usuario, rol: data.rol || "operador" });
     } catch (e) {
       setError(e.message);
@@ -297,6 +307,7 @@ function Login({ alEntrar }) {
 export default function Acceso({ children }) {
   const [sesion, setSesion] = useState(null);
   const [verificando, setVerificando] = useState(true);
+  const [desactivada, setDesactivada] = useState(false);
   useEffect(() => {
     let cancelado = false;
     const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -308,6 +319,7 @@ export default function Acceso({ children }) {
           const res = await originalFetch("/api/sesion", { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
+            if (data && data.rol === "desactivado") return "desactivada";
             return data ? { usuario: data.usuario, rol: data.rol || "operador" } : null;
           }
           if (res.status === 401) return null;
@@ -320,7 +332,10 @@ export default function Acceso({ children }) {
     }
     verificar().then((u) => {
       if (cancelado) return;
-      setSesion(u);
+      if (u === "desactivada") {
+        setDesactivada(true);
+        setSesion(null);
+      } else setSesion(u);
       setVerificando(false);
     });
     return () => {
@@ -330,12 +345,20 @@ export default function Acceso({ children }) {
 
   useEffect(() => {
     const vencida = () => setSesion(null);
+    const desactivar = () => {
+      setDesactivada(true);
+      setSesion(null);
+    };
     window.addEventListener("sesion-vencida", vencida);
-    return () => window.removeEventListener("sesion-vencida", vencida);
+    window.addEventListener("cuenta-desactivada", desactivar);
+    return () => {
+      window.removeEventListener("sesion-vencida", vencida);
+      window.removeEventListener("cuenta-desactivada", desactivar);
+    };
   }, []);
 
   if (verificando) return null;
-  if (!sesion) return <Login alEntrar={setSesion} />;
+  if (!sesion) return <Login key={desactivada ? "d" : "n"} alEntrar={setSesion} avisoInicial={desactivada ? MENSAJE_DESACTIVADA : ""} />;
 
   return <SesionContext.Provider value={sesion}>{children}</SesionContext.Provider>;
 }

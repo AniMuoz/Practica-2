@@ -1,4 +1,4 @@
-.admin-pagina button:not(nav button),
+.admin-pagina button:not(.barra button):not(.barra-switch),
 .admin-pagina a[href*="/excel"] {
   border-radius: 8px !important;
   font-weight: 600;
@@ -7,26 +7,26 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
-.admin-pagina button:not(nav button):not(:disabled):hover,
+.admin-pagina button:not(.barra button):not(.barra-switch):not(:disabled):hover,
 .admin-pagina a[href*="/excel"]:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
   filter: brightness(1.08);
 }
 
-.admin-pagina button:not(nav button):not(:disabled):active,
+.admin-pagina button:not(.barra button):not(.barra-switch):not(:disabled):active,
 .admin-pagina a[href*="/excel"]:active {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   filter: brightness(0.95);
 }
 
-.admin-pagina button:not(nav button):focus-visible {
+.admin-pagina button:not(.barra button):not(.barra-switch):focus-visible {
   outline: 2px solid var(--acento);
   outline-offset: 2px;
 }
 
-.admin-pagina button:not(nav button):disabled {
+.admin-pagina button:not(.barra button):not(.barra-switch):disabled {
   box-shadow: none;
   opacity: 0.6;
   cursor: not-allowed !important;

@@ -72,14 +72,36 @@ function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar
   }
 
   const sinDatos = !clave || !repetir;
+  const protegido = persona.usuario === "adminm501";
+
+  async function cambiarRol(nuevo) {
+    await alEjecutar(async () => {
+      try {
+        await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}/rol`, enviarJson("POST", { rol: nuevo }));
+        alCambiar(`Rol de ${persona.usuario} actualizado a ${nuevo}.`);
+      } catch (e) {
+        alError(e.message);
+      }
+    });
+  }
 
   return (
     <tr>
       <td>{persona.usuario}</td>
-      <td>{persona.rol}</td>
+      <td>
+        {propia || protegido ? (
+          persona.rol
+        ) : (
+          <select value={persona.rol} disabled={ocupado} onChange={(e) => cambiarRol(e.target.value)} style={campo}>
+            <option value="operador">Operador</option>
+            <option value="admin">Admin</option>
+            <option value="desactivado">Desactivado</option>
+          </select>
+        )}
+      </td>
       <td>{persona.creado_en ? new Date(persona.creado_en).toLocaleDateString() : ""}</td>
       <td>
-        {!propia && (
+        {!propia && !protegido && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <input type="password" autoComplete="new-password" placeholder="Nueva contraseña" value={clave} disabled={ocupado} onChange={(e) => setClave(e.target.value)} style={{ ...campo, width: 150 }} />
             <input type="password" autoComplete="new-password" placeholder="Repetir" value={repetir} disabled={ocupado} onChange={(e) => setRepetir(e.target.value)} style={{ ...campo, width: 110 }} />

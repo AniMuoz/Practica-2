@@ -15,6 +15,7 @@ const MAX_INTENTOS_USUARIO = 30;
 const VENTANA_INTENTOS_MS = 15 * 60 * 1000;
 const CACHE_USUARIO_MS = 30 * 1000;
 const LARGO_MINIMO_CLAVE = 8;
+const MENSAJE_DESACTIVADA = "Cuenta desactivada, contactese con un administrador";
 const RUTAS_PUBLICAS = new Set(["/login", "/logout", "/sesion", "/cambiar-clave"]);
 
 function errorHttp(status, mensaje) {
@@ -202,6 +203,10 @@ async function protegerApi(req, res, next) {
     const sesion = await sesionDe(req);
     if (!sesion) {
       res.status(401).json({ error: "Sesión no iniciada." });
+      return;
+    }
+    if (sesion.registro.rol === "desactivado") {
+      res.status(403).json({ error: MENSAJE_DESACTIVADA, desactivada: true });
       return;
     }
     req.usuario = sesion.registro.usuario;
