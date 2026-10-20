@@ -6,6 +6,7 @@ import Acceso from "./Acceso.jsx";
 import Admin from "./Admin.jsx";
 import Auditoria from "./Auditoria.jsx";
 import GeneradorQr from "./GeneradorQr.jsx";
+import Gastos from "./Gastos.jsx";
 import Personal from "./Personal.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
       { path: "/personal", element: <Personal /> },
       { path: "/auditoria", element: <Auditoria /> },
       { path: "/qr", element: <GeneradorQr /> },
+      { path: "/gastos", element: <Gastos /> },
       { path: "/:codigo", element: <Detalle /> },
     ],
   },

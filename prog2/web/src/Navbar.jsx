@@ -408,6 +408,9 @@ export default function Navbar() {
           <Link to="/qr" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             QR
           </Link>
+          <Link to="/gastos" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+            Gastos
+          </Link>
           <Link to="/auditoria" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Auditoría
           </Link>
