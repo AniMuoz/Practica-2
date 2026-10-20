@@ -2,12 +2,16 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { supabase } = require("./supabase");
+const { ipDe: clienteDe } = require("./seguridad");
 
 const ARCHIVO_SECRETO = path.join(__dirname, ".sesion-secreto");
 const NOMBRE_COOKIE = "sesion";
 const DURACION_MS = 7 * 24 * 60 * 60 * 1000;
 const RENOVAR_BAJO_MS = 6 * 24 * 60 * 60 * 1000;
 const MAX_INTENTOS = 10;
+// Limite por nombre de usuario (frena ataques repartidos entre muchas IPs); mas alto para que
+// un tercero no pueda bloquear facilmente a un usuario legitimo.
+const MAX_INTENTOS_USUARIO = 30;
 const VENTANA_INTENTOS_MS = 15 * 60 * 1000;
 const CACHE_USUARIO_MS = 30 * 1000;
 const LARGO_MINIMO_CLAVE = 8;
@@ -157,18 +161,14 @@ function ponerCookie(req, res, token, maxAgeMs) {
 
 const intentos = new Map();
 
-function clienteDe(req) {
-  return String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim();
-}
-
-function bloqueado(clave) {
+function bloqueado(clave, maximo = MAX_INTENTOS) {
   const registro = intentos.get(clave);
   if (!registro) return false;
   if (Date.now() - registro.desde > VENTANA_INTENTOS_MS) {
     intentos.delete(clave);
     return false;
   }
-  return registro.cantidad >= MAX_INTENTOS;
+  return registro.cantidad >= maximo;
 }
 
 function registrarFallo(clave) {
@@ -226,14 +226,17 @@ function rutasAuth(app) {
       const usuario = String((req.body && req.body.usuario) || "").trim().toLowerCase();
       const clave = String((req.body && req.body.clave) || "");
       const llave = clienteDe(req);
-      if (bloqueado(llave)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
+      const llaveUsuario = `usuario:${usuario}`;
+      if (bloqueado(llave) || bloqueado(llaveUsuario, MAX_INTENTOS_USUARIO)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
       const correcta = registro ? await claveValida(clave, registro.clave_hash) : await hashClave(clave).then(() => false);
       if (!correcta) {
         registrarFallo(llave);
+        registrarFallo(llaveUsuario);
         throw errorHttp(401, "Usuario o contraseña incorrectos.");
       }
       intentos.delete(llave);
+      intentos.delete(llaveUsuario);
       ponerCookie(req, res, crearToken(registro), DURACION_MS);
       res.json({ usuario: registro.usuario, rol: registro.rol || "operador" });
     } catch (error) {
@@ -247,16 +250,19 @@ function rutasAuth(app) {
       const claveActual = String((req.body && req.body.claveActual) || "");
       const claveNueva = String((req.body && req.body.claveNueva) || "");
       const llave = clienteDe(req);
-      if (bloqueado(llave)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
+      const llaveUsuario = `usuario:${usuario}`;
+      if (bloqueado(llave) || bloqueado(llaveUsuario, MAX_INTENTOS_USUARIO)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
       const correcta = registro ? await claveValida(claveActual, registro.clave_hash) : await hashClave(claveActual).then(() => false);
       if (!correcta) {
         registrarFallo(llave);
+        registrarFallo(llaveUsuario);
         throw errorHttp(401, "Usuario o contraseña actual incorrectos.");
       }
       validarClaveNueva(claveNueva);
       if (claveNueva === claveActual) throw errorHttp(400, "La contraseña nueva debe ser distinta de la actual.");
       intentos.delete(llave);
+      intentos.delete(llaveUsuario);
       await guardarUsuario(usuario, claveNueva);
       const actualizado = { usuario, clave_hash: (await buscarUsuario(usuario)).clave_hash };
       ponerCookie(req, res, crearToken(actualizado), DURACION_MS);

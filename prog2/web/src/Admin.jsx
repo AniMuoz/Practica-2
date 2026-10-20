@@ -6,6 +6,8 @@ import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
 import Bitacora from "./Bitacora.jsx";
+import VistaPrevia from "./admin/VistaPrevia.jsx";
+import Interruptor from "./admin/Interruptor.jsx";
 import {
   claveUltimaCarga,
   colorCantidad,
@@ -18,106 +20,6 @@ import {
 } from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
-const ALTO_FILA = 36;
-const FILAS_EXTRA = 12;
-
-function VistaPrevia({ filas, columnas, altoMaximo = 480, className, children, renderFila, vacio, clave, alFinal }) {
-  const ref = useRef(null);
-  const [corte, setCorte] = useState({ inicio: 0, fin: 40 });
-  const marca = clave === undefined ? filas.length : clave;
-
-  function medir() {
-    const caja = ref.current;
-    if (!caja) return;
-    const inicio = Math.max(0, Math.floor(caja.scrollTop / ALTO_FILA) - FILAS_EXTRA);
-    const cupo = Math.ceil(caja.clientHeight / ALTO_FILA) + FILAS_EXTRA * 2;
-    const fin = Math.min(filas.length, inicio + cupo);
-    setCorte((actual) => (actual.inicio === inicio && actual.fin === fin ? actual : { inicio, fin }));
-    if (alFinal && caja.scrollHeight - caja.scrollTop - caja.clientHeight < ALTO_FILA * 6) alFinal();
-  }
-
-  useEffect(() => {
-    const caja = ref.current;
-    if (caja) caja.scrollTop = 0;
-    medir();
-  }, [marca]);
-
-  useEffect(() => {
-    medir();
-  }, [filas.length]);
-
-  const antes = corte.inicio * ALTO_FILA;
-  const despues = Math.max(0, filas.length - corte.fin) * ALTO_FILA;
-  const span = Math.max(columnas, 1);
-
-  return (
-    <div ref={ref} onScroll={medir} style={{ overflow: "auto", maxHeight: altoMaximo }}>
-      <Planilla className={["vista-previa", className].filter(Boolean).join(" ")}>
-        {children}
-        <tbody>
-          {antes > 0 && (
-            <tr aria-hidden="true">
-              <td colSpan={span} style={{ height: antes, padding: 0, border: 0 }} />
-            </tr>
-          )}
-          {filas.slice(corte.inicio, corte.fin).map((fila, desplazamiento) => renderFila(fila, corte.inicio + desplazamiento))}
-          {despues > 0 && (
-            <tr aria-hidden="true">
-              <td colSpan={span} style={{ height: despues, padding: 0, border: 0 }} />
-            </tr>
-          )}
-        </tbody>
-      </Planilla>
-      {filas.length === 0 && vacio && <p style={{ margin: "12px 0 0" }}>{vacio}</p>}
-    </div>
-  );
-}
-
-function Interruptor({ activo, onClick, texto }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={activo}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: 0,
-        border: "none",
-        background: "transparent",
-        color: "inherit",
-        cursor: "pointer",
-        fontSize: 14,
-      }}
-    >
-      <span
-        style={{
-          width: 40,
-          height: 22,
-          borderRadius: 999,
-          background: activo ? "var(--boton)" : "var(--borde)",
-          position: "relative",
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            position: "absolute",
-            top: 2,
-            left: activo ? 20 : 2,
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            background: "#fff",
-            transition: "left 0.15s ease",
-          }}
-        />
-      </span>
-      {texto}
-    </button>
-  );
-}
 
 export default function Admin() {
   const navigate = useNavigate();

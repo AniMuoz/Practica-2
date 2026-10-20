@@ -1,4 +1,4 @@
-﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.SESSION_SECRET = "secreto-de-prueba";
 
@@ -196,6 +196,16 @@ test("tras 10 fallos el cliente queda bloqueado aunque use la clave correcta", a
   assert.equal(bloqueado.cookies.length, 0);
   const otroCliente = await pedir("POST", "/api/login", { cuerpo: { usuario: "bloqueo", clave: "clave-segura-1" } });
   assert.equal(otroCliente.status, 200);
+});
+
+test("tras 30 fallos repartidos entre varias IPs el usuario queda bloqueado", async () => {
+  await guardarUsuario("distribuido", "clave-segura-1");
+  for (let i = 0; i < 30; i += 1) {
+    const fallo = await pedir("POST", "/api/login", { cuerpo: { usuario: "distribuido", clave: "mala" }, cliente: clienteNuevo() });
+    assert.equal(fallo.status, 401);
+  }
+  const bloqueado = await pedir("POST", "/api/login", { cuerpo: { usuario: "distribuido", clave: "clave-segura-1" }, cliente: clienteNuevo() });
+  assert.equal(bloqueado.status, 429);
 });
 
 test("un login correcto reinicia el contador de fallos", async () => {

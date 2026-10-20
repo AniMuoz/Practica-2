@@ -30,10 +30,16 @@ async function bajarImagen(nombre, cliente = supabase) {
   return Buffer.from(await data.arrayBuffer());
 }
 
+async function listarImagenes(cliente = supabase) {
+  const { data, error } = await cliente.storage.from(CUBO).list("", { limit: 1000 });
+  if (error) fallo(error);
+  return new Set((data || []).map((archivo) => archivo.name));
+}
+
 async function quitarImagen(nombre, cliente = supabase) {
   if (!nombre) return;
   const { error } = await cliente.storage.from(CUBO).remove([nombre]);
   if (error && !/not found/i.test(error.message)) fallo(error);
 }
 
-module.exports = { subirImagen, bajarImagen, quitarImagen, asegurarCubo };
+module.exports = { subirImagen, bajarImagen, quitarImagen, asegurarCubo, listarImagenes };

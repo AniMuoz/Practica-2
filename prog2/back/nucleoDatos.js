@@ -597,7 +597,7 @@ async function guardarImagen(codigo, campo, nombreArchivo, clave) {
   if (/\.(png|jpe?g|webp|gif)$/i.test(anterior) && path.basename(anterior) !== nombreArchivo) {
     const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
     try {
-      if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+      await fs.promises.rm(ruta, { force: true });
       await quitarImagen(path.basename(anterior));
     } catch (error) {
       console.error(error);
@@ -627,7 +627,7 @@ async function eliminarMaterial(codigo, clave) {
     const anterior = String(matriz[indiceFila][indiceCampo] ?? "");
     if (/\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
       const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
-      if (fs.existsSync(ruta)) fs.unlinkSync(ruta);
+      await fs.promises.rm(ruta, { force: true });
       await quitarImagen(path.basename(anterior));
     }
   }

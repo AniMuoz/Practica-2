@@ -228,7 +228,7 @@ module.exports = function rutasMateriales(app) {
         return;
       }
       try {
-        await subirImagen(req.file.filename, fs.readFileSync(req.file.path), req.file.mimetype);
+        await subirImagen(req.file.filename, await fs.promises.readFile(req.file.path), req.file.mimetype);
         const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
         if (!resultado) {
           res.status(404).json({ error: "Material no encontrado." });

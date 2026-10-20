@@ -63,4 +63,4 @@ setInterval(() => {
   }
 }, VENTANA_MS).unref();
 
-module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, MAX_EVENTOS };
+module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, ipDe, MAX_EVENTOS };

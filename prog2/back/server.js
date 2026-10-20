@@ -4,7 +4,7 @@ const express = require("express");
 const { precargarDatos: precargar } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
 const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
-const { subirImagen, bajarImagen, asegurarCubo } = require("./imagenesSupabase");
+const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, MAX_EVENTOS } = require("./seguridad");
 const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
 
@@ -101,17 +101,21 @@ process.on("unhandledRejection", (motivo) => {
   console.error("Promesa rechazada sin manejar:", motivo);
 });
 
+async function subirImagenesLocales() {
+  const archivos = fs.existsSync(carpetaImagenes) ? fs.readdirSync(carpetaImagenes) : [];
+  const candidatas = archivos.filter((nombre) => /\.(png|jpe?g|webp|gif)$/i.test(nombre));
+  if (candidatas.length === 0) return;
+  const existentes = await listarImagenes();
+  for (const nombre of candidatas) {
+    if (existentes.has(nombre)) continue;
+    const ruta = path.join(carpetaImagenes, nombre);
+    if (!(await fs.promises.stat(ruta)).isFile()) continue;
+    await subirImagen(nombre, await fs.promises.readFile(ruta), undefined);
+  }
+}
+
 if (require.main === module) {
   asegurarCubo()
-    .then(async () => {
-      const archivos = fs.existsSync(carpetaImagenes) ? fs.readdirSync(carpetaImagenes) : [];
-      for (const nombre of archivos) {
-        const ruta = path.join(carpetaImagenes, nombre);
-        if (!fs.statSync(ruta).isFile()) continue;
-        if (!/\.(png|jpe?g|webp|gif)$/i.test(nombre)) continue;
-        await subirImagen(nombre, fs.readFileSync(ruta), undefined);
-      }
-    })
     .catch((error) => {
       console.error(error.message);
     })
@@ -126,6 +130,8 @@ if (require.main === module) {
       }
       const servidor = app.listen(PORT, "0.0.0.0", () => {
         console.log(`API en http://localhost:${PORT}`);
+        // Se hace en segundo plano y solo con lo que aun no esta en Supabase: no retrasa el arranque.
+        subirImagenesLocales().catch((error) => console.error(error.message));
       });
       // Render envia SIGTERM al redesplegar: se cierran las conexiones SSE y se termina limpio.
       let cerrando = false;

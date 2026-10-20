@@ -18,7 +18,8 @@ jobs:
           cache: npm
           cache-dependency-path: prog2/back/package-lock.json
       - run: npm ci
-      - run: npm test
+      - run: npm run lint
+      - run: npm test -- --experimental-test-coverage
         env:
           # Valores de prueba: los tests no se conectan a Supabase.
           SUPABASE_URL: http://127.0.0.1:1
@@ -38,5 +39,8 @@ jobs:
           cache: npm
           cache-dependency-path: prog2/web/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npm audit --omit=dev
+        continue-on-error: true
