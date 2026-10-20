@@ -1,4 +1,4 @@
-const { uploadXlsx, enviarPlanilla } = require("../compartido");
+const { uploadXlsx, enviarPlanilla, nombreConFecha } = require("../compartido");
 const gastos = require("../gastos");
 const { exigirAdmin } = require("../auth");
 
@@ -22,8 +22,7 @@ module.exports = function rutasGastos(app) {
       await exigirAdmin(req);
       const mes = String((req.body && req.body.mes) || "").trim();
       const buffer = await gastos.armarDetalle(req.body && req.body.gastos, mes);
-      const nombre = `DETALLE GASTOS BERFRE ${nombreMes(mes)} ${gastos.nombreDia()}.xlsx`;
-      enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+      enviarPlanilla(res, buffer, nombreConFecha(`DETALLE GASTOS BERFRE ${nombreMes(mes)}`));
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de gastos.");
     }
@@ -33,8 +32,7 @@ module.exports = function rutasGastos(app) {
     try {
       await exigirAdmin(req);
       const buffer = await gastos.guardarDatos(req.body && req.body.gastos);
-      const nombre = `Datos_guardados_no_procesados_${gastos.nombreDia()}.xlsx`;
-      enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+      enviarPlanilla(res, buffer, nombreConFecha("DATOS GASTOS SIN PROCESAR"));
     } catch (error) {
       responder(res, error, "No se pudieron guardar los datos.");
     }

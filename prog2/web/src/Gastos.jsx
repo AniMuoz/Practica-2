@@ -170,7 +170,7 @@ export default function Gastos() {
       <Navbar />
       <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
         <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</h1>
-        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+        <form onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16, overflowX: "auto" }}>
           <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campo}>
             <option value="">Tópico</option>
             {topicos.map((t) => (

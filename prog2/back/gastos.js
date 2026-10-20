@@ -210,8 +210,4 @@ async function recuperarDatos(buffer) {
   return gastos;
 }
 
-function nombreDia(fecha = new Date()) {
-  return `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, "0")}${String(fecha.getDate()).padStart(2, "0")}`;
-}
-
-module.exports = { TOPICOS, MESES, fechaIso, EMPRESA, validarGasto, validarGastos, armarDetalle, guardarDatos, recuperarDatos, nombreDia };
+module.exports = { TOPICOS, MESES, fechaIso, EMPRESA, validarGasto, validarGastos, armarDetalle, guardarDatos, recuperarDatos };
