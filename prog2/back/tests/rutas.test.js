@@ -516,12 +516,18 @@ test("POST /api/material/:codigo/imagen valida el archivo, lo sube y lo asocia a
   try {
     responder({ guardarImagen: { fila: { Codigo: `zz${process.pid}` } } });
     const bien = await pedir("POST", `/api/material/zz${process.pid}/imagen`, {
-      form: formulario({ campo: "Foto", clave: "k" }, { archivo: { contenido: "PNG-DATOS", archivo: "Cualquiera.PNG", tipo: "image/png" } }),
+      form: formulario({ campo: "Foto", clave: "k" }, { archivo: { contenido: "GIF89a-DATOS", archivo: "Cualquiera.PNG", tipo: "image/png" } }),
     });
     assert.equal(bien.status, 200);
-    assert.deepEqual(subidas, [{ nombre, contenido: "PNG-DATOS", tipo: "image/png" }]);
+    assert.deepEqual(subidas, [{ nombre, contenido: "GIF89a-DATOS", tipo: "image/png" }]);
+
+    const falsa = await pedir("POST", `/api/material/zz${process.pid}/imagen`, {
+      form: formulario({ campo: "Foto", clave: "k" }, { archivo: { contenido: "no soy una imagen", archivo: "x.png", tipo: "image/png" } }),
+    });
+    assert.deepEqual([falsa.status, falsa.json.error], [400, "El archivo no es una imagen válida."]);
+    assert.equal(subidas.length, 1);
     assert.deepEqual(llamadasA("guardarImagen")[0].args, [`zz${process.pid}`, "Foto", nombre, "k"]);
-    assert.equal(fs.existsSync(local), true);
+    assert.equal(fs.existsSync(local), false);
   } finally {
     fs.rmSync(local, { force: true });
   }
@@ -533,7 +539,7 @@ test("el nombre de la imagen subida limpia caracteres peligrosos del código y u
   try {
     responder({ guardarImagen: null });
     const respuesta = await pedir("POST", "/api/material/a%2Fb/imagen", {
-      form: formulario({ campo: "Otro" }, { archivo: { contenido: "x", archivo: "foto.JPG", tipo: "image/jpeg" } }),
+      form: formulario({ campo: "Otro" }, { archivo: { contenido: "GIF89a-xxxxxx", archivo: "foto.JPG", tipo: "image/jpeg" } }),
     });
     assert.equal(respuesta.status, 404);
     assert.equal(subidas[0].nombre, esperado);

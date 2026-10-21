@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
-const { uploadXlsx, upload, emitir } = require("../compartido");
+const { uploadXlsx, upload, emitir, esImagenReal } = require("../compartido");
 const { subirImagen } = require("../imagenesSupabase");
 const { exigirAdmin } = require("../auth");
 const { CLAVE_DATOS } = require("../nucleoDatos");
@@ -229,7 +229,13 @@ module.exports = function rutasMateriales(app) {
       }
       try {
         if (req.body.campo === "QR") await exigirAdmin(req);
-        await subirImagen(req.file.filename, await fs.promises.readFile(req.file.path), req.file.mimetype);
+        const contenido = await fs.promises.readFile(req.file.path);
+        if (!esImagenReal(contenido)) {
+          await fs.promises.unlink(req.file.path).catch(() => {});
+          res.status(400).json({ error: "El archivo no es una imagen válida." });
+          return;
+        }
+        await subirImagen(req.file.filename, contenido, req.file.mimetype);
         const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
         if (!resultado) {
           res.status(404).json({ error: "Material no encontrado." });

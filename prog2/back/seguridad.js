@@ -45,7 +45,25 @@ function exigirProxy(req, res, next) {
   next();
 }
 
+function enProduccion() {
+  return Boolean(process.env.RENDER || process.env.NODE_ENV === "production");
+}
+
+// En produccion el arranque falla si faltan los secretos: sin ellos la API quedaria abierta
+// a llamadas directas a Render o con sesiones que no sobreviven a un reinicio.
+function verificarEntorno() {
+  if (!enProduccion()) return;
+  const faltan = ["SECRETO_PROXY", "SESSION_SECRET"].filter((nombre) => !String(process.env[nombre] || "").trim());
+  if (faltan.length > 0) throw new Error(`Faltan variables de entorno obligatorias en produccion: ${faltan.join(", ")}.`);
+}
+
 function ipDe(req) {
+  // Con SECRETO_PROXY la peticion ya paso por el Worker (exigirProxy): solo se confia en la IP que
+  // pone Cloudflare. x-forwarded-for lo puede escribir el cliente, asi que se ignora.
+  if (String(process.env.SECRETO_PROXY || "").trim()) {
+    const cf = String(req.headers["cf-connecting-ip"] || "").split(",")[0].trim();
+    return cf || String(req.ip || "");
+  }
   return String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.ip || "")
     .split(",")[0]
     .trim();
@@ -80,4 +98,4 @@ setInterval(() => {
   }
 }, VENTANA_MS).unref();
 
-module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, ipDe, MAX_EVENTOS };
+module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, ipDe, verificarEntorno, MAX_EVENTOS };

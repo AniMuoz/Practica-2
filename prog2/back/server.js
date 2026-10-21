@@ -5,7 +5,7 @@ const { precargarDatos: precargar } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
 const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
-const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, MAX_EVENTOS } = require("./seguridad");
+const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad");
 const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
 
 const app = express();
@@ -118,6 +118,7 @@ async function subirImagenesLocales() {
 }
 
 if (require.main === module) {
+  verificarEntorno();
   asegurarCubo()
     .catch((error) => {
       console.error(error.message);

@@ -28,6 +28,21 @@ const uploadFirma = multer({
   },
 });
 
+// La extension sale del tipo declarado, no del nombre del archivo que manda el cliente.
+const EXTENSION_POR_TIPO = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif" };
+
+// Comprueba los primeros bytes: el mimetype lo declara el cliente y se puede falsear.
+function esImagenReal(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  const inicio = (...bytes) => bytes.every((byte, i) => buffer[i] === byte);
+  return (
+    inicio(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) ||
+    inicio(0xff, 0xd8, 0xff) ||
+    buffer.toString("ascii", 0, 3) === "GIF" ||
+    (buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP")
+  );
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: carpetaImagenes,
@@ -35,7 +50,7 @@ const upload = multer({
       const nombres = { QR: "qr", Foto: "foto", Rombo: "rombo" };
       const campo = nombres[req.body.campo] || "rombo";
       const codigo = String(req.params.codigo).replace(/[^\w.-]/g, "_");
-      const extension = path.extname(file.originalname).toLowerCase() || ".png";
+      const extension = EXTENSION_POR_TIPO[file.mimetype] || ".png";
       cb(null, `${codigo}-${campo}${extension}`);
     },
   }),
@@ -83,6 +98,7 @@ module.exports = {
   uploadPdf,
   uploadFirma,
   upload,
+  esImagenReal,
   conColores,
   nombreConFecha,
   enviarPlanilla,
