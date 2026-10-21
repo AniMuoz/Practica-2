@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useSesion } from "./Acceso.jsx";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import Navbar from "./Navbar.jsx";
-import { crearQrPng, sinQr } from "./generarQr.js";
+import { crearQrPng, estadoQr, marcaRombo, sinQr, tieneRombo } from "./generarQr.js";
 import { filtrarFilas } from "./reglasPlanilla.js";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
@@ -48,7 +48,10 @@ export default function GeneradorQr() {
   }, [rol]);
 
   const filtradas = useMemo(() => filtrarFilas(filas, filtros), [filas, filtros]);
-  const pendientes = useMemo(() => sinQr(filtradas), [filtradas]);
+  const faltantes = useMemo(() => sinQr(filtradas), [filtradas]);
+  const desactualizados = useMemo(() => filtradas.filter((f) => estadoQr(f) === "desactualizado"), [filtradas]);
+  const pendientes = useMemo(() => [...faltantes, ...desactualizados], [faltantes, desactualizados]);
+  const romboDe = (fila) => (tieneRombo(fila) ? String(fila.Rombo).trim() : "");
 
   if (rol !== "admin") return <Navigate to="/" replace />;
 
@@ -70,8 +73,8 @@ export default function GeneradorQr() {
 
   async function generarYSubir() {
     if (!clave) return setAviso("Escribe la contraseña de datos.");
-    if (!pendientes.length) return setAviso("No hay filas sin QR con estos filtros.");
-    if (!window.confirm(`¿Generar y subir ${pendientes.length} QR a las filas que no tienen uno?`)) return;
+    if (!pendientes.length) return setAviso("No hay QR faltantes ni desactualizados con estos filtros.");
+    if (!window.confirm(`¿Generar y subir ${pendientes.length} QR (${faltantes.length} nuevos, ${desactualizados.length} a regenerar por rombo nuevo/cambiado)?`)) return;
     cancelar.current = false;
     setTrabajando(true);
     let ok = 0;
@@ -81,10 +84,12 @@ export default function GeneradorQr() {
       const codigo = String(pendientes[i].Codigo);
       setAviso(`Subiendo ${i + 1} de ${pendientes.length}...`);
       try {
-        const blob = await crearQrPng(codigo);
+        const rombo = romboDe(pendientes[i]);
+        const blob = await crearQrPng(codigo, undefined, rombo);
         const cuerpo = new FormData();
         cuerpo.append("clave", clave);
         cuerpo.append("campo", "QR");
+        if (rombo) cuerpo.append("rombo_usado", marcaRombo(rombo));
         cuerpo.append("archivo", new File([blob], `qr_${codigo}.png`, { type: "image/png" }));
         const res = await fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, { method: "POST", body: cuerpo });
         if (!res.ok) throw new Error();
@@ -110,7 +115,7 @@ export default function GeneradorQr() {
       for (let i = 0; i < filtradas.length; i++) {
         const codigo = String(filtradas[i].Codigo);
         setAviso(`Generando ${i + 1} de ${filtradas.length}...`);
-        zip.file(`qr_${codigo}.png`, await crearQrPng(codigo));
+        zip.file(`qr_${codigo}.png`, await crearQrPng(codigo, undefined, romboDe(filtradas[i])));
       }
       const url = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
       const a = document.createElement("a");
@@ -126,6 +131,7 @@ export default function GeneradorQr() {
   }
 
   const conQr = filtradas.length - pendientes.length;
+  const naranja = "#ea580c";
   const pct = filtradas.length ? Math.round((conQr / filtradas.length) * 100) : 0;
   const tarjeta = { background: "var(--fondo-tarjeta, rgba(127,127,127,0.08))", border: "1px solid var(--borde)", borderRadius: 10, padding: "14px 18px", minWidth: 150 };
   const numero = (color) => ({ fontSize: 30, fontWeight: 700, color });
@@ -165,8 +171,12 @@ export default function GeneradorQr() {
           <div style={{ fontSize: 13 }}>Con QR</div>
         </div>
         <div style={{ ...tarjeta, borderColor: "#dc2626" }}>
-          <div style={numero("#dc2626")}>{pendientes.length}</div>
+          <div style={numero("#dc2626")}>{faltantes.length}</div>
           <div style={{ fontSize: 13 }}>Sin QR (faltan)</div>
+        </div>
+        <div style={{ ...tarjeta, borderColor: naranja }}>
+          <div style={numero(naranja)}>{desactualizados.length}</div>
+          <div style={{ fontSize: 13 }}>QR desactualizados (rombo)</div>
         </div>
       </section>
       <div data-tour="qr-avance" style={{ height: 12, borderRadius: 6, background: "#dc262633", overflow: "hidden", maxWidth: 520, margin: "0 auto" }} aria-label="Avance de QR">
@@ -204,7 +214,7 @@ export default function GeneradorQr() {
       {desbloqueado && <p style={{ fontSize: 14, color: "#16a34a", margin: "0 0 12px" }}>Contraseña aceptada.</p>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
         <button type="button" style={botonAccion(habilitado)} disabled={!habilitado} onClick={generarYSubir}>
-          Generar y subir {pendientes.length} QR faltantes
+          Generar y subir {pendientes.length} QR (faltantes y desactualizados)
         </button>
         <button type="button" style={botonAccion(habilitado)} disabled={!habilitado} onClick={descargarZip}>
           Descargar ZIP de los filtrados

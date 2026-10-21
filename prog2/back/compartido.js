@@ -51,7 +51,14 @@ const upload = multer({
       const campo = nombres[req.body.campo] || "rombo";
       const codigo = String(req.params.codigo).replace(/[^\w.-]/g, "_");
       const extension = EXTENSION_POR_TIPO[file.mimetype] || ".png";
-      cb(null, `${codigo}-${campo}${extension}`);
+      // El rombo lleva marca de tiempo para que cambiarlo cambie siempre su nombre.
+      // El QR lleva la marca del rombo que incrusta (rombo_usado) para detectar QR desactualizados.
+      let sufijo = "";
+      if (req.body.campo === "Rombo") sufijo = `-${Date.now().toString(36)}`;
+      else if (req.body.campo === "QR" && req.body.rombo_usado) {
+        sufijo = `-r${String(req.body.rombo_usado).replace(/[^\w]/g, "").slice(-24)}`;
+      }
+      cb(null, `${codigo}-${campo}${sufijo}${extension}`);
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
