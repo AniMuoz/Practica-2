@@ -131,9 +131,28 @@ export default function Admin() {
     return { filas: pares.map((p) => p.fila), marcados: marcados ? pares.map((p) => marcados[p.i]) : undefined };
   }
   const detalladoFiltrado = aplicarFiltrosStock(detallado.filas, 1, detallado.marcados);
+  const [verFiltrosStock, setVerFiltrosStock] = useState(true);
   const panelFiltros = (
-    <div style={{ marginBottom: 12 }}>
-      <FiltrosTabla filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
+    <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+        <button
+          type="button"
+          className="filtros-limpiar"
+          onClick={() => setVerFiltrosStock((v) => !v)}
+        >
+          {verFiltrosStock ? "Ocultar filtros" : "Mostrar filtros"}
+        </button>
+        <button
+          type="button"
+          className="filtros-limpiar"
+          onClick={() => setFiltrosStock(FILTROS_INICIALES)}
+        >
+          Limpiar filtros
+        </button>
+      </div>
+      {verFiltrosStock && (
+        <FiltrosTabla filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
+      )}
     </div>
   );
   const filasInventario = aplicarFiltrosStock(
