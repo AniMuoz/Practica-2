@@ -220,13 +220,19 @@ const PASOS = {
     {
       id: "auditoria-filas",
       titulo: "Filas del folio",
-      texto: "Muestra los viajes registrados en el folio elegido: chofer, patente, ruta, horarios y kilómetros. Debajo del detalle aparece el historial de cambios de ese folio, con el usuario de cada uno.",
+      texto: "Al entrar se abre el último folio; presiona otro de la lista para cambiarlo. Muestra los viajes registrados: chofer, patente, ruta, horarios y kilómetros.",
     },
     {
       id: "auditoria-firmas",
       titulo: "Historial de firmas",
       texto:
         "Muestra las firmas que fueron quitadas, con la fecha en que se firmaron y se quitaron, el motivo y una huella de la firma.",
+    },
+    {
+      id: "auditoria-log",
+      titulo: "Historial de cambios del folio",
+      texto:
+        "Lista todo lo que se hizo en este folio, del más reciente al más antiguo, con el usuario que hizo cada cambio. Los cambios de un folio eliminado también se conservan.",
     },
   ],
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 
@@ -70,7 +70,7 @@ function TablaLog({ eventos, conFolio = true }) {
   );
 }
 
-function Actividad() {
+function Actividad({ alListo }) {
   const [filtros, setFiltros] = useState({ usuario: "", accion: "", folio: "", desde: "", hasta: "" });
   const [pagina, setPagina] = useState(1);
   const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
@@ -84,7 +84,8 @@ function Actividad() {
         setError("");
         setDatos(d);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(e.message))
+      .finally(() => alListo?.());
   }
 
   useEffect(() => {
@@ -126,7 +127,7 @@ function Actividad() {
   );
 }
 
-function Folios() {
+function Folios({ alListo }) {
   const [folios, setFolios] = useState([]);
   const [error, setError] = useState("");
   const [detalle, setDetalle] = useState(null);
@@ -134,13 +135,18 @@ function Folios() {
 
   useEffect(() => {
     leer("/api/bitacora/auditoria")
-      .then((data) => setFolios(data.folios || []))
-      .catch((e) => setError(e.message));
+      .then((data) => {
+        const lista = data.folios || [];
+        setFolios(lista);
+        return lista.length ? abrir(lista[0].folio) : null;
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => alListo?.());
   }, []);
 
   function abrir(folio) {
     setErrorDetalle("");
-    leer(`/api/bitacora/auditoria/${folio}`)
+    return leer(`/api/bitacora/auditoria/${folio}`)
       .then(setDetalle)
       .catch((e) => {
         setDetalle(null);
@@ -232,7 +238,7 @@ function Folios() {
               </table>
             </div>
           )}
-          <h3 style={{ fontSize: 16 }}>Historial de cambios</h3>
+          <h3 data-tour="auditoria-log" style={{ fontSize: 16 }}>Historial de cambios</h3>
           <TablaLog eventos={detalle.log || []} conFolio={false} />
         </section>
       )}
@@ -241,9 +247,16 @@ function Folios() {
 }
 
 export default function Auditoria() {
+  const [listos, setListos] = useState(0);
+  const sumar = useCallback(() => setListos((n) => n + 1), []);
+
   useEffect(() => {
-    if (recorridoPendiente("auditoria")) iniciarRecorrido("auditoria");
-  }, []);
+    if (listos < 2) return;
+    const espera = setTimeout(() => {
+      if (recorridoPendiente("auditoria")) iniciarRecorrido("auditoria");
+    }, 300);
+    return () => clearTimeout(espera);
+  }, [listos]);
 
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
@@ -251,11 +264,11 @@ export default function Auditoria() {
       <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras</h1>
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 24 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Actividad</h2>
-        <Actividad />
+        <Actividad alListo={sumar} />
       </section>
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Folios</h2>
-        <Folios />
+        <Folios alListo={sumar} />
       </section>
     </main>
   );
