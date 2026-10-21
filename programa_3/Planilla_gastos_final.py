@@ -105,6 +105,7 @@ def celda_monto(hoja, fila, valor, negrita=False, relleno=False):
     return celda
 
 
+
 def armar_detalle(data, topicos, mes):
     guardias = openpyxl.Workbook()
     hoja = guardias.active
