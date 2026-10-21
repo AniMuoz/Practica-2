@@ -315,7 +315,7 @@ test("registrarCarga guarda la fecha en Supabase y actualiza el resumen", async 
 test("registrarCarga informa un fallo de Supabase como 502 y no cambia el resumen", async () => {
   const { registrarCarga, leerUltimasCargas } = cargar();
   errorUpsert = { message: "sin conexión" };
-  await assert.rejects(registrarCarga("sap"), { status: 502, message: "sin conexión" });
+  await assert.rejects(registrarCarga("sap"), { status: 502, message: "Supabase no respondió." });
   assert.deepEqual(leerUltimasCargas(), {});
 });
 

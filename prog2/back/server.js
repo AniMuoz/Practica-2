@@ -5,7 +5,7 @@ const { precargarDatos: precargar } = require("./fuenteDatos");
 const { supabase } = require("./supabase");
 const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
-const { middlewareCors, cabecerasSeguras, limitarPeticiones, MAX_EVENTOS } = require("./seguridad");
+const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, MAX_EVENTOS } = require("./seguridad");
 const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
 
 const app = express();
@@ -19,6 +19,7 @@ app.use(express.json({ limit: "1mb" }));
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
 });
+app.use(exigirProxy);
 if (require.main === module) {
   app.use("/api", limitarPeticiones);
   app.use("/api", protegerApi);
@@ -78,7 +79,8 @@ app.get("/api/eventos", (req, res) => {
 
 function respuestaConexion(error) {
   if (error && error.code !== "PGRST205" && error.code !== "42P01") {
-    return { status: 502, cuerpo: { conectado: false, error: error.message } };
+    console.error(error);
+    return { status: 502, cuerpo: { conectado: false, error: "No se pudo consultar la base de datos." } };
   }
   return { status: 200, cuerpo: { conectado: true } };
 }

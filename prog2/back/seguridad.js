@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const cors = require("cors");
 
 const VENTANA_MS = 60 * 1000;
@@ -25,6 +26,22 @@ function cabecerasSeguras(_req, res, next) {
   res.setHeader("Cross-Origin-Resource-Policy", "same-site");
   res.setHeader("Strict-Transport-Security", "max-age=15552000");
   res.removeHeader("X-Powered-By");
+  next();
+}
+
+function exigirProxy(req, res, next) {
+  const esperado = String(process.env.SECRETO_PROXY || "");
+  if (!esperado || req.path === "/healthz") {
+    next();
+    return;
+  }
+  const recibido = String(req.get("x-secreto-proxy") || "");
+  const a = Buffer.from(recibido);
+  const b = Buffer.from(esperado);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    res.status(403).json({ error: "Origen no autorizado." });
+    return;
+  }
   next();
 }
 
@@ -63,4 +80,4 @@ setInterval(() => {
   }
 }, VENTANA_MS).unref();
 
-module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, ipDe, MAX_EVENTOS };
+module.exports = { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, ipDe, MAX_EVENTOS };

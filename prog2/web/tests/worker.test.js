@@ -4,7 +4,7 @@ import worker from "../worker.js";
 
 const DESTINO = "https://practica-2-vnu7.onrender.com";
 
-async function conFetchFalso(solicitud, respuesta = new Response("ok")) {
+async function conFetchFalso(solicitud, respuesta = new Response("ok"), secreto = "") {
   const original = globalThis.fetch;
   const llamadas = [];
   globalThis.fetch = async (url, opciones) => {
@@ -12,7 +12,9 @@ async function conFetchFalso(solicitud, respuesta = new Response("ok")) {
     return respuesta;
   };
   try {
-    const resultado = await worker.fetch(solicitud, { API: DESTINO });
+    const env = { API: DESTINO };
+    if (secreto) env.SECRETO_PROXY = secreto;
+    const resultado = await worker.fetch(solicitud, env);
     return { llamadas, resultado };
   } finally {
     globalThis.fetch = original;
@@ -55,6 +57,15 @@ test("el worker devuelve tal cual la respuesta de la API, incluidos los errores"
   const { resultado } = await conFetchFalso(new Request("https://miapp.example.com/api/acceso", { method: "POST", body: "{}" }), respuesta);
   assert.equal(resultado, respuesta);
   assert.equal(resultado.status, 403);
+});
+
+test("el worker reemplaza x-secreto-proxy con SECRETO_PROXY", async () => {
+  const { llamadas } = await conFetchFalso(
+    new Request("https://miapp.example.com/api/x", { headers: { "x-secreto-proxy": "falso" } }),
+    new Response("ok"),
+    "secreto-real"
+  );
+  assert.equal(llamadas[0].opciones.headers.get("x-secreto-proxy"), "secreto-real");
 });
 
 test("sin la variable API de Cloudflare responde 500", async () => {

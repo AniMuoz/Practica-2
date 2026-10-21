@@ -28,7 +28,8 @@ function falloBd(error) {
   if (error.code === "PGRST205" || error.code === "42P01") {
     throw errorHttp(503, "En Supabase falta la tabla usuarios. Ejecuta prog2/back/esquema.sql en el SQL Editor.");
   }
-  throw errorHttp(502, error.message);
+  console.error(error);
+  throw errorHttp(502, "No se pudo consultar la base de datos.");
 }
 
 const cacheUsuarios = new Map();
@@ -240,6 +241,7 @@ function rutasAuth(app) {
         registrarFallo(llaveUsuario);
         throw errorHttp(401, "Usuario o contraseña incorrectos.");
       }
+      if (registro.rol === "desactivado") throw errorHttp(403, MENSAJE_DESACTIVADA);
       intentos.delete(llave);
       intentos.delete(llaveUsuario);
       ponerCookie(req, res, crearToken(registro), DURACION_MS);

@@ -140,7 +140,7 @@ test("un fallo de Supabase se traduce a 503 si falta la tabla y a 502 en otro ca
   errorBd = { code: "PGRST205", message: "no existe" };
   await assert.rejects(contarUsuarios(), { status: 503 });
   errorBd = { code: "XX", message: "red caída" };
-  await assert.rejects(contarUsuarios(), { status: 502, message: "red caída" });
+  await assert.rejects(contarUsuarios(), { status: 502, message: "No se pudo consultar la base de datos." });
   const respuesta = await pedir("POST", "/api/login", { cuerpo: { usuario: "sin-cache-bd", clave: "x" } });
   assert.equal(respuesta.status, 502);
   errorBd = null;
@@ -167,6 +167,13 @@ test("la cookie lleva Secure cuando la petición llegó por https", async () => 
     cabeceras: { "x-forwarded-proto": "https" },
   });
   assert.match(respuesta.cookies[0], /Secure/);
+});
+
+test("una cuenta desactivada no recibe cookie", async () => {
+  await guardarUsuario("baja", "clave-segura-1", "desactivado");
+  const respuesta = await pedir("POST", "/api/login", { cuerpo: { usuario: "baja", clave: "clave-segura-1" } });
+  assert.equal(respuesta.status, 403);
+  assert.equal(respuesta.cookies.length, 0);
 });
 
 test("login con clave incorrecta o usuario inexistente da el mismo 401", async () => {

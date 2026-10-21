@@ -42,7 +42,8 @@ function falloBd(error) {
   if (error.code === "PGRST205" || error.code === "42P01" || error.code === "42703") {
     throw errorHttp(503, "En Supabase faltan las tablas de la bitácora. Ejecuta prog2/back/esquema.sql en el SQL Editor y vuelve a intentar.");
   }
-  throw errorHttp(502, error.message || "Supabase no respondió.");
+  console.error(error);
+  throw errorHttp(502, "Supabase no respondió.");
 }
 
 function exigirClave(clave) {

@@ -133,11 +133,11 @@ test("una operación desconocida no toca tablas", async () => {
   await assert.rejects(() => main({ operacion: "otra" }), /desconocida/);
 });
 
-test("subir imagen crea el cubo público y reemplaza el archivo", async () => {
+test("subir imagen crea el cubo privado y reemplaza el archivo", async () => {
   const cliente = clienteStorage();
   await subirImagen("a-foto.png", Buffer.from("hola"), "image/png", cliente);
   assert.equal(cliente.llamadas[0].nombre, "imagenes");
-  assert.equal(cliente.llamadas[0].opciones.public, true);
+  assert.equal(cliente.llamadas[0].opciones.public, false);
   assert.equal(cliente.llamadas[1].opciones.upsert, true);
   assert.equal(cliente.llamadas[1].opciones.contentType, "image/png");
 });
@@ -153,7 +153,7 @@ test("un fallo al crear el cubo responde 502", async () => {
   const cliente = clienteStorage({ crear: { message: "permiso denegado" } });
   await assert.rejects(() => subirImagen("a.png", Buffer.from("x"), "image/png", cliente), (error) => {
     assert.equal(error.status, 502);
-    assert.match(error.message, /permiso/);
+    assert.equal(error.message, "No se pudo guardar la imagen.");
     return true;
   });
 });

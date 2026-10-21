@@ -10,6 +10,8 @@ export default {
       const headers = new Headers(request.headers);
       headers.delete("host");
       headers.delete("content-length");
+      const secreto = String(env?.SECRETO_PROXY || "").trim();
+      if (secreto) headers.set("x-secreto-proxy", secreto);
       return await fetch(destino, {
         method: request.method,
         headers,

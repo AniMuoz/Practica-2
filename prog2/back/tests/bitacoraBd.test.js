@@ -173,7 +173,7 @@ test("los fallos de Supabase se traducen: tablas faltantes a 503 y el resto a 50
     await assert.rejects(bitacora.crearFolio(CLAVE), { status: 503, message: /esquema\.sql/ });
   }
   fallos["bitacora_folios.insert"] = { code: "XX", message: "sin red" };
-  await assert.rejects(bitacora.crearFolio(CLAVE), { status: 502, message: "sin red" });
+  await assert.rejects(bitacora.crearFolio(CLAVE), { status: 502, message: "Supabase no respondió." });
   fallos["bitacora_folios.insert"] = { code: "XX" };
   await assert.rejects(bitacora.crearFolio(CLAVE), { status: 502, message: "Supabase no respondió." });
 });

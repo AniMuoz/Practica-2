@@ -194,7 +194,7 @@ test("actualizarMaterial con un inventario vacío conserva el valor anterior y c
 test("un fallo de Supabase al guardar se informa como 502 y no cambia la tabla", async () => {
   const nucleo = cargar();
   errorSupabase = { message: "sin conexión" };
-  await assert.rejects(nucleo.actualizarMaterial("100", { inventario: "9", comentario: "" }), { status: 502, message: "sin conexión" });
+  await assert.rejects(nucleo.actualizarMaterial("100", { inventario: "9", comentario: "" }), { status: 502, message: "Supabase no respondió." });
   assert.notEqual(String(filaDe(nucleo, "100").Inventario), "9");
 });
 

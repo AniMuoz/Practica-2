@@ -3,13 +3,14 @@ const { supabase } = require("./supabase");
 const CUBO = "imagenes";
 
 function fallo(error) {
-  const propio = new Error(error.message || "No se pudo guardar la imagen.");
+  console.error(error);
+  const propio = new Error("No se pudo guardar la imagen.");
   propio.status = 502;
   throw propio;
 }
 
 async function asegurarCubo(cliente = supabase) {
-  const { error } = await cliente.storage.createBucket(CUBO, { public: true });
+  const { error } = await cliente.storage.createBucket(CUBO, { public: false });
   if (!error) return;
   if (/already exists|duplicate/i.test(error.message)) return;
   fallo(error);

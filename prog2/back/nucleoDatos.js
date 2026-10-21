@@ -319,7 +319,8 @@ function editarMateriales() {
 }
 
 function falloSupabase(error) {
-  const fallo = new Error(error.message || "Supabase no respondió.");
+  console.error(error);
+  const fallo = new Error("Supabase no respondió.");
   fallo.status = 502;
   throw fallo;
 }

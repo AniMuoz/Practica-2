@@ -3,7 +3,7 @@ process.env.ALLOWED_ORIGINS = "https://app.test/, https://otra.test";
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { middlewareCors, cabecerasSeguras, limitarPeticiones, MAX_EVENTOS } = require("../seguridad");
+const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, MAX_EVENTOS } = require("../seguridad");
 
 function resFalsa() {
   const res = { headers: {}, quitados: [], codigo: 200, cuerpo: null };
@@ -55,6 +55,27 @@ test("middlewareCors permite solo origenes listados (ignora barra final)", () =>
   assert.equal(ejecutarCors("https://app.test")["Access-Control-Allow-Origin"], "https://app.test");
   assert.equal(ejecutarCors("https://otra.test")["Access-Control-Allow-Origin"], "https://otra.test");
   assert.equal(ejecutarCors("https://malo.test")["Access-Control-Allow-Origin"], undefined);
+});
+
+test("exigirProxy deja pasar /healthz y exige el secreto en el resto", () => {
+  const anterior = process.env.SECRETO_PROXY;
+  process.env.SECRETO_PROXY = "secreto-real";
+  try {
+    let salud = false;
+    exigirProxy({ path: "/healthz", get: () => "" }, resFalsa(), () => { salud = true; });
+    assert.equal(salud, true);
+    const rechazado = resFalsa();
+    let paso = false;
+    exigirProxy({ path: "/api/login", get: () => "otro" }, rechazado, () => { paso = true; });
+    assert.equal(paso, false);
+    assert.equal(rechazado.codigo, 403);
+    let ok = false;
+    exigirProxy({ path: "/api/login", get: (nombre) => (nombre === "x-secreto-proxy" ? "secreto-real" : "") }, resFalsa(), () => { ok = true; });
+    assert.equal(ok, true);
+  } finally {
+    if (anterior === undefined) delete process.env.SECRETO_PROXY;
+    else process.env.SECRETO_PROXY = anterior;
+  }
 });
 
 test("limitarPeticiones bloquea con 429 al superar el maximo por IP", () => {

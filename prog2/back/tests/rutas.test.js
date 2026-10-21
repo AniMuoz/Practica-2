@@ -583,7 +583,7 @@ test("GET /api/supabase informa si hay conexión", async () => {
   assert.equal((await pedir("GET", "/api/supabase")).status, 200);
   errorConexion = { code: "XX", message: "sin red" };
   const caida = await pedir("GET", "/api/supabase");
-  assert.deepEqual([caida.status, caida.json], [502, { conectado: false, error: "sin red" }]);
+  assert.deepEqual([caida.status, caida.json], [502, { conectado: false, error: "No se pudo consultar la base de datos." }]);
 });
 
 test("/api/eventos avisa a los clientes conectados cuando cambia un material", async () => {
