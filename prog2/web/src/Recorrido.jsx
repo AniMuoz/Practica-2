@@ -190,7 +190,7 @@ const PASOS = {
     {
       id: "gastos-formulario",
       titulo: "Datos de la boleta",
-      texto: "Elige el tópico, escribe proveedor, N° de boleta y monto (entero), elige la fecha en el calendario y presiona Agregar para sumarla a la tabla.",
+      texto: "Elige un tópico, escribe proveedor, N° de boleta y monto (entero), elige la fecha en el calendario y presiona Agregar para sumarla a la tabla.",
     },
     {
       id: "gastos-acciones",
