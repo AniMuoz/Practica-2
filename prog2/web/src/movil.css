@@ -180,6 +180,24 @@ select {
   align-items: center;
 }
 
+.filtros-panel.filtros-centrado {
+  grid-template-columns: repeat(2, max-content);
+  justify-content: center;
+  justify-items: center;
+  column-gap: 48px;
+  margin-top: 0;
+}
+
+.filtros-centrado .filtros-col:not(.filtros-campos) {
+  justify-items: start;
+}
+
+@media (max-width: 800px) {
+  .filtros-panel.filtros-centrado {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filtros-col {
   display: grid;
   gap: 12px;

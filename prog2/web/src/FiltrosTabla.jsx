@@ -13,12 +13,12 @@ const CHECKS = [
 ];
 
 // Mismos filtros que la tabla principal (ver filtrarFilas en reglasPlanilla.js).
-export default function FiltrosTabla({ filas, filtros, onChange }) {
+export default function FiltrosTabla({ filas, filtros, onChange, centrado = false }) {
   const poner = (clave, valor) => onChange({ ...filtros, [clave]: valor });
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   return (
-    <div className="filtros-panel">
+    <div className={centrado ? "filtros-panel filtros-centrado" : "filtros-panel"}>
       <div className="filtros-col filtros-campos">
         <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
           Bodega

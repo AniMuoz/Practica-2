@@ -132,26 +132,35 @@ export default function Admin() {
   }
   const detalladoFiltrado = aplicarFiltrosStock(detallado.filas, 1, detallado.marcados);
   const [verFiltrosStock, setVerFiltrosStock] = useState(true);
+  const estiloBotonFiltro = {
+    padding: "8px 14px",
+    border: 0,
+    borderRadius: 6,
+    background: "var(--boton)",
+    color: "var(--sobre)",
+    fontSize: 14,
+    cursor: "pointer",
+  };
   const panelFiltros = (
     <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
         <button
           type="button"
-          className="filtros-limpiar"
+          style={estiloBotonFiltro}
           onClick={() => setVerFiltrosStock((v) => !v)}
         >
           {verFiltrosStock ? "Ocultar filtros" : "Mostrar filtros"}
         </button>
         <button
           type="button"
-          className="filtros-limpiar"
+          style={estiloBotonFiltro}
           onClick={() => setFiltrosStock(FILTROS_INICIALES)}
         >
           Limpiar filtros
         </button>
       </div>
       {verFiltrosStock && (
-        <FiltrosTabla filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
+        <FiltrosTabla centrado filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
       )}
     </div>
   );
