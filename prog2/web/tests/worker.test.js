@@ -4,7 +4,7 @@ import worker from "../worker.js";
 
 const DESTINO = "https://practica-2-vnu7.onrender.com";
 
-async function conFetchFalso(solicitud, respuesta = new Response("ok"), secreto = "") {
+async function conFetchFalso(solicitud, respuesta = new Response("ok"), secreto = "secreto-de-prueba") {
   const original = globalThis.fetch;
   const llamadas = [];
   globalThis.fetch = async (url, opciones) => {
@@ -66,6 +66,12 @@ test("el worker reemplaza x-secreto-proxy con SECRETO_PROXY", async () => {
     "secreto-real"
   );
   assert.equal(llamadas[0].opciones.headers.get("x-secreto-proxy"), "secreto-real");
+});
+
+test("sin SECRETO_PROXY responde 500 y no llama a la API", async () => {
+  const resultado = await worker.fetch(new Request("https://miapp.example.com/api/sesion"), { API: DESTINO });
+  assert.equal(resultado.status, 500);
+  assert.equal(await resultado.text(), "Falta SECRETO_PROXY en Cloudflare");
 });
 
 test("sin la variable API de Cloudflare responde 500", async () => {

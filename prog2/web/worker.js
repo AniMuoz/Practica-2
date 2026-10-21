@@ -4,14 +4,15 @@ export default {
   async fetch(request, env) {
     const API = String(env?.API || API_BUILD || "").trim();
     if (!API) return new Response("Falta la variable API en Cloudflare", { status: 500 });
+    const secreto = String(env?.SECRETO_PROXY || "").trim();
+    if (!secreto) return new Response("Falta SECRETO_PROXY en Cloudflare", { status: 500 });
     try {
       const url = new URL(request.url);
       const destino = new URL(url.pathname + url.search, API);
       const headers = new Headers(request.headers);
       headers.delete("host");
       headers.delete("content-length");
-      const secreto = String(env?.SECRETO_PROXY || "").trim();
-      if (secreto) headers.set("x-secreto-proxy", secreto);
+      headers.set("x-secreto-proxy", secreto);
       return await fetch(destino, {
         method: request.method,
         headers,

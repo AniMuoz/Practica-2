@@ -30,12 +30,12 @@ function cabecerasSeguras(_req, res, next) {
 }
 
 function exigirProxy(req, res, next) {
-  const esperado = String(process.env.SECRETO_PROXY || "");
+  const esperado = String(process.env.SECRETO_PROXY || "").trim();
   if (!esperado || req.path === "/healthz") {
     next();
     return;
   }
-  const recibido = String(req.get("x-secreto-proxy") || "");
+  const recibido = String(req.get("x-secreto-proxy") || "").trim();
   const a = Buffer.from(recibido);
   const b = Buffer.from(esperado);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
