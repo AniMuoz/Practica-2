@@ -33,10 +33,4 @@ if (actualizado === fuente) {
 }
 fs.writeFileSync(worker, actualizado);
 
-const wrangler = path.join(raiz, "wrangler.toml");
-if (fs.existsSync(wrangler)) {
-  const toml = fs.readFileSync(wrangler, "utf8").replace(/API = ".*"/, `API = ${JSON.stringify(api)}`);
-  fs.writeFileSync(wrangler, toml);
-}
-
 console.log("API aplicada:", api);

@@ -136,7 +136,7 @@ Rutas de la interfaz (`src/main.jsx`):
 
 Otros: `Acceso.jsx` (login), `Navbar.jsx`, `Planilla.jsx`, `Bitacora.jsx`, `FiltrosTabla.jsx`, `ColoresPlanilla.jsx`, `Recorrido.jsx` (tutorial guiado), `reglasPlanilla.js` (filtros, colores y paginación puros), `admin/` (componentes `VistaPrevia`, `Interruptor`), estilos `admin.css` y `movil.css`.
 
-Despliegue: `incrustar-api.js`/`api-build.js`/`aplicar-env.js` inyectan la URL de la API al build; `wrangler.toml|jsonc` configura Cloudflare; `public/_headers` define cabeceras.
+Despliegue: `incrustar-api.js`/`api-build.js`/`aplicar-env.js` inyectan la URL de la API al build; `wrangler.jsonc` configura Cloudflare; `public/_headers` define cabeceras.
 
 ```bash
 cd prog2/web
