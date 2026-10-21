@@ -83,7 +83,25 @@ const PASOS = {
       id: "Bitacora camion",
       titulo: "Bitácora de camiones",
       texto:
-        "Abre la bitácora de camiones. Ahí se consultan o crean folios y se registran los viajes: fecha, chofer, patente, ruta, horarios, kilómetros y firma. Al subir la imagen de la firma hay que confirmar el RUT de la fila. Queda marcada como Vigente, con la hora. Si después cambian los datos del viaje, pasa a Vencida. Para quitarla hay que indicar un motivo: ese historial se ve en la pantalla y no sale en el Excel. El folio se puede descargar.",
+        "Abre la bitácora de camiones. Ahí se consultan o crean folios y se registran los viajes: fecha, chofer, patente, ruta, horarios, kilómetros y firma. Cada cambio que hagas queda registrado con tu usuario y se ve en Auditoría.",
+    },
+    {
+      id: "bitacora-buscador",
+      titulo: "Buscar o generar un folio",
+      texto:
+        "Escribe un número y presiona Consultar folio para abrirlo, o usa Generar nuevo folio. El número del último folio es un enlace: púlsalo para abrirlo directo.",
+    },
+    {
+      id: "bitacora-acciones",
+      titulo: "Acciones del folio",
+      texto:
+        "Muestra el folio abierto, cuántas filas tiene y si los cambios ya están guardados. Añadir fila agrega un viaje, Descargar planilla baja el Excel y Eliminar folio pide una doble confirmación.",
+    },
+    {
+      id: "bitacora-tabla",
+      titulo: "Tabla de viajes",
+      texto:
+        "Las columnas están agrupadas por color: Viaje, Horarios, Kilometraje, Detalle y Firma. Cada celda se guarda sola al salir de ella y KM/RECO se calcula. Al subir la imagen de la firma hay que confirmar el RUT de la fila: queda Vigente, y si después cambian los datos del viaje pasa a Vencida. Para quitarla hay que indicar un motivo, que queda en el historial de Auditoría y no sale en el Excel.",
     },
     {
       id: "Stock en bodega",
@@ -188,6 +206,12 @@ const PASOS = {
   ],
   auditoria: [
     {
+      id: "auditoria-actividad",
+      titulo: "Actividad",
+      texto:
+        "Muestra cada cambio hecho en las bitácoras: fecha y hora, qué usuario lo hizo y qué cambió (por ejemplo, el valor anterior y el nuevo de una celda). Se puede filtrar por usuario, acción, folio y fechas.",
+    },
+    {
       id: "auditoria-folios",
       titulo: "Folios de bitácora",
       texto:
@@ -196,7 +220,7 @@ const PASOS = {
     {
       id: "auditoria-filas",
       titulo: "Filas del folio",
-      texto: "Muestra los viajes registrados en el folio elegido: chofer, patente, ruta, horarios y kilómetros.",
+      texto: "Muestra los viajes registrados en el folio elegido: chofer, patente, ruta, horarios y kilómetros. Debajo del detalle aparece el historial de cambios de ese folio, con el usuario de cada uno.",
     },
     {
       id: "auditoria-firmas",

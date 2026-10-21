@@ -395,7 +395,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
       <p style={{ margin: "0 0 14px", fontSize: 13, opacity: 0.8 }}>
         Busca un folio existente o genera uno nuevo. Los cambios se guardan solos al salir de cada celda y quedan registrados en Auditoría con tu usuario.
       </p>
-      <form onSubmit={consultarFolio} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12, padding: 12, border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
+      <form data-tour="bitacora-buscador" onSubmit={consultarFolio} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12, padding: 12, border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
         <input
           type="text"
           inputMode="numeric"
@@ -443,7 +443,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
       )}
       {folio && (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12 }}>
+          <div data-tour="bitacora-acciones" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12 }}>
             <strong style={{ fontSize: 18 }}>Folio N.º {folio.folio}</strong>
             <span style={{ fontSize: 13, opacity: 0.8 }}>
               {folio.filas.length} {folio.filas.length === 1 ? "fila" : "filas"}
@@ -461,7 +461,7 @@ export default function Bitacora({ clave, colores, alPendiente }) {
               Eliminar folio
             </button>
           </div>
-          <div style={{ overflow: "auto", maxHeight: "70vh", border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
+          <div data-tour="bitacora-tabla" style={{ overflow: "auto", maxHeight: "70vh", border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
             <table style={{ borderCollapse: "separate", borderSpacing: 0, fontSize: 14 }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 2 }}>
                 <tr>
