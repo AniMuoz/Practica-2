@@ -61,7 +61,7 @@ export async function crearQrPng(codigo, base = URL_BASE_QR, rombo = "") {
     await QRCode.toCanvas(canvas, urlQr(codigo, base), { width: ancho, margin: 4, errorCorrectionLevel: imagenRombo ? "H" : "M" });
     if (imagenRombo) {
       const c = canvas.getContext("2d");
-      const lado = Math.round(canvas.width * 0.22);
+      const lado = Math.round(canvas.width * 0.28);
       const razon = Math.min(lado / imagenRombo.width, lado / imagenRombo.height);
       const w = Math.round(imagenRombo.width * razon);
       const h = Math.round(imagenRombo.height * razon);
