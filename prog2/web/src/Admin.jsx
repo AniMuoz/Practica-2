@@ -9,12 +9,14 @@ import Bitacora from "./Bitacora.jsx";
 import VistaPrevia from "./admin/VistaPrevia.jsx";
 import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
+import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
   colorCantidad,
   colorLibre,
   colorStockDetallado,
   filasInventarioVisibles,
+  filtrarFilas,
   rutaExcel,
   rutaExcelInventario,
   validarContratistas,
@@ -104,11 +106,40 @@ export default function Admin() {
     setCopiarExistencia(false);
     setCopiarInventario(true);
   }
-  const filasInventario = filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia);
   const [mostrarDetallado, setMostrarDetallado] = useState(false);
   const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
   const [avisoDetallado, setAvisoDetallado] = useState("");
+  const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
+  const [filasMaestro, setFilasMaestro] = useState([]);
+  const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarDetallado;
+  useEffect(() => {
+    if (!autorizado || !hayPanelStock) return;
+    fetch("/api/tabla", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => setFilasMaestro(data.filas || []))
+      .catch(() => {});
+  }, [autorizado, hayPanelStock]);
+  const filasMaestroFiltradas = filtrarFilas(filasMaestro, filtrosStock);
+  const codigosFiltrados = new Set(filasMaestroFiltradas.map((f) => String(f.Codigo)));
+  const ordenCodigos = new Map(filasMaestroFiltradas.map((f, i) => [String(f.Codigo), i]));
+  function aplicarFiltrosStock(filas, indiceCodigo, marcados) {
+    const pares = filas
+      .map((fila, i) => ({ fila, i }))
+      .filter(({ fila }) => codigosFiltrados.has(String(fila[indiceCodigo])))
+      .sort((a, b) => (ordenCodigos.get(String(a.fila[indiceCodigo])) ?? 0) - (ordenCodigos.get(String(b.fila[indiceCodigo])) ?? 0));
+    return { filas: pares.map((p) => p.fila), marcados: marcados ? pares.map((p) => marcados[p.i]) : undefined };
+  }
+  const detalladoFiltrado = aplicarFiltrosStock(detallado.filas, 1, detallado.marcados);
+  const panelFiltros = (
+    <div style={{ marginBottom: 12 }}>
+      <FiltrosTabla filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
+    </div>
+  );
+  const filasInventario = aplicarFiltrosStock(
+    filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia),
+    0
+  ).filas;
   const [mostrarReserva, setMostrarReserva] = useState(false);
   const [archivoReserva, setArchivoReserva] = useState(null);
   const [reserva, setReserva] = useState({ columnas: [], filas: [] });
@@ -908,11 +939,12 @@ export default function Admin() {
               Descargar planilla
             </a>
           </div>
+          {panelFiltros}
           {cargandoBodega && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoBodega && <p style={{ margin: 0 }}>{avisoBodega}</p>}
           {!cargandoBodega && !avisoBodega && (
             <VistaPrevia
-              filas={bodega.filas}
+              filas={aplicarFiltrosStock(bodega.filas, 0).filas}
               columnas={bodega.columnas.length}
               className={clasePlanilla}
               vacio="No hay stock de M501 cargado."
@@ -985,11 +1017,12 @@ export default function Admin() {
               Descargar planilla
             </a>
           </div>
+          {panelFiltros}
           {cargandoRegional && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoRegional && <p style={{ margin: 0 }}>{avisoRegional}</p>}
           {!cargandoRegional && !avisoRegional && (
             <VistaPrevia
-              filas={regional.filas}
+              filas={aplicarFiltrosStock(regional.filas, 0).filas}
               columnas={regional.columnas.length}
               className={clasePlanilla}
               vacio="No hay stock regional cargado."
@@ -1067,6 +1100,7 @@ export default function Admin() {
             </a>
             </div>
           </div>
+          {panelFiltros}
           {cargandoInventario && <p style={{ margin: 0 }}>Cargando inventario...</p>}
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
           {!cargandoInventario && !avisoInventario && (
@@ -1185,11 +1219,12 @@ export default function Admin() {
               Descargar planilla
             </a>
           </div>
+          {panelFiltros}
           {cargandoDetallado && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
             <VistaPrevia
-              filas={detallado.filas}
+              filas={detalladoFiltrado.filas}
               columnas={detallado.columnas.length}
               className={clasePlanilla}
               vacio="No hay stock detallado cargado."
@@ -1197,7 +1232,7 @@ export default function Admin() {
                 <tr key={`${fila[1]}-${indice}`}>
                   {fila.map((valor, columna) => {
                     const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
-                    const fondo = colorStockDetallado(columna, valor, detallado.marcados?.[indice]);
+                    const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice]);
                     return (
                       <td
                         key={columna}
