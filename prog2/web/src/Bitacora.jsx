@@ -15,6 +15,20 @@ const COLUMNAS = [
   { campo: "firma", titulo: "FIRMA", ancho: 220 },
 ];
 
+const GRUPOS = [
+  { titulo: "Viaje", campos: ["fecha", "chofer", "rut", "patente", "ruta"], fondo: "#d6ecf5" },
+  { titulo: "Horarios", campos: ["h_salida", "h_llegada"], fondo: "#e3f2d9" },
+  { titulo: "Kilometraje", campos: ["km_ini", "km_term", "km_reco"], fondo: "#fbeccb" },
+  { titulo: "Detalle", campos: ["observacion"], fondo: "#ece0f5" },
+  { titulo: "Firma", campos: ["firma"], fondo: "#f6dcdc" },
+];
+
+const INSIGNIA = {
+  vigente: { texto: "Vigente", fondo: "#d9f2e0", color: "#14532d" },
+  vencida: { texto: "Vencida", fondo: "#fde0e0", color: "#7f1d1d" },
+  sin_verificacion: { texto: "Sin verificación", fondo: "#fdf1cc", color: "#713f12" },
+};
+
 const CAMPOS_EDITABLES = COLUMNAS.map((columna) => columna.campo).filter((campo) => campo !== "km_reco");
 
 function filaVacia(n) {
@@ -160,7 +174,10 @@ export default function Bitacora({ clave, colores, alPendiente }) {
 
   function consultarFolio(event) {
     event.preventDefault();
-    const texto = consulta.trim();
+    buscarFolio(consulta.trim());
+  }
+
+  function buscarFolio(texto) {
     if (!/^\d+$/.test(texto) || Number(texto) < 1) {
       setAviso("Escribe un número de folio desde 1.");
       return;
@@ -370,11 +387,15 @@ export default function Bitacora({ clave, colores, alPendiente }) {
   }
 
   const textoEstado = { guardando: "Guardando...", guardado: "Guardado", error: "Hay filas sin guardar" }[estado] || "";
+  const colorEstado = { guardando: "#fdf1cc", guardado: "#d9f2e0", error: "#fde0e0" }[estado];
 
   return (
     <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
-      <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Bitácora camión</h2>
-      <form onSubmit={consultarFolio} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 12 }}>
+      <h2 style={{ margin: "0 0 4px", fontSize: 20 }}>Bitácora camión</h2>
+      <p style={{ margin: "0 0 14px", fontSize: 13, opacity: 0.8 }}>
+        Busca un folio existente o genera uno nuevo. Los cambios se guardan solos al salir de cada celda y quedan registrados en Auditoría con tu usuario.
+      </p>
+      <form onSubmit={consultarFolio} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12, padding: 12, border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
         <input
           type="text"
           inputMode="numeric"
@@ -390,32 +411,72 @@ export default function Bitacora({ clave, colores, alPendiente }) {
         <button type="submit" disabled={cargando} style={{ ...BOTON, background: "var(--boton)" }}>
           {cargando ? "Buscando..." : "Consultar folio"}
         </button>
+        <span style={{ opacity: 0.4 }}>|</span>
         <button type="button" disabled={generando} onClick={generarFolio} style={{ ...BOTON, background: "var(--acento)" }}>
-          {generando ? "Generando..." : "Generar nuevo folio"}
+          {generando ? "Generando..." : "+ Generar nuevo folio"}
         </button>
-        <span style={{ fontSize: 14 }}>
-          {resumen.ultimo ? `Último folio: ${resumen.ultimo} (${resumen.total} en total)` : "Todavía no hay folios."}
+        <span style={{ fontSize: 13, marginLeft: "auto" }}>
+          {resumen.ultimo ? (
+            <>
+              Último folio:{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setConsulta(String(resumen.ultimo));
+                  buscarFolio(String(resumen.ultimo));
+                }}
+                style={{ border: 0, background: "none", color: "var(--boton)", textDecoration: "underline", cursor: "pointer", fontSize: 13, padding: 0 }}
+              >
+                {resumen.ultimo}
+              </button>{" "}
+              ({resumen.total} en total)
+            </>
+          ) : (
+            "Todavía no hay folios."
+          )}
         </span>
       </form>
-      {aviso && <p style={{ margin: "0 0 12px", fontSize: 14 }}>{aviso}</p>}
+      {aviso && (
+        <p role="status" style={{ margin: "0 0 12px", padding: "8px 12px", fontSize: 14, borderRadius: 6, background: "#fdf1cc", color: "#713f12" }}>
+          {aviso}
+        </p>
+      )}
       {folio && (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 12 }}>
-            <strong style={{ fontSize: 16 }}>Folio N.º {folio.folio}</strong>
-            <button type="button" onClick={anadirFila} style={{ ...BOTON, background: "var(--boton)" }}>
-              Añadir fila
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12 }}>
+            <strong style={{ fontSize: 18 }}>Folio N.º {folio.folio}</strong>
+            <span style={{ fontSize: 13, opacity: 0.8 }}>
+              {folio.filas.length} {folio.filas.length === 1 ? "fila" : "filas"}
+            </span>
+            {textoEstado && (
+              <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 999, background: colorEstado, color: "#1f2937" }}>{textoEstado}</span>
+            )}
+            <button type="button" onClick={anadirFila} style={{ ...BOTON, background: "var(--boton)", marginLeft: 8 }}>
+              + Añadir fila
             </button>
             <button type="button" onClick={descargar} style={{ ...BOTON, background: "var(--acento)" }}>
               Descargar planilla
             </button>
-            <button type="button" onClick={() => setEliminando({ paso: 1, escrito: "" })} style={{ ...BOTON, background: "var(--peligro)" }}>
+            <button type="button" onClick={() => setEliminando({ paso: 1, escrito: "" })} style={{ ...BOTON, background: "var(--peligro)", marginLeft: "auto" }}>
               Eliminar folio
             </button>
-            <span style={{ fontSize: 14 }}>{textoEstado}</span>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", fontSize: 14 }}>
-              <thead>
+          <div style={{ overflow: "auto", maxHeight: "70vh", border: "1px solid var(--borde-suave)", borderRadius: 8 }}>
+            <table style={{ borderCollapse: "separate", borderSpacing: 0, fontSize: 14 }}>
+              <thead style={{ position: "sticky", top: 0, zIndex: 2 }}>
+                <tr>
+                  <th style={{ background: "var(--superficie)" }} />
+                  {GRUPOS.map((grupo) => (
+                    <th
+                      key={grupo.titulo}
+                      colSpan={grupo.campos.length}
+                      style={{ padding: "4px 10px", fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase", background: grupo.fondo, color: "#1f2937", border: "1px solid var(--borde)" }}
+                    >
+                      {grupo.titulo}
+                    </th>
+                  ))}
+                  <th style={{ background: "var(--superficie)" }} />
+                </tr>
                 <tr>
                   <th style={{ padding: "8px 10px", border: "1px solid var(--borde)", background: colores ? "#a9e5e5" : "var(--superficie)" }}>#</th>
                   {COLUMNAS.map((columna) => (
@@ -437,13 +498,12 @@ export default function Bitacora({ clave, colores, alPendiente }) {
               </thead>
               <tbody>
                 {folio.filas.map((fila) => (
-                  <tr key={fila.n_fila}>
+                  <tr key={fila.n_fila} style={{ background: fila.n_fila % 2 === 0 ? "rgba(127,127,127,0.07)" : "transparent" }}>
                     <td style={{ padding: "0 10px", border: "1px solid var(--borde-suave)", textAlign: "center" }}>{fila.n_fila}</td>
                     {COLUMNAS.map((columna) => {
                       const calculada = columna.campo === "km_reco";
                       if (columna.campo === "firma") {
                         const imagen = imagenDeFirma(fila.firma);
-                        const estado = textoEstadoFirma(fila);
                         const historial = (folio.historial_firmas || []).filter((item) => item.n_fila === fila.n_fila);
                         return (
                           <td key={columna.campo} style={{ padding: 4, border: "1px solid var(--borde-suave)" }}>
@@ -491,8 +551,13 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                                 </button>
                               )}
                             </div>
-                            {estado && (
-                              <p style={{ margin: "4px 0 0", fontSize: 12, color: fila.firma_estado === "vencida" ? "var(--peligro)" : "var(--texto)" }}>{estado}</p>
+                            {INSIGNIA[fila.firma_estado] && (
+                              <p style={{ margin: "4px 0 0", fontSize: 12 }}>
+                                <span style={{ padding: "2px 8px", borderRadius: 999, background: INSIGNIA[fila.firma_estado].fondo, color: INSIGNIA[fila.firma_estado].color }}>
+                                  {INSIGNIA[fila.firma_estado].texto}
+                                </span>{" "}
+                                {fila.firma_estado === "vigente" ? horaFirma(fila.firma_en) : fila.firma_estado === "vencida" ? "Los datos del viaje cambiaron después de la firma" : ""}
+                              </p>
                             )}
                             {historial[0] && (
                               <p style={{ margin: "2px 0 0", fontSize: 12 }}>
@@ -530,7 +595,9 @@ export default function Bitacora({ clave, colores, alPendiente }) {
                               border: "1px solid var(--borde)",
                               borderRadius: 6,
                               fontSize: 14,
-                              opacity: calculada ? 0.75 : 1,
+                              opacity: calculada ? 0.9 : 1,
+                              fontWeight: calculada ? 700 : 400,
+                              background: calculada ? "rgba(251,236,203,0.5)" : undefined,
                             }}
                           />
                         </td>
@@ -550,7 +617,11 @@ export default function Bitacora({ clave, colores, alPendiente }) {
               </tbody>
             </table>
           </div>
-          {folio.filas.length === 0 && <p style={{ margin: "12px 0 0", fontSize: 14 }}>Este folio todavía no tiene filas. Usa "Añadir fila".</p>}
+          {folio.filas.length === 0 && (
+            <p style={{ margin: "12px 0 0", padding: 16, fontSize: 14, textAlign: "center", border: "1px dashed var(--borde)", borderRadius: 8 }}>
+              Este folio todavía no tiene filas. Usa "+ Añadir fila" para registrar el primer viaje.
+            </p>
+          )}
         </>
       )}
       {firmaPendiente && (

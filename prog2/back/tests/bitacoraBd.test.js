@@ -1,4 +1,4 @@
-﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 
@@ -14,8 +14,8 @@ let fallos;
 let operaciones;
 
 function reiniciarBd() {
-  tablas = { bitacora_folios: [], bitacora_filas: [], bitacora_firmas_historial: [] };
-  siguiente = { bitacora_folios: 1, bitacora_firmas_historial: 1 };
+  tablas = { bitacora_folios: [], bitacora_filas: [], bitacora_firmas_historial: [], bitacora_log: [] };
+  siguiente = { bitacora_folios: 1, bitacora_firmas_historial: 1, bitacora_log: 1 };
   fallos = {};
   operaciones = [];
 }
@@ -63,6 +63,10 @@ function consulta(tabla) {
       if (tabla === "bitacora_firmas_historial") {
         nueva.id = siguiente.bitacora_firmas_historial++;
         nueva.quitada_en = new Date(Date.UTC(2026, 0, 1) + nueva.id * 1000).toISOString();
+      }
+      if (tabla === "bitacora_log") {
+        for (const v of [].concat(e.valores)) filas.push({ ...v, id: siguiente.bitacora_log++, creado_en: new Date(Date.UTC(2026, 0, 1) + siguiente.bitacora_log * 1000).toISOString() });
+        return { data: null, error: null };
       }
       filas.push(nueva);
       return { data: e.devolver ? { ...nueva } : null, error: null };
@@ -479,4 +483,23 @@ test("la auditor�a lista folios activos y eliminados y abre el detalle de uno 
   assert.ok(Array.isArray(detalle.historial_firmas));
   await assert.rejects(bitacora.leerFolio(eliminado), { status: 410 });
   await assert.rejects(bitacora.leerAuditoria(999), { status: 404 });
+});
+
+test("cada cambio de la bitácora queda en el log con el usuario", async () => {
+  const { folio } = await bitacora.crearFolio(CLAVE, "ana");
+  await bitacora.guardarFila(CLAVE, folio, 1, VIAJE, "ana");
+  await bitacora.guardarFila(CLAVE, folio, 1, VIAJE, "ana");
+  await bitacora.guardarFila(CLAVE, folio, 1, { ...VIAJE, km_term: "200" }, "beto");
+  await bitacora.quitarFila(CLAVE, folio, 1, "beto");
+  await bitacora.eliminarFolio(CLAVE, folio, String(folio), "ana");
+  const { eventos } = await bitacora.listarLog({});
+  const acciones = eventos.map((e) => `${e.usuario}:${e.accion}`).reverse();
+  assert.equal(acciones[0], "ana:crear_folio");
+  assert.equal(acciones[1], "ana:anadir_fila");
+  assert.equal(acciones.filter((a) => a === "ana:editar_celda").length, 9);
+  const km = eventos.find((e) => e.usuario === "beto" && e.accion === "editar_celda");
+  assert.deepEqual([km.campo, km.valor_anterior, km.valor_nuevo], ["km_term", "150", "200"]);
+  assert.ok(acciones.includes("beto:quitar_fila"));
+  assert.ok(acciones.includes("ana:eliminar_folio"));
+  assert.equal(tablas.bitacora_log.length > 0, true);
 });

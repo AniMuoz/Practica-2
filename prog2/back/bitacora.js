@@ -181,10 +181,49 @@ function fechaLegible(texto) {
   return fechaValida(texto) ? texto.split("-").reverse().join("/") : texto;
 }
 
-async function crearFolio(clave) {
+async function registrarLog(usuario, evento) {
+  try {
+    const registros = (Array.isArray(evento) ? evento : [evento]).map((e) => ({
+      usuario: String(usuario || ""),
+      accion: e.accion,
+      folio: e.folio ?? null,
+      n_fila: e.n_fila ?? null,
+      campo: e.campo ?? null,
+      valor_anterior: e.valor_anterior ?? null,
+      valor_nuevo: e.valor_nuevo ?? null,
+      detalle: e.detalle || {},
+    }));
+    if (registros.length === 0) return;
+    const { error } = await supabase.from("bitacora_log").insert(registros);
+    if (error) console.error("No se pudo registrar el log de la bitácora:", error);
+  } catch (error) {
+    console.error("No se pudo registrar el log de la bitácora:", error);
+  }
+}
+
+const LIMITE_LOG = 50;
+
+async function listarLog(filtros = {}) {
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  let q = supabase
+    .from("bitacora_log")
+    .select("id, creado_en, usuario, accion, folio, n_fila, campo, valor_anterior, valor_nuevo, detalle", { count: "exact" });
+  if (filtros.folio) q = q.eq("folio", enteroPositivo(filtros.folio, "Folio"));
+  if (filtros.usuario) q = q.eq("usuario", String(filtros.usuario));
+  if (filtros.accion) q = q.eq("accion", String(filtros.accion));
+  if (filtros.desde && typeof q.gte === "function") q = q.gte("creado_en", `${filtros.desde}T00:00:00`);
+  if (filtros.hasta && typeof q.lte === "function") q = q.lte("creado_en", `${filtros.hasta}T23:59:59.999`);
+  const desde = (pagina - 1) * LIMITE_LOG;
+  const { data, count, error } = await q.order("creado_en", { ascending: false }).range(desde, desde + LIMITE_LOG - 1);
+  if (error) falloBd(error);
+  return { eventos: data || [], total: count || 0, pagina, por_pagina: LIMITE_LOG };
+}
+
+async function crearFolio(clave, usuario) {
   exigirClave(clave);
   const { data, error } = await supabase.from("bitacora_folios").insert({}).select("folio, creado_en").single();
   if (error) falloBd(error);
+  await registrarLog(usuario, { accion: "crear_folio", folio: data.folio });
   return { folio: data.folio, creado_en: data.creado_en, filas: [] };
 }
 
@@ -252,10 +291,11 @@ async function leerAuditoria(valor) {
   if (error) falloBd(error);
   if (!data) throw errorHttp(404, `El folio ${folio} no existe.`);
   const [filas, historial_firmas] = await Promise.all([leerFilas(folio), leerHistorialFirmas(folio)]);
-  return { folio: data.folio, creado_en: data.creado_en, eliminado_en: data.eliminado_en || null, filas, historial_firmas };
+  const log = (await listarLog({ folio })).eventos;
+  return { folio: data.folio, creado_en: data.creado_en, eliminado_en: data.eliminado_en || null, filas, historial_firmas, log };
 }
 
-async function guardarFila(clave, valorFolio, valorFila, datos) {
+async function guardarFila(clave, valorFolio, valorFila, datos, usuario) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
@@ -282,15 +322,33 @@ async function guardarFila(clave, valorFolio, valorFila, datos) {
     throw errorHttp(400, "La imagen de la firma se sube con el botón de imagen.");
   }
 
+  const { data: previa, error: errorPrevia } = await supabase
+    .from("bitacora_filas")
+    .select(CAMPOS.join(", "))
+    .eq("folio", folio)
+    .eq("n_fila", nFila)
+    .maybeSingle();
+  if (errorPrevia) falloBd(errorPrevia);
+
   const registro = { folio, n_fila: nFila, ...fila };
   const { error } = await supabase.from("bitacora_filas").upsert(registro, { onConflict: "folio,n_fila" });
   if (error) falloBd(error);
+  if (!previa) await registrarLog(usuario, { accion: "anadir_fila", folio, n_fila: nFila });
+  const cambios = CAMPOS.filter((campo) => campo !== "km_reco" && String(previa?.[campo] ?? "") !== fila[campo]).map((campo) => ({
+    accion: "editar_celda",
+    folio,
+    n_fila: nFila,
+    campo,
+    valor_anterior: String(previa?.[campo] ?? ""),
+    valor_nuevo: fila[campo],
+  }));
+  await registrarLog(usuario, cambios);
   if (firmaGuardada && firmaGuardada !== fila.firma) await borrarFirmas([firmaGuardada]);
   const guardada = { ...fila, firma_hash: anterior?.firma_hash || "", firma_datos: anterior?.firma_datos || "", firma_en: anterior?.firma_en || null };
   return { fila: conEstadoFirma({ n_fila: nFila, ...guardada }) };
 }
 
-async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado) {
+async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado, usuario) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
@@ -335,10 +393,11 @@ async function subirFirma(clave, valorFolio, valorFila, buffer, rutConfirmado) {
     await quitarImagen(nombre).catch(() => {});
     falloBd(error);
   }
+  await registrarLog(usuario, { accion: "subir_firma", folio, n_fila: nFila, detalle: { hash: verificacion.firma_hash } });
   return { fila: conEstadoFirma({ ...fila, ...verificacion }) };
 }
 
-async function quitarFirma(clave, valorFolio, valorFila, motivo) {
+async function quitarFirma(clave, valorFolio, valorFila, motivo, usuario) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
@@ -365,10 +424,11 @@ async function quitarFirma(clave, valorFolio, valorFila, motivo) {
     .eq("folio", folio)
     .eq("n_fila", nFila);
   if (error) falloBd(error);
+  await registrarLog(usuario, { accion: "quitar_firma", folio, n_fila: nFila, detalle: { motivo: texto, hash: anterior.firma_hash || "" } });
   return { fila: { n_fila: nFila, firma: "", firma_hash: "", firma_datos: "", firma_en: null, firma_estado: "sin_firma" }, historial_firmas: await leerHistorialFirmas(folio) };
 }
 
-async function quitarFila(clave, valorFolio, valorFila) {
+async function quitarFila(clave, valorFolio, valorFila, usuario) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   const nFila = enteroPositivo(valorFila, "Fila");
@@ -408,10 +468,11 @@ async function quitarFila(clave, valorFolio, valorFila) {
       .eq("n_fila", actual);
     if (errorHistorial) falloBd(errorHistorial);
   }
+  await registrarLog(usuario, { accion: "quitar_fila", folio, n_fila: nFila });
   return leerFolio(folio);
 }
 
-async function eliminarFolio(clave, valorFolio, confirmacion) {
+async function eliminarFolio(clave, valorFolio, confirmacion, usuario) {
   exigirClave(clave);
   const folio = enteroPositivo(valorFolio, "Folio");
   if (String(confirmacion ?? "").trim() !== String(folio)) {
@@ -429,6 +490,7 @@ async function eliminarFolio(clave, valorFolio, confirmacion) {
   await borrarFirmas(firmas);
   const { error } = await supabase.from("bitacora_folios").update({ eliminado_en: new Date().toISOString() }).eq("folio", folio);
   if (error) falloBd(error);
+  await registrarLog(usuario, { accion: "eliminar_folio", folio, detalle: { filas: filas.length } });
   return { folio, eliminado: true };
 }
 
@@ -528,7 +590,7 @@ async function armarExcel(folio, filas, imagenes = new Map()) {
   return libro.xlsx.writeBuffer();
 }
 
-async function exportarFolio(valor) {
+async function exportarFolio(valor, usuario) {
   const { folio, filas } = await leerFolio(valor);
   const imagenes = new Map();
   const nombres = [...new Set(filas.map((fila) => nombreFirma(fila.firma)).filter(Boolean))];
@@ -539,6 +601,7 @@ async function exportarFolio(valor) {
     })
   );
   const buffer = await armarExcel(folio, filas, imagenes);
+  await registrarLog(usuario, { accion: "descargar_excel", folio });
   return { buffer, nombre: `Bitacora folio ${folio}.xlsx` };
 }
 
@@ -552,6 +615,8 @@ module.exports = {
   leerFolio,
   listarAuditoria,
   leerAuditoria,
+  listarLog,
+  registrarLog,
   guardarFila,
   subirFirma,
   quitarFirma,

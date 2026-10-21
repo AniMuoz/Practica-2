@@ -63,3 +63,20 @@ create table if not exists public.bitacora_firmas_historial (
   quitada_en timestamptz not null default now(),
   motivo text not null default ''
 );
+
+create table if not exists public.bitacora_log (
+  id bigint generated always as identity primary key,
+  creado_en timestamptz not null default now(),
+  usuario text not null default '',
+  accion text not null,
+  folio bigint,
+  n_fila integer,
+  campo text,
+  valor_anterior text,
+  valor_nuevo text,
+  detalle jsonb not null default '{}'::jsonb
+);
+
+create index if not exists bitacora_log_folio_idx on public.bitacora_log (folio);
+create index if not exists bitacora_log_creado_idx on public.bitacora_log (creado_en desc);
+alter table public.bitacora_log enable row level security;

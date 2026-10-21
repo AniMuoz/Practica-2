@@ -17,6 +17,16 @@ module.exports = function rutasBitacora(app) {
     }
   });
 
+  app.get("/api/bitacora/auditoria/log", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json(await bitacora.listarLog(req.query || {}));
+    } catch (error) {
+      console.error(error);
+      responderBitacora(res, error, "No se pudo leer el log.");
+    }
+  });
+
   app.get("/api/bitacora/auditoria/:folio", async (req, res) => {
     try {
       await exigirAdmin(req);
@@ -29,7 +39,7 @@ module.exports = function rutasBitacora(app) {
 
   app.post("/api/bitacora/folios", async (req, res) => {
     try {
-      res.status(201).json(await bitacora.crearFolio(req.body && req.body.clave));
+      res.status(201).json(await bitacora.crearFolio(req.body && req.body.clave, req.usuario));
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo generar el folio.");
@@ -47,7 +57,7 @@ module.exports = function rutasBitacora(app) {
 
   app.get("/api/bitacora/folios/:folio/excel", async (req, res) => {
     try {
-      const { buffer, nombre } = await bitacora.exportarFolio(req.params.folio);
+      const { buffer, nombre } = await bitacora.exportarFolio(req.params.folio, req.usuario);
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       console.error(error);
@@ -66,7 +76,7 @@ module.exports = function rutasBitacora(app) {
 
   app.delete("/api/bitacora/folios/:folio", async (req, res) => {
     try {
-      res.json(await bitacora.eliminarFolio(req.body && req.body.clave, req.params.folio, req.body && req.body.confirmacion));
+      res.json(await bitacora.eliminarFolio(req.body && req.body.clave, req.params.folio, req.body && req.body.confirmacion, req.usuario));
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo eliminar el folio.");
@@ -75,7 +85,7 @@ module.exports = function rutasBitacora(app) {
 
   app.put("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
     try {
-      res.json(await bitacora.guardarFila(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.datos));
+      res.json(await bitacora.guardarFila(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.datos, req.usuario));
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo guardar la fila.");
@@ -90,7 +100,7 @@ module.exports = function rutasBitacora(app) {
         return;
       }
       try {
-        res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer, req.body && req.body.rut));
+        res.json(await bitacora.subirFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.file && req.file.buffer, req.body && req.body.rut, req.usuario));
       } catch (error) {
         console.error(error);
         responderBitacora(res, error, "No se pudo guardar la imagen de la firma.");
@@ -100,7 +110,7 @@ module.exports = function rutasBitacora(app) {
 
   app.delete("/api/bitacora/folios/:folio/filas/:fila/firma", async (req, res) => {
     try {
-      res.json(await bitacora.quitarFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.motivo));
+      res.json(await bitacora.quitarFirma(req.body && req.body.clave, req.params.folio, req.params.fila, req.body && req.body.motivo, req.usuario));
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo quitar la firma.");
@@ -109,7 +119,7 @@ module.exports = function rutasBitacora(app) {
 
   app.delete("/api/bitacora/folios/:folio/filas/:fila", async (req, res) => {
     try {
-      res.json(await bitacora.quitarFila(req.body && req.body.clave, req.params.folio, req.params.fila));
+      res.json(await bitacora.quitarFila(req.body && req.body.clave, req.params.folio, req.params.fila, req.usuario));
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo quitar la fila.");
