@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import logo from "../logo/logo.ico";
+import logo from "../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
@@ -146,7 +146,7 @@ export default function Navbar() {
           fontWeight: 700,
         }}
       >
-        <img src={logo} alt="" width={28} height={28} />
+        <img src={logo} alt="BERFRE" style={{ height: 32, width: "auto" }} />
         Inventario M501
       </Link>
       <button
