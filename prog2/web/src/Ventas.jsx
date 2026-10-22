@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
@@ -48,7 +48,6 @@ function Preview({ colores, recarga }) {
   const hoy = new Date();
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes] = useState(hoy.getMonth() + 1);
-  const [meses, setMeses] = useState([]);
   const [planilla, setPlanilla] = useState({ filas: [], existe: false });
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
@@ -67,19 +66,8 @@ function Preview({ colores, recarga }) {
   }
 
   useEffect(() => {
-    fetch("/api/ventas/meses", { cache: "no-store" })
-      .then((res) => leerJson(res, "No se pudieron leer los meses."))
-      .then((data) => setMeses(data.meses || []))
-      .catch(() => {});
-  }, [recarga]);
-
-  useEffect(() => {
     cargar();
   }, [anio, mes, recarga]);
-
-  const opciones = [...meses];
-  const actual = { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 };
-  if (!opciones.some((m) => m.anio === actual.anio && m.mes === actual.mes)) opciones.unshift(actual);
 
   function guardar(fila, campo, valor) {
     fetch(`/api/ventas/filas/${fila.id}`, {
@@ -106,6 +94,15 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message));
   }
 
+  function quitarOrden(grupo) {
+    const { fila } = grupo;
+    if (!window.confirm(`¿Eliminar la orden completa (${grupo.filas.length} filas, ${fila.movimiento} N° ${fila.n_venta})?`)) return;
+    fetch(`/api/ventas/ordenes/${planilla.id}/${fila.lote}`, { method: "DELETE" })
+      .then((res) => leerJson(res, "No se pudo quitar la orden."))
+      .then(() => cargar())
+      .catch((e) => setAviso(e.message));
+  }
+
   function descargar() {
     fetch(`/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}`)
       .then(async (res) => {
@@ -125,35 +122,22 @@ function Preview({ colores, recarga }) {
     ? planilla.filas.filter((f) => [f.codigo, f.descripcion, f.contratista, f.n_venta].some((v) => String(v ?? "").toLowerCase().includes(texto)))
     : planilla.filas;
 
+  const ordenes = [];
+  filas.forEach((f) => {
+    const ultimo = ordenes[ordenes.length - 1];
+    if (ultimo && ultimo.fila.lote === f.lote) ultimo.filas.push(f);
+    else ordenes.push({ fila: f, filas: [f] });
+  });
+
   return (
     <section data-tour="ventas-preview" style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: "100%", width: "100%", boxSizing: "border-box" }}>
       <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Planilla de ventas</h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <label data-tour="ventas-mes" style={{ fontSize: 14 }}>
           Mes{" "}
-          <select
-            aria-label="Mes de la planilla"
-            value={`${anio}-${mes}`}
-            onChange={(e) => {
-              const [a, m] = e.target.value.split("-").map(Number);
-              setAnio(a);
-              setMes(m);
-            }}
-            style={CAMPO}
-          >
-            {opciones.map((m) => (
-              <option key={`${m.anio}-${m.mes}`} value={`${m.anio}-${m.mes}`}>{MESES[m.mes - 1]} {m.anio}</option>
-            ))}
-            {!opciones.some((m) => m.anio === anio && m.mes === mes) && (
-              <option value={`${anio}-${mes}`}>{MESES[mes - 1]} {anio}</option>
-            )}
-          </select>
-        </label>
-        <label style={{ fontSize: 14 }}>
-          Buscar por fecha{" "}
           <input
             type="month"
-            aria-label="Buscar planilla por mes y año"
+            aria-label="Mes de la planilla"
             value={`${anio}-${String(mes).padStart(2, "0")}`}
             onChange={(e) => {
               const [a, m] = e.target.value.split("-").map(Number);
@@ -189,15 +173,25 @@ function Preview({ colores, recarga }) {
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila) => (
-                <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
-                  {COLUMNAS.map(([clave, , editable]) => (
-                    <td key={clave} style={TD}>
-                      {editable ? <Celda fila={fila} campo={clave} onGuardar={guardar} /> : String(fila[clave] ?? "")}
+              {ordenes.map((grupo) => (
+                <Fragment key={grupo.fila.lote}>
+                  <tr>
+                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700 }}>
+                      Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
+                      <button type="button" onClick={() => quitarOrden(grupo)}>Eliminar orden</button>
                     </td>
+                  </tr>
+                  {grupo.filas.map((fila) => (
+                    <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
+                      {COLUMNAS.map(([clave, , editable]) => (
+                        <td key={clave} style={TD}>
+                          {editable ? <Celda fila={fila} campo={clave} onGuardar={guardar} /> : String(fila[clave] ?? "")}
+                        </td>
+                      ))}
+                      <td style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
+                    </tr>
                   ))}
-                  <td style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
-                </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

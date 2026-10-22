@@ -114,6 +114,14 @@ module.exports = function rutasVentas(app) {
     }
   });
 
+  app.delete("/api/ventas/ordenes/:planilla/:lote", async (req, res) => {
+    try {
+      res.json(await ventasBd.quitarOrden(req.params.planilla, req.params.lote, req.usuario));
+    } catch (error) {
+      responder(res, error, "No se pudo quitar la orden.");
+    }
+  });
+
   app.get("/api/contratistas", (_req, res) => {
     try {
       res.json(leerContratistas());

@@ -4,7 +4,7 @@ import Ventas, { nombreDescarga } from "../src/Ventas.jsx";
 
 const HOY = new Date();
 const FILA = {
-  id: 7, pos: 10, codigo: "100", descripcion: "Perno", ubicacion: "0102-A", m501: 10, m502: 0, m503: 0, m504: 0, m505: 0,
+  id: 7, lote: 111, pos: 10, codigo: "100", descripcion: "Perno", ubicacion: "0102-A", m501: 10, m502: 0, m503: 0, m504: 0, m505: 0,
   solicitado: 4, entregar: 4, med: "UN", tiras: null, dif: 6, comp: "VERDADERO", kg_u: 0.5, kg_total: 2, precio_u: 100, precio_total: 400,
   contratista: "Ana", movimiento: "VENTA", almacen: "M501", n_venta: "55", cant_gd: 4, gd_esval: "", estado: "", fecha: "1/10/2026",
   dif_pend: 0, gd_esval2: "", fecha_gd: "", observacion: "", rojo: false,
@@ -53,6 +53,13 @@ describe("Ventas", () => {
     fireEvent.blur(celda);
     await waitFor(() => expect(llamadas.some((l) => l.metodo === "PATCH" && l.url === "/api/ventas/filas/7")).toBe(true));
     expect(JSON.parse(llamadas.find((l) => l.metodo === "PATCH").cuerpo)).toEqual({ estado: "Entregado" });
+  });
+
+  it("elimina una orden completa tras confirmar", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    fireEvent.click(screen.getByText("Eliminar orden"));
+    await waitFor(() => expect(llamadas.some((l) => l.metodo === "DELETE" && l.url === "/api/ventas/ordenes/1/111")).toBe(true));
   });
 
   it("avisa de cambios sin guardar en el formulario", async () => {

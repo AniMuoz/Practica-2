@@ -252,6 +252,7 @@ const ACCIONES_VENTAS = {
   anadir_venta: "Añadió productos",
   editar_celda: "Editó una celda",
   quitar_fila: "Quitó una fila",
+  quitar_orden: "Quitó una orden completa",
   descargar_excel: "Descargó la planilla",
 };
 
@@ -262,6 +263,7 @@ function descripcionVenta(e) {
     return `${base} ${e.campo} (fila ${d.pos ?? e.fila_id}, ${d.codigo || ""}): "${e.valor_anterior || "vacío"}" → "${e.valor_nuevo || "vacío"}"`;
   }
   if (e.accion === "anadir_venta") return `${base}: ${d.filas} filas, ${d.movimiento}, contratista ${d.contratista}, N° ${d.n_venta}`;
+  if (e.accion === "quitar_orden") return `${base}: ${d.filas} filas, ${d.movimiento}, contratista ${d.contratista}, N° ${d.n_venta}`;
   if (e.accion === "quitar_fila") return `${base} ${d.pos ?? ""} (${d.codigo || ""} ${d.descripcion || ""})`;
   return base;
 }

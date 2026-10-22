@@ -294,7 +294,7 @@ test("los errores al procesar la reserva responden 500 con un mensaje claro", as
 const ventasBd = require("../ventasBd");
 let respuestasVentas = {};
 let llamadasVentas = [];
-for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila"]) {
+for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila", "quitarOrden"]) {
   ventasBd[nombre] = async (...args) => {
     llamadasVentas.push({ nombre, args });
     const r = respuestasVentas[nombre];

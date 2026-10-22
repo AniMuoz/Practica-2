@@ -161,6 +161,19 @@ test("quitarFila borra la fila y deja constancia en el log", async () => {
   assert.deepEqual([log.accion, log.fila_id, log.usuario], ["quitar_fila", id, "ana"]);
 });
 
+test("quitarOrden borra solo las filas de esa orden y deja constancia", async () => {
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "1", itemsManuales: ITEMS, usuario: "ana" });
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "2", itemsManuales: [{ codigo: "100", cantidad: 1 }] });
+  tablas.ventas_filas.slice(3).forEach((f) => { f.lote += 1; });
+  const { planilla_id: planilla, lote } = { planilla_id: tablas.ventas_filas[0].planilla_id, lote: tablas.ventas_filas[0].lote };
+  const r = await ventasBd.quitarOrden(planilla, lote, "luis");
+  assert.equal(r.eliminadas, 3);
+  assert.equal(tablas.ventas_filas.length, 1);
+  const log = tablas.ventas_log.at(-1);
+  assert.deepEqual([log.accion, log.usuario, log.detalle.filas, log.detalle.n_venta], ["quitar_orden", "luis", 3, "1"]);
+  await assert.rejects(ventasBd.quitarOrden(planilla, lote, "luis"), { status: 404 });
+});
+
 test("nombreDescarga usa VENTAS dd-mm-aaaa.xlsx", () => {
   assert.equal(ventasBd.nombreDescarga(new Date(2026, 9, 5)), "VENTAS 05-10-2026.xlsx");
 });

@@ -318,6 +318,30 @@ async function quitarFila(valorId, usuario) {
   return { id, eliminada: true };
 }
 
+async function quitarOrden(valorPlanilla, valorLote, usuario) {
+  const planillaId = enteroId(valorPlanilla, "Planilla");
+  const lote = enteroId(valorLote, "Orden");
+  const { data, error } = await supabase.from("ventas_filas").select("*").eq("planilla_id", planillaId).eq("lote", lote);
+  if (error) falloBd(error);
+  if (!data || data.length === 0) throw errorHttp(404, "La orden no existe.");
+  const { error: errorBorrar } = await supabase.from("ventas_filas").delete().eq("planilla_id", planillaId).eq("lote", lote);
+  if (errorBorrar) falloBd(errorBorrar);
+  const primera = data[0];
+  await registrarLog(usuario, {
+    accion: "quitar_orden",
+    planilla_id: planillaId,
+    detalle: {
+      lote,
+      filas: data.length,
+      movimiento: primera.movimiento,
+      n_venta: primera.n_venta,
+      contratista: primera.contratista,
+      codigos: data.map((f) => f.codigo),
+    },
+  });
+  return { planilla_id: planillaId, lote, eliminadas: data.length };
+}
+
 function nombreDescarga(ahora = new Date()) {
   const dia = String(ahora.getDate()).padStart(2, "0");
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
@@ -427,6 +451,7 @@ module.exports = {
   anadirVenta,
   editarFila,
   quitarFila,
+  quitarOrden,
   armarExcel,
   exportarPlanilla,
   registrarLog,
