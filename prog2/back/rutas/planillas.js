@@ -15,6 +15,7 @@ module.exports = function rutasPlanillas(app) {
         soloStockCero: req.query.stockCero === "1",
         soloInventarioOComentario: req.query.inventario === "1",
         soloMarcados: req.query.marcado === "1",
+        soloConRombo: req.query.rombo === "1",
         ignorarNulo: req.query.ignorarNulo === "1",
         texto: req.query.q,
       });

@@ -77,6 +77,7 @@ export function filtrarFilas(filas, filtros) {
     soloStockCero = false,
     soloInventarioOComentario = false,
     soloMarcados = false,
+    soloConRombo = false,
     ignorarNulo = false,
     texto = "",
   } = filtros;
@@ -125,6 +126,9 @@ export function filtrarFilas(filas, filtros) {
   if (soloMarcados) {
     lista = lista.filter((fila) => String(fila.Marcado) === "1");
   }
+  if (soloConRombo) {
+    lista = lista.filter((fila) => /\.(png|jpe?g|webp|gif)$/i.test(String(fila.Rombo ?? "").trim()));
+  }
   const consulta = normalizarBusqueda(texto);
   if (consulta.length >= 2) {
     lista = lista.filter((fila) => {
@@ -165,6 +169,7 @@ export function consultaExcel(filtros) {
   if (filtros.soloStockCero) params.set("stockCero", "1");
   if (filtros.soloInventarioOComentario) params.set("inventario", "1");
   if (filtros.soloMarcados) params.set("marcado", "1");
+  if (filtros.soloConRombo) params.set("rombo", "1");
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
   if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
   const consulta = params.toString();

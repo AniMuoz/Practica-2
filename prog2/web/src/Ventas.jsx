@@ -23,6 +23,24 @@ export function nombreDescarga(ahora = new Date()) {
   return `VENTAS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
+export function tablaComoTsv(filas) {
+  const limpio = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
+  const lineas = [COLUMNAS.map(([, titulo]) => titulo).join("\t")];
+  filas.forEach((f) => lineas.push(COLUMNAS.map(([clave]) => limpio(f[clave])).join("\t")));
+  return lineas.join("\n");
+}
+
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(texto);
+  const area = document.createElement("textarea");
+  area.value = texto;
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  if (!ok) throw new Error("copiar");
+}
+
 async function leerJson(res, mensaje) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || mensaje);
@@ -103,6 +121,12 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message));
   }
 
+  function copiar() {
+    copiarTexto(tablaComoTsv(ordenes.flatMap((o) => o.filas)))
+      .then(() => setAviso(`Se copiaron ${filas.length} filas. Pégalas en Excel con Ctrl+V.`))
+      .catch(() => setAviso("No se pudo copiar la tabla."));
+  }
+
   function descargar() {
     fetch(`/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}`)
       .then(async (res) => {
@@ -151,6 +175,14 @@ function Preview({ colores, recarga }) {
           />
         </label>
         <input aria-label="Filtrar filas" placeholder="Filtrar código, descripción..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} style={{ ...CAMPO, flex: 1, minWidth: 160 }} />
+        <button
+          type="button"
+          onClick={copiar}
+          disabled={!planilla.existe || filas.length === 0}
+          style={{ padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", color: "var(--texto)", cursor: "pointer" }}
+        >
+          Copiar como Excel
+        </button>
         <button
           data-tour="ventas-descargar"
           type="button"

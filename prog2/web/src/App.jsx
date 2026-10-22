@@ -42,6 +42,7 @@ export default function App() {
   const [soloStockCero, setSoloStockCero] = useState(false);
   const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
   const [soloMarcados, setSoloMarcados] = useState(false);
+  const [soloConRombo, setSoloConRombo] = useState(false);
   const [ignorarNulo, setIgnorarNulo] = useState(true);
   const [bloquearPagina, setBloquearPagina] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
@@ -92,15 +93,16 @@ export default function App() {
       soloStockCero,
       soloInventarioOComentario,
       soloMarcados,
+      soloConRombo,
       ignorarNulo,
       texto,
     }),
-    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]
+    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]
   );
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, ignorarNulo, texto]);
+  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]);
 
   function cargarTabla() {
     const headers = {};
@@ -340,6 +342,7 @@ export default function App() {
                 soloStockCero,
                 soloInventarioOComentario,
                 soloMarcados,
+                soloConRombo,
                 ignorarNulo,
                 texto,
               })}
@@ -505,6 +508,14 @@ export default function App() {
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="checkbox"
+                    checked={soloConRombo}
+                    onChange={(event) => setSoloConRombo(event.target.checked)}
+                  />
+                  Mostrar solo materiales con rombo de peligrosidad
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="checkbox"
                     checked={ignorarNulo}
                     onChange={(event) => setIgnorarNulo(event.target.checked)}
                   />
@@ -525,6 +536,7 @@ export default function App() {
                   setSoloStockCero(false);
                   setSoloInventarioOComentario(false);
                   setSoloMarcados(false);
+                  setSoloConRombo(false);
                   setIgnorarNulo(true);
                 }}
               >

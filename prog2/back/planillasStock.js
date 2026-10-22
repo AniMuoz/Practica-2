@@ -488,6 +488,9 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.soloMarcados) {
     lista = lista.filter((fila) => String(fila.Marcado) === "1");
   }
+  if (filtros.soloConRombo) {
+    lista = lista.filter((fila) => /\.(png|jpe?g|webp|gif)$/i.test(String(fila.Rombo ?? "").trim()));
+  }
   if (filtros.ignorarNulo) {
     lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
   }

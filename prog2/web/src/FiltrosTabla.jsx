@@ -9,6 +9,7 @@ const CHECKS = [
   ["soloStockCero", "Solo stock igual a 0"],
   ["soloInventarioOComentario", "Solo con inventario o comentario"],
   ["soloMarcados", "Solo materiales marcados"],
+  ["soloConRombo", "Solo materiales con rombo de peligrosidad"],
   ["ignorarNulo", "Ignorar materiales NULO"],
 ];
 
@@ -75,6 +76,7 @@ export const FILTROS_INICIALES = {
   soloStockCero: false,
   soloInventarioOComentario: false,
   soloMarcados: false,
+  soloConRombo: false,
   ignorarNulo: true,
   texto: "",
 };

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Ventas, { nombreDescarga } from "../src/Ventas.jsx";
+import Ventas, { nombreDescarga, tablaComoTsv } from "../src/Ventas.jsx";
 
 const HOY = new Date();
 const FILA = {
@@ -68,6 +68,19 @@ describe("Ventas", () => {
     await screen.findByText("Perno");
     fireEvent.change(screen.getByPlaceholderText("Ej: 12345"), { target: { value: "99" } });
     await waitFor(() => expect(aviso).toHaveBeenLastCalledWith(true));
+  });
+
+  it("copia la tabla como texto separado por tabuladores", async () => {
+    const copiar = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: copiar }, configurable: true });
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    fireEvent.click(screen.getByText("Copiar como Excel"));
+    await waitFor(() => expect(copiar).toHaveBeenCalled());
+    const [encabezado, fila] = copiar.mock.calls[0][0].split("\n");
+    expect(encabezado.startsWith("Pos\tCódigo\tDescripción")).toBe(true);
+    expect(fila.startsWith("10\t100\tPerno")).toBe(true);
+    expect(tablaComoTsv([{ ...FILA, descripcion: "a\tb\nc" }]).split("\n")[1]).toContain("a b c");
   });
 
   it("nombra la descarga VENTAS dd-mm-aaaa.xlsx", () => {
