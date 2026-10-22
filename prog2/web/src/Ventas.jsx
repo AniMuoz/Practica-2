@@ -72,9 +72,8 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 4v13" />
+          <path d="M12 5v14" />
           <path d="m6 12 6 6 6-6" />
-          <path d="M5 21h14" />
         </svg>
       </button>
     </span>
@@ -277,7 +276,33 @@ function Preview({ colores, recarga }) {
                   <tr data-sin-copia="1">
                     <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700 }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
-                      <button type="button" onClick={() => quitarOrden(grupo)}>Eliminar orden</button>
+                      <button
+                        type="button"
+                        title="Eliminar la orden completa"
+                        onClick={() => quitarOrden(grupo)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginLeft: 8,
+                          padding: "3px 10px",
+                          border: "1px solid var(--borde)",
+                          background: "var(--superficie)",
+                          color: "var(--peligro, #dc2626)",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          boxShadow: "none",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M4 7h16" />
+                          <path d="M9 7V4h6v3" />
+                          <path d="M6 7l1 13h10l1-13" />
+                          <path d="M10 11v5M14 11v5" />
+                        </svg>
+                        <span>Eliminar orden</span>
+                      </button>
                     </td>
                   </tr>
                   {grupo.filas.map((fila) => (
@@ -287,7 +312,33 @@ function Preview({ colores, recarga }) {
                           {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
                         </td>
                       ))}
-                      <td data-sin-copia="1" style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
+                      <td data-sin-copia="1" style={TD}>
+                        <button
+                          type="button"
+                          aria-label={`Quitar fila ${fila.pos}`}
+                          title="Quitar fila"
+                          onClick={() => quitar(fila)}
+                          style={{
+                            display: "inline-grid",
+                            placeItems: "center",
+                            width: 24,
+                            height: 24,
+                            padding: 0,
+                            border: "1px solid var(--borde)",
+                            background: "var(--superficie)",
+                            color: "var(--peligro, #dc2626)",
+                            cursor: "pointer",
+                            boxShadow: "none",
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 7h16" />
+                            <path d="M9 7V4h6v3" />
+                            <path d="M6 7l1 13h10l1-13" />
+                            <path d="M10 11v5M14 11v5" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </Fragment>
