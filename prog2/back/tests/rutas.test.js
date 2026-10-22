@@ -169,7 +169,7 @@ test("GET /api/tabla/excel traduce el query a filtros y nombra el archivo", asyn
   assert.equal(respuesta.cuerpo.toString(), "excel-tabla");
   assert.deepEqual(llamadasA("exportarTabla")[0].args, [false, {
     orden: "codigo", bodega: "01", subUbicacion: "01-A", stockMinimo: "2", soloConPrecio: true, soloConUbicacion: true,
-    soloStockCritico: true, soloStockCero: true, soloInventarioOComentario: true, soloMarcados: true, ignorarNulo: true, texto: "codo",
+    soloStockCritico: true, soloStockCero: true, soloInventarioOComentario: true, soloMarcados: true, soloConRombo: false, ignorarNulo: true, texto: "codo",
   }]);
 });
 
