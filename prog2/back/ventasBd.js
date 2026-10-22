@@ -248,14 +248,8 @@ async function anadirVenta({ ordenBuffer, contratistaIdx, movTipo, almacen, codV
   const { planilla, creada } = await planillaDelMes(anio, mes);
   if (creada) await registrarLog(usuario, { accion: "crear_planilla", planilla_id: planilla.id, detalle: { anio, mes } });
 
-  const { data: ultima, error: errorUltima } = await supabase
-    .from("ventas_filas")
-    .select("pos")
-    .eq("planilla_id", planilla.id)
-    .order("pos", { ascending: false })
-    .limit(1);
-  if (errorUltima) falloBd(errorUltima);
-  const posInicial = ultima && ultima.length ? Number(ultima[0].pos) : 0;
+  // La numeración (Pos) se reinicia en cada orden: 10, 20, 30...
+  const posInicial = 0;
 
   const lote = Date.now();
   const filas = calcularFilas(items, { materiales, contratista, mov, almacenFila, codcomp, fecha, posInicial })

@@ -106,12 +106,12 @@ test("anadirVenta crea la planilla del mes y guarda las filas ordenadas por desc
   assert.deepEqual(tablas.ventas_log.map((l) => [l.accion, l.usuario]), [["crear_planilla", "ana"], ["anadir_venta", "ana"]]);
 });
 
-test("una segunda carga del mismo mes reutiliza la planilla y sigue la numeración", async () => {
+test("una segunda carga del mismo mes reutiliza la planilla y reinicia la numeración de Pos", async () => {
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: ITEMS });
   await ventasBd.anadirVenta({ contratistaIdx: 2, movTipo: 2, almacen: "M503", itemsManuales: [{ codigo: "100", cantidad: 1 }] });
   assert.equal(tablas.ventas_planillas.length, 1);
   const ultima = tablas.ventas_filas[3];
-  assert.deepEqual([ultima.pos, ultima.movimiento, ultima.almacen, ultima.contratista, ultima.n_venta], [40, "TRASPASO", "M503", "Luis", "n/a"]);
+  assert.deepEqual([ultima.pos, ultima.movimiento, ultima.almacen, ultima.contratista, ultima.n_venta], [10, "TRASPASO", "M503", "Luis", "n/a"]);
   assert.equal(tablas.ventas_log.filter((l) => l.accion === "crear_planilla").length, 1);
 });
 
