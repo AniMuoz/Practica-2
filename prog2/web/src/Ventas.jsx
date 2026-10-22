@@ -24,6 +24,10 @@ export function nombreDescarga(ahora = new Date()) {
   return `VENTAS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
+export function nombreDescargaAnual(anio, ahora = new Date()) {
+  return nombreDescarga(ahora).replace("VENTAS ", `VENTAS ANUAL ${anio} `);
+}
+
 async function leerJson(res, mensaje) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || mensaje);
@@ -87,6 +91,8 @@ function Preview({ colores, recarga }) {
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [anioAnual, setAnioAnual] = useState(hoy.getFullYear());
+  const [aniosConDatos, setAniosConDatos] = useState([]);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [borradores, setBorradores] = useState({});
@@ -102,6 +108,13 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message))
       .finally(() => setCargando(false));
   }
+
+  useEffect(() => {
+    fetch("/api/ventas/meses", { cache: "no-store" })
+      .then((res) => leerJson(res, "No se pudieron leer los años."))
+      .then((data) => setAniosConDatos([...new Set((data.meses || []).map((m) => m.anio))]))
+      .catch(() => {});
+  }, [recarga]);
 
   useEffect(() => {
     cargar();
@@ -192,14 +205,17 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message));
   }
 
-  function descargar() {
-    fetch(`/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}`)
+  function descargar(anual = false) {
+    const ruta = anual
+      ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}`
+      : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}`;
+    fetch(ruta)
       .then(async (res) => {
         if (!res.ok) await leerJson(res, "No se pudo descargar la planilla.");
         const url = URL.createObjectURL(await res.blob());
         const enlace = document.createElement("a");
         enlace.href = url;
-        enlace.download = nombreDescarga();
+        enlace.download = anual ? nombreDescargaAnual(anioAnual) : nombreDescarga();
         enlace.click();
         URL.revokeObjectURL(url);
       })
@@ -251,12 +267,32 @@ function Preview({ colores, recarga }) {
         <button
           data-tour="ventas-descargar"
           type="button"
-          onClick={descargar}
+          onClick={() => descargar(false)}
           disabled={!planilla.existe}
           style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
         >
           Descargar Excel
         </button>
+        <span data-tour="ventas-anual" style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <select
+            aria-label="Año de la planilla anual"
+            value={anioAnual}
+            onChange={(e) => setAnioAnual(Number(e.target.value))}
+            style={CAMPO}
+          >
+            {[...new Set([hoy.getFullYear(), anioAnual, ...aniosConDatos])].sort((a, b) => b - a).map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            title={`Une todas las planillas existentes de ${anioAnual} (enero a diciembre) en un solo archivo`}
+            onClick={() => descargar(true)}
+            style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
+          >
+            Descargar planilla anual
+          </button>
+        </span>
       </div>
       {aviso && <p style={{ margin: "0 0 8px" }}>{aviso}</p>}
       {cargando && <p style={{ margin: 0 }}>Cargando planilla...</p>}

@@ -262,6 +262,7 @@ function descripcionVenta(e) {
   if (e.accion === "editar_celda") {
     return `${base} ${e.campo} (fila ${d.pos ?? e.fila_id}, ${d.codigo || ""}): "${e.valor_anterior || "vacío"}" → "${e.valor_nuevo || "vacío"}"`;
   }
+  if (e.accion === "descargar_excel" && d.anual) return `${base} anual ${d.anio} (${d.planillas} planillas, ${d.filas} filas)`;
   if (e.accion === "anadir_venta") return `${base}: ${d.filas} filas, ${d.movimiento}, contratista ${d.contratista}, N° ${d.n_venta}`;
   if (e.accion === "quitar_orden") return `${base}: ${d.filas} filas, ${d.movimiento}, contratista ${d.contratista}, N° ${d.n_venta}`;
   if (e.accion === "quitar_fila") return `${base} ${d.pos ?? ""} (${d.codigo || ""} ${d.descripcion || ""})`;

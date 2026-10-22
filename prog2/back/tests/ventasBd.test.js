@@ -221,6 +221,31 @@ test("cada carga del mes se exporta como una orden con su total y sus encabezado
   assert.equal(hoja.getCell(7, 1).value, "Pos");
 });
 
+test("exportarAnual une las planillas del año de enero a diciembre como si fuera una sola", async () => {
+  const anio = ventasBd.mesActual().anio;
+  tablas.ventas_planillas.push({ id: 100, anio, mes: 3, creado_en: "x" }, { id: 101, anio, mes: 1, creado_en: "x" }, { id: 102, anio: anio - 1, mes: 12, creado_en: "x" });
+  ids.ventas_planillas = 200;
+  const fila = (planilla_id, lote, codigo) => ({ id: ids.ventas_filas++, planilla_id, lote, pos: 10, codigo, descripcion: codigo, solicitado: 1, entregar: 1, m501: 1, comp: "", rojo: false });
+  tablas.ventas_filas.push(fila(100, 5, "MARZO"), fila(101, 3, "ENERO"), fila(102, 1, "OTROANIO"));
+  const { buffer, nombre } = await ventasBd.exportarAnual(anio, "ana");
+  assert.match(nombre, new RegExp(`^VENTAS ANUAL ${anio} \\d{2}-\\d{2}-\\d{4}\\.xlsx$`));
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(buffer);
+  const hoja = libro.worksheets[0];
+  assert.equal(hoja.getCell(2, 2).value, "ENERO");
+  assert.equal(hoja.getCell(3, 16).value, "total");
+  assert.equal(hoja.getCell(4, 1).value, "Pos");
+  assert.equal(hoja.getCell(5, 2).value, "MARZO");
+  assert.equal(hoja.getCell(5, 1).value, 10);
+  assert.equal(hoja.getCell(1, 1).value, "Pos");
+  const codigos = [];
+  hoja.eachRow((f) => codigos.push(f.getCell(2).value));
+  assert.equal(codigos.includes("OTROANIO"), false);
+  assert.equal(tablas.ventas_log.at(-1).detalle.anual, true);
+  await assert.rejects(ventasBd.exportarAnual(1999, "ana"), { status: 400 });
+  await assert.rejects(ventasBd.exportarAnual(anio + 1, "ana"), { status: 404 });
+});
+
 test("leerAuditoria devuelve filas y log de la planilla", async () => {
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: ITEMS, usuario: "ana" });
   const id = tablas.ventas_planillas[0].id;

@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Ventas, { nombreDescarga } from "../src/Ventas.jsx";
+import Ventas, { nombreDescarga, nombreDescargaAnual } from "../src/Ventas.jsx";
 
 const HOY = new Date();
 const FILA = {
@@ -106,6 +106,8 @@ describe("Ventas", () => {
   it("copia solo el rango de celdas seleccionado, sin la columna Quitar ni la cabecera de orden", async () => {
     render(<Ventas listaContratistas={[]} />);
     const perno = await screen.findByText("Perno");
+    // Deja que React termine de enganchar los listeners de la tabla (efectos pendientes).
+    await act(async () => {});
     const fila = perno.closest("tr");
     const celdas = fila.cells;
     document.elementFromPoint = () => celdas[2];
@@ -117,6 +119,20 @@ describe("Ventas", () => {
     evento.clipboardData = { setData: (tipo, valor) => { datos[tipo] = valor; } };
     document.dispatchEvent(evento);
     expect(datos["text/plain"]).toBe("100\tPerno");
+  });
+
+  it("ofrece descargar la planilla anual del año a la vista", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    expect(screen.getByText("Descargar planilla anual")).toBeTruthy();
+    const selector = screen.getByLabelText("Año de la planilla anual");
+    await waitFor(() => expect([...selector.options].map((o) => o.value)).toContain("2025"));
+    fireEvent.change(selector, { target: { value: "2025" } });
+    window.URL.createObjectURL = vi.fn(() => "blob:x");
+    window.URL.revokeObjectURL = vi.fn();
+    fireEvent.click(screen.getByText("Descargar planilla anual"));
+    await waitFor(() => expect(llamadas.some((l) => l.url.startsWith("/api/ventas/descargar-anual?anio=2025"))).toBe(true));
+    expect(nombreDescargaAnual(2026, new Date(2026, 9, 5))).toBe("VENTAS ANUAL 2026 05-10-2026.xlsx");
   });
 
   it("nombra la descarga VENTAS dd-mm-aaaa.xlsx", () => {

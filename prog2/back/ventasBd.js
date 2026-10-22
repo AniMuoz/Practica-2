@@ -372,8 +372,8 @@ async function armarExcel(filas, colores = true) {
   const lotes = [];
   filas.forEach((fila) => {
     const ultimo = lotes[lotes.length - 1];
-    if (ultimo && ultimo.lote === fila.lote) ultimo.filas.push(fila);
-    else lotes.push({ lote: fila.lote, filas: [fila] });
+    if (ultimo && ultimo.lote === fila.lote && ultimo.planilla_id === fila.planilla_id) ultimo.filas.push(fila);
+    else lotes.push({ lote: fila.lote, planilla_id: fila.planilla_id, filas: [fila] });
   });
 
   let n = 2;
@@ -425,6 +425,27 @@ async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true) {
   return { buffer, nombre: nombreDescarga() };
 }
 
+function nombreDescargaAnual(anio, ahora = new Date()) {
+  return nombreDescarga(ahora).replace("VENTAS ", `VENTAS ANUAL ${anio} `);
+}
+
+// Une las planillas existentes del año (enero a diciembre) en una sola, sin separar los meses.
+async function exportarAnual(valorAnio, usuario, colores = true) {
+  const { anio } = validarMes(valorAnio, 1);
+  const { data, error } = await supabase
+    .from("ventas_planillas")
+    .select("id, anio, mes, creado_en")
+    .eq("anio", anio)
+    .order("mes", { ascending: true });
+  if (error) falloBd(error);
+  if (!data || data.length === 0) throw errorHttp(404, `No hay planillas de ventas en ${anio}.`);
+  const filas = [];
+  for (const planilla of data) filas.push(...(await leerFilas(planilla.id)));
+  const buffer = await armarExcel(filas, colores);
+  await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length } });
+  return { buffer, nombre: nombreDescargaAnual(anio) };
+}
+
 async function listarLog(filtros = {}) {
   const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
   let q = supabase
@@ -463,6 +484,8 @@ module.exports = {
   quitarOrden,
   armarExcel,
   exportarPlanilla,
+  exportarAnual,
+  nombreDescargaAnual,
   registrarLog,
   listarLog,
   listarPlanillasAuditoria: listarMeses,

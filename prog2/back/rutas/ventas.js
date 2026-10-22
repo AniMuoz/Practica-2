@@ -71,6 +71,15 @@ module.exports = function rutasVentas(app) {
     }
   });
 
+  app.get("/api/ventas/descargar-anual", async (req, res) => {
+    try {
+      const { buffer, nombre } = await ventasBd.exportarAnual(req.query.anio, req.usuario, conColores(req.query.colores));
+      enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+    } catch (error) {
+      responder(res, error, "No se pudo generar la planilla anual.");
+    }
+  });
+
   app.get("/api/ventas/auditoria", async (req, res) => {
     try {
       await exigirAdmin(req);

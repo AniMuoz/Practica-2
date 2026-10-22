@@ -294,7 +294,7 @@ test("los errores al procesar la reserva responden 500 con un mensaje claro", as
 const ventasBd = require("../ventasBd");
 let respuestasVentas = {};
 let llamadasVentas = [];
-for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila", "quitarOrden"]) {
+for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila", "quitarOrden", "exportarAnual"]) {
   ventasBd[nombre] = async (...args) => {
     llamadasVentas.push({ nombre, args });
     const r = respuestasVentas[nombre];
@@ -369,6 +369,14 @@ test("GET /api/ventas/descargar entrega el Excel con el nombre VENTAS dd-mm-aaaa
   respuestasVentas = { exportarPlanilla: fallar(404, "No hay planilla de ventas para ese mes.") };
   const falta = await pedir("GET", "/api/ventas/descargar?anio=2020&mes=1");
   assert.deepEqual([falta.status, falta.json.error], [404, "No hay planilla de ventas para ese mes."]);
+});
+
+test("GET /api/ventas/descargar-anual entrega el Excel anual", async () => {
+  respuestasVentas = { exportarAnual: { buffer: Buffer.from("anual"), nombre: "VENTAS ANUAL 2026 05-10-2026.xlsx" } };
+  const r = await pedir("GET", "/api/ventas/descargar-anual?anio=2026");
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%20ANUAL%202026%2005-10-2026.xlsx");
+  assert.equal(llamadasVentas[0].args[0], "2026");
 });
 
 test("PATCH y DELETE /api/ventas/filas/:id editan y quitan filas", async () => {

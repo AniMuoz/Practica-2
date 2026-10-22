@@ -154,6 +154,11 @@ const PASOS = {
       texto: "Descarga la planilla del mes mostrado como VENTAS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
     },
     {
+      id: "ventas-anual",
+      titulo: "Planilla anual",
+      texto: "Descarga en un solo Excel todas las planillas que existan del año del mes mostrado, de enero a diciembre, como si fuera una sola planilla. Cada orden mantiene su numeración y sus encabezados.",
+    },
+    {
       id: "Editar contratistas",
       titulo: "Contratistas",
       texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta. Se abre sola, sin la planilla de ventas, y al guardar la página te pide confirmar el cambio.",
