@@ -4,7 +4,7 @@ import Planilla from "./Planilla.jsx";
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
 const ETIQUETA = { display: "grid", gap: 4, fontSize: 14 };
-const TH = { padding: "6px 8px", textAlign: "left", background: "var(--superficie)", borderBottom: "2px solid var(--borde)", whiteSpace: "nowrap", position: "sticky", top: 0 };
+const TH = { padding: "6px 8px", textAlign: "left", background: "var(--acento)", color: "var(--sobre)", borderBottom: "2px solid var(--borde)", whiteSpace: "nowrap", position: "sticky", top: 0 };
 const TD = { padding: "4px 8px", borderBottom: "1px solid var(--borde-suave)", whiteSpace: "nowrap" };
 
 // [clave, titulo, editable]
@@ -274,7 +274,7 @@ function Preview({ colores, recarga }) {
               {ordenes.map((grupo) => (
                 <Fragment key={grupo.fila.lote}>
                   <tr data-sin-copia="1">
-                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700 }}>
+                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--acento)", color: "var(--sobre)", fontWeight: 700 }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
                       <button
                         type="button"
