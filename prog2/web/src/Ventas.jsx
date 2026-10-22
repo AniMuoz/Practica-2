@@ -48,20 +48,45 @@ async function leerJson(res, mensaje) {
 }
 
 function Celda({ fila, campo, onGuardar }) {
-  const [valor, setValor] = useState(String(fila[campo] ?? ""));
-  useEffect(() => setValor(String(fila[campo] ?? "")), [fila, campo]);
+  const actual = String(fila[campo] ?? "");
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(actual);
+  useEffect(() => setValor(actual), [actual]);
+
+  function terminar(guardar) {
+    setEditando(false);
+    if (guardar && valor !== actual) onGuardar(fila, campo, valor);
+    else setValor(actual);
+  }
+
+  if (!editando) {
+    // Texto normal: se puede seleccionar y copiar a Excel. Doble clic para editar.
+    return (
+      <span
+        aria-label={`${campo} fila ${fila.pos}`}
+        title="Doble clic para editar"
+        onDoubleClick={() => setEditando(true)}
+        style={{ display: "inline-block", minWidth: 50, minHeight: "1.2em", cursor: "text" }}
+      >
+        {actual}
+      </span>
+    );
+  }
   return (
     <input
-      aria-label={`${campo} fila ${fila.pos}`}
+      autoFocus
+      aria-label={`editar ${campo} fila ${fila.pos}`}
       value={valor}
       onChange={(e) => setValor(e.target.value)}
-      onBlur={() => valor !== String(fila[campo] ?? "") && onGuardar(fila, campo, valor)}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      onBlur={() => terminar(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") terminar(true);
+        if (e.key === "Escape") terminar(false);
+      }}
       style={{ width: campo === "observacion" ? 160 : 80, padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
     />
   );
 }
-
 function Preview({ colores, recarga }) {
   const hoy = new Date();
   const [anio, setAnio] = useState(hoy.getFullYear());
@@ -198,18 +223,18 @@ function Preview({ colores, recarga }) {
       {!cargando && !planilla.existe && <p style={{ margin: 0 }}>No hay planilla de {MESES[mes - 1]} {anio}.</p>}
       {planilla.existe && (
         <div style={{ overflow: "auto", maxHeight: "60vh" }}>
-          <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
+          <table style={{ borderCollapse: "collapse", fontSize: 13, userSelect: "text" }}>
             <thead>
               <tr>
                 {COLUMNAS.map(([clave, titulo]) => <th key={clave} style={TH}>{titulo}</th>)}
-                <th style={TH}></th>
+                <th style={{ ...TH, userSelect: "none" }}></th>
               </tr>
             </thead>
             <tbody>
               {ordenes.map((grupo) => (
                 <Fragment key={grupo.fila.lote}>
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700 }}>
+                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700, userSelect: "none" }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
                       <button type="button" onClick={() => quitarOrden(grupo)}>Eliminar orden</button>
                     </td>
@@ -221,7 +246,7 @@ function Preview({ colores, recarga }) {
                           {editable ? <Celda fila={fila} campo={clave} onGuardar={guardar} /> : String(fila[clave] ?? "")}
                         </td>
                       ))}
-                      <td style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
+                      <td style={{ ...TD, userSelect: "none" }}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
                     </tr>
                   ))}
                 </Fragment>

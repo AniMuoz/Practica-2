@@ -48,7 +48,8 @@ describe("Ventas", () => {
   it("guarda una celda editada con PATCH", async () => {
     render(<Ventas listaContratistas={[]} />);
     await screen.findByText("Perno");
-    const celda = screen.getByLabelText("estado fila 10");
+    fireEvent.doubleClick(screen.getByLabelText("estado fila 10"));
+    const celda = screen.getByLabelText("editar estado fila 10");
     fireEvent.change(celda, { target: { value: "Entregado" } });
     fireEvent.blur(celda);
     await waitFor(() => expect(llamadas.some((l) => l.metodo === "PATCH" && l.url === "/api/ventas/filas/7")).toBe(true));
