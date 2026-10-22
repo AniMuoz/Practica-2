@@ -141,7 +141,7 @@ const PASOS = {
     {
       id: "ventas-preview",
       titulo: "Vista previa de la planilla",
-      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables con el botón Editar (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Puedes seleccionar celdas con el mouse y copiarlas (Ctrl+C) para pegarlas en Excel. Para modificar datos presiona Editar, cambia las celdas y presiona Guardar (el mismo botón). Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
+      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables con el botón Editar (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Puedes seleccionar celdas con el mouse y copiarlas (Ctrl+C) para pegarlas en Excel. Para modificar datos presiona Editar, cambia las celdas y presiona Guardar (el mismo botón). En modo edición puedes pegar varias filas de una columna copiadas de Excel (se reparten hacia abajo desde la celda donde pegas) y usar la flecha ↓ (o Ctrl+D) para repetir el valor de una celda hacia abajo hasta el final de la orden. Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
     },
     {
       id: "ventas-mes",

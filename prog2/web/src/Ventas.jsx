@@ -30,18 +30,39 @@ async function leerJson(res, mensaje) {
   return data;
 }
 
-function Celda({ fila, campo, editando, valor, onCambio }) {
+function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) {
   if (!editando) {
     // Texto normal: se puede seleccionar y copiar a Excel.
     return <span aria-label={`${campo} fila ${fila.pos}`}>{String(fila[campo] ?? "")}</span>;
   }
   return (
-    <input
-      aria-label={`editar ${campo} fila ${fila.pos}`}
-      value={valor}
-      onChange={(e) => onCambio(fila, campo, e.target.value)}
-      style={{ width: campo === "observacion" ? 160 : 80, padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
-    />
+    <span style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+      <input
+        aria-label={`editar ${campo} fila ${fila.pos}`}
+        value={valor}
+        onChange={(e) => onCambio(fila, campo, e.target.value)}
+        onPaste={(e) => {
+          // Varias filas de una columna (copiadas de Excel) se reparten hacia abajo.
+          if (onPegar(fila, campo, e.clipboardData.getData("text"))) e.preventDefault();
+        }}
+        onKeyDown={(e) => {
+          if (e.ctrlKey && e.key.toLowerCase() === "d") {
+            e.preventDefault();
+            onPropagar(fila, campo);
+          }
+        }}
+        style={{ width: campo === "observacion" ? 160 : 80, padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
+      />
+      <button
+        type="button"
+        aria-label={`copiar hacia abajo ${campo} fila ${fila.pos}`}
+        title="Copiar este valor hacia abajo, hasta el final de la orden (Ctrl+D)"
+        onClick={() => onPropagar(fila, campo)}
+        style={{ padding: "0 4px" }}
+      >
+        ↓
+      </button>
+    </span>
   );
 }
 function Preview({ colores, recarga }) {
@@ -74,6 +95,38 @@ function Preview({ colores, recarga }) {
 
   function cambiar(fila, campo, valor) {
     setBorradores((b) => ({ ...b, [fila.id]: { ...b[fila.id], [campo]: valor } }));
+  }
+
+  function pegar(fila, campo, texto) {
+    const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
+    if (lineas[lineas.length - 1] === "") lineas.pop();
+    if (lineas.length < 2) return false;
+    const visibles = ordenes.flatMap((o) => o.filas);
+    const inicio = visibles.findIndex((f) => f.id === fila.id);
+    if (inicio < 0) return false;
+    setBorradores((b) => {
+      const siguiente = { ...b };
+      lineas.forEach((linea, i) => {
+        const destino = visibles[inicio + i];
+        if (destino) siguiente[destino.id] = { ...siguiente[destino.id], [campo]: linea.split("\t")[0].trim() };
+      });
+      return siguiente;
+    });
+    return true;
+  }
+
+  function propagar(fila, campo) {
+    const grupo = ordenes.find((o) => o.filas.some((f) => f.id === fila.id));
+    if (!grupo) return;
+    const valor = borradores[fila.id]?.[campo] ?? String(fila[campo] ?? "");
+    const debajo = grupo.filas.slice(grupo.filas.findIndex((f) => f.id === fila.id) + 1);
+    setBorradores((b) => {
+      const siguiente = { ...b };
+      debajo.forEach((f) => {
+        siguiente[f.id] = { ...siguiente[f.id], [campo]: valor };
+      });
+      return siguiente;
+    });
   }
 
   async function alternarEdicion() {
@@ -216,7 +269,7 @@ function Preview({ colores, recarga }) {
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
-                          {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} /> : String(fila[clave] ?? "")}
+                          {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
                         </td>
                       ))}
                       <td data-sin-copia="1" style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>

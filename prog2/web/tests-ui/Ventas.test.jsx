@@ -21,7 +21,7 @@ beforeEach(() => {
     if (String(url).startsWith("/api/ventas/planilla")) {
       return String(url).includes("anio=2025")
         ? json({ existe: false, filas: [] })
-        : json({ existe: true, id: 1, filas: [FILA] });
+        : json({ existe: true, id: 1, filas: [FILA, { ...FILA, id: 8, pos: 20, codigo: "200", descripcion: "Tuerca" }] });
     }
     if (opciones.method === "PATCH") return json({ fila: { ...FILA, estado: "Entregado" } });
     return json({});
@@ -57,6 +57,27 @@ describe("Ventas", () => {
     expect(JSON.parse(llamadas.find((l) => l.metodo === "PATCH").cuerpo)).toEqual({ estado: "Entregado" });
     await screen.findByText("Editar");
     expect(screen.queryByLabelText("editar estado fila 10")).toBeNull();
+  });
+
+  it("reparte hacia abajo varias filas de una columna pegadas desde Excel", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.paste(screen.getByLabelText("editar estado fila 10"), { clipboardData: { getData: () => "Listo\nPendiente\n" } });
+    expect(screen.getByLabelText("editar estado fila 10").value).toBe("Listo");
+    expect(screen.getByLabelText("editar estado fila 20").value).toBe("Pendiente");
+    fireEvent.click(screen.getByText("Guardar"));
+    await waitFor(() => expect(llamadas.filter((l) => l.metodo === "PATCH").length).toBe(2));
+    expect(JSON.parse(llamadas.find((l) => l.url.endsWith("/8")).cuerpo)).toEqual({ estado: "Pendiente" });
+  });
+
+  it("propaga el valor de una celda hacia abajo dentro de la orden", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.change(screen.getByLabelText("editar estado fila 10"), { target: { value: "Entregado" } });
+    fireEvent.click(screen.getByLabelText("copiar hacia abajo estado fila 10"));
+    expect(screen.getByLabelText("editar estado fila 20").value).toBe("Entregado");
   });
 
   it("al guardar sin cambios no envía nada", async () => {
