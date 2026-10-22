@@ -58,9 +58,24 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
         aria-label={`copiar hacia abajo ${campo} fila ${fila.pos}`}
         title="Copiar este valor hacia abajo, hasta el final de la orden (Ctrl+D)"
         onClick={() => onPropagar(fila, campo)}
-        style={{ padding: "0 4px" }}
+        style={{
+          display: "inline-grid",
+          placeItems: "center",
+          width: 24,
+          height: 24,
+          padding: 0,
+          border: "1px solid var(--borde)",
+          background: "var(--superficie)",
+          color: "var(--acento)",
+          cursor: "pointer",
+          boxShadow: "none",
+        }}
       >
-        ↓
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 4v13" />
+          <path d="m6 12 6 6 6-6" />
+          <path d="M5 21h14" />
+        </svg>
       </button>
     </span>
   );
