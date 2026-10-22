@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Ventas, { nombreDescarga, tablaComoTsv } from "../src/Ventas.jsx";
+import Ventas, { nombreDescarga } from "../src/Ventas.jsx";
 
 const HOY = new Date();
 const FILA = {
@@ -45,17 +45,28 @@ describe("Ventas", () => {
     expect(llamadas.some((l) => l.url === "/api/ventas/planilla?anio=2025&mes=12")).toBe(true);
   });
 
-  it("guarda una celda editada con PATCH", async () => {
+  it("solo permite editar tras presionar Editar y guarda con el mismo botón", async () => {
     render(<Ventas listaContratistas={[]} />);
     await screen.findByText("Perno");
-    fireEvent.doubleClick(screen.getByLabelText("estado fila 10"));
-    const celda = screen.getByLabelText("editar estado fila 10");
-    fireEvent.change(celda, { target: { value: "Entregado" } });
-    fireEvent.blur(celda);
+    expect(screen.queryByLabelText("editar estado fila 10")).toBeNull();
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.change(screen.getByLabelText("editar estado fila 10"), { target: { value: "Entregado" } });
+    expect(llamadas.some((l) => l.metodo === "PATCH")).toBe(false);
+    fireEvent.click(screen.getByText("Guardar"));
     await waitFor(() => expect(llamadas.some((l) => l.metodo === "PATCH" && l.url === "/api/ventas/filas/7")).toBe(true));
     expect(JSON.parse(llamadas.find((l) => l.metodo === "PATCH").cuerpo)).toEqual({ estado: "Entregado" });
+    await screen.findByText("Editar");
+    expect(screen.queryByLabelText("editar estado fila 10")).toBeNull();
   });
 
+  it("al guardar sin cambios no envía nada", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    await screen.findByText("Perno");
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.click(screen.getByText("Guardar"));
+    await screen.findByText("Editar");
+    expect(llamadas.some((l) => l.metodo === "PATCH")).toBe(false);
+  });
   it("elimina una orden completa tras confirmar", async () => {
     render(<Ventas listaContratistas={[]} />);
     await screen.findByText("Perno");
@@ -69,19 +80,6 @@ describe("Ventas", () => {
     await screen.findByText("Perno");
     fireEvent.change(screen.getByPlaceholderText("Ej: 12345"), { target: { value: "99" } });
     await waitFor(() => expect(aviso).toHaveBeenLastCalledWith(true));
-  });
-
-  it("copia la tabla como texto separado por tabuladores", async () => {
-    const copiar = vi.fn(async () => {});
-    Object.defineProperty(navigator, "clipboard", { value: { writeText: copiar }, configurable: true });
-    render(<Ventas listaContratistas={[]} />);
-    await screen.findByText("Perno");
-    fireEvent.click(screen.getByText("Copiar como Excel"));
-    await waitFor(() => expect(copiar).toHaveBeenCalled());
-    const [encabezado, fila] = copiar.mock.calls[0][0].split("\n");
-    expect(encabezado.startsWith("Pos\tCódigo\tDescripción")).toBe(true);
-    expect(fila.startsWith("10\t100\tPerno")).toBe(true);
-    expect(tablaComoTsv([{ ...FILA, descripcion: "a\tb\nc" }]).split("\n")[1]).toContain("a b c");
   });
 
   it("copia solo el rango de celdas seleccionado, sin la columna Quitar ni la cabecera de orden", async () => {

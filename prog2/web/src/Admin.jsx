@@ -190,6 +190,7 @@ export default function Admin() {
   const [listaContratistas, setListaContratistas] = useState([]);
   const [baseContratistas, setBaseContratistas] = useState("[]");
   const [salidaPendiente, setSalidaPendiente] = useState(null);
+  const [confirmarContratistas, setConfirmarContratistas] = useState(false);
   const [ventaKey, setVentaKey] = useState(0);
   const [cargaKey, setCargaKey] = useState(0);
   const permitirSalida = useRef(false);
@@ -242,6 +243,27 @@ export default function Admin() {
         setListaContratistas(nombres);
         return data.filas || [];
       });
+  }
+
+  function guardarContratistasConfirmado() {
+    setConfirmarContratistas(false);
+    setAvisoContratistas("");
+    setGuardandoContratistas(true);
+    fetch("/api/contratistas", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave, filas: contratistas }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
+        fijarContratistas(data.filas || []);
+        const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
+        setListaContratistas(nombres);
+        setAvisoContratistas("Contratistas guardados.");
+      })
+      .catch((err) => setAvisoContratistas(err.message))
+      .finally(() => setGuardandoContratistas(false));
   }
 
   function cerrarPaneles(permitidos) {
@@ -666,7 +688,7 @@ export default function Admin() {
                   if (nombre === "Planilla de ventas") {
                     const abrir = !mostrarVentas;
                     if (abrir) {
-                      cerrarPaneles(["ventas", "contratistas"]);
+                      cerrarPaneles(["ventas"]);
                       cargarNombresContratistas().catch(() => {});
                     }
                     setMostrarVentas(abrir);
@@ -674,7 +696,7 @@ export default function Admin() {
                   if (nombre === "Editar contratistas") {
                     const abrir = !mostrarContratistas;
                     if (abrir) {
-                      cerrarPaneles(["ventas", "contratistas"]);
+                      cerrarPaneles(["contratistas"]);
                       setCargandoContratistas(true);
                       setAvisoContratistas("");
                       fetch("/api/contratistas", { cache: "no-store" })
@@ -1626,22 +1648,7 @@ export default function Admin() {
                   return;
                 }
                 setAvisoContratistas("");
-                setGuardandoContratistas(true);
-                fetch("/api/contratistas", {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ clave, filas: contratistas }),
-                })
-                  .then(async (res) => {
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
-                    fijarContratistas(data.filas || []);
-                    const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
-                    setListaContratistas(nombres);
-                    setAvisoContratistas("Contratistas guardados.");
-                  })
-                  .catch((err) => setAvisoContratistas(err.message))
-                  .finally(() => setGuardandoContratistas(false));
+                setConfirmarContratistas(true);
               }}
             >
               <Planilla className={clasePlanilla}>
@@ -1794,6 +1801,36 @@ export default function Admin() {
             {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
           </div>
         </form>
+      )}
+      {confirmarContratistas && (
+        <div
+          role="dialog"
+          aria-label="Confirmar cambios en contratistas"
+          style={{ position: "fixed", inset: 0, background: "rgba(17, 24, 39, 0.55)", display: "grid", placeItems: "center", padding: 24, zIndex: 80 }}
+        >
+          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
+            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>¿Guardar los cambios en contratistas?</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Se reemplazará la lista de contratistas que se puede elegir al cargar ventas. ¿Estás seguro de realizar el cambio?
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                onClick={guardarContratistasConfirmado}
+                style={{ width: "100%", padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
+              >
+                Sí, guardar cambios
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmarContratistas(false)}
+                style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", fontSize: 14, cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {(bloqueo.state === "blocked" || salidaPendiente) && (
         <div

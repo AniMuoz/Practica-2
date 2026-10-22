@@ -24,66 +24,22 @@ export function nombreDescarga(ahora = new Date()) {
   return `VENTAS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
-export function tablaComoTsv(filas) {
-  const limpio = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
-  const lineas = [COLUMNAS.map(([, titulo]) => titulo).join("\t")];
-  filas.forEach((f) => lineas.push(COLUMNAS.map(([clave]) => limpio(f[clave])).join("\t")));
-  return lineas.join("\n");
-}
-
-async function copiarTexto(texto) {
-  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(texto);
-  const area = document.createElement("textarea");
-  area.value = texto;
-  document.body.appendChild(area);
-  area.select();
-  const ok = document.execCommand("copy");
-  area.remove();
-  if (!ok) throw new Error("copiar");
-}
-
 async function leerJson(res, mensaje) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || mensaje);
   return data;
 }
 
-function Celda({ fila, campo, onGuardar }) {
-  const actual = String(fila[campo] ?? "");
-  const [editando, setEditando] = useState(false);
-  const [valor, setValor] = useState(actual);
-  useEffect(() => setValor(actual), [actual]);
-
-  function terminar(guardar) {
-    setEditando(false);
-    if (guardar && valor !== actual) onGuardar(fila, campo, valor);
-    else setValor(actual);
-  }
-
+function Celda({ fila, campo, editando, valor, onCambio }) {
   if (!editando) {
-    // Texto normal: se puede seleccionar y copiar a Excel. Doble clic para editar.
-    return (
-      <span
-        aria-label={`${campo} fila ${fila.pos}`}
-        title="Doble clic para editar"
-        onDoubleClick={() => setEditando(true)}
-        style={{ display: "inline-block", minWidth: 50, minHeight: "1.2em", cursor: "text" }}
-      >
-        {actual}
-      </span>
-    );
+    // Texto normal: se puede seleccionar y copiar a Excel.
+    return <span aria-label={`${campo} fila ${fila.pos}`}>{String(fila[campo] ?? "")}</span>;
   }
   return (
     <input
-      autoFocus
       aria-label={`editar ${campo} fila ${fila.pos}`}
       value={valor}
-      onChange={(e) => setValor(e.target.value)}
-      onBlur={() => terminar(true)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") terminar(true);
-        if (e.key === "Escape") terminar(false);
-      }}
+      onChange={(e) => onCambio(fila, campo, e.target.value)}
       style={{ width: campo === "observacion" ? 160 : 80, padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
     />
   );
@@ -96,6 +52,9 @@ function Preview({ colores, recarga }) {
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [editando, setEditando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [borradores, setBorradores] = useState({});
 
   function cargar() {
     setCargando(true);
@@ -113,23 +72,42 @@ function Preview({ colores, recarga }) {
     cargar();
   }, [anio, mes, recarga]);
 
-  function guardar(fila, campo, valor) {
-    fetch(`/api/ventas/filas/${fila.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [campo]: valor }),
-    })
-      .then((res) => leerJson(res, "No se pudo guardar la fila."))
-      .then(({ fila: nueva }) => {
-        setAviso("");
-        setPlanilla((p) => ({ ...p, filas: p.filas.map((f) => (f.id === nueva.id ? { ...f, ...nueva, pos: f.pos, lote: f.lote } : f)) }));
-      })
-      .catch((e) => {
-        setAviso(e.message);
-        cargar();
-      });
+  function cambiar(fila, campo, valor) {
+    setBorradores((b) => ({ ...b, [fila.id]: { ...b[fila.id], [campo]: valor } }));
   }
 
+  async function alternarEdicion() {
+    if (!editando) {
+      setAviso("");
+      setEditando(true);
+      return;
+    }
+    const pendientes = Object.entries(borradores).flatMap(([id, campos]) => {
+      const fila = planilla.filas.find((f) => String(f.id) === id);
+      if (!fila) return [];
+      const cambios = Object.fromEntries(Object.entries(campos).filter(([campo, valor]) => String(valor) !== String(fila[campo] ?? "")));
+      return Object.keys(cambios).length ? [[id, cambios]] : [];
+    });
+    setGuardando(true);
+    try {
+      for (const [id, cambios] of pendientes) {
+        const res = await fetch(`/api/ventas/filas/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cambios),
+        });
+        await leerJson(res, "No se pudo guardar la fila.");
+      }
+      setBorradores({});
+      setEditando(false);
+      setAviso(pendientes.length ? `Se guardaron los cambios de ${pendientes.length} filas.` : "");
+      await cargar();
+    } catch (e) {
+      setAviso(e.message);
+    } finally {
+      setGuardando(false);
+    }
+  }
   function quitar(fila) {
     if (!window.confirm(`¿Quitar la fila ${fila.pos} (${fila.codigo}) de la planilla?`)) return;
     fetch(`/api/ventas/filas/${fila.id}`, { method: "DELETE" })
@@ -145,12 +123,6 @@ function Preview({ colores, recarga }) {
       .then((res) => leerJson(res, "No se pudo quitar la orden."))
       .then(() => cargar())
       .catch((e) => setAviso(e.message));
-  }
-
-  function copiar() {
-    copiarTexto(tablaComoTsv(ordenes.flatMap((o) => o.filas)))
-      .then(() => setAviso(`Se copiaron ${filas.length} filas. Pégalas en Excel con Ctrl+V.`))
-      .catch(() => setAviso("No se pudo copiar la tabla."));
   }
 
   function descargar() {
@@ -203,11 +175,11 @@ function Preview({ colores, recarga }) {
         <input aria-label="Filtrar filas" placeholder="Filtrar código, descripción..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} style={{ ...CAMPO, flex: 1, minWidth: 160 }} />
         <button
           type="button"
-          onClick={copiar}
-          disabled={!planilla.existe || filas.length === 0}
+          onClick={alternarEdicion}
+          disabled={!planilla.existe || guardando}
           style={{ padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", color: "var(--texto)", cursor: "pointer" }}
         >
-          Copiar como Excel
+          {guardando ? "Guardando..." : editando ? "Guardar" : "Editar"}
         </button>
         <button
           data-tour="ventas-descargar"
@@ -244,7 +216,7 @@ function Preview({ colores, recarga }) {
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
-                          {editable ? <Celda fila={fila} campo={clave} onGuardar={guardar} /> : String(fila[clave] ?? "")}
+                          {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} /> : String(fila[clave] ?? "")}
                         </td>
                       ))}
                       <td data-sin-copia="1" style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>

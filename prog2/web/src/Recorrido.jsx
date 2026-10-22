@@ -141,7 +141,7 @@ const PASOS = {
     {
       id: "ventas-preview",
       titulo: "Vista previa de la planilla",
-      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Con Copiar como Excel copias la tabla visible para pegarla en una planilla (Ctrl+V). Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
+      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables con el botón Editar (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Puedes seleccionar celdas con el mouse y copiarlas (Ctrl+C) para pegarlas en Excel. Para modificar datos presiona Editar, cambia las celdas y presiona Guardar (el mismo botón). Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
     },
     {
       id: "ventas-mes",
@@ -156,7 +156,7 @@ const PASOS = {
     {
       id: "Editar contratistas",
       titulo: "Contratistas",
-      texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta.",
+      texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta. Se abre sola, sin la planilla de ventas, y al guardar la página te pide confirmar el cambio.",
     },
   ],
   personal: [
