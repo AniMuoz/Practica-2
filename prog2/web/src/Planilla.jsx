@@ -72,9 +72,11 @@ export default function Planilla({ className, style, children }) {
       const colHasta = Math.max(actual.colDesde, actual.colHasta);
       const lineas = [];
       for (let fila = desde; fila <= hasta; fila += 1) {
+        if (tabla.rows[fila]?.dataset.sinCopia) continue;
         const celdas = [];
         for (let col = colDesde; col <= colHasta; col += 1) {
-          celdas.push(tabla.rows[fila]?.cells[col]?.textContent ?? "");
+          const celda = tabla.rows[fila]?.cells[col];
+          celdas.push(celda && !celda.dataset.sinCopia ? celda.textContent : "");
         }
         lineas.push(celdas.join("\t"));
       }

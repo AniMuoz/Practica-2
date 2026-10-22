@@ -84,6 +84,22 @@ describe("Ventas", () => {
     expect(tablaComoTsv([{ ...FILA, descripcion: "a\tb\nc" }]).split("\n")[1]).toContain("a b c");
   });
 
+  it("copia solo el rango de celdas seleccionado, sin la columna Quitar ni la cabecera de orden", async () => {
+    render(<Ventas listaContratistas={[]} />);
+    const perno = await screen.findByText("Perno");
+    const fila = perno.closest("tr");
+    const celdas = fila.cells;
+    document.elementFromPoint = () => celdas[2];
+    fireEvent.mouseDown(celdas[1], { button: 0 });
+    fireEvent.mouseMove(celdas[2], { button: 0 });
+    fireEvent.mouseUp(celdas[2]);
+    const datos = {};
+    const evento = new Event("copy", { bubbles: true, cancelable: true });
+    evento.clipboardData = { setData: (tipo, valor) => { datos[tipo] = valor; } };
+    document.dispatchEvent(evento);
+    expect(datos["text/plain"]).toBe("100\tPerno");
+  });
+
   it("nombra la descarga VENTAS dd-mm-aaaa.xlsx", () => {
     expect(nombreDescarga(new Date(2026, 9, 5))).toBe("VENTAS 05-10-2026.xlsx");
   });

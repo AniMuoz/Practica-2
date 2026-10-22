@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import Planilla from "./Planilla.jsx";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
@@ -223,18 +224,18 @@ function Preview({ colores, recarga }) {
       {!cargando && !planilla.existe && <p style={{ margin: 0 }}>No hay planilla de {MESES[mes - 1]} {anio}.</p>}
       {planilla.existe && (
         <div style={{ overflow: "auto", maxHeight: "60vh" }}>
-          <table style={{ borderCollapse: "collapse", fontSize: 13, userSelect: "text" }}>
+          <Planilla style={{ width: "auto", fontSize: 13 }}>
             <thead>
               <tr>
                 {COLUMNAS.map(([clave, titulo]) => <th key={clave} style={TH}>{titulo}</th>)}
-                <th style={{ ...TH, userSelect: "none" }}></th>
+                <th data-sin-copia="1" style={TH}></th>
               </tr>
             </thead>
             <tbody>
               {ordenes.map((grupo) => (
                 <Fragment key={grupo.fila.lote}>
-                  <tr>
-                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700, userSelect: "none" }}>
+                  <tr data-sin-copia="1">
+                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--superficie)", fontWeight: 700 }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
                       <button type="button" onClick={() => quitarOrden(grupo)}>Eliminar orden</button>
                     </td>
@@ -246,13 +247,13 @@ function Preview({ colores, recarga }) {
                           {editable ? <Celda fila={fila} campo={clave} onGuardar={guardar} /> : String(fila[clave] ?? "")}
                         </td>
                       ))}
-                      <td style={{ ...TD, userSelect: "none" }}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
+                      <td data-sin-copia="1" style={TD}><button type="button" onClick={() => quitar(fila)}>Quitar</button></td>
                     </tr>
                   ))}
                 </Fragment>
               ))}
             </tbody>
-          </table>
+          </Planilla>
           {filas.length === 0 && <p>Sin filas para mostrar.</p>}
         </div>
       )}
