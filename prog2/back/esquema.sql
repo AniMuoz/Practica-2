@@ -80,3 +80,68 @@ create table if not exists public.bitacora_log (
 create index if not exists bitacora_log_folio_idx on public.bitacora_log (folio);
 create index if not exists bitacora_log_creado_idx on public.bitacora_log (creado_en desc);
 alter table public.bitacora_log enable row level security;
+
+create table if not exists public.ventas_planillas (
+  id bigint generated always as identity primary key,
+  anio integer not null check (anio between 2000 and 2999),
+  mes integer not null check (mes between 1 and 12),
+  creado_en timestamptz not null default now(),
+  unique (anio, mes)
+);
+
+create table if not exists public.ventas_filas (
+  id bigint generated always as identity primary key,
+  planilla_id bigint not null references public.ventas_planillas(id) on delete cascade,
+  lote bigint not null default 0,
+  pos integer not null default 0,
+  fecha text not null default '',
+  codigo text not null default '',
+  descripcion text not null default '',
+  ubicacion text not null default '',
+  m501 numeric not null default 0,
+  m502 numeric not null default 0,
+  m503 numeric not null default 0,
+  m504 numeric not null default 0,
+  m505 numeric not null default 0,
+  solicitado numeric not null default 0,
+  entregar numeric not null default 0,
+  med text not null default '',
+  tiras numeric,
+  dif numeric not null default 0,
+  kg_u numeric not null default 0,
+  precio_u numeric not null default 0,
+  precio_total numeric not null default 0,
+  contratista text not null default '',
+  movimiento text not null default 'VENTA',
+  almacen text not null default '',
+  n_venta text not null default '',
+  cant_gd numeric not null default 0,
+  gd_esval text not null default '',
+  estado text not null default '',
+  fecha_gd text not null default '',
+  gd_esval2 text not null default '',
+  observacion text not null default '',
+  rojo boolean not null default false,
+  creado_en timestamptz not null default now()
+);
+
+create index if not exists ventas_filas_planilla_idx on public.ventas_filas (planilla_id, pos);
+alter table public.ventas_planillas enable row level security;
+alter table public.ventas_filas enable row level security;
+
+create table if not exists public.ventas_log (
+  id bigint generated always as identity primary key,
+  creado_en timestamptz not null default now(),
+  usuario text not null default '',
+  accion text not null,
+  planilla_id bigint,
+  fila_id bigint,
+  campo text,
+  valor_anterior text,
+  valor_nuevo text,
+  detalle jsonb not null default '{}'::jsonb
+);
+
+create index if not exists ventas_log_planilla_idx on public.ventas_log (planilla_id);
+create index if not exists ventas_log_creado_idx on public.ventas_log (creado_en desc);
+alter table public.ventas_log enable row level security;

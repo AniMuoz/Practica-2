@@ -136,7 +136,22 @@ const PASOS = {
     {
       id: "Planilla de ventas",
       titulo: "Planilla de ventas",
-      texto: "Genera o continúa una planilla de ventas. Puedes subir una orden, un traspaso o cargar producto a producto. Puedes elegir un contratista de la lista.",
+      texto: "Registra ventas y traspasos en la planilla del mes, que se guarda en la base de datos (ya no hay que subir la planilla anterior). Sube una orden, un traspaso o carga producto a producto, y elige un contratista de la lista. Cada carga queda registrada en Auditoría.",
+    },
+    {
+      id: "ventas-preview",
+      titulo: "Vista previa de la planilla",
+      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Cada cambio queda registrado con tu usuario.",
+    },
+    {
+      id: "ventas-mes",
+      titulo: "Planillas anteriores",
+      texto: "Hay una planilla por mes; al empezar un mes nuevo se crea sola. Para ver una anterior elígela en la lista o busca su mes y año con el selector de fecha.",
+    },
+    {
+      id: "ventas-descargar",
+      titulo: "Descargar Excel",
+      texto: "Descarga la planilla del mes mostrado como VENTAS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
     },
     {
       id: "Editar contratistas",
@@ -233,6 +248,12 @@ const PASOS = {
       titulo: "Historial de cambios del folio",
       texto:
         "Lista todo lo que se hizo en este folio, del más reciente al más antiguo, con el usuario que hizo cada cambio. Los cambios de un folio eliminado también se conservan.",
+    },
+    {
+      id: "auditoria-ventas",
+      titulo: "Planilla de ventas",
+      texto:
+        "Muestra cada cambio de la planilla de ventas (productos añadidos, celdas editadas, filas quitadas y descargas) con el usuario que lo hizo. Más abajo se listan las planillas por mes; presiona una para ver sus filas y su historial.",
     },
   ],
 };

@@ -49,7 +49,7 @@ Navegador ──> Cloudflare (Pages + Worker) ──/api──> Servidor Express
 | `fuenteDatos.js`, `nucleoDatos.js` | Carga/precarga de datos, caché y lógica base de la tabla de materiales. |
 | `planillasStock.js` | Construcción de planillas de stock, bodega, regional e inventario. |
 | `reservasDatos.js` | Lectura y cruce de reservas (PDF/Excel). |
-| `ventas.js`, `contratistas.js` | Ventas y contratistas. |
+| `ventas.js`, `ventasBd.js`, `contratistas.js` | Lectura de órdenes/traspasos, planilla de ventas mensual en Supabase (`ventas_planillas`, `ventas_filas`, `ventas_log`) y contratistas. |
 | `bitacora.js` | Folios, filas y firmas de la bitácora. |
 | `importaciones.js` | Importación de Excel (SAP, precios, ubicaciones). |
 | `supabase.js`, `supabaseTablas.js`, `supabaseTarea.js` | Cliente y acceso a tablas de Supabase. |
@@ -81,7 +81,7 @@ Navegador ──> Cloudflare (Pages + Worker) ──/api──> Servidor Express
 
 **Reservas y ventas** (`rutas/reservas.js`, `rutas/ventas.js`)
 - `GET /reservas`, `GET /reservas/excel`, `POST /reserva`, `POST /reserva/excel`
-- `POST /ventas`, `GET|PUT /contratistas`
+- `POST /ventas` (añade a la planilla del mes), `GET /ventas/planilla?anio&mes`, `GET /ventas/meses`, `GET /ventas/descargar?anio&mes` (`VENTAS dd-mm-aaaa.xlsx`), `PATCH|DELETE /ventas/filas/:id`, `GET /ventas/auditoria*` (admin), `GET|PUT /contratistas`
 
 **Bitácora** (`rutas/bitacora.js`)
 - `POST /bitacora/folios`, `GET /bitacora/folios/ultimo`, `GET|DELETE /bitacora/folios/:folio`, `GET /bitacora/folios/:folio/excel`

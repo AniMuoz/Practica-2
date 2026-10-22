@@ -11,6 +11,8 @@ prog2/back/.sesion-secreto
 
 node_modules/
 
+/pruebas posibles
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

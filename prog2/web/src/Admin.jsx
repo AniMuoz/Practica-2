@@ -6,6 +6,7 @@ import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
 import Bitacora from "./Bitacora.jsx";
+import Ventas from "./Ventas.jsx";
 import VistaPrevia from "./admin/VistaPrevia.jsx";
 import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
@@ -185,17 +186,8 @@ export default function Admin() {
   const [mostrarBitacora, setMostrarBitacora] = useState(false);
   const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
   const [mostrarVentas, setMostrarVentas] = useState(false);
-  const [ordenVenta, setOrdenVenta] = useState(null);
-  const [archivoVentas, setArchivoVentas] = useState(null);
+  const [ventaPendiente, setVentaPendiente] = useState(false);
   const [listaContratistas, setListaContratistas] = useState([]);
-  const [contratistaVenta, setContratistaVenta] = useState("1");
-  const [movimientoVenta, setMovimientoVenta] = useState("1");
-  const [modoVenta, setModoVenta] = useState("orden");
-  const [productosVenta, setProductosVenta] = useState([{ codigo: "", cantidad: "" }]);
-  const [codVenta, setCodVenta] = useState("");
-  const [almacenVenta, setAlmacenVenta] = useState("M501");
-  const [procesandoVenta, setProcesandoVenta] = useState(false);
-  const [avisoVenta, setAvisoVenta] = useState("");
   const [baseContratistas, setBaseContratistas] = useState("[]");
   const [salidaPendiente, setSalidaPendiente] = useState(null);
   const [ventaKey, setVentaKey] = useState(0);
@@ -248,11 +240,6 @@ export default function Admin() {
       .then((data) => {
         const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
         setListaContratistas(nombres);
-        setContratistaVenta((actual) => {
-          const indice = Number(actual);
-          if (indice >= 1 && indice <= nombres.length) return actual;
-          return nombres.length ? "1" : "1";
-        });
         return data.filas || [];
       });
   }
@@ -325,7 +312,6 @@ export default function Admin() {
         })
         .catch(() => {
           if (mostrarContratistas) setAvisoContratistas("No se pudieron leer los contratistas.");
-          if (mostrarVentas) setAvisoVenta("No se pudieron cargar los contratistas.");
         });
     }
   }
@@ -357,18 +343,7 @@ export default function Admin() {
     mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
   const contratistasSinGuardar =
     mostrarContratistas && JSON.stringify(contratistas) !== baseContratistas;
-  const ventaSinGuardar =
-    mostrarVentas &&
-    Boolean(
-      ordenVenta ||
-        archivoVentas ||
-        modoVenta !== "orden" ||
-        productosVenta.some((fila) => String(fila.codigo).trim() || String(fila.cantidad).trim()) ||
-        movimientoVenta !== "1" ||
-        contratistaVenta !== "1" ||
-        (movimientoVenta === "2" && almacenVenta !== "M501") ||
-        String(codVenta).trim() !== ""
-    );
+  const ventaSinGuardar = mostrarVentas && ventaPendiente;
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
   const hayCambiosSinGuardar =
     formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
@@ -401,11 +376,7 @@ export default function Admin() {
       setCargaKey((actual) => actual + 1);
     }
     if (ventaSinGuardar) {
-      setOrdenVenta(null);
-      setArchivoVentas(null);
-      setContratistaVenta("1");
-      setMovimientoVenta("1");
-      setCodVenta("");
+      setVentaPendiente(false);
       setVentaKey((actual) => actual + 1);
     }
   }
@@ -696,7 +667,7 @@ export default function Admin() {
                     const abrir = !mostrarVentas;
                     if (abrir) {
                       cerrarPaneles(["ventas", "contratistas"]);
-                      cargarNombresContratistas().catch(() => setAvisoVenta("No se pudieron cargar los contratistas."));
+                      cargarNombresContratistas().catch(() => {});
                     }
                     setMostrarVentas(abrir);
                   }
@@ -1629,193 +1600,7 @@ export default function Admin() {
         </section>
       )}
       {autorizado && mostrarVentas && (
-        <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: 640, width: "100%" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Añadir venta</h2>
-          <form
-            key={ventaKey}
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (modoVenta === "manual") {
-                const validos = productosVenta.filter((fila) => String(fila.codigo).trim() && String(fila.cantidad).trim());
-                if (validos.length === 0) {
-                  setAvisoVenta("Agrega al menos un producto con código y cantidad.");
-                  return;
-                }
-              } else if (!ordenVenta) {
-                setAvisoVenta(movimientoVenta === "2" ? "Elige el archivo de traspaso." : "Elige el archivo de orden de venta.");
-                return;
-              }
-              setAvisoVenta("");
-              setProcesandoVenta(true);
-              const cuerpo = new FormData();
-              cuerpo.append("modo", modoVenta);
-              if (modoVenta === "manual") {
-                cuerpo.append("items", JSON.stringify(productosVenta.filter((fila) => String(fila.codigo).trim() && String(fila.cantidad).trim())));
-              } else if (ordenVenta) {
-                cuerpo.append("orden", ordenVenta);
-              }
-              if (archivoVentas) cuerpo.append("ventas", archivoVentas);
-              cuerpo.append("contratista", contratistaVenta);
-              cuerpo.append("movimiento", movimientoVenta);
-              cuerpo.append("almacen", movimientoVenta === "2" ? almacenVenta : "M501");
-              cuerpo.append("codVenta", movimientoVenta === "2" && modoVenta !== "manual" ? "n/a" : codVenta);
-              cuerpo.append("colores", colores ? "1" : "0");
-              fetch("/api/ventas", { method: "POST", body: cuerpo })
-                .then(async (res) => {
-                  if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || "No se pudo generar la venta.");
-                  }
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const enlace = document.createElement("a");
-                  enlace.href = url;
-                  enlace.download = `VENTAS ${new Date().getFullYear()}.xlsx`;
-                  enlace.click();
-                  URL.revokeObjectURL(url);
-                  setOrdenVenta(null);
-                  setArchivoVentas(null);
-                  setContratistaVenta("1");
-                  setMovimientoVenta("1");
-                  setModoVenta("orden");
-                  setProductosVenta([{ codigo: "", cantidad: "" }]);
-                  setCodVenta("");
-                  setAlmacenVenta("M501");
-                  setVentaKey((actual) => actual + 1);
-                })
-                .catch((err) => setAvisoVenta(err.message))
-                .finally(() => setProcesandoVenta(false));
-            }}
-            style={{ display: "grid", gap: 12 }}
-          >
-            <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-              Cómo cargar los productos
-              <select
-                value={modoVenta}
-                onChange={(event) => setModoVenta(event.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-              >
-                <option value="orden">Desde archivo (orden o traspaso)</option>
-                <option value="manual">Producto a producto</option>
-              </select>
-            </label>
-            {modoVenta === "orden" ? (
-              <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-                {movimientoVenta === "2" ? "Archivo de traspaso" : "Archivo de orden de venta"}
-                <input type="file" accept=".xlsx" onChange={(event) => setOrdenVenta(event.target.files?.[0] || null)} />
-                <span style={{ fontSize: 12, color: "var(--texto-suave, #666)" }}>
-                  {movimientoVenta === "2"
-                    ? "Encabezados en la fila 3. El número se toma del título en C1. Código, descripción, medida, solicitado, entregar y CONCON se copian a la planilla."
-                    : "Se lee la hoja de pedido: código, unidad y solicitado."}
-                </span>
-              </label>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                <span style={{ fontSize: 14 }}>Productos</span>
-                {productosVenta.map((fila, indice) => (
-                  <div key={indice} style={{ display: "flex", gap: 8 }}>
-                    <input
-                      value={fila.codigo}
-                      placeholder="Código"
-                      onChange={(event) => {
-                        const copia = productosVenta.slice();
-                        copia[indice] = { ...copia[indice], codigo: event.target.value };
-                        setProductosVenta(copia);
-                      }}
-                      style={{ flex: 2, padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                    />
-                    <input
-                      value={fila.cantidad}
-                      placeholder="Cantidad"
-                      inputMode="numeric"
-                      onChange={(event) => {
-                        const copia = productosVenta.slice();
-                        copia[indice] = { ...copia[indice], cantidad: event.target.value };
-                        setProductosVenta(copia);
-                      }}
-                      style={{ flex: 1, padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setProductosVenta(productosVenta.filter((_, i) => i !== indice))}
-                      style={{ padding: "8px 10px" }}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setProductosVenta([...productosVenta, { codigo: "", cantidad: "" }])}
-                  style={{ padding: "6px 12px", justifySelf: "start" }}
-                >
-                  + Agregar producto
-                </button>
-              </div>
-            )}
-            <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-              Archivo de ventas existente (opcional)
-              <input type="file" accept=".xlsx" onChange={(event) => setArchivoVentas(event.target.files?.[0] || null)} />
-            </label>
-            <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-              Contratista
-              <select
-                value={contratistaVenta}
-                onChange={(event) => setContratistaVenta(event.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-              >
-                {listaContratistas.map((nombre, indice) => (
-                  <option key={nombre} value={String(indice + 1)}>{nombre}</option>
-                ))}
-                <option value={String(listaContratistas.length + 1)}>n/a</option>
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-              Tipo de movimiento
-              <select
-                value={movimientoVenta}
-                onChange={(event) => setMovimientoVenta(event.target.value)}
-                style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-              >
-                <option value="1">Venta</option>
-                <option value="2">Traspaso</option>
-              </select>
-            </label>
-            {(movimientoVenta === "1" || (movimientoVenta === "2" && modoVenta === "manual")) && (
-              <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-                Número de venta
-                <input
-                  value={codVenta}
-                  placeholder="Ej: 12345"
-                  onChange={(event) => setCodVenta(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                />
-              </label>
-            )}
-            {movimientoVenta === "2" && (
-              <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-                Almacén
-                <select
-                  value={almacenVenta}
-                  onChange={(event) => setAlmacenVenta(event.target.value)}
-                  style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                >
-                  {["M501", "M502", "M503", "M504", "M505"].map((bodega) => (
-                    <option key={bodega} value={bodega}>{bodega}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <button
-              type="submit"
-              disabled={procesandoVenta}
-              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer", justifySelf: "center" }}
-            >
-              {procesandoVenta ? "Procesando..." : "Procesar y descargar"}
-            </button>
-            {avisoVenta && <p style={{ margin: 0 }}>{avisoVenta}</p>}
-          </form>
-        </section>
+        <Ventas key={ventaKey} colores={colores} listaContratistas={listaContratistas} onSinGuardar={setVentaPendiente} />
       )}
       {autorizado && mostrarContratistas && (
         <section

@@ -1,4 +1,4 @@
-﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 
@@ -291,18 +291,33 @@ test("los errores al procesar la reserva responden 500 con un mensaje claro", as
 
 // ---------- ventas ----------
 
-test("POST /api/ventas en modo manual arma la venta con los productos y los datos del formulario", async () => {
-  responder({ añadirVenta: { buffer: Buffer.from("venta"), nombre: "VENTAS 2026.xlsx" } });
+const ventasBd = require("../ventasBd");
+let respuestasVentas = {};
+let llamadasVentas = [];
+for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila"]) {
+  ventasBd[nombre] = async (...args) => {
+    llamadasVentas.push({ nombre, args });
+    const r = respuestasVentas[nombre];
+    if (r === undefined) throw new Error(`Sin respuesta preparada para ${nombre}`);
+    return typeof r === "function" ? r(...args) : r;
+  };
+}
+test.beforeEach(() => {
+  respuestasVentas = {};
+  llamadasVentas = [];
+});
+
+test("POST /api/ventas en modo manual guarda la venta con los productos y los datos del formulario", async () => {
+  respuestasVentas = { anadirVenta: { anio: 2026, mes: 10, agregadas: 1 } };
   const items = [{ codigo: "100", cantidad: 3 }];
   const respuesta = await pedir("POST", "/api/ventas", {
-    form: formulario({ modo: "manual", items: JSON.stringify(items), contratista: "2", movimiento: "2", almacen: "M503", codVenta: "55", colores: "0" }),
+    form: formulario({ modo: "manual", items: JSON.stringify(items), contratista: "2", movimiento: "2", almacen: "M503", codVenta: "55" }),
   });
-  assert.equal(respuesta.status, 200);
-  assert.equal(respuesta.headers.get("content-disposition"), "attachment; filename=VENTAS%202026.xlsx");
-  assert.equal(respuesta.cuerpo.toString(), "venta");
-  assert.deepEqual(llamadasA("añadirVenta")[0].args[0], {
-    ordenBuffer: undefined, ventasBuffer: undefined, contratistaIdx: 2, movTipo: 2, almacen: "M503", codVenta: "55", colores: false, itemsManuales: items,
-  });
+  assert.equal(respuesta.status, 201);
+  assert.deepEqual(respuesta.json, { anio: 2026, mes: 10, agregadas: 1 });
+  const args = { ...llamadasVentas[0].args[0] };
+  delete args.usuario;
+  assert.deepEqual(args, { ordenBuffer: undefined, contratistaIdx: 2, movTipo: 2, almacen: "M503", codVenta: "55", itemsManuales: items });
 });
 
 test("POST /api/ventas valida la lista manual y exige archivo en modo orden", async () => {
@@ -314,30 +329,55 @@ test("POST /api/ventas valida la lista manual y exige archivo en modo orden", as
   assert.equal(sinArchivo.json.error, "Falta el archivo.");
   const otroFormato = await pedir("POST", "/api/ventas", { form: formulario({}, { orden: { contenido: "x", archivo: "orden.csv" } }) });
   assert.equal(otroFormato.status, 400);
-  assert.equal(llamadas.length, 0);
+  assert.equal(llamadasVentas.length, 0);
 });
 
-test("POST /api/ventas en modo orden entrega ambos archivos y traduce errores", async () => {
-  responder({ añadirVenta: { buffer: Buffer.from("v"), nombre: "V.xlsx" } });
+test("POST /api/ventas en modo orden entrega el archivo y traduce errores", async () => {
+  respuestasVentas = { anadirVenta: { anio: 2026, mes: 10, agregadas: 2 } };
   await pedir("POST", "/api/ventas", {
-    form: formulario({ contratista: "1", movimiento: "1" }, {
-      orden: { contenido: "ORDEN", archivo: "orden.xlsx" },
-      ventas: { contenido: "VENTAS", archivo: "ventas.xlsx" },
-    }),
+    form: formulario({ contratista: "1", movimiento: "1" }, { orden: { contenido: "ORDEN", archivo: "orden.xlsx" } }),
   });
-  const { ordenBuffer, ventasBuffer, itemsManuales, colores } = llamadasA("añadirVenta")[0].args[0];
+  const { ordenBuffer, itemsManuales } = llamadasVentas[0].args[0];
   assert.equal(ordenBuffer.toString(), "ORDEN");
-  assert.equal(ventasBuffer.toString(), "VENTAS");
   assert.equal(itemsManuales, null);
-  assert.equal(colores, true);
 
   const orden = { orden: { contenido: "x", archivo: "orden.xlsx" } };
-  responder({ añadirVenta: fallar(400, "No se encontraron productos para cargar.") });
+  respuestasVentas = { anadirVenta: fallar(400, "No se encontraron productos para cargar.") };
   const conEstado = await pedir("POST", "/api/ventas", { form: formulario({}, orden) });
   assert.deepEqual([conEstado.status, conEstado.json.error], [400, "No se encontraron productos para cargar."]);
-  responder({ añadirVenta: fallar(0, "detalle interno") });
+  respuestasVentas = { anadirVenta: fallar(0, "detalle interno") };
   const sinEstado = await pedir("POST", "/api/ventas", { form: formulario({}, orden) });
-  assert.deepEqual([sinEstado.status, sinEstado.json.error], [500, "No se pudo generar la planilla de ventas."]);
+  assert.deepEqual([sinEstado.status, sinEstado.json.error], [500, "No se pudo guardar la venta."]);
+});
+
+test("GET /api/ventas/planilla y /meses leen la planilla del mes pedido", async () => {
+  respuestasVentas = { obtenerPlanilla: { existe: false, filas: [] }, listarMeses: [{ id: 1, anio: 2026, mes: 10 }] };
+  const planilla = await pedir("GET", "/api/ventas/planilla?anio=2026&mes=9");
+  assert.equal(planilla.status, 200);
+  assert.deepEqual(llamadasVentas[0].args, ["2026", "9"]);
+  const meses = await pedir("GET", "/api/ventas/meses");
+  assert.deepEqual(meses.json, { meses: [{ id: 1, anio: 2026, mes: 10 }] });
+});
+
+test("GET /api/ventas/descargar entrega el Excel con el nombre VENTAS dd-mm-aaaa", async () => {
+  respuestasVentas = { exportarPlanilla: { buffer: Buffer.from("xlsx"), nombre: "VENTAS 05-10-2026.xlsx" } };
+  const r = await pedir("GET", "/api/ventas/descargar?anio=2026&mes=10&colores=0");
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%2005-10-2026.xlsx");
+  assert.equal(r.cuerpo.toString(), "xlsx");
+  assert.equal(llamadasVentas[0].args[3], false);
+  respuestasVentas = { exportarPlanilla: fallar(404, "No hay planilla de ventas para ese mes.") };
+  const falta = await pedir("GET", "/api/ventas/descargar?anio=2020&mes=1");
+  assert.deepEqual([falta.status, falta.json.error], [404, "No hay planilla de ventas para ese mes."]);
+});
+
+test("PATCH y DELETE /api/ventas/filas/:id editan y quitan filas", async () => {
+  respuestasVentas = { editarFila: { fila: { id: 5, estado: "ok" } }, quitarFila: { id: 5, eliminada: true } };
+  const editada = await pedir("PATCH", "/api/ventas/filas/5", { json: { estado: "ok" } });
+  assert.deepEqual([editada.status, editada.json.fila.estado], [200, "ok"]);
+  assert.deepEqual(llamadasVentas[0].args.slice(0, 2), ["5", { estado: "ok" }]);
+  const quitada = await pedir("DELETE", "/api/ventas/filas/5");
+  assert.deepEqual(quitada.json, { id: 5, eliminada: true });
 });
 
 // ---------- contratistas ----------

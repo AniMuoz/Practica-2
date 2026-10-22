@@ -1,12 +1,16 @@
-const { leerContratistas, guardarContratistas, añadirVenta } = require("../fuenteDatos");
+const { leerContratistas, guardarContratistas } = require("../fuenteDatos");
 const { uploadXlsx, conColores, enviarPlanilla } = require("../compartido");
+const ventasBd = require("../ventasBd");
+const { exigirAdmin } = require("../auth");
 
 module.exports = function rutasVentas(app) {
+  function responder(res, error, mensaje) {
+    console.error(error);
+    res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
+  }
+
   app.post("/api/ventas", (req, res) => {
-    uploadXlsx.fields([
-      { name: "orden", maxCount: 1 },
-      { name: "ventas", maxCount: 1 },
-    ])(req, res, async (errorCarga) => {
+    uploadXlsx.fields([{ name: "orden", maxCount: 1 }])(req, res, async (errorCarga) => {
       if (errorCarga) {
         res.status(400).json({ error: errorCarga.message });
         return;
@@ -26,23 +30,88 @@ module.exports = function rutasVentas(app) {
         return;
       }
       try {
-        const ventas = req.files?.ventas?.[0];
-        const { buffer, nombre } = await añadirVenta({
+        const resultado = await ventasBd.anadirVenta({
           ordenBuffer: orden?.buffer,
-          ventasBuffer: ventas?.buffer,
           contratistaIdx: Number(req.body.contratista),
           movTipo: Number(req.body.movimiento),
           almacen: req.body.almacen,
           codVenta: req.body.codVenta,
-          colores: conColores(req.body.colores),
           itemsManuales,
+          usuario: req.usuario,
         });
-        enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+        res.status(201).json(resultado);
       } catch (error) {
-        console.error(error);
-        res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo generar la planilla de ventas." });
+        responder(res, error, "No se pudo guardar la venta.");
       }
     });
+  });
+
+  app.get("/api/ventas/meses", async (_req, res) => {
+    try {
+      res.json({ meses: await ventasBd.listarMeses() });
+    } catch (error) {
+      responder(res, error, "No se pudieron leer las planillas.");
+    }
+  });
+
+  app.get("/api/ventas/planilla", async (req, res) => {
+    try {
+      res.json(await ventasBd.obtenerPlanilla(req.query.anio, req.query.mes));
+    } catch (error) {
+      responder(res, error, "No se pudo leer la planilla de ventas.");
+    }
+  });
+
+  app.get("/api/ventas/descargar", async (req, res) => {
+    try {
+      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores));
+      enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
+    } catch (error) {
+      responder(res, error, "No se pudo generar la planilla de ventas.");
+    }
+  });
+
+  app.get("/api/ventas/auditoria", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json({ planillas: await ventasBd.listarPlanillasAuditoria() });
+    } catch (error) {
+      responder(res, error, "No se pudo leer la auditoría de ventas.");
+    }
+  });
+
+  app.get("/api/ventas/auditoria/log", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json(await ventasBd.listarLog(req.query || {}));
+    } catch (error) {
+      responder(res, error, "No se pudo leer el log de ventas.");
+    }
+  });
+
+  app.get("/api/ventas/auditoria/:id", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json(await ventasBd.leerAuditoria(req.params.id));
+    } catch (error) {
+      responder(res, error, "No se pudo leer la planilla.");
+    }
+  });
+
+  app.patch("/api/ventas/filas/:id", async (req, res) => {
+    try {
+      res.json(await ventasBd.editarFila(req.params.id, req.body, req.usuario));
+    } catch (error) {
+      responder(res, error, "No se pudo guardar la fila.");
+    }
+  });
+
+  app.delete("/api/ventas/filas/:id", async (req, res) => {
+    try {
+      res.json(await ventasBd.quitarFila(req.params.id, req.usuario));
+    } catch (error) {
+      responder(res, error, "No se pudo quitar la fila.");
+    }
   });
 
   app.get("/api/contratistas", (_req, res) => {

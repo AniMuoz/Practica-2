@@ -246,6 +246,172 @@ function Folios({ alListo }) {
   );
 }
 
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const ACCIONES_VENTAS = {
+  crear_planilla: "Abrió la planilla del mes",
+  anadir_venta: "Añadió productos",
+  editar_celda: "Editó una celda",
+  quitar_fila: "Quitó una fila",
+  descargar_excel: "Descargó la planilla",
+};
+
+function descripcionVenta(e) {
+  const base = ACCIONES_VENTAS[e.accion] || e.accion;
+  const d = e.detalle || {};
+  if (e.accion === "editar_celda") {
+    return `${base} ${e.campo} (fila ${d.pos ?? e.fila_id}, ${d.codigo || ""}): "${e.valor_anterior || "vacío"}" → "${e.valor_nuevo || "vacío"}"`;
+  }
+  if (e.accion === "anadir_venta") return `${base}: ${d.filas} filas, ${d.movimiento}, contratista ${d.contratista}, N° ${d.n_venta}`;
+  if (e.accion === "quitar_fila") return `${base} ${d.pos ?? ""} (${d.codigo || ""} ${d.descripcion || ""})`;
+  return base;
+}
+
+function TablaLogVentas({ eventos }) {
+  if (eventos.length === 0) return <p>Sin actividad registrada.</p>;
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+        <thead>
+          <tr>
+            <th style={TH}>Fecha y hora</th>
+            <th style={TH}>Usuario</th>
+            <th style={TH}>Planilla</th>
+            <th style={TH}>Cambio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eventos.map((e) => (
+            <tr key={e.id}>
+              <td style={{ ...TD, whiteSpace: "nowrap" }}>{fecha(e.creado_en)}</td>
+              <td style={{ ...TD, fontWeight: 600 }}>{e.usuario || "—"}</td>
+              <td style={TD}>{e.planilla_id ?? ""}</td>
+              <td style={TD}>{descripcionVenta(e)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Ventas() {
+  const [planillas, setPlanillas] = useState([]);
+  const [detalle, setDetalle] = useState(null);
+  const [error, setError] = useState("");
+  const [filtros, setFiltros] = useState({ usuario: "", accion: "", desde: "", hasta: "" });
+  const [pagina, setPagina] = useState(1);
+  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
+
+  function cargarLog(p, f) {
+    const q = new URLSearchParams({ pagina: String(p) });
+    Object.entries(f).forEach(([k, v]) => v.trim() && q.set(k, v.trim()));
+    leer(`/api/ventas/auditoria/log?${q}`)
+      .then((d) => {
+        setError("");
+        setDatos(d);
+      })
+      .catch((e) => setError(e.message));
+  }
+
+  useEffect(() => {
+    cargarLog(pagina, filtros);
+  }, [pagina]);
+
+  useEffect(() => {
+    leer("/api/ventas/auditoria")
+      .then((d) => setPlanillas(d.planillas || []))
+      .catch((e) => setError(e.message));
+  }, []);
+
+  function abrir(id) {
+    leer(`/api/ventas/auditoria/${id}`).then(setDetalle).catch((e) => setError(e.message));
+  }
+
+  const paginas = Math.max(1, Math.ceil(datos.total / datos.por_pagina));
+  const cambiar = (k) => (ev) => setFiltros({ ...filtros, [k]: ev.target.value });
+
+  return (
+    <div data-tour="auditoria-ventas">
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          if (pagina === 1) cargarLog(1, filtros);
+          else setPagina(1);
+        }}
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}
+      >
+        <input placeholder="Usuario" aria-label="Usuario ventas" value={filtros.usuario} onChange={cambiar("usuario")} style={{ ...CAMPO, width: 120 }} />
+        <select aria-label="Acción ventas" value={filtros.accion} onChange={cambiar("accion")} style={CAMPO}>
+          <option value="">Todas las acciones</option>
+          {Object.entries(ACCIONES_VENTAS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <label style={{ fontSize: 13 }}>Desde <input type="date" value={filtros.desde} onChange={cambiar("desde")} style={CAMPO} /></label>
+        <label style={{ fontSize: 13 }}>Hasta <input type="date" value={filtros.hasta} onChange={cambiar("hasta")} style={CAMPO} /></label>
+        <button type="submit" style={{ ...BOTON, background: "var(--boton)", color: "var(--sobre)", border: 0 }}>Filtrar</button>
+      </form>
+      {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
+      <TablaLogVentas eventos={datos.eventos} />
+      <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0", fontSize: 14 }}>
+        <button type="button" style={BOTON} disabled={pagina <= 1} onClick={() => setPagina(pagina - 1)}>Anterior</button>
+        <span>Página {pagina} de {paginas} · {datos.total} eventos</span>
+        <button type="button" style={BOTON} disabled={pagina >= paginas} onClick={() => setPagina(pagina + 1)}>Siguiente</button>
+      </div>
+      <h3 style={{ fontSize: 16 }}>Planillas por mes</h3>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+          <thead>
+            <tr>
+              <th style={TH}>Mes</th>
+              <th style={TH}>Creada</th>
+            </tr>
+          </thead>
+          <tbody>
+            {planillas.map((p) => (
+              <tr key={p.id} onClick={() => abrir(p.id)} style={{ cursor: "pointer", fontWeight: detalle && detalle.id === p.id ? 700 : 400 }}>
+                <td style={TD}>{MESES[p.mes - 1]} {p.anio}</td>
+                <td style={TD}>{fecha(p.creado_en)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {detalle && (
+        <section style={{ marginTop: 16 }}>
+          <h3 style={{ fontSize: 16 }}>Planilla {MESES[detalle.mes - 1]} {detalle.anio}</h3>
+          {detalle.filas.length === 0 ? (
+            <p>Sin filas.</p>
+          ) : (
+            <div style={{ overflow: "auto", maxHeight: "50vh" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+                <thead>
+                  <tr>
+                    {["Pos", "Código", "Descripción", "Solicitado", "Entregar", "Contratista", "Movimiento", "N°Venta", "Fecha"].map((t) => (
+                      <th key={t} style={TH}>{t}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalle.filas.map((f) => (
+                    <tr key={f.id}>
+                      {[f.pos, f.codigo, f.descripcion, f.solicitado, f.entregar, f.contratista, f.movimiento, f.n_venta, f.fecha].map((v, i) => (
+                        <td key={i} style={TD}>{v}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <h3 style={{ fontSize: 16 }}>Historial de cambios</h3>
+          <TablaLogVentas eventos={detalle.log || []} />
+        </section>
+      )}
+    </div>
+  );
+}
+
 export default function Auditoria() {
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
@@ -261,7 +427,7 @@ export default function Auditoria() {
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras</h1>
+      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras y ventas</h1>
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 24 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Actividad</h2>
         <Actividad alListo={sumar} />
@@ -269,6 +435,10 @@ export default function Auditoria() {
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Folios</h2>
         <Folios alListo={sumar} />
+      </section>
+      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginTop: 24 }}>
+        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Planilla de ventas</h2>
+        <Ventas />
       </section>
     </main>
   );

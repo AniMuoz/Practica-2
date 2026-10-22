@@ -15,7 +15,7 @@ flowchart TD
     AU -- Sí --> H{Archivo en rutas/}
     H --> I[materiales.js<br/>tabla, CRUD, imagen, marcado, acceso]
     H --> J[planillas.js<br/>bodega, regional, inventario, stock]
-    H --> K[reservas.js y ventas.js<br/>reservas, ventas, contratistas]
+    H --> K[reservas.js y ventas.js<br/>reservas, ventas (BD mensual), contratistas]
     H --> M[bitacora.js<br/>folios, filas, firma]
     I --> O[(Supabase)]
     J --> O
