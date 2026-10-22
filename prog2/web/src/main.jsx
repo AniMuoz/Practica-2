@@ -1,5 +1,4 @@
 import { StrictMode } from "react";
-import logo from "../logo/logo.ico";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Acceso from "./Acceso.jsx";
@@ -17,11 +16,6 @@ import "./movil.css";
 if (localStorage.getItem("modoOscuro") === "1") {
   document.documentElement.classList.add("oscuro");
 }
-
-const icono = document.createElement("link");
-icono.rel = "icon";
-icono.href = logo;
-document.head.appendChild(icono);
 
 function Marco() {
   return (
