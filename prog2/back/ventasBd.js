@@ -109,13 +109,22 @@ async function leerFilas(planillaId) {
       .from("ventas_filas")
       .select("*")
       .eq("planilla_id", planillaId)
+      .order("lote", { ascending: true })
       .order("pos", { ascending: true })
+      .order("id", { ascending: true })
       .range(desde, desde + 999);
     if (error) falloBd(error);
     filas.push(...(data || []));
     if (!data || data.length < 1000) break;
   }
-  return filas.map(conCalculos);
+  // La numeración (Pos) es propia de cada orden: 10, 20, 30... aunque las filas guardadas traigan otra.
+  const contador = new Map();
+  return filas.map((fila) => {
+    const clave = Number(fila.lote);
+    const n = (contador.get(clave) || 0) + 1;
+    contador.set(clave, n);
+    return conCalculos({ ...fila, lote: clave, pos: n * 10 });
+  });
 }
 
 async function obtenerPlanilla(valorAnio, valorMes) {

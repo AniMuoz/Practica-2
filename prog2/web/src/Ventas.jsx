@@ -78,7 +78,7 @@ function Preview({ colores, recarga }) {
       .then((res) => leerJson(res, "No se pudo guardar la fila."))
       .then(({ fila: nueva }) => {
         setAviso("");
-        setPlanilla((p) => ({ ...p, filas: p.filas.map((f) => (f.id === nueva.id ? nueva : f)) }));
+        setPlanilla((p) => ({ ...p, filas: p.filas.map((f) => (f.id === nueva.id ? { ...f, ...nueva, pos: f.pos, lote: f.lote } : f)) }));
       })
       .catch((e) => {
         setAviso(e.message);
@@ -122,12 +122,13 @@ function Preview({ colores, recarga }) {
     ? planilla.filas.filter((f) => [f.codigo, f.descripcion, f.contratista, f.n_venta].some((v) => String(v ?? "").toLowerCase().includes(texto)))
     : planilla.filas;
 
-  const ordenes = [];
+  const porLote = new Map();
   filas.forEach((f) => {
-    const ultimo = ordenes[ordenes.length - 1];
-    if (ultimo && ultimo.fila.lote === f.lote) ultimo.filas.push(f);
-    else ordenes.push({ fila: f, filas: [f] });
+    const clave = Number(f.lote);
+    if (!porLote.has(clave)) porLote.set(clave, { fila: f, filas: [] });
+    porLote.get(clave).filas.push(f);
   });
+  const ordenes = [...porLote.values()].sort((a, b) => Number(a.fila.lote) - Number(b.fila.lote));
 
   return (
     <section data-tour="ventas-preview" style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: "100%", width: "100%", boxSizing: "border-box" }}>

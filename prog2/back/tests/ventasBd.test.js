@@ -161,6 +161,16 @@ test("quitarFila borra la fila y deja constancia en el log", async () => {
   assert.deepEqual([log.accion, log.fila_id, log.usuario], ["quitar_fila", id, "ana"]);
 });
 
+test("obtenerPlanilla reinicia Pos en cada orden aunque lo guardado sea otro", async () => {
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: ITEMS });
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: ITEMS });
+  tablas.ventas_filas.slice(3).forEach((f, i) => { f.lote += 1; f.pos = 100 + i; });
+  const { anio, mes } = ventasBd.mesActual();
+  const { filas } = await ventasBd.obtenerPlanilla(anio, mes);
+  assert.deepEqual(filas.map((f) => f.pos), [10, 20, 30, 10, 20, 30]);
+  assert.equal(new Set(filas.map((f) => f.lote)).size, 2);
+});
+
 test("quitarOrden borra solo las filas de esa orden y deja constancia", async () => {
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "1", itemsManuales: ITEMS, usuario: "ana" });
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "2", itemsManuales: [{ codigo: "100", cantidad: 1 }] });
