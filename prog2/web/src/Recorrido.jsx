@@ -80,6 +80,36 @@ const PASOS = {
         "Añade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. También se pueden actualizar las reservas o cargar la lista de códigos de Movimientos.",
     },
     {
+      id: "Revisar stock de reserva",
+      titulo: "Revisar una reserva",
+      texto: "Revisa una reserva por número de orden o subiendo la orden, para ver si hay stock para cubrirla.",
+    },
+    {
+      id: "Stock en bodega",
+      titulo: "Stock M501",
+      texto: "Genera una planilla con el stock de la bodega M501.",
+    },
+    {
+      id: "Stock regional",
+      titulo: "Stock de varias bodegas",
+      texto: "Genera una planilla con el stock de las bodegas M501, M502, M503, M504 y M505.",
+    },
+    {
+      id: "Stock detallado",
+      titulo: "Stock detallado",
+      texto: "Genera una planilla detallada del stock, con casillas para revisar y comparar con datos de fuera del sistema.",
+    },
+    {
+      id: "Planilla de inventario",
+      titulo: "Inventario manual",
+      texto: "Genera una planilla para hacer el inventario a mano en la bodega M501.",
+    },
+    {
+      id: "Movimientos",
+      titulo: "Movimientos",
+      texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
+    },
+    {
       id: "Bitacora camion",
       titulo: "Bitácora de camiones",
       texto:
@@ -102,36 +132,6 @@ const PASOS = {
       titulo: "Tabla de viajes",
       texto:
         "Las columnas están agrupadas por color: Viaje, Horarios, Kilometraje, Detalle y Firma. Cada celda se guarda sola al salir de ella y KM/RECO se calcula. Al subir la imagen de la firma hay que confirmar el RUT de la fila: queda Vigente, y si después cambian los datos del viaje pasa a Vencida. Para quitarla hay que indicar un motivo, que queda en el historial de Auditoría y no sale en el Excel.",
-    },
-    {
-      id: "Stock en bodega",
-      titulo: "Stock M501",
-      texto: "Genera una planilla con el stock de la bodega M501.",
-    },
-    {
-      id: "Stock regional",
-      titulo: "Stock de varias bodegas",
-      texto: "Genera una planilla con el stock de las bodegas M501, M502, M503, M504 y M505.",
-    },
-    {
-      id: "Planilla de inventario",
-      titulo: "Inventario manual",
-      texto: "Genera una planilla para hacer el inventario a mano en la bodega M501.",
-    },
-    {
-      id: "Movimientos",
-      titulo: "Movimientos",
-      texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
-    },
-    {
-      id: "Stock detallado",
-      titulo: "Stock detallado",
-      texto: "Genera una planilla detallada del stock, con casillas para revisar y comparar con datos de fuera del sistema.",
-    },
-    {
-      id: "Revisar stock de reserva",
-      titulo: "Revisar una reserva",
-      texto: "Revisa una reserva por número de orden o subiendo la orden, para ver si hay stock para cubrirla.",
     },
     {
       id: "Planilla de ventas",
