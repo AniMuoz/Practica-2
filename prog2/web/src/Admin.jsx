@@ -576,13 +576,13 @@ export default function Admin() {
         >
           {[
             "Añadir/cargar datos",
-            "Bitacora camion",
+            "Revisar stock de reserva",
             "Stock en bodega",
             "Stock regional",
+            "Stock detallado",
             "Planilla de inventario",
             "Inventario por bodega",
-            "Stock detallado",
-            "Revisar stock de reserva",
+            "Bitacora camion",
             "Planilla de ventas",
             "Editar contratistas",
           ].map((nombre, indice, lista) => {

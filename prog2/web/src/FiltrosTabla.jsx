@@ -13,6 +13,14 @@ const CHECKS = [
   ["ignorarNulo", "Ignorar materiales NULO"],
 ];
 
+const ORDENES = [
+  ["", "Sin orden extra"],
+  ["codigo", "Ordenar códigos de mayor a menor"],
+  ["codigo-asc", "Ordenar códigos de menor a mayor"],
+  ["descripcion", "Ordenar descripciones alfabéticamente"],
+  ["descripcion-desc", "Ordenar descripciones alfabéticamente al revés"],
+];
+
 // Mismos filtros que la tabla principal (ver filtrarFilas en reglasPlanilla.js).
 export default function FiltrosTabla({ filas, filtros, onChange, centrado = false }) {
   const poner = (clave, valor) => onChange({ ...filtros, [clave]: valor });
@@ -54,6 +62,12 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
         </label>
       </div>
       <div className="filtros-col">
+        {ORDENES.map(([valor, texto]) => (
+          <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+            <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
+            {texto}
+          </label>
+        ))}
         {CHECKS.map(([clave, texto]) => (
           <label key={clave} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
             <input type="checkbox" checked={filtros[clave]} onChange={(e) => poner(clave, e.target.checked)} />

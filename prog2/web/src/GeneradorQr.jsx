@@ -108,14 +108,35 @@ export default function GeneradorQr() {
 
   async function descargarZip() {
     if (!filtradas.length) return setAviso("No hay filas con estos filtros.");
+    cancelar.current = false;
     setTrabajando(true);
     try {
       const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
-      for (let i = 0; i < filtradas.length; i++) {
-        const codigo = String(filtradas[i].Codigo);
-        setAviso(`Generando ${i + 1} de ${filtradas.length}...`);
-        zip.file(`qr_${codigo}.png`, await crearQrPng(codigo, undefined, romboDe(filtradas[i])));
+      const lista = filtradas;
+      let sinRombo = 0;
+      for (let i = 0; i < lista.length; i++) {
+        if (cancelar.current) {
+          setAviso("Descarga cancelada.");
+          setTrabajando(false);
+          return;
+        }
+        const codigo = String(lista[i].Codigo);
+        setAviso(`Generando ${i + 1} de ${lista.length}...`);
+        let png;
+        try {
+          png = await crearQrPng(codigo, undefined, romboDe(lista[i]));
+        } catch {
+          // Si falla el rombo (imagen faltante o rota) se genera el QR sin rombo.
+          sinRombo++;
+          png = await crearQrPng(codigo);
+        }
+        zip.file(`qr_${codigo}.png`, png);
+      }
+      if (cancelar.current) {
+        setAviso("Descarga cancelada.");
+        setTrabajando(false);
+        return;
       }
       const url = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
       const a = document.createElement("a");
@@ -123,7 +144,7 @@ export default function GeneradorQr() {
       a.download = "qr_materiales.zip";
       a.click();
       URL.revokeObjectURL(url);
-      setAviso(`ZIP con ${filtradas.length} QR descargado.`);
+      setAviso(`ZIP con ${lista.length} QR descargado.${sinRombo ? ` ${sinRombo} se generaron sin rombo porque no se pudo cargar su imagen.` : ""}`);
     } catch {
       setAviso("No se pudo generar el ZIP.");
     }
