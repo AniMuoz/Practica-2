@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -18,14 +18,15 @@ const COLUMNAS = [
   ["dif_pend", "Dif.Pend"], ["gd_esval2", "GD Esval (2)", true], ["fecha_gd", "Fecha GD", true], ["observacion", "Observación", true],
 ];
 
-export function nombreDescarga(ahora = new Date()) {
+export function nombreDescarga(ahora = new Date(), tipo = "completa") {
   const dia = String(ahora.getDate()).padStart(2, "0");
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  return `VENTAS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
+  const prefijo = tipo === "reservar" ? "VENTAS RESERVAR" : "VENTAS";
+  return `${prefijo} ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
-export function nombreDescargaAnual(anio, ahora = new Date()) {
-  return nombreDescarga(ahora).replace("VENTAS ", `VENTAS ANUAL ${anio} `);
+export function nombreDescargaAnual(anio, ahora = new Date(), tipo = "completa") {
+  return nombreDescarga(ahora, tipo).replace(/^(VENTAS(?: RESERVAR)?) /, `$1 ANUAL ${anio} `);
 }
 
 async function leerJson(res, mensaje) {
@@ -212,15 +213,13 @@ function Preview({ colores, recarga }) {
     const ruta = anual
       ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}${extra}`
       : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}${extra}`;
-    const prefijo = tipo === "reservar" ? "VENTAS RESERVAR " : null;
     fetch(ruta)
       .then(async (res) => {
         if (!res.ok) await leerJson(res, "No se pudo descargar la planilla.");
         const url = URL.createObjectURL(await res.blob());
         const enlace = document.createElement("a");
         enlace.href = url;
-        const nombre = anual ? nombreDescargaAnual(anioAnual) : nombreDescarga();
-        enlace.download = prefijo ? nombre.replace("VENTAS ", prefijo) : nombre;
+        enlace.download = anual ? nombreDescargaAnual(anioAnual, new Date(), tipo) : nombreDescarga(new Date(), tipo);
         enlace.click();
         URL.revokeObjectURL(url);
       })
@@ -437,6 +436,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
   const [formKey, setFormKey] = useState(0);
+  const archivoActual = useRef(null);
   const [hojas, setHojas] = useState([]);
   const [hoja, setHoja] = useState("");
 
@@ -444,17 +444,22 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
     setOrden(archivo);
     setHojas([]);
     setHoja("");
+    setAviso("");
+    archivoActual.current = archivo;
     if (!archivo) return;
     const cuerpo = new FormData();
     cuerpo.append("archivo", archivo);
     fetch("/api/ventas/hojas", { method: "POST", body: cuerpo })
       .then((res) => leerJson(res, "No se pudieron leer las hojas del archivo."))
       .then((data) => {
+        if (archivoActual.current !== archivo) return;
         const lista = data.hojas || [];
         setHojas(lista);
         setHoja(lista[data.activa] ?? lista[0] ?? "");
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (archivoActual.current === archivo) setAviso(err.message);
+      });
   }
 
   // Pega una columna copiada de Excel: reparte los valores hacia abajo y crea las filas que falten.
@@ -462,6 +467,10 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
     const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
     if (lineas[lineas.length - 1] === "") lineas.pop();
     if (lineas.length < 2) return false;
+    if (lineas.length > 500) {
+      setAviso("Se pueden pegar hasta 500 filas a la vez.");
+      return true;
+    }
     setProductos((actual) => {
       const siguiente = actual.map((f) => ({ ...f }));
       lineas.forEach((linea, i) => {

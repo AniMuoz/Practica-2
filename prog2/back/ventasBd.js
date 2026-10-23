@@ -459,13 +459,15 @@ async function armarExcelReservar(filas, colores = true) {
   return libro.xlsx.writeBuffer();
 }
 
+const armadorPlanilla = (tipo) => (tipo === "reservar" ? armarExcelReservar : armarExcel);
+
 async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa") {
   const { anio, mes } = validarMes(valorAnio, valorMes);
   const planilla = await buscarPlanilla(anio, mes);
   if (!planilla) throw errorHttp(404, "No hay planilla de ventas para ese mes.");
   const filas = await leerFilas(planilla.id);
   const reservar = tipo === "reservar";
-  const buffer = reservar ? await armarExcelReservar(filas, colores) : await armarExcel(filas, colores);
+  const buffer = await armadorPlanilla(tipo)(filas, colores);
   await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length, tipo } });
   return { buffer, nombre: reservar ? nombreDescarga().replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescarga() };
 }
@@ -487,7 +489,7 @@ async function exportarAnual(valorAnio, usuario, colores = true, tipo = "complet
   const filas = [];
   for (const planilla of data) filas.push(...(await leerFilas(planilla.id)));
   const reservar = tipo === "reservar";
-  const buffer = reservar ? await armarExcelReservar(filas, colores) : await armarExcel(filas, colores);
+  const buffer = await armadorPlanilla(tipo)(filas, colores);
   await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length, tipo } });
   return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescargaAnual(anio) };
 }

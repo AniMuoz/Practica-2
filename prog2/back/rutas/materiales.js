@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const fs = require("fs");
-const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
+const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
 const { uploadXlsx, upload, emitir, esImagenReal } = require("../compartido");
 const { subirImagen } = require("../imagenesSupabase");
 const { exigirAdmin } = require("../auth");
@@ -53,6 +53,7 @@ module.exports = function rutasMateriales(app) {
         else if (modo === "ubicaciones") resultado = importarUbicaciones(req.body.clave, req.file.buffer);
         else if (modo === "dos-columnas") resultado = importarDosColumnas(req.body.clave, req.file.buffer, req.body.columna);
         else if (modo === "reservas") resultado = importarReservas(req.body.clave, req.file.buffer);
+        else if (modo === "movimientos") resultado = importarMovimientos(req.body.clave, req.file.buffer);
         else {
           res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
           return;

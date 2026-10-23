@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, planillaInventarioPorBodega, exportarPlanillaInventario, exportarInventarioBodega, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla } = require("../compartido");
 
 module.exports = function rutasPlanillas(app) {
@@ -91,25 +91,23 @@ module.exports = function rutasPlanillas(app) {
     }
   });
 
-  app.get("/api/inventario-bodega", (_req, res) => {
+  app.get("/api/movimientos", (_req, res) => {
     try {
-      const { bodegas } = planillaInventarioPorBodega();
-      res.json({ bodegas });
+      res.json(planillaMovimientos());
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: "No se pudo leer el inventario por bodega." });
+      res.status(500).json({ error: "No se pudo leer la planilla de movimientos." });
     }
   });
 
-  app.get("/api/inventario-bodega/excel", async (req, res) => {
+  app.get("/api/movimientos/excel", async (req, res) => {
     try {
-      const codigo = String(req.query.bodega ?? "").trim();
       const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
-      const buffer = await exportarInventarioBodega(codigo, conColores(req.query.colores), origen);
-      enviarPlanilla(res, buffer, nombreConFecha(`PLANILLA DE INVENTARIO ${codigo}`));
+      const buffer = await exportarMovimientos(conColores(req.query.colores), origen);
+      enviarPlanilla(res, buffer, nombreConFecha("PLANILLA DE MOVIMIENTOS"));
     } catch (error) {
       console.error(error);
-      res.status(error.status || 500).json({ error: error.message || "No se pudo generar la planilla de la bodega." });
+      res.status(500).json({ error: "No se pudo generar la planilla de movimientos." });
     }
   });
 

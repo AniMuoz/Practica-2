@@ -19,7 +19,6 @@ const {
   columnaExcel,
   valorStock,
   claveUbicacion,
-  codigoBodega,
   aplicarExistencia,
   aplicarFiltrosTabla,
   enteroReserva,
@@ -89,12 +88,10 @@ test("valorStock deja números enteros y conserva texto", () => {
   assert.equal(valorStock("12 kg"), "12 kg");
 });
 
-test("claveUbicacion y codigoBodega agrupan por los dos primeros dígitos", () => {
+test("claveUbicacion agrupa por los dos primeros dígitos", () => {
   assert.deepEqual(claveUbicacion(""), [1, 0]);
   assert.deepEqual(claveUbicacion("03-A"), [0, 3]);
   assert.deepEqual(claveUbicacion("pasillo"), [0, 999]);
-  assert.equal(codigoBodega("03-A"), "03");
-  assert.equal(codigoBodega("pasillo"), "Sin bodega");
 });
 
 test("aplicarExistencia copia libre utilización o inventario", () => {

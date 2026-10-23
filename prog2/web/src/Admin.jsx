@@ -21,6 +21,8 @@ import {
   colorStockDetallado,
   filasInventarioVisibles,
   filtrarFilas,
+  numerarFilas,
+  POSICIONES_MOVIMIENTOS,
   rutaExcel,
   rutaExcelInventario,
 } from "./reglasPlanilla.js";
@@ -40,7 +42,7 @@ export default function Admin() {
     (nombre === "Stock en bodega" && mostrarBodega) ||
     (nombre === "Stock regional" && mostrarRegional) ||
     (nombre === "Planilla de inventario" && mostrarInventario) ||
-    (nombre === "Inventario por bodega" && mostrarInventarioBodega) ||
+    (nombre === "Movimientos" && mostrarMovimientos) ||
     (nombre === "Stock detallado" && mostrarDetallado) ||
     (nombre === "Revisar stock de reserva" && mostrarReserva) ||
     (nombre === "Editar contratistas" && mostrarContratistas) ||
@@ -78,10 +80,10 @@ export default function Admin() {
   const [avisoInventario, setAvisoInventario] = useState("");
   const [copiarExistencia, setCopiarExistencia] = useState(false);
   const [copiarInventario, setCopiarInventario] = useState(false);
-  const [mostrarInventarioBodega, setMostrarInventarioBodega] = useState(false);
-  const [bodegasInventario, setBodegasInventario] = useState([]);
-  const [cargandoInventarioBodega, setCargandoInventarioBodega] = useState(false);
-  const [avisoInventarioBodega, setAvisoInventarioBodega] = useState("");
+  const [mostrarMovimientos, setMostrarMovimientos] = useState(false);
+  const [movimientos, setMovimientos] = useState({ columnas: [], filas: [] });
+  const [cargandoMovimientos, setCargandoMovimientos] = useState(false);
+  const [avisoMovimientos, setAvisoMovimientos] = useState("");
   const excelInventario = (ruta) => rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia);
   function alternarExistencia() {
     if (copiarExistencia) {
@@ -109,7 +111,7 @@ export default function Admin() {
   const [avisoDetallado, setAvisoDetallado] = useState("");
   const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
   const [filasMaestro, setFilasMaestro] = useState([]);
-  const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarDetallado;
+  const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarMovimientos || mostrarDetallado;
   useEffect(() => {
     if (!autorizado || !hayPanelStock) return;
     obtenerJson("/api/tabla")
@@ -164,6 +166,11 @@ export default function Admin() {
     filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia),
     0
   ).filas;
+  const filasMovimientos = numerarFilas(
+    // Se conserva el orden del archivo cargado (igual que en el Excel); los filtros solo ocultan filas.
+    filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS)
+      .filter((fila) => codigosFiltrados.has(String(fila[1])))
+  );
   const [mostrarReserva, setMostrarReserva] = useState(false);
   const [archivoReserva, setArchivoReserva] = useState(null);
   const [reserva, setReserva] = useState({ columnas: [], filas: [] });
@@ -259,7 +266,7 @@ export default function Admin() {
     if (!ok.has("bodega")) setMostrarBodega(false);
     if (!ok.has("regional")) setMostrarRegional(false);
     if (!ok.has("inventario")) setMostrarInventario(false);
-    if (!ok.has("inventarioBodega")) setMostrarInventarioBodega(false);
+    if (!ok.has("movimientos")) setMostrarMovimientos(false);
     if (!ok.has("detallado")) setMostrarDetallado(false);
     if (!ok.has("reserva")) setMostrarReserva(false);
     if (!ok.has("ventas")) setMostrarVentas(false);
@@ -289,17 +296,6 @@ export default function Admin() {
     return `Último cambio: ${texto}`;
   }
 
-  function cargarInventarioBodega(silencioso = false) {
-    if (!silencioso) setCargandoInventarioBodega(true);
-    setAvisoInventarioBodega("");
-    return obtenerJson("/api/inventario-bodega", "No se pudo leer el inventario por bodega.")
-      .then((data) => {
-        setBodegasInventario(data.bodegas || []);
-      })
-      .catch((err) => setAvisoInventarioBodega(err.message))
-      .finally(() => setCargandoInventarioBodega(false));
-  }
-
   function refrescarVistas(silencioso = false) {
     obtenerJson("/api/tabla")
       .then(aplicarColumnas)
@@ -307,7 +303,7 @@ export default function Admin() {
     if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.", silencioso);
     if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.", silencioso);
     if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.", silencioso);
-    if (mostrarInventarioBodega) cargarInventarioBodega(silencioso);
+    if (mostrarMovimientos) cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", silencioso);
     if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.", silencioso);
     if (mostrarContratistas || mostrarVentas) {
       cargarNombresContratistas()
@@ -581,7 +577,7 @@ export default function Admin() {
             "Stock regional",
             "Stock detallado",
             "Planilla de inventario",
-            "Inventario por bodega",
+            "Movimientos",
             "Bitacora camion",
             "Planilla de ventas",
             "Editar contratistas",
@@ -636,13 +632,13 @@ export default function Admin() {
                     }
                     setMostrarInventario(abrir);
                   }
-                  if (nombre === "Inventario por bodega") {
-                    const abrir = !mostrarInventarioBodega;
+                  if (nombre === "Movimientos") {
+                    const abrir = !mostrarMovimientos;
                     if (abrir) {
-                      cerrarPaneles(["inventarioBodega"]);
-                      cargarInventarioBodega();
+                      cerrarPaneles(["movimientos"]);
+                      cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.");
                     }
-                    setMostrarInventarioBodega(abrir);
+                    setMostrarMovimientos(abrir);
                   }
                   if (nombre === "Stock detallado") {
                     const abrir = !mostrarDetallado;
@@ -787,6 +783,7 @@ export default function Admin() {
                 ? `Planilla de 2 columnas (columna ${columnaCarga})`
                 : "Planilla de 2 columnas",
               reservas: "Añadir reservas",
+              movimientos: "Movimientos",
             };
             const seccion = secciones[modoCarga] || modoCarga;
             const confirmar = window.confirm(
@@ -805,7 +802,11 @@ export default function Admin() {
                 setArchivo(null);
                 event.target.reset();
                 const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
-                setAvisoCarga(`Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`);
+                setAvisoCarga(
+                  modoCarga === "movimientos"
+                    ? `Listo: ${data.agregados} códigos cargados${omitidos}.`
+                    : `Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`
+                );
                 cargarUltimasCargas();
                 refrescarVistas();
               })
@@ -836,6 +837,7 @@ export default function Admin() {
             <option value="precios">Planilla de precios</option>
             <option value="dos-columnas">Planilla de 2 columnas</option>
             <option value="reservas">Añadir reservas</option>
+            <option value="movimientos">Movimientos</option>
             {esMovilCarga ? (
               <option value="" disabled>
                 Opción no disponible para la versión móvil, intente desde un PC
@@ -1136,7 +1138,7 @@ export default function Admin() {
           )}
         </section>
       )}
-      {autorizado && mostrarInventarioBodega && (
+      {autorizado && mostrarMovimientos && (
         <section
           style={{
             background: "var(--superficie)",
@@ -1146,36 +1148,67 @@ export default function Admin() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Inventario por bodega</h2>
+            <h2 style={{ margin: 0, fontSize: 18 }}>Movimientos</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
               <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
+              <a
+                href={excelInventario("/api/movimientos/excel")}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 6,
+                  background: "var(--boton)",
+                  color: "var(--sobre)",
+                  fontSize: 14,
+                  textDecoration: "none",
+                }}
+              >
+                Descargar planilla
+              </a>
             </div>
           </div>
-          {cargandoInventarioBodega && <p style={{ margin: 0 }}>Cargando bodegas...</p>}
-          {avisoInventarioBodega && <p style={{ margin: 0 }}>{avisoInventarioBodega}</p>}
-          {!cargandoInventarioBodega && !avisoInventarioBodega && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {bodegasInventario.map((bodegaItem) => (
-                <div key={bodegaItem.codigo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                  <span>Bodega {bodegaItem.codigo} ({bodegaItem.cantidad} materiales)</span>
-                  <a
-                    href={excelInventario(`/api/inventario-bodega/excel?bodega=${encodeURIComponent(bodegaItem.codigo)}`)}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 6,
-                      background: "var(--boton)",
-                      color: "var(--sobre)",
-                      fontSize: 14,
-                      textDecoration: "none",
-                    }}
-                  >
-                    Descargar planilla
-                  </a>
-                </div>
-              ))}
-              {bodegasInventario.length === 0 && <p style={{ margin: 0 }}>No hay bodegas para inventariar.</p>}
-            </div>
+          {panelFiltros}
+          {cargandoMovimientos && <p style={{ margin: 0 }}>Cargando movimientos...</p>}
+          {avisoMovimientos && <p style={{ margin: 0 }}>{avisoMovimientos}</p>}
+          {!cargandoMovimientos && !avisoMovimientos && (
+            <VistaPrevia
+              filas={filasMovimientos}
+              columnas={movimientos.columnas.length}
+              className={clasePlanilla}
+              vacio="No hay movimientos cargados."
+              renderFila={(fila, indice) => (
+                <tr key={`${fila[1]}-${indice}`}>
+                  {fila.map((valor, columna) => (
+                    <td
+                      key={columna}
+                      style={{ padding: "8px 10px", border: "1px solid var(--borde-suave)", background: "var(--superficie)" }}
+                    >
+                      {valor === "" || valor == null ? "" : String(valor)}
+                    </td>
+                  ))}
+                </tr>
+              )}
+            >
+                <thead>
+                  <tr>
+                    {movimientos.columnas.map((columna) => (
+                      <th
+                        key={columna}
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          background: colores ? "#a9e5e5" : "var(--superficie)",
+                          border: "1px solid var(--borde)",
+                        }}
+                      >
+                        {columna}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+            </VistaPrevia>
           )}
         </section>
       )}

@@ -10,6 +10,8 @@ module.exports = function rutasVentas(app) {
     res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
   }
 
+  const tipoPlanilla = (valor) => (valor === "reservar" ? "reservar" : "completa");
+
   app.post("/api/ventas/hojas", (req, res) => {
     uploadXlsx.single("archivo")(req, res, (errorCarga) => {
       if (errorCarga || !req.file) {
@@ -19,7 +21,8 @@ module.exports = function rutasVentas(app) {
       try {
         res.json(hojasDeLibro(req.file.buffer));
       } catch (error) {
-        responder(res, error, "No se pudieron leer las hojas del archivo.");
+        console.error(error);
+        res.status(400).json({ error: "No se pudieron leer las hojas del archivo." });
       }
     });
   });
@@ -80,7 +83,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/descargar", async (req, res) => {
     try {
-      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), req.query.tipo);
+      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo));
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de ventas.");
@@ -89,7 +92,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/descargar-anual", async (req, res) => {
     try {
-      const { buffer, nombre } = await ventasBd.exportarAnual(req.query.anio, req.usuario, conColores(req.query.colores), req.query.tipo);
+      const { buffer, nombre } = await ventasBd.exportarAnual(req.query.anio, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo));
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla anual.");

@@ -229,28 +229,6 @@ function planillaInventario() {
   return { columnas, filas: resultado };
 }
 
-function codigoBodega(ubicacion) {
-  const ub = String(ubicacion ?? "").trim();
-  if (/^\d{2}/.test(ub)) return ub.slice(0, 2);
-  return "Sin bodega";
-}
-
-function planillaInventarioPorBodega() {
-  const { columnas, filas } = planillaInventario();
-  const grupos = new Map();
-  filas.forEach((fila) => {
-    const codigo = codigoBodega(fila[2]);
-    if (!grupos.has(codigo)) grupos.set(codigo, []);
-    grupos.get(codigo).push(fila);
-  });
-  const bodegas = [...grupos.keys()].sort((a, b) => {
-    const numeroA = /^\d+$/.test(a) ? Number(a) : 9999;
-    const numeroB = /^\d+$/.test(b) ? Number(b) : 9999;
-    return numeroA - numeroB || a.localeCompare(b);
-  }).map((codigo) => ({ codigo, cantidad: grupos.get(codigo).length }));
-  return { columnas, grupos, bodegas };
-}
-
 async function armarPlanillaInventario(filas, almacen, colores = true) {
   const columnas = ["Código", "Descripción", "Ubicación", "Sub-Ubicación", "Libre utilización", "Existencia"];
   const libro = new ExcelJS.Workbook();
@@ -306,11 +284,13 @@ async function armarPlanillaInventario(filas, almacen, colores = true) {
   return libro.xlsx.writeBuffer();
 }
 
-function aplicarExistencia(filas, origen) {
+const POSICIONES_INVENTARIO = { libre: 4, destino: 5, inventario: 6 };
+
+function aplicarExistencia(filas, origen, { libre, destino, inventario } = POSICIONES_INVENTARIO) {
   return filas.map((fila) => {
-    const copia = fila.slice(0, 6);
-    if (origen === "libre") copia[5] = fila[4];
-    if (origen === "inventario") copia[5] = fila[6] ?? "";
+    const copia = fila.slice(0, destino + 1);
+    if (origen === "libre") copia[destino] = fila[libre];
+    if (origen === "inventario") copia[destino] = fila[inventario] ?? "";
     return copia;
   });
 }
@@ -318,17 +298,6 @@ function aplicarExistencia(filas, origen) {
 async function exportarPlanillaInventario(colores = true, origenExistencia = "") {
   const { filas } = planillaInventario();
   return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), "M501", colores);
-}
-
-async function exportarInventarioBodega(codigo, colores = true, origenExistencia = "") {
-  const { grupos } = planillaInventarioPorBodega();
-  const filas = grupos.get(String(codigo));
-  if (!filas) {
-    const error = new Error("No hay materiales para esa bodega.");
-    error.status = 404;
-    throw error;
-  }
-  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), String(codigo), colores);
 }
 
 function stockDetallado() {
@@ -618,12 +587,9 @@ module.exports = {
   exportarStockRegional,
   claveUbicacion,
   planillaInventario,
-  codigoBodega,
-  planillaInventarioPorBodega,
   armarPlanillaInventario,
   aplicarExistencia,
   exportarPlanillaInventario,
-  exportarInventarioBodega,
   stockDetallado,
   colorStockDetallado,
   COLUMNAS_MARCA_DETALLADO,

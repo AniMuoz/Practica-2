@@ -113,6 +113,7 @@ const LECTURAS = [
   ["/api/bodega", "stockEnBodega", "No se pudo leer el stock de bodega."],
   ["/api/regional", "stockRegional", "No se pudo leer el stock regional."],
   ["/api/inventario", "planillaInventario", "No se pudo leer la planilla de inventario."],
+  ["/api/movimientos", "planillaMovimientos", "No se pudo leer la planilla de movimientos."],
   ["/api/stock-detallado", "stockDetallado", "No se pudo leer el stock detallado."],
   ["/api/contratistas", "leerContratistas", "No se pudieron leer los contratistas."],
 ];
@@ -148,13 +149,6 @@ for (const [ruta, funcion, mensajeGenerico] of LECTURAS) {
 test("GET /api/tabla/ultimas-cargas envuelve el resultado en { cargas }", async () => {
   responder({ leerUltimasCargas: { sap: "2026-10-01" } });
   assert.deepEqual((await pedir("GET", "/api/tabla/ultimas-cargas")).json, { cargas: { sap: "2026-10-01" } });
-});
-
-test("GET /api/inventario-bodega devuelve solo la lista de bodegas", async () => {
-  responder({ planillaInventarioPorBodega: { bodegas: [{ codigo: "01", cantidad: 2 }], grupos: new Map(), columnas: [] } });
-  assert.deepEqual((await pedir("GET", "/api/inventario-bodega")).json, { bodegas: [{ codigo: "01", cantidad: 2 }] });
-  responder({ planillaInventarioPorBodega: fallar(0, "x") });
-  assert.equal((await pedir("GET", "/api/inventario-bodega")).status, 500);
 });
 
 // ---------- descargas de Excel ----------
@@ -194,6 +188,7 @@ const DESCARGAS = [
   ["/api/bodega/excel", "exportarStockBodega", /^attachment; filename=PLANILLA%20M501%20/],
   ["/api/regional/excel", "exportarStockRegional", /^attachment; filename=PLANILLA%20STOCK%20REGIONAL%20/],
   ["/api/inventario/excel", "exportarPlanillaInventario", /^attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501%20/],
+  ["/api/movimientos/excel", "exportarMovimientos", /^attachment; filename=PLANILLA%20DE%20MOVIMIENTOS%20/],
   ["/api/stock-detallado/excel", "exportarStockDetallado", /^attachment; filename=Prueba_de_stock_detallado%20/],
 ];
 
@@ -217,20 +212,13 @@ for (const [ruta, funcion, nombre] of DESCARGAS) {
 }
 
 test("el Excel de inventario pasa el origen de la columna Existencia", async () => {
-  responder({ exportarPlanillaInventario: Buffer.from("x"), exportarInventarioBodega: Buffer.from("y") });
+  responder({ exportarPlanillaInventario: Buffer.from("x"), exportarMovimientos: Buffer.from("y") });
   await pedir("GET", "/api/inventario/excel?inventario=1");
   await pedir("GET", "/api/inventario/excel?existencia=1");
   await pedir("GET", "/api/inventario/excel");
   assert.deepEqual(llamadasA("exportarPlanillaInventario").map((llamada) => llamada.args[1]), ["inventario", "libre", ""]);
-  await pedir("GET", "/api/inventario-bodega/excel?bodega=%2001%20&existencia=1&colores=0");
-  assert.deepEqual(llamadasA("exportarInventarioBodega")[0].args, ["01", false, "libre"]);
-});
-
-test("el Excel por bodega devuelve el estado del error cuando lo trae", async () => {
-  responder({ exportarInventarioBodega: fallar(404, "No hay materiales para esa bodega.") });
-  const respuesta = await pedir("GET", "/api/inventario-bodega/excel?bodega=99");
-  assert.equal(respuesta.status, 404);
-  assert.equal(respuesta.json.error, "No hay materiales para esa bodega.");
+  await pedir("GET", "/api/movimientos/excel?inventario=1&colores=0");
+  assert.deepEqual(llamadasA("exportarMovimientos")[0].args, [false, "inventario"]);
 });
 
 // ---------- reservas ----------
@@ -408,6 +396,7 @@ const MODOS = [
   ["ubicaciones", "importarUbicaciones"],
   ["dos-columnas", "importarDosColumnas"],
   ["reservas", "importarReservas"],
+  ["movimientos", "importarMovimientos"],
 ];
 
 for (const [modo, funcion] of MODOS) {

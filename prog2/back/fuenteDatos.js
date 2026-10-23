@@ -4,6 +4,7 @@ const stock = require("./planillasStock");
 const contratistas = require("./contratistas");
 const ventas = require("./ventas");
 const reservas = require("./reservasDatos");
+const movimientos = require("./movimientos");
 
 module.exports = {
   conStockCritico: nucleo.conStockCritico,
@@ -13,7 +14,6 @@ module.exports = {
   columnaExcel: stock.columnaExcel,
   valorStock: stock.valorStock,
   claveUbicacion: stock.claveUbicacion,
-  codigoBodega: stock.codigoBodega,
   aplicarExistencia: stock.aplicarExistencia,
   aplicarFiltrosTabla: stock.aplicarFiltrosTabla,
   enteroReserva: ventas.enteroReserva,
@@ -48,9 +48,10 @@ module.exports = {
   stockRegional: stock.stockRegional,
   exportarStockRegional: stock.exportarStockRegional,
   planillaInventario: stock.planillaInventario,
-  planillaInventarioPorBodega: stock.planillaInventarioPorBodega,
   exportarPlanillaInventario: stock.exportarPlanillaInventario,
-  exportarInventarioBodega: stock.exportarInventarioBodega,
+  planillaMovimientos: movimientos.planillaMovimientos,
+  exportarMovimientos: movimientos.exportarMovimientos,
+  importarMovimientos: movimientos.importarMovimientos,
   stockDetallado: stock.stockDetallado,
   exportarStockDetallado: stock.exportarStockDetallado,
   revisarReserva: ventas.revisarReserva,

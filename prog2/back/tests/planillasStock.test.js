@@ -63,14 +63,6 @@ test("claveUbicacion ordena las ubicaciones vacías al final y las no numéricas
   assert.deepEqual(stock.claveUbicacion("5"), [0, 999]);
 });
 
-test("codigoBodega toma los dos primeros dígitos o 'Sin bodega'", () => {
-  assert.equal(stock.codigoBodega("02-A"), "02");
-  assert.equal(stock.codigoBodega(" 03"), "03");
-  assert.equal(stock.codigoBodega("AB"), "Sin bodega");
-  assert.equal(stock.codigoBodega(""), "Sin bodega");
-  assert.equal(stock.codigoBodega(undefined), "Sin bodega");
-});
-
 test("textoVisible convierte cada tipo de valor de celda al texto que se verá", () => {
   assert.equal(stock.textoVisible(null), "");
   assert.equal(stock.textoVisible(undefined), "");
@@ -167,17 +159,6 @@ test("planillaInventario ordena por bodega, deja sin ubicación al final y copia
   assert.equal(filas.some((fila) => fila[1] === "NULO"), false);
 });
 
-test("planillaInventarioPorBodega agrupa por bodega con 'Sin bodega' al final", () => {
-  usarTabla(INVENTARIO);
-  const { bodegas, grupos } = stock.planillaInventarioPorBodega();
-  assert.deepEqual(bodegas, [
-    { codigo: "01", cantidad: 1 },
-    { codigo: "02", cantidad: 1 },
-    { codigo: "Sin bodega", cantidad: 2 },
-  ]);
-  assert.deepEqual(grupos.get("Sin bodega").map((fila) => fila[0]), ["5", "3"]);
-});
-
 test("aplicarExistencia decide qué va en la columna Existencia sin modificar el original", () => {
   const filas = [["c", "d", "u", "s", 4, "orig", "inv"]];
   assert.deepEqual(stock.aplicarExistencia(filas, "libre")[0], ["c", "d", "u", "s", 4, 4]);
@@ -185,6 +166,10 @@ test("aplicarExistencia decide qué va en la columna Existencia sin modificar el
   assert.deepEqual(stock.aplicarExistencia(filas, "")[0], ["c", "d", "u", "s", 4, "orig"]);
   assert.deepEqual(stock.aplicarExistencia([["c", "d", "u", "s", 4]], "inventario")[0][5], "");
   assert.equal(filas[0].length, 7);
+  const movimiento = [[1, "c", "d", "u", "s", 4, "orig", "inv"]];
+  const posiciones = { libre: 5, destino: 6, inventario: 7 };
+  assert.deepEqual(stock.aplicarExistencia(movimiento, "libre", posiciones)[0], [1, "c", "d", "u", "s", 4, 4]);
+  assert.deepEqual(stock.aplicarExistencia(movimiento, "inventario", posiciones)[0], [1, "c", "d", "u", "s", 4, "inv"]);
 });
 
 test("colorStockDetallado distingue cero, vacío y normal", () => {
@@ -260,15 +245,6 @@ test("exportarPlanillaInventario respeta el origen de la columna Existencia y ma
   assert.equal(valor(inventario, 4, 6), "7");
   const sinColor = await leerLibro(await stock.exportarPlanillaInventario(false, ""));
   assert.equal(relleno(sinColor, 7, 3), undefined);
-});
-
-test("exportarInventarioBodega exporta una bodega y responde 404 si no existe", async () => {
-  usarTabla(INVENTARIO);
-  const hoja = await leerLibro(await stock.exportarInventarioBodega("02", true, ""));
-  assert.equal(valor(hoja, 1, 2), "02");
-  assert.equal(valor(hoja, 4, 1), "1");
-  assert.equal(valor(hoja, 5, 1), null);
-  await assert.rejects(stock.exportarInventarioBodega("99"), { status: 404, message: /No hay materiales/ });
 });
 
 // ---------- filtros y exportación de la tabla ----------

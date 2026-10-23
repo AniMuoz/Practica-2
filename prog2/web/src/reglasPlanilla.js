@@ -217,13 +217,21 @@ export function rutaExcelInventario(ruta, colores, copiarInventario, copiarExist
   return `${base}${base.includes("?") ? "&" : "?"}${extra}`;
 }
 
-export function filasInventarioVisibles(filas, copiarInventario, copiarExistencia) {
+export const POSICIONES_INVENTARIO = { libre: 4, destino: 5, inventario: 6 };
+export const POSICIONES_MOVIMIENTOS = { libre: 5, destino: 6, inventario: 7 };
+
+export function filasInventarioVisibles(filas, copiarInventario, copiarExistencia, posiciones = POSICIONES_INVENTARIO) {
+  const { libre, destino, inventario } = posiciones;
   return filas.map((fila) => {
-    const copia = fila.slice(0, 6);
-    if (copiarInventario) copia[5] = fila[6] ?? "";
-    else if (copiarExistencia) copia[5] = fila[4];
+    const copia = fila.slice(0, destino + 1);
+    if (copiarInventario) copia[destino] = fila[inventario] ?? "";
+    else if (copiarExistencia) copia[destino] = fila[libre];
     return copia;
   });
+}
+
+export function numerarFilas(filas) {
+  return filas.map((fila, indice) => [indice + 1, ...fila.slice(1)]);
 }
 
 export function colorLibre(valor) {

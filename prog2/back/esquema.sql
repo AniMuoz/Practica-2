@@ -20,6 +20,13 @@ create table if not exists public.ultimas_cargas (
   fecha text not null
 );
 
+create table if not exists public.movimientos (
+  codigo text primary key,
+  pos integer not null
+);
+
+alter table public.movimientos enable row level security;
+
 create table if not exists public.bitacora_folios (
   folio bigint generated always as identity primary key,
   creado_en timestamptz not null default now(),

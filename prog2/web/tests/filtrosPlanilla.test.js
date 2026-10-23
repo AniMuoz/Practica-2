@@ -11,6 +11,8 @@ import {
   consultaExcel,
   estadoInventario,
   filasInventarioVisibles,
+  numerarFilas,
+  POSICIONES_MOVIMIENTOS,
   filtrarFilas,
   normalizarBusqueda,
   rangoPagina,
@@ -229,4 +231,11 @@ test("filasInventarioVisibles recorta a 6 columnas y copia inventario o existenc
   assert.deepEqual(filasInventarioVisibles(origen, true, false).map((fila) => fila[5]), ["inv", ""]);
   assert.deepEqual(filasInventarioVisibles(origen, false, true).map((fila) => fila[5]), [4, 8]);
   assert.equal(origen[0][5], "orig");
+});
+
+test("filasInventarioVisibles con las posiciones de movimientos rellena Físico y numerarFilas renumera", () => {
+  const origen = [[1, "c", "d", "u", "s", 4, "", "inv"], [2, "c2", "d2", "u2", "s2", 8, "", ""]];
+  assert.deepEqual(filasInventarioVisibles(origen, false, true, POSICIONES_MOVIMIENTOS).map((fila) => fila[6]), [4, 8]);
+  assert.deepEqual(filasInventarioVisibles(origen, true, false, POSICIONES_MOVIMIENTOS).map((fila) => fila[6]), ["inv", ""]);
+  assert.deepEqual(numerarFilas([[7, "a"], [9, "b"]]), [[1, "a"], [2, "b"]]);
 });

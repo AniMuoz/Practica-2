@@ -79,7 +79,7 @@ Navegador â”€â”€> Cloudflare (Pages + Worker) â”€â”€/apiâ�
 - `GET|POST /acceso` (clave para acciones delicadas)
 
 **Planillas** (`rutas/planillas.js`) â€” cada una con variante `/excel`
-- `GET /tabla/excel`, `/bodega`, `/regional`, `/inventario`, `/inventario-bodega`, `/stock-detallado`
+- `GET /tabla/excel`, `/bodega`, `/regional`, `/inventario`, `/movimientos`, `/stock-detallado`
 
 **Reservas y ventas** (`rutas/reservas.js`, `rutas/ventas.js`)
 - `GET /reservas`, `GET /reservas/excel`, `POST /reserva`, `POST /reserva/excel`
