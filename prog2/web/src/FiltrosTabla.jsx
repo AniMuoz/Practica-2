@@ -22,20 +22,22 @@ const ORDENES = [
 ];
 
 // Mismos filtros que la tabla principal (ver filtrarFilas en reglasPlanilla.js).
-export default function FiltrosTabla({ filas, filtros, onChange, centrado = false }) {
+export default function FiltrosTabla({ filas, filtros, onChange, centrado = false, sinOrden = false }) {
   const poner = (clave, valor) => onChange({ ...filtros, [clave]: valor });
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   return (
     <div className={centrado ? "filtros-panel filtros-centrado" : "filtros-panel"}>
-      <div className="filtros-col">
-        {ORDENES.map(([valor, texto]) => (
-          <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-            <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
-            {texto}
-          </label>
-        ))}
-      </div>
+      {!sinOrden && (
+        <div className="filtros-col">
+          {ORDENES.map(([valor, texto]) => (
+            <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+              <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
+              {texto}
+            </label>
+          ))}
+        </div>
+      )}
       <div className="filtros-col filtros-campos">
         <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
           Bodega
