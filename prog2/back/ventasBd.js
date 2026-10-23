@@ -226,7 +226,7 @@ function calcularFilas(items, { materiales, contratista, mov, almacenFila, codco
   });
 }
 
-async function anadirVenta({ ordenBuffer, contratistaIdx, movTipo, almacen, codVenta, itemsManuales = null, usuario = "" }) {
+async function anadirVenta({ ordenBuffer, hoja = "", contratistaIdx, movTipo, almacen, codVenta, itemsManuales = null, usuario = "" }) {
   let items;
   let numeroTraspaso = "";
   if (itemsManuales) {
@@ -234,11 +234,11 @@ async function anadirVenta({ ordenBuffer, contratistaIdx, movTipo, almacen, codV
   } else if (!ordenBuffer) {
     throw errorHttp(400, "Falta el archivo o la lista de productos.");
   } else if (Number(movTipo) === 2) {
-    const traspaso = itemsDesdeTraspaso(ordenBuffer);
+    const traspaso = itemsDesdeTraspaso(ordenBuffer, hoja);
     items = traspaso.items;
     numeroTraspaso = traspaso.numero;
   } else {
-    items = itemsDesdeOrden(ordenBuffer);
+    items = itemsDesdeOrden(ordenBuffer, hoja);
   }
   if (items.length === 0) throw errorHttp(400, "No se encontraron productos para cargar.");
 

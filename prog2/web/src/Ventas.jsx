@@ -437,6 +437,41 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
   const [formKey, setFormKey] = useState(0);
+  const [hojas, setHojas] = useState([]);
+  const [hoja, setHoja] = useState("");
+
+  function elegirArchivo(archivo) {
+    setOrden(archivo);
+    setHojas([]);
+    setHoja("");
+    if (!archivo) return;
+    const cuerpo = new FormData();
+    cuerpo.append("archivo", archivo);
+    fetch("/api/ventas/hojas", { method: "POST", body: cuerpo })
+      .then((res) => leerJson(res, "No se pudieron leer las hojas del archivo."))
+      .then((data) => {
+        const lista = data.hojas || [];
+        setHojas(lista);
+        setHoja(lista[data.activa] ?? lista[0] ?? "");
+      })
+      .catch(() => {});
+  }
+
+  // Pega una columna copiada de Excel: reparte los valores hacia abajo y crea las filas que falten.
+  function pegarColumna(indice, campo, texto) {
+    const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
+    if (lineas[lineas.length - 1] === "") lineas.pop();
+    if (lineas.length < 2) return false;
+    setProductos((actual) => {
+      const siguiente = actual.map((f) => ({ ...f }));
+      lineas.forEach((linea, i) => {
+        while (siguiente.length <= indice + i) siguiente.push({ codigo: "", cantidad: "" });
+        siguiente[indice + i][campo] = linea.split("\t")[0].trim();
+      });
+      return siguiente;
+    });
+    return true;
+  }
   useEffect(() => {
     const indice = Number(contratista);
     if (listaContratistas.length && !(indice >= 1 && indice <= listaContratistas.length + 1)) setContratista("1");
@@ -457,6 +492,8 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
 
   function reiniciar() {
     setOrden(null);
+    setHojas([]);
+    setHoja("");
     setContratista("1");
     setMovimiento("1");
     setModo("orden");
@@ -479,7 +516,10 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
     const cuerpo = new FormData();
     cuerpo.append("modo", modo);
     if (modo === "manual") cuerpo.append("items", JSON.stringify(validos));
-    else cuerpo.append("orden", orden);
+    else {
+      cuerpo.append("orden", orden);
+      if (hoja) cuerpo.append("hoja", hoja);
+    }
     cuerpo.append("contratista", contratista);
     cuerpo.append("movimiento", movimiento);
     cuerpo.append("almacen", movimiento === "2" ? almacen : "M501");
@@ -510,7 +550,17 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
           {modo === "orden" ? (
             <label style={ETIQUETA}>
               {movimiento === "2" ? "Archivo de traspaso" : "Archivo de orden de venta"}
-              <input type="file" accept=".xlsx" onChange={(e) => setOrden(e.target.files?.[0] || null)} />
+              <input type="file" accept=".xlsx" onChange={(e) => elegirArchivo(e.target.files?.[0] || null)} />
+              {hojas.length > 0 && (
+                <span style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: 13 }}>
+                    El archivo tiene {hojas.length} {hojas.length === 1 ? "hoja" : "hojas"}. ¿En cuál se trabaja?
+                  </span>
+                  <select aria-label="Hoja del archivo" value={hoja} onChange={(e) => setHoja(e.target.value)} style={CAMPO}>
+                    {hojas.map((nombre) => <option key={nombre} value={nombre}>{nombre}</option>)}
+                  </select>
+                </span>
+              )}
               <span style={{ fontSize: 12, color: "var(--texto-suave, #666)" }}>
                 {movimiento === "2"
                   ? "Encabezados en la fila 3. El número se toma del título en C1. Código, descripción, medida, solicitado, entregar y CONCON se copian a la planilla."
@@ -526,6 +576,9 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     value={fila.codigo}
                     placeholder="Código"
                     onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, codigo: e.target.value } : f)))}
+                    onPaste={(e) => {
+                      if (pegarColumna(indice, "codigo", e.clipboardData.getData("text"))) e.preventDefault();
+                    }}
                     style={{ ...CAMPO, flex: 2 }}
                   />
                   <input
@@ -533,6 +586,9 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     placeholder="Cantidad"
                     inputMode="numeric"
                     onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, cantidad: e.target.value } : f)))}
+                    onPaste={(e) => {
+                      if (pegarColumna(indice, "cantidad", e.clipboardData.getData("text"))) e.preventDefault();
+                    }}
                     style={{ ...CAMPO, flex: 1 }}
                   />
                   <button

@@ -195,9 +195,20 @@ function columnaPorTitulo(claves, ...opciones) {
   return -1;
 }
 
-function itemsDesdeOrden(ordenBuffer) {
+// Nombres de las hojas y la que estaba activa (seleccionada) al guardar el archivo.
+function hojasDeLibro(buffer) {
+  const libro = XLSX.read(buffer, { type: "buffer", bookSheets: true });
+  const hojas = libro.SheetNames || [];
+  const indice = Number(libro.Workbook?.Views?.[0]?.activeTab);
+  const activa = Number.isInteger(indice) && indice >= 0 && indice < hojas.length ? indice : 0;
+  return { hojas, activa };
+}
+
+function itemsDesdeOrden(ordenBuffer, hoja = "") {
   const libroOrden = XLSX.read(ordenBuffer, { type: "buffer" });
-  const nombrePedido = libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
+  const nombrePedido = libroOrden.SheetNames.includes(hoja)
+    ? hoja
+    : libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
   const orden = XLSX.utils.sheet_to_json(libroOrden.Sheets[nombrePedido], { header: 1, defval: null });
   const encabezado = orden.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "solicitado"));
   if (encabezado < 0) throw new Error("No se encontró el encabezado \"Solicitado\" en la orden de venta.");
@@ -225,10 +236,10 @@ function numeroEnTitulo(titulo) {
   return numeros ? numeros[numeros.length - 1] : "";
 }
 
-function itemsDesdeTraspaso(traspasoBuffer) {
+function itemsDesdeTraspaso(traspasoBuffer, nombreHoja = "") {
   // Las columnas se ubican por el nombre del encabezado (la posición puede cambiar).
   const libro = XLSX.read(traspasoBuffer, { type: "buffer" });
-  const hoja = libro.Sheets[libro.SheetNames[0]];
+  const hoja = libro.Sheets[libro.SheetNames.includes(nombreHoja) ? nombreHoja : libro.SheetNames[0]];
   const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null });
   const numero = numeroEnTitulo(filas[0]?.[2]);
   const filaEnc = filas.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "codigo"));
@@ -478,6 +489,7 @@ module.exports = {
   escribirEncabezadoVentas,
   columnaPorTitulo,
   itemsDesdeOrden,
+  hojasDeLibro,
   numeroEnTitulo,
   itemsDesdeTraspaso,
   itemsDesdeManual,

@@ -317,7 +317,7 @@ test("POST /api/ventas en modo manual guarda la venta con los productos y los da
   assert.deepEqual(respuesta.json, { anio: 2026, mes: 10, agregadas: 1 });
   const args = { ...llamadasVentas[0].args[0] };
   delete args.usuario;
-  assert.deepEqual(args, { ordenBuffer: undefined, contratistaIdx: 2, movTipo: 2, almacen: "M503", codVenta: "55", itemsManuales: items });
+  assert.deepEqual(args, { ordenBuffer: undefined, hoja: "", contratistaIdx: 2, movTipo: 2, almacen: "M503", codVenta: "55", itemsManuales: items });
 });
 
 test("POST /api/ventas valida la lista manual y exige archivo en modo orden", async () => {

@@ -1,6 +1,7 @@
 const { leerContratistas, guardarContratistas } = require("../fuenteDatos");
 const { uploadXlsx, conColores, enviarPlanilla } = require("../compartido");
 const ventasBd = require("../ventasBd");
+const { hojasDeLibro } = require("../ventas");
 const { exigirAdmin } = require("../auth");
 
 module.exports = function rutasVentas(app) {
@@ -8,6 +9,20 @@ module.exports = function rutasVentas(app) {
     console.error(error);
     res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
   }
+
+  app.post("/api/ventas/hojas", (req, res) => {
+    uploadXlsx.single("archivo")(req, res, (errorCarga) => {
+      if (errorCarga || !req.file) {
+        res.status(400).json({ error: errorCarga?.message || "Falta el archivo." });
+        return;
+      }
+      try {
+        res.json(hojasDeLibro(req.file.buffer));
+      } catch (error) {
+        responder(res, error, "No se pudieron leer las hojas del archivo.");
+      }
+    });
+  });
 
   app.post("/api/ventas", (req, res) => {
     uploadXlsx.fields([{ name: "orden", maxCount: 1 }])(req, res, async (errorCarga) => {
@@ -32,6 +47,7 @@ module.exports = function rutasVentas(app) {
       try {
         const resultado = await ventasBd.anadirVenta({
           ordenBuffer: orden?.buffer,
+          hoja: String(req.body.hoja || ""),
           contratistaIdx: Number(req.body.contratista),
           movTipo: Number(req.body.movimiento),
           almacen: req.body.almacen,
