@@ -176,6 +176,26 @@ export function consultaExcel(filtros) {
   return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
 }
 
+// Agrega los filtros de la tabla a la ruta de descarga de una planilla (el servidor los aplica con filtrar=1).
+export function rutaConFiltros(ruta, filtros) {
+  const params = new URLSearchParams();
+  params.set("filtrar", "1");
+  if (filtros.orden) params.set("orden", filtros.orden);
+  if (filtros.bodega) params.set("bodega", filtros.bodega);
+  if (filtros.subUbicacion) params.set("subUbicacion", filtros.subUbicacion);
+  if (String(filtros.stockMinimo ?? "").trim() !== "") params.set("stockMinimo", String(filtros.stockMinimo).trim());
+  if (filtros.soloConPrecio) params.set("precio", "1");
+  if (filtros.soloConUbicacion) params.set("ubicacion", "1");
+  if (filtros.soloStockCritico) params.set("critico", "1");
+  if (filtros.soloStockCero) params.set("stockCero", "1");
+  if (filtros.soloInventarioOComentario) params.set("filtroInventario", "1");
+  if (filtros.soloMarcados) params.set("marcado", "1");
+  if (filtros.soloConRombo) params.set("rombo", "1");
+  if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
+  if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
+  return `${ruta}${ruta.includes("?") ? "&" : "?"}${params.toString()}`;
+}
+
 export function aplicarFilaRecibida(actuales, data) {
   const codigoNuevo = String(data.fila.Codigo);
   const codigoAnterior = data.codigoAnterior ? String(data.codigoAnterior) : codigoNuevo;

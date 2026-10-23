@@ -1,6 +1,26 @@
 const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla } = require("../compartido");
 
+// Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
+function filtrosDeConsulta(q) {
+  if (q.filtrar !== "1") return null;
+  return {
+    orden: q.orden,
+    bodega: q.bodega,
+    subUbicacion: q.subUbicacion,
+    stockMinimo: q.stockMinimo,
+    soloConPrecio: q.precio === "1",
+    soloConUbicacion: q.ubicacion === "1",
+    soloStockCritico: q.critico === "1",
+    soloStockCero: q.stockCero === "1",
+    soloInventarioOComentario: q.filtroInventario === "1",
+    soloMarcados: q.marcado === "1",
+    soloConRombo: q.rombo === "1",
+    ignorarNulo: q.ignorarNulo === "1",
+    texto: q.q,
+  };
+}
+
 module.exports = function rutasPlanillas(app) {
   app.get("/api/tabla/excel", async (req, res) => {
     try {
@@ -44,7 +64,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.get("/api/bodega/excel", async (req, res) => {
     try {
-      const buffer = await exportarStockBodega(conColores(req.query.colores));
+      const buffer = await exportarStockBodega(conColores(req.query.colores), filtrosDeConsulta(req.query));
       enviarPlanilla(res, buffer, nombreConFecha("PLANILLA M501"));
     } catch (error) {
       console.error(error);
@@ -63,7 +83,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.get("/api/regional/excel", async (req, res) => {
     try {
-      const buffer = await exportarStockRegional(conColores(req.query.colores));
+      const buffer = await exportarStockRegional(conColores(req.query.colores), filtrosDeConsulta(req.query));
       enviarPlanilla(res, buffer, nombreConFecha("PLANILLA STOCK REGIONAL"));
     } catch (error) {
       console.error(error);
@@ -83,7 +103,7 @@ module.exports = function rutasPlanillas(app) {
   app.get("/api/inventario/excel", async (req, res) => {
     try {
       const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
-      const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen);
+      const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen, filtrosDeConsulta(req.query));
       enviarPlanilla(res, buffer, nombreConFecha("PLANILLA DE INVENTARIO M501"));
     } catch (error) {
       console.error(error);
@@ -103,7 +123,7 @@ module.exports = function rutasPlanillas(app) {
   app.get("/api/movimientos/excel", async (req, res) => {
     try {
       const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
-      const buffer = await exportarMovimientos(conColores(req.query.colores), origen);
+      const buffer = await exportarMovimientos(conColores(req.query.colores), origen, filtrosDeConsulta(req.query));
       enviarPlanilla(res, buffer, nombreConFecha("PLANILLA DE MOVIMIENTOS"));
     } catch (error) {
       console.error(error);
@@ -122,7 +142,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.get("/api/stock-detallado/excel", async (req, res) => {
     try {
-      const buffer = await exportarStockDetallado(conColores(req.query.colores));
+      const buffer = await exportarStockDetallado(conColores(req.query.colores), filtrosDeConsulta(req.query));
       enviarPlanilla(res, buffer, nombreConFecha("Prueba_de_stock_detallado"));
     } catch (error) {
       console.error(error);

@@ -68,8 +68,9 @@ function compactarPlanilla(hoja) {
   });
 }
 
-async function exportarStockBodega(colores = true) {
-  const { columnas, filas } = stockEnBodega();
+async function exportarStockBodega(colores = true, filtros = null) {
+  const { columnas, filas: todas } = stockEnBodega();
+  const { filas } = filtrarPorCodigos(todas, 0, filtros);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("M501");
 
@@ -148,8 +149,9 @@ function stockRegional() {
   return { columnas, filas: resultado };
 }
 
-async function exportarStockRegional(colores = true) {
-  const { columnas, filas } = stockRegional();
+async function exportarStockRegional(colores = true, filtros = null) {
+  const { columnas, filas: todas } = stockRegional();
+  const { filas } = filtrarPorCodigos(todas, 0, filtros);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock regional");
 
@@ -295,8 +297,9 @@ function aplicarExistencia(filas, origen, { libre, destino, inventario } = POSIC
   });
 }
 
-async function exportarPlanillaInventario(colores = true, origenExistencia = "") {
-  const { filas } = planillaInventario();
+async function exportarPlanillaInventario(colores = true, origenExistencia = "", filtros = null) {
+  const { filas: todas } = planillaInventario();
+  const { filas } = filtrarPorCodigos(todas, 0, filtros);
   return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), "M501", colores);
 }
 
@@ -361,8 +364,10 @@ function colorStockDetallado(valor) {
 
 const COLUMNAS_MARCA_DETALLADO = new Set([3, 6, 7, 8, 9, 10]);
 
-async function exportarStockDetallado(colores = true) {
-  const { columnas, filas, marcados } = stockDetallado();
+async function exportarStockDetallado(colores = true, filtros = null) {
+  const completo = stockDetallado();
+  const { columnas } = completo;
+  const { filas, marcados } = filtrarPorCodigos(completo.filas, 1, filtros, completo.marcados);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Stock detallado");
 
@@ -491,6 +496,18 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   return lista;
 }
 
+// Filtra filas de una planilla con los mismos filtros de la tabla principal.
+// Deja solo los códigos que pasan el filtro y los ordena como la tabla filtrada.
+function filtrarPorCodigos(filas, indiceCodigo, filtros, marcados, conservarOrden = false) {
+  if (!filtros) return { filas, marcados };
+  const orden = new Map(aplicarFiltrosTabla(leerTabla().filas, filtros).map((f, i) => [String(f.Codigo), i]));
+  const pares = filas
+    .map((fila, i) => ({ fila, i }))
+    .filter(({ fila }) => orden.has(String(fila[indiceCodigo])));
+  if (!conservarOrden) pares.sort((a, b) => orden.get(String(a.fila[indiceCodigo])) - orden.get(String(b.fila[indiceCodigo])));
+  return { filas: pares.map((p) => p.fila), marcados: marcados ? pares.map((p) => marcados[p.i]) : undefined };
+}
+
 async function exportarTabla(colores = true, filtros = {}) {
   const tabla = leerTabla();
   const columnas = tabla.columnas.filter((columna) => !CAMPOS_IMAGEN.has(columna));
@@ -595,5 +612,6 @@ module.exports = {
   COLUMNAS_MARCA_DETALLADO,
   exportarStockDetallado,
   aplicarFiltrosTabla,
+  filtrarPorCodigos,
   exportarTabla,
 };

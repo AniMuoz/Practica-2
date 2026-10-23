@@ -218,7 +218,17 @@ test("el Excel de inventario pasa el origen de la columna Existencia", async () 
   await pedir("GET", "/api/inventario/excel");
   assert.deepEqual(llamadasA("exportarPlanillaInventario").map((llamada) => llamada.args[1]), ["inventario", "libre", ""]);
   await pedir("GET", "/api/movimientos/excel?inventario=1&colores=0");
-  assert.deepEqual(llamadasA("exportarMovimientos")[0].args, [false, "inventario"]);
+  assert.deepEqual(llamadasA("exportarMovimientos")[0].args, [false, "inventario", null]);
+});
+
+test("las planillas de admin pasan los filtros solo si filtrar=1", async () => {
+  responder({ exportarStockBodega: Buffer.from("x") });
+  await pedir("GET", "/api/bodega/excel?filtrar=1&bodega=M5&critico=1&orden=codigo");
+  const filtros = llamadasA("exportarStockBodega")[0].args[1];
+  assert.equal(filtros.bodega, "M5");
+  assert.equal(filtros.soloStockCritico, true);
+  assert.equal(filtros.soloStockCero, false);
+  assert.equal(filtros.orden, "codigo");
 });
 
 // ---------- reservas ----------

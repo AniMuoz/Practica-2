@@ -23,6 +23,7 @@ import {
   filtrarFilas,
   numerarFilas,
   POSICIONES_MOVIMIENTOS,
+  rutaConFiltros,
   rutaExcel,
   rutaExcelInventario,
 } from "./reglasPlanilla.js";
@@ -34,6 +35,7 @@ export default function Admin() {
   const { colores, oscuro } = useColoresPlanilla();
   const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
   const excel = (ruta) => rutaExcel(ruta, colores);
+  const excelFiltrado = (ruta) => rutaConFiltros(excel(ruta), filtrosStock);
   const esMovilCarga = useEsMovil();
   const [botonesMinimizados, setBotonesMinimizados] = useState(false);
   const esBotonActivo = (nombre) =>
@@ -84,7 +86,8 @@ export default function Admin() {
   const [movimientos, setMovimientos] = useState({ columnas: [], filas: [] });
   const [cargandoMovimientos, setCargandoMovimientos] = useState(false);
   const [avisoMovimientos, setAvisoMovimientos] = useState("");
-  const excelInventario = (ruta) => rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia);
+  const excelInventario = (ruta) =>
+    rutaConFiltros(rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia), filtrosStock);
   function alternarExistencia() {
     if (copiarExistencia) {
       setCopiarExistencia(false);
@@ -167,9 +170,14 @@ export default function Admin() {
     0
   ).filas;
   const filasMovimientos = numerarFilas(
-    // Se conserva el orden del archivo cargado (igual que en el Excel); los filtros solo ocultan filas.
-    filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS)
-      .filter((fila) => codigosFiltrados.has(String(fila[1])))
+    // Sin orden elegido se conserva el del archivo cargado; con uno elegido manda el de los filtros.
+    filtrosStock.orden
+      ? aplicarFiltrosStock(
+          filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS),
+          1
+        ).filas
+      : filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS)
+          .filter((fila) => codigosFiltrados.has(String(fila[1])))
   );
   const [mostrarReserva, setMostrarReserva] = useState(false);
   const [archivoReserva, setArchivoReserva] = useState(null);
@@ -913,7 +921,7 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Bodega M501</h2>
             <a
-              href={excel("/api/bodega/excel")}
+              href={excelFiltrado("/api/bodega/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
@@ -991,7 +999,7 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Stock por bodega</h2>
             <a
-              href={excel("/api/regional/excel")}
+              href={excelFiltrado("/api/regional/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,
@@ -1224,7 +1232,7 @@ export default function Admin() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>Stock detallado</h2>
             <a
-              href={excel("/api/stock-detallado/excel")}
+              href={excelFiltrado("/api/stock-detallado/excel")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 6,

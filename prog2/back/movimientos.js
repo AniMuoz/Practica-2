@@ -2,7 +2,7 @@ const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
 const { ejecutar } = require("./supabaseTablas");
 const { exigirClave } = require("./nucleoDatos");
-const { aplicarExistencia, compactarPlanilla, filasConBodegas, pintar, valorStock } = require("./planillasStock");
+const { aplicarExistencia, compactarPlanilla, filasConBodegas, filtrarPorCodigos, pintar, valorStock } = require("./planillasStock");
 
 const COLUMNAS_MOVIMIENTOS = ["N°", "Código", "Descripción", "Ubicación", "Sub-Ubicación", "M501", "Físico"];
 // Cada fila trae además, al final, el inventario: solo sirve para rellenar "Físico".
@@ -62,8 +62,11 @@ function planillaMovimientos() {
   return { columnas: COLUMNAS_MOVIMIENTOS, filas };
 }
 
-async function exportarMovimientos(colores = true, origenExistencia = "") {
-  const { columnas, filas } = planillaMovimientos();
+async function exportarMovimientos(colores = true, origenExistencia = "", filtros = null) {
+  const { columnas, filas: todas } = planillaMovimientos();
+  // Sin orden elegido se conserva el del archivo cargado; con uno elegido manda el de los filtros.
+  const filas = filtrarPorCodigos(todas, 1, filtros, undefined, !(filtros && filtros.orden))
+    .filas.map((fila, indice) => [indice + 1, ...fila.slice(1)]);
   const libro = new ExcelJS.Workbook();
   const hoja = libro.addWorksheet("Movimientos");
   const borde = {
