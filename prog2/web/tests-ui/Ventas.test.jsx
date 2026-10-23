@@ -131,6 +131,7 @@ describe("Ventas", () => {
     window.URL.createObjectURL = vi.fn(() => "blob:x");
     window.URL.revokeObjectURL = vi.fn();
     fireEvent.click(screen.getByText("Descargar planilla anual"));
+    fireEvent.click(await screen.findByText("Descargar planilla completa"));
     await waitFor(() => expect(llamadas.some((l) => l.url.startsWith("/api/ventas/descargar-anual?anio=2025"))).toBe(true));
     expect(nombreDescargaAnual(2026, new Date(2026, 9, 5))).toBe("VENTAS ANUAL 2026 05-10-2026.xlsx");
   });
