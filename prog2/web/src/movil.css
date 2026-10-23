@@ -234,6 +234,10 @@ select {
   cursor: pointer;
 }
 
+.barra > * {
+  flex-shrink: 0;
+}
+
 @media (max-width: 800px) {
   .barra {
     flex-direction: row !important;

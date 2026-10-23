@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import logo from "../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
@@ -18,6 +18,7 @@ export default function Navbar() {
   const [menuVisible, setMenuVisible] = useState(true);
   const caja = useRef(null);
   const campo = useRef(null);
+  const barraRef = useRef(null);
 
   useEffect(() => {
     const consulta = codigo.trim();
@@ -95,13 +96,36 @@ export default function Navbar() {
       .finally(() => window.dispatchEvent(new Event("sesion-vencida")));
   }
 
+  useLayoutEffect(() => {
+    const barra = barraRef.current;
+    if (!barra || !barra.parentElement) return undefined;
+    function ajustar() {
+      barra.style.zoom = "1";
+      const disponible = barra.parentElement.clientWidth;
+      const natural = barra.scrollWidth;
+      if (natural > disponible && disponible > 0) {
+        barra.style.zoom = String(Math.max(0.3, (disponible / natural) * 0.995));
+      }
+    }
+    ajustar();
+    const observador = new ResizeObserver(ajustar);
+    observador.observe(barra.parentElement);
+    window.addEventListener("resize", ajustar);
+    return () => {
+      observador.disconnect();
+      window.removeEventListener("resize", ajustar);
+    };
+  }, [menuVisible, rol, colores, oscuro, sonido, codigo]);
+
   return (
     <header
       className="barra"
+      ref={barraRef}
       style={{
         display: "flex",
         alignItems: "center",
-        flexWrap: "wrap",
+        flexWrap: "nowrap",
+        whiteSpace: "nowrap",
         gap: 12,
         marginBottom: 16,
         padding: "10px 14px",
