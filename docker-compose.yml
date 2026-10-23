@@ -2,17 +2,18 @@ services:
   back:
     build: ./prog2/back
     ports:
-      - "3001:3001"
-    volumes:
-      - ./prog2/back:/app
-      - /app/node_modules
+      - "127.0.0.1:3001:3001"
+    # Los secretos viven en prog2/back/.env (no se copian a la imagen, ver prog2/back/.dockerignore).
+    # Para desarrollo local con proxy, defina SECRETO_PROXY y SESSION_SECRET en ese archivo.
+    env_file:
+      - ./prog2/back/.env
     networks:
       - practica
 
   web:
     build: ./prog2/web
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     environment:
       API_PROXY: http://back:3001
     volumes:

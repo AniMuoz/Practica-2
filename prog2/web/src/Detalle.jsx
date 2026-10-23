@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { useEsMovil } from "./useEsMovil.js";
 import { estadoInventario as estadoDeInventario, textoCampo } from "./reglasPlanilla.js";
 
 export default function Detalle() {
@@ -32,7 +33,7 @@ export default function Detalle() {
   const pulso = useRef(null);
   const permitirSalida = useRef(false);
   const hayCambiosRef = useRef(false);
-  const [movil, setMovil] = useState(() => window.matchMedia("(max-width: 800px)").matches);
+  const movil = useEsMovil();
   const [imagenGrande, setImagenGrande] = useState(null);
   const [ocultarImagenes, setOcultarImagenes] = useState(
     () => {
@@ -47,13 +48,6 @@ export default function Detalle() {
     setOcultarImagenes(activo);
     if (activo) setImagenGrande(null);
   }
-
-  useEffect(() => {
-    const consulta = window.matchMedia("(max-width: 800px)");
-    const alCambiar = () => setMovil(consulta.matches);
-    consulta.addEventListener("change", alCambiar);
-    return () => consulta.removeEventListener("change", alCambiar);
-  }, []);
 
   useEffect(() => {
     setCargando(true);

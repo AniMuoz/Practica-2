@@ -60,8 +60,6 @@ function datosDe(fila) {
 }
 
 const PREFIJO_IMAGEN = "img:";
-const LADO_MAXIMO_FIRMA = { ancho: 600, alto: 200 };
-
 function horaFirma(valor) {
   if (!valor) return "";
   const fecha = new Date(valor);
@@ -69,37 +67,9 @@ function horaFirma(valor) {
   return fecha.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
 }
 
-function textoEstadoFirma(fila) {
-  if (fila.firma_estado === "vigente") return `Vigente · ${horaFirma(fila.firma_en)}`;
-  if (fila.firma_estado === "vencida") return "Vencida: los datos del viaje cambiaron después de la firma";
-  if (fila.firma_estado === "sin_verificacion") return "Sin verificación";
-  return "";
-}
-
 function imagenDeFirma(valor) {
   const texto = String(valor ?? "");
   return texto.startsWith(PREFIJO_IMAGEN) ? texto.slice(PREFIJO_IMAGEN.length) : "";
-}
-
-function firmaComoPng(archivo) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(archivo);
-    const imagen = new Image();
-    imagen.onload = () => {
-      URL.revokeObjectURL(url);
-      const escala = Math.min(1, LADO_MAXIMO_FIRMA.ancho / imagen.width, LADO_MAXIMO_FIRMA.alto / imagen.height);
-      const lienzo = document.createElement("canvas");
-      lienzo.width = Math.max(1, Math.round(imagen.width * escala));
-      lienzo.height = Math.max(1, Math.round(imagen.height * escala));
-      lienzo.getContext("2d").drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
-      lienzo.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo preparar la imagen."))), "image/png");
-    };
-    imagen.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("El archivo no es una imagen válida."));
-    };
-    imagen.src = url;
-  });
 }
 
 const BOTON = { padding: "8px 14px", border: 0, borderRadius: 6, color: "var(--sobre)", fontSize: 14, cursor: "pointer" };

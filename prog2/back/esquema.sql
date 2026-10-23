@@ -64,6 +64,14 @@ create table if not exists public.bitacora_firmas_historial (
   motivo text not null default ''
 );
 
+-- RLS sin politicas: la anon key (publica) no puede leer ni escribir.
+-- El back usa service_role, que se salta RLS, asi que sigue funcionando igual.
+alter table public.planillas enable row level security;
+alter table public.ultimas_cargas enable row level security;
+alter table public.bitacora_folios enable row level security;
+alter table public.bitacora_filas enable row level security;
+alter table public.bitacora_firmas_historial enable row level security;
+
 create table if not exists public.bitacora_log (
   id bigint generated always as identity primary key,
   creado_en timestamptz not null default now(),

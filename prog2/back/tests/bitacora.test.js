@@ -15,6 +15,8 @@ const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesP
 test.mock.method(console, "error", () => {});
 
 function pedir(metodo, ruta, cuerpo) {
+  // Los tests mandan muchas claves malas desde la misma IP: se reinicia el limite de intentos.
+  require("../limiteClave").reiniciar();
   return new Promise((resolve, reject) => {
     const servidor = app.listen(0, "127.0.0.1", async () => {
       const { port } = servidor.address();

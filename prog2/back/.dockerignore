@@ -1,0 +1,14 @@
+node_modules
+.git
+.env
+.env.*
+.sesion-secreto
+.cuerpo-supabase.json
+*.sqlite
+*.xlsx
+*.pdf
+usuarios.json
+ultimas_cargas.json
+imagenes/
+tests/
+Diagrama programa back/

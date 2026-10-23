@@ -5,6 +5,7 @@ const XLSX = require("xlsx");
 const { ejecutar } = require("./supabaseTablas");
 const { supabase } = require("./supabase");
 const { quitarImagen } = require("./imagenesSupabase");
+const { controlarIntento } = require("./limiteClave");
 
 const CAMPOS_MATERIAL = [
   ["Codigo", "codigo"],
@@ -488,7 +489,7 @@ if (!CLAVE_DATOS) {
   throw new Error("Falta CLAVE_DATOS en prog2/back/.env");
 }
 
-function claveCorrecta(clave) {
+function compararClave(clave) {
   const esperada = Buffer.from(CLAVE_DATOS);
   const recibida = Buffer.from(String(clave ?? ""));
   if (esperada.length !== recibida.length) {
@@ -496,6 +497,11 @@ function claveCorrecta(clave) {
     return false;
   }
   return crypto.timingSafeEqual(esperada, recibida);
+}
+
+// Dentro de una peticion HTTP, 3 fallos por IP bloquean 15 minutos (lanza 429).
+function claveCorrecta(clave) {
+  return controlarIntento(compararClave(clave));
 }
 
 function exigirClave(clave) {

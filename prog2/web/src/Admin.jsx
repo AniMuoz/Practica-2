@@ -10,6 +10,9 @@ import Ventas from "./Ventas.jsx";
 import VistaPrevia from "./admin/VistaPrevia.jsx";
 import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
+import PanelContratistas from "./admin/PanelContratistas.jsx";
+import { useEsMovil } from "./useEsMovil.js";
+import { obtenerJson, enviarJson, enviarFormulario, descargarBlob, guardarBlob } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
@@ -20,7 +23,6 @@ import {
   filtrarFilas,
   rutaExcel,
   rutaExcelInventario,
-  validarContratistas,
 } from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
@@ -30,13 +32,7 @@ export default function Admin() {
   const { colores, oscuro } = useColoresPlanilla();
   const clasePlanilla = oscuro && colores ? "planilla-oscura" : undefined;
   const excel = (ruta) => rutaExcel(ruta, colores);
-  const [esMovilCarga, setEsMovilCarga] = useState(() => window.matchMedia("(max-width: 800px)").matches);
-  useEffect(() => {
-    const consulta = window.matchMedia("(max-width: 800px)");
-    const alCambiar = (e) => setEsMovilCarga(e.matches);
-    consulta.addEventListener("change", alCambiar);
-    return () => consulta.removeEventListener("change", alCambiar);
-  }, []);
+  const esMovilCarga = useEsMovil();
   const [botonesMinimizados, setBotonesMinimizados] = useState(false);
   const esBotonActivo = (nombre) =>
     (nombre === "Añadir/cargar datos" && (mostrarCarga || mostrarFormulario)) ||
@@ -116,8 +112,7 @@ export default function Admin() {
   const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarDetallado;
   useEffect(() => {
     if (!autorizado || !hayPanelStock) return;
-    fetch("/api/tabla", { cache: "no-store" })
-      .then((res) => res.json())
+    obtenerJson("/api/tabla")
       .then((data) => setFilasMaestro(data.filas || []))
       .catch(() => {});
   }, [autorizado, hayPanelStock]);
@@ -225,10 +220,8 @@ export default function Admin() {
   function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
     if (!silencioso) setCargando(true);
     setAviso("");
-    return fetch(url, { cache: "no-store" })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || mensaje);
+    return obtenerJson(url, mensaje)
+      .then((data) => {
         setTabla({ columnas: data.columnas || [], filas: data.filas || [], marcados: data.marcados || [] });
       })
       .catch((err) => setAviso(err.message))
@@ -236,8 +229,7 @@ export default function Admin() {
   }
 
   function cargarNombresContratistas() {
-    return fetch("/api/contratistas", { cache: "no-store" })
-      .then((res) => res.json())
+    return obtenerJson("/api/contratistas")
       .then((data) => {
         const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
         setListaContratistas(nombres);
@@ -249,14 +241,8 @@ export default function Admin() {
     setConfirmarContratistas(false);
     setAvisoContratistas("");
     setGuardandoContratistas(true);
-    fetch("/api/contratistas", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clave, filas: contratistas }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "No se pudo guardar.");
+    enviarJson("/api/contratistas", { clave, filas: contratistas }, "No se pudo guardar.", "PUT")
+      .then((data) => {
         fijarContratistas(data.filas || []);
         const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
         setListaContratistas(nombres);
@@ -282,8 +268,7 @@ export default function Admin() {
   }
 
   function cargarUltimasCargas() {
-    return fetch("/api/tabla/ultimas-cargas", { cache: "no-store" })
-      .then((res) => res.json())
+    return obtenerJson("/api/tabla/ultimas-cargas")
       .then((data) => setUltimasCargas(data.cargas || {}))
       .catch(() => {});
   }
@@ -307,10 +292,8 @@ export default function Admin() {
   function cargarInventarioBodega(silencioso = false) {
     if (!silencioso) setCargandoInventarioBodega(true);
     setAvisoInventarioBodega("");
-    return fetch("/api/inventario-bodega", { cache: "no-store" })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "No se pudo leer el inventario por bodega.");
+    return obtenerJson("/api/inventario-bodega", "No se pudo leer el inventario por bodega.")
+      .then((data) => {
         setBodegasInventario(data.bodegas || []);
       })
       .catch((err) => setAvisoInventarioBodega(err.message))
@@ -318,8 +301,7 @@ export default function Admin() {
   }
 
   function refrescarVistas(silencioso = false) {
-    fetch("/api/tabla", { cache: "no-store" })
-      .then((res) => res.json())
+    obtenerJson("/api/tabla")
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
     if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.", silencioso);
@@ -422,8 +404,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (rol !== "admin") return;
-    fetch("/api/acceso", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
+    obtenerJson("/api/acceso")
       .then((data) => {
         setClave(data.clave);
         setAutorizado(true);
@@ -433,8 +414,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!autorizado) return;
-    fetch("/api/tabla", { cache: "no-store" })
-      .then((res) => res.json())
+    obtenerJson("/api/tabla")
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
     cargarUltimasCargas();
@@ -501,16 +481,8 @@ export default function Admin() {
           onSubmit={(event) => {
             event.preventDefault();
             setAviso("");
-            fetch("/api/acceso", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clave }),
-            })
-              .then(async (res) => {
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
-                setAutorizado(true);
-              })
+            enviarJson("/api/acceso", { clave }, "Contraseña incorrecta.")
+              .then(() => setAutorizado(true))
               .catch((err) => setAviso(err.message));
           }}
           style={{ display: "flex", gap: 8, alignItems: "center" }}
@@ -699,10 +671,8 @@ export default function Admin() {
                       cerrarPaneles(["contratistas"]);
                       setCargandoContratistas(true);
                       setAvisoContratistas("");
-                      fetch("/api/contratistas", { cache: "no-store" })
-                        .then(async (res) => {
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "No se pudieron leer los contratistas.");
+                      obtenerJson("/api/contratistas", "No se pudieron leer los contratistas.")
+                        .then((data) => {
                           fijarContratistas(data.filas || []);
                           const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
                           setListaContratistas(nombres);
@@ -783,11 +753,7 @@ export default function Admin() {
                     cuerpo.append("clave", clave);
                     cuerpo.append("campo", campoImagen);
                     cuerpo.append("archivo", f);
-                    const res = await fetch(`/api/material/${encodeURIComponent(m[1])}/imagen`, {
-                      method: "POST",
-                      body: cuerpo,
-                    });
-                    if (!res.ok) throw new Error();
+                    await enviarFormulario(`/api/material/${encodeURIComponent(m[1])}/imagen`, cuerpo);
                     ok++;
                   } catch {
                     fallidos.push(m[1]);
@@ -834,10 +800,8 @@ export default function Admin() {
             cuerpo.append("modo", modoCarga);
             if (modoCarga === "dos-columnas") cuerpo.append("columna", columnaCarga);
             cuerpo.append("archivo", archivo);
-            fetch("/api/tabla/excel", { method: "POST", body: cuerpo })
-              .then(async (res) => {
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "No se pudo importar.");
+            enviarFormulario("/api/tabla/excel", cuerpo, "No se pudo importar.")
+              .then((data) => {
                 setArchivo(null);
                 event.target.reset();
                 const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
@@ -1321,10 +1285,8 @@ export default function Admin() {
               setBuscandoReserva(true);
               paginaReserva.current = 0;
               hayMasReservas.current = false;
-              fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=0&tamano=100`)
-                .then(async (res) => {
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || "No se pudo buscar la reserva.");
+              obtenerJson(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=0&tamano=100`, "No se pudo buscar la reserva.")
+                .then((data) => {
                   const coincidencias = data.coincidencias ?? (data.filas || []).length;
                   setBusquedaReserva({
                     columnas: data.columnas || [],
@@ -1371,22 +1333,8 @@ export default function Admin() {
                 const numero = ordenReserva.trim();
                 if (!numero) return;
                 const params = new URLSearchParams({ reserva: numero, colores: colores ? "1" : "0" });
-                fetch(`/api/reservas/excel?${params.toString()}`)
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      const data = await res.json();
-                      throw new Error(data.error || "No se pudo descargar.");
-                    }
-                    return res.blob();
-                  })
-                  .then((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const enlace = document.createElement("a");
-                    enlace.href = url;
-                    enlace.download = "Revisión stock en reserva.xlsx";
-                    enlace.click();
-                    URL.revokeObjectURL(url);
-                  })
+                descargarBlob(`/api/reservas/excel?${params.toString()}`)
+                  .then((blob) => guardarBlob(blob, "Revisión stock en reserva.xlsx"))
                   .catch((err) => setAvisoBusquedaReserva(err.message));
               }}
               style={{
@@ -1415,10 +1363,8 @@ export default function Admin() {
                 if (!numero || !hayMasReservas.current || cargandoPaginaReserva.current) return;
                 cargandoPaginaReserva.current = true;
                 const pagina = paginaReserva.current + 1;
-                fetch(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=${pagina}&tamano=100`)
-                  .then(async (res) => {
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "No se pudo buscar la reserva.");
+                obtenerJson(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=${pagina}&tamano=100`, "No se pudo buscar la reserva.")
+                  .then((data) => {
                     const lote = data.filas || [];
                     paginaReserva.current = pagina;
                     const coincidencias = data.coincidencias ?? lote.length;
@@ -1498,10 +1444,8 @@ export default function Admin() {
               setRevisandoReserva(true);
               const cuerpo = new FormData();
               cuerpo.append("archivo", archivoReserva);
-              fetch("/api/reserva", { method: "POST", body: cuerpo })
-                .then(async (res) => {
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || "No se pudo leer la reserva.");
+              enviarFormulario("/api/reserva", cuerpo, "No se pudo leer la reserva.")
+                .then((data) => {
                   setReserva({ columnas: data.columnas || [], filas: data.filas || [] });
                 })
                 .catch((err) => setAvisoReserva(err.message))
@@ -1539,22 +1483,8 @@ export default function Admin() {
                 const cuerpo = new FormData();
                 cuerpo.append("archivo", archivoReserva);
                 cuerpo.append("colores", colores ? "1" : "0");
-                fetch("/api/reserva/excel", { method: "POST", body: cuerpo })
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      const data = await res.json();
-                      throw new Error(data.error || "No se pudo descargar.");
-                    }
-                    return res.blob();
-                  })
-                  .then((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const enlace = document.createElement("a");
-                    enlace.href = url;
-                    enlace.download = "Revisión stock en reserva.xlsx";
-                    enlace.click();
-                    URL.revokeObjectURL(url);
-                  })
+                descargarBlob("/api/reserva/excel", { method: "POST", body: cuerpo })
+                  .then((blob) => guardarBlob(blob, "Revisión stock en reserva.xlsx"))
                   .catch((err) => setAvisoReserva(err.message));
               }}
               style={{
@@ -1625,112 +1555,17 @@ export default function Admin() {
         <Ventas key={ventaKey} colores={colores} listaContratistas={listaContratistas} onSinGuardar={setVentaPendiente} />
       )}
       {autorizado && mostrarContratistas && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            margin: "0 auto 16px",
-            maxWidth: 640,
-            width: "100%",
-          }}
-        >
-          <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Contratistas</h2>
-          {cargandoContratistas && <p style={{ margin: 0 }}>Cargando contratistas...</p>}
-          {avisoContratistas && <p style={{ margin: "0 0 12px" }}>{avisoContratistas}</p>}
-          {!cargandoContratistas && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const errorContratistas = validarContratistas(contratistas);
-                if (errorContratistas) {
-                  setAvisoContratistas(errorContratistas);
-                  return;
-                }
-                setAvisoContratistas("");
-                setConfirmarContratistas(true);
-              }}
-            >
-              <Planilla className={clasePlanilla}>
-                <thead>
-                  <tr>
-                    {["id", "Nombre", ""].map((columna) => (
-                      <th
-                        key={columna || "accion"}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {contratistas.map((fila, indice) => (
-                    <tr key={indice}>
-                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
-                        <input
-                          value={fila.id}
-                          inputMode="numeric"
-                          onChange={(event) => {
-                            const valor = event.target.value;
-                            if (valor !== "" && !/^\d+$/.test(valor)) return;
-                            setContratistas((actual) => actual.map((item, i) => (i === indice ? { ...item, id: valor } : item)));
-                          }}
-                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                        />
-                      </td>
-                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
-                        <input
-                          value={fila.nombre}
-                          onChange={(event) => {
-                            const valor = event.target.value;
-                            setContratistas((actual) => actual.map((item, i) => (i === indice ? { ...item, nombre: valor } : item)));
-                          }}
-                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 }}
-                        />
-                      </td>
-                      <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
-                        <button
-                          type="button"
-                          onClick={() => setContratistas((actual) => actual.filter((_, i) => i !== indice))}
-                          style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--peligro)", color: "var(--sobre)", cursor: "pointer" }}
-                        >
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Planilla>
-              <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const siguiente = contratistas.reduce((maximo, fila) => Math.max(maximo, Number(fila.id) || 0), 0) + 1;
-                    setContratistas((actual) => [...actual, { id: String(siguiente), nombre: "" }]);
-                  }}
-                  style={{ padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", cursor: "pointer" }}
-                >
-                  Agregar
-                </button>
-                <button
-                  type="submit"
-                  disabled={guardandoContratistas}
-                  style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
-                >
-                  {guardandoContratistas ? "Guardando..." : "Guardar"}
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
+        <PanelContratistas
+          contratistas={contratistas}
+          setContratistas={setContratistas}
+          cargando={cargandoContratistas}
+          guardando={guardandoContratistas}
+          aviso={avisoContratistas}
+          setAviso={setAvisoContratistas}
+          alPedirConfirmacion={() => setConfirmarContratistas(true)}
+          colores={colores}
+          clasePlanilla={clasePlanilla}
+        />
       )}
       {autorizado && mostrarFormulario && (
         <form
@@ -1738,14 +1573,8 @@ export default function Admin() {
             event.preventDefault();
             setAviso("");
             setGuardando(true);
-            fetch("/api/material", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clave, datos }),
-            })
-              .then(async (res) => {
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "No se pudo agregar.");
+            enviarJson("/api/material", { clave, datos }, "No se pudo agregar.")
+              .then((data) => {
                 permitirSalida.current = true;
                 navigate(`/${encodeURIComponent(data.fila.Codigo)}`);
               })

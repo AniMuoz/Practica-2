@@ -46,7 +46,6 @@ function importarPlanilla(clave, buffer) {
     throw error;
   }
 
-  const indiceCodigo = columnas.indexOf("Codigo");
   const indicePorNombre = Object.fromEntries(encabezados.map((nombre, indice) => [nombre, indice]));
   let agregados = 0;
   let actualizados = 0;

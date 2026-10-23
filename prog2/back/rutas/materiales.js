@@ -127,11 +127,15 @@ module.exports = function rutasMateriales(app) {
   });
 
   app.post("/api/acceso", (req, res) => {
-    if (!claveCorrecta(req.body && req.body.clave)) {
-      res.status(403).json({ error: "Contraseña incorrecta." });
-      return;
+    try {
+      if (!claveCorrecta(req.body && req.body.clave)) {
+        res.status(403).json({ error: "Contraseña incorrecta." });
+        return;
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo verificar la clave." });
     }
-    res.json({ ok: true });
   });
 
   app.post("/api/tabla/limpiar-inventario", async (req, res) => {

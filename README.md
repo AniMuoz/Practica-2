@@ -26,6 +26,7 @@ El flujo es: el navegador pide todo a Cloudflare, que reenvía lo que empieza co
 - Hay que iniciar sesión con usuario y contraseña. La sesión dura 7 días.
 - Las acciones delicadas piden además una clave.
 - El servidor limita los intentos de login y la cantidad de peticiones por minuto.
+- La clave compartida de operaciones (`CLAVE_DATOS`) se bloquea por IP durante 15 minutos tras 3 intentos fallidos, con o sin sesion (`prog2/back/limiteClave.js`).
 - Solo el sitio publicado puede usar el servidor (CORS cerrado, salvo que se agreguen orígenes).
 
 **Variables de entorno en Render**

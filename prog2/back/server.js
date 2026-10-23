@@ -6,6 +6,7 @@ const { supabase } = require("./supabase");
 const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad");
+const { conIpDeClave } = require("./limiteClave");
 const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
 
 const app = express();
@@ -20,6 +21,7 @@ app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
 });
 app.use(exigirProxy);
+app.use("/api", conIpDeClave);
 if (require.main === module) {
   app.use("/api", limitarPeticiones);
   app.use("/api", protegerApi);
