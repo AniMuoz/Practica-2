@@ -77,7 +77,7 @@ const PASOS = {
       id: "Añadir/cargar datos",
       titulo: "Añadir o cargar datos",
       texto:
-        "Añade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. También se pueden actualizar las reservas.",
+        "Añade un dato de la base de inventario o actualiza las bases con archivos oficiales, planillas anteriores o una tabla de una sola columna. También se pueden actualizar las reservas o cargar la lista de códigos de Movimientos.",
     },
     {
       id: "Bitacora camion",
@@ -119,9 +119,9 @@ const PASOS = {
       texto: "Genera una planilla para hacer el inventario a mano en la bodega M501.",
     },
     {
-      id: "Inventario por bodega",
-      titulo: "Inventario por lugar",
-      texto: "Genera una planilla de inventario manual por cada bodega individual de M501.",
+      id: "Movimientos",
+      titulo: "Movimientos",
+      texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
     },
     {
       id: "Stock detallado",
