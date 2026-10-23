@@ -251,7 +251,7 @@ export default function GeneradorQr() {
 
       <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>
       <div data-tour="qr-filtros">
-        <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} sinOrden />
+        <FiltrosTabla filas={filas} filtros={filtros} onChange={setFiltros} sinOrden centrado />
       </div>
 
       </div>

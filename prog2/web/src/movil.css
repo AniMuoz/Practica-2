@@ -188,6 +188,10 @@ select {
   margin-top: 0;
 }
 
+.filtros-panel.filtros-centrado.filtros-2col {
+  grid-template-columns: repeat(2, max-content);
+}
+
 .filtros-centrado .filtros-col:not(.filtros-campos) {
   justify-items: start;
 }
@@ -204,6 +208,15 @@ select {
   align-content: start;
   justify-items: start;
   min-width: 0;
+}
+
+.filtros-col label {
+  text-align: left;
+}
+
+.filtros-col label input[type="checkbox"],
+.filtros-col label input[type="radio"] {
+  flex-shrink: 0;
 }
 
 .filtros-campos {

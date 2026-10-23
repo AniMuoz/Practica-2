@@ -27,7 +27,7 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   return (
-    <div className={centrado ? "filtros-panel filtros-centrado" : "filtros-panel"}>
+    <div className={centrado ? `filtros-panel filtros-centrado${sinOrden ? " filtros-2col" : ""}` : "filtros-panel"}>
       {!sinOrden && (
         <div className="filtros-col">
           {ORDENES.map(([valor, texto]) => (
