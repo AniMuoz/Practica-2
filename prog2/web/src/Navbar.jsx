@@ -316,7 +316,7 @@ export default function Navbar() {
         data-tour="buscar"
         className="barra-buscar"
         ref={caja}
-        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 1 auto", minWidth: 0, position: "relative" }}
+        style={{ display: "flex", gap: 8, marginLeft: "auto", flex: "0 0 auto", minWidth: "max-content", position: "relative" }}
       >
         <span style={{ position: "relative", display: "inline-flex", minWidth: 220 }}>
           <input
