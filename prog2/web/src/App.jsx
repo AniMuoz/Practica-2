@@ -4,6 +4,7 @@ import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import Navbar from "./Navbar.jsx";
 import Planilla from "./Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { sonarActualizacion } from "./sonido.js";
 import {
   aplicarFilaRecibida,
   bodegasDe,
@@ -199,10 +200,11 @@ export default function App() {
       }
       if (data.tipo === "fila" && data.fila) {
         setFilas((actuales) => aplicarFilaRecibida(actuales, data));
+        sonarActualizacion();
         return;
       }
       if (data.tipo === "recarga") {
-        cargarTabla().catch(() => setError("No se pudo actualizar la tabla."));
+        cargarTabla().then(sonarActualizacion).catch(() => setError("No se pudo actualizar la tabla."));
       }
     };
     return () => {

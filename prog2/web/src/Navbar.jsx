@@ -4,6 +4,7 @@ import logo from "../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
+import { useSonido } from "./sonido.js";
 
 export default function Navbar() {
   const { rol } = useSesion();
@@ -86,6 +87,7 @@ export default function Navbar() {
     navigate(`/${encodeURIComponent(buscado)}`);
   }
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
+  const { sonido, cambiarSonido } = useSonido();
 
   function cerrarSesion() {
     fetch("/api/logout", { method: "POST" })
@@ -147,7 +149,7 @@ export default function Navbar() {
         }}
       >
         <img src={logo} alt="BERFRE" style={{ height: 32, width: "auto" }} />
-        Inventario M501
+        Bodega Esval Coraceros Viña
       </Link>
       <button
         type="button"
@@ -169,6 +171,20 @@ export default function Navbar() {
         }}
       >
         ?
+      </button>
+      <button
+        type="button"
+        className="barra-sonido"
+        aria-label={sonido ? "Silenciar avisos sonoros" : "Activar avisos sonoros"}
+        title={sonido ? "Silenciar avisos sonoros" : "Activar avisos sonoros"}
+        aria-pressed={sonido}
+        onClick={() => cambiarSonido(!sonido)}
+        style={{ padding: 0, border: 0, background: "transparent", color: "var(--texto)", cursor: "pointer", lineHeight: 0 }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M11 5 6 9H2v6h4l5 4V5z" />
+          {!sonido && <path d="m22 9-6 6M16 9l6 6" />}
+        </svg>
       </button>
       <button
         type="button"

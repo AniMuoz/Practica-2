@@ -498,10 +498,33 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, cantidad: e.target.value } : f)))}
                     style={{ ...CAMPO, flex: 1 }}
                   />
-                  <button type="button" onClick={() => setProductos(productos.filter((_, i) => i !== indice))} style={{ padding: "8px 10px" }}>Quitar</button>
+                  <button
+                    type="button"
+                    aria-label="Quitar producto"
+                    title="Quitar producto"
+                    onClick={() => setProductos(productos.filter((_, i) => i !== indice))}
+                    style={{
+                      display: "inline-grid",
+                      placeItems: "center",
+                      width: 36,
+                      padding: 0,
+                      border: "1px solid var(--borde)",
+                      background: "var(--superficie)",
+                      color: "var(--peligro, #dc2626)",
+                      cursor: "pointer",
+                      boxShadow: "none",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 7h16" />
+                      <path d="M9 7V4h6v3" />
+                      <path d="M6 7l1 13h10l1-13" />
+                      <path d="M10 11v5M14 11v5" />
+                    </svg>
+                  </button>
                 </div>
               ))}
-              <button type="button" onClick={() => setProductos([...productos, { codigo: "", cantidad: "" }])} style={{ padding: "6px 12px", justifySelf: "start" }}>
+              <button type="button" onClick={() => setProductos([...productos, { codigo: "", cantidad: "" }])} style={{ padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", color: "var(--texto)", cursor: "pointer", justifySelf: "start" }}>
                 + Agregar producto
               </button>
             </div>
