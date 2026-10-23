@@ -181,7 +181,7 @@ select {
 }
 
 .filtros-panel.filtros-centrado {
-  grid-template-columns: repeat(2, max-content);
+  grid-template-columns: repeat(3, max-content);
   justify-content: center;
   justify-items: center;
   column-gap: 48px;

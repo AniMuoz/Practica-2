@@ -28,6 +28,14 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   return (
     <div className={centrado ? "filtros-panel filtros-centrado" : "filtros-panel"}>
+      <div className="filtros-col">
+        {ORDENES.map(([valor, texto]) => (
+          <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+            <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
+            {texto}
+          </label>
+        ))}
+      </div>
       <div className="filtros-col filtros-campos">
         <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
           Bodega
@@ -62,12 +70,6 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
         </label>
       </div>
       <div className="filtros-col">
-        {ORDENES.map(([valor, texto]) => (
-          <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-            <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
-            {texto}
-          </label>
-        ))}
         {CHECKS.map(([clave, texto]) => (
           <label key={clave} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
             <input type="checkbox" checked={filtros[clave]} onChange={(e) => poner(clave, e.target.checked)} />
