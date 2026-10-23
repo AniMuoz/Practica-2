@@ -96,6 +96,7 @@ function Preview({ colores, recarga }) {
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [borradores, setBorradores] = useState({});
+  const [opcionDescarga, setOpcionDescarga] = useState(null);
 
   function cargar() {
     setCargando(true);
@@ -205,17 +206,21 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message));
   }
 
-  function descargar(anual = false) {
+  function descargar(anual = false, tipo = "completa") {
+    setOpcionDescarga(null);
+    const extra = tipo === "reservar" ? "&tipo=reservar" : "";
     const ruta = anual
-      ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}`
-      : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}`;
+      ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}${extra}`
+      : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}${extra}`;
+    const prefijo = tipo === "reservar" ? "VENTAS RESERVAR " : null;
     fetch(ruta)
       .then(async (res) => {
         if (!res.ok) await leerJson(res, "No se pudo descargar la planilla.");
         const url = URL.createObjectURL(await res.blob());
         const enlace = document.createElement("a");
         enlace.href = url;
-        enlace.download = anual ? nombreDescargaAnual(anioAnual) : nombreDescarga();
+        const nombre = anual ? nombreDescargaAnual(anioAnual) : nombreDescarga();
+        enlace.download = prefijo ? nombre.replace("VENTAS ", prefijo) : nombre;
         enlace.click();
         URL.revokeObjectURL(url);
       })
@@ -267,7 +272,7 @@ function Preview({ colores, recarga }) {
         <button
           data-tour="ventas-descargar"
           type="button"
-          onClick={() => descargar(false)}
+          onClick={() => setOpcionDescarga({ anual: false })}
           disabled={!planilla.existe}
           style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
         >
@@ -287,13 +292,45 @@ function Preview({ colores, recarga }) {
           <button
             type="button"
             title={`Une todas las planillas existentes de ${anioAnual} (enero a diciembre) en un solo archivo`}
-            onClick={() => descargar(true)}
+            onClick={() => setOpcionDescarga({ anual: true })}
             style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
           >
             Descargar planilla anual
           </button>
         </span>
       </div>
+      {opcionDescarga && (
+        <div
+          role="dialog"
+          aria-label="Elegir tipo de planilla"
+          style={{ position: "fixed", inset: 0, background: "rgba(0, 0, 0, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }}
+        >
+          <div style={{ width: "min(420px, 100%)", background: "var(--superficie)", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>¿Qué planilla quieres descargar?</h3>
+            <button
+              type="button"
+              onClick={() => descargar(opcionDescarga.anual, "completa")}
+              style={{ padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
+            >
+              Descargar planilla completa
+            </button>
+            <button
+              type="button"
+              onClick={() => descargar(opcionDescarga.anual, "reservar")}
+              style={{ padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
+            >
+              Descargar planilla para reservar material
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpcionDescarga(null)}
+              style={{ padding: "10px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", color: "var(--texto)", cursor: "pointer" }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
       {aviso && <p style={{ margin: "0 0 8px" }}>{aviso}</p>}
       {cargando && <p style={{ margin: 0 }}>Cargando planilla...</p>}
       {!cargando && !planilla.existe && <p style={{ margin: 0 }}>No hay planilla de {MESES[mes - 1]} {anio}.</p>}

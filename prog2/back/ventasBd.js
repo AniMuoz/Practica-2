@@ -415,14 +415,59 @@ async function armarExcel(filas, colores = true) {
   compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();
 }
-async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true) {
+// Planilla reducida para reservar material: solo las columnas necesarias, con la sub-ubicación del maestro.
+async function armarExcelReservar(filas, colores = true) {
+  const libro = new ExcelJS.Workbook();
+  const hoja = libro.addWorksheet("Ventas");
+  const titulos = ["Pos", "Código", "Descripción", "Ubicación", "Sub-ubicación", "M501", "Solicitado", "Entregar", "Med", "Tiras"];
+  const borde = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+  const subPorCodigo = new Map();
+  filasConBodegas().forEach((m) => subPorCodigo.set(String(m.Codigo ?? "").trim(), String(m["Sub-ubicación"] ?? "")));
+  const encabezado = (n) => {
+    titulos.forEach((titulo, i) => {
+      const celda = hoja.getCell(n, i + 1);
+      celda.value = titulo;
+      celda.font = { bold: true };
+      celda.border = borde;
+      if (colores) celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+    });
+  };
+  encabezado(1);
+  let n = 2;
+  let anterior = null;
+  filas.forEach((fila) => {
+    const clave = `${fila.planilla_id}-${fila.lote}`;
+    if (anterior !== null && anterior !== clave) {
+      encabezado(n);
+      n += 1;
+    }
+    anterior = clave;
+    const valores = [
+      fila.pos, fila.codigo, fila.descripcion, fila.ubicacion, subPorCodigo.get(String(fila.codigo ?? "").trim()) || "",
+      fila.m501, fila.solicitado, fila.entregar, fila.med, fila.tiras ?? null,
+    ];
+    valores.forEach((valor, i) => {
+      const celda = hoja.getCell(n, i + 1);
+      if (valor !== null && valor !== undefined && valor !== "") celda.value = valor;
+      celda.border = borde;
+      celda.font = colores && fila.rojo ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
+    });
+    n += 1;
+  });
+  hoja.autoFilter = "A1:J1";
+  compactarPlanilla(hoja);
+  return libro.xlsx.writeBuffer();
+}
+
+async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa") {
   const { anio, mes } = validarMes(valorAnio, valorMes);
   const planilla = await buscarPlanilla(anio, mes);
   if (!planilla) throw errorHttp(404, "No hay planilla de ventas para ese mes.");
   const filas = await leerFilas(planilla.id);
-  const buffer = await armarExcel(filas, colores);
-  await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length } });
-  return { buffer, nombre: nombreDescarga() };
+  const reservar = tipo === "reservar";
+  const buffer = reservar ? await armarExcelReservar(filas, colores) : await armarExcel(filas, colores);
+  await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length, tipo } });
+  return { buffer, nombre: reservar ? nombreDescarga().replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescarga() };
 }
 
 function nombreDescargaAnual(anio, ahora = new Date()) {
@@ -430,7 +475,7 @@ function nombreDescargaAnual(anio, ahora = new Date()) {
 }
 
 // Une las planillas existentes del año (enero a diciembre) en una sola, sin separar los meses.
-async function exportarAnual(valorAnio, usuario, colores = true) {
+async function exportarAnual(valorAnio, usuario, colores = true, tipo = "completa") {
   const { anio } = validarMes(valorAnio, 1);
   const { data, error } = await supabase
     .from("ventas_planillas")
@@ -441,9 +486,10 @@ async function exportarAnual(valorAnio, usuario, colores = true) {
   if (!data || data.length === 0) throw errorHttp(404, `No hay planillas de ventas en ${anio}.`);
   const filas = [];
   for (const planilla of data) filas.push(...(await leerFilas(planilla.id)));
-  const buffer = await armarExcel(filas, colores);
-  await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length } });
-  return { buffer, nombre: nombreDescargaAnual(anio) };
+  const reservar = tipo === "reservar";
+  const buffer = reservar ? await armarExcelReservar(filas, colores) : await armarExcel(filas, colores);
+  await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length, tipo } });
+  return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescargaAnual(anio) };
 }
 
 async function listarLog(filtros = {}) {
