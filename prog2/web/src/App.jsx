@@ -117,9 +117,10 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        if (!data) return;
+        if (!data) return false;
         setColumnas(data.columnas || []);
         setFilas(data.filas || []);
+        return true;
       });
   }
 
@@ -143,7 +144,10 @@ export default function App() {
     const iniciarSondeo = () => {
       if (sondeo || document.visibilityState !== "visible") return;
       sondeo = setInterval(() => {
-        if (document.visibilityState === "visible") cargarTabla().catch(() => {});
+        if (document.visibilityState === "visible") {
+          // El sondeo es el respaldo si el SSE queda en búfer: avisa si hubo cambios.
+          cargarTabla().then((cambio) => cambio && sonarActualizacion()).catch(() => {});
+        }
       }, INTERVALO);
     };
     const detenerSondeo = () => {
