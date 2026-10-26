@@ -94,12 +94,14 @@ async function pedir(metodo, ruta, { json, form } = {}) {
   return { status: respuesta.status, headers: respuesta.headers, json: parseado, cuerpo };
 }
 
+const FIRMA_XLSX = "PK\x03\x04" + "\0".repeat(20);
+
 function formulario(campos = {}, archivos = {}) {
   const form = new FormData();
   for (const [nombre, valor] of Object.entries(campos)) form.append(nombre, valor);
   for (const [nombre, { contenido, archivo, tipo }] of Object.entries(archivos)) {
     // El servidor revisa los bytes iniciales: se antepone la firma real del formato.
-    const firma = /\.xlsx$/i.test(archivo) ? "PK\x03\x04" + "\0".repeat(20) : /\.pdf$/i.test(archivo) ? "%PDF-" : "";
+    const firma = /\.xlsx$/i.test(archivo) ? FIRMA_XLSX : /\.pdf$/i.test(archivo) ? "%PDF-" : "";
     form.append(nombre, new Blob([firma, contenido], { type: tipo || "application/octet-stream" }), archivo);
   }
   return form;
@@ -338,7 +340,7 @@ test("POST /api/ventas en modo orden entrega el archivo y traduce errores", asyn
     form: formulario({ contratista: "1", movimiento: "1" }, { orden: { contenido: "ORDEN", archivo: "orden.xlsx" } }),
   });
   const { ordenBuffer, itemsManuales } = llamadasVentas[0].args[0];
-  assert.equal(ordenBuffer.toString().replace(/^PK\x03\x04\0+/, ""), "ORDEN");
+  assert.equal(ordenBuffer.toString().slice(FIRMA_XLSX.length), "ORDEN");
   assert.equal(itemsManuales, null);
 
   const orden = { orden: { contenido: "x", archivo: "orden.xlsx" } };
@@ -421,7 +423,7 @@ for (const [modo, funcion] of MODOS) {
     assert.deepEqual(respuesta.json, { agregados: 1 });
     const { args } = llamadasA(funcion)[0];
     assert.equal(args[0], "k");
-    assert.equal(args[1].toString().replace(/^PK\x03\x04\0+/, ""), "datos");
+    assert.equal(args[1].toString().slice(FIRMA_XLSX.length), "datos");
     if (modo === "dos-columnas") assert.equal(args[2], "Precio");
     assert.deepEqual(llamadasA("registrarCarga")[0].args, [modo, "Precio"]);
     assert.equal(llamadas.filter((llamada) => llamada.nombre.startsWith("importar")).length, 1);

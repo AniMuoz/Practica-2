@@ -14,7 +14,8 @@ const EXTENSIONES_PELIGROSAS = new Set([
 
 function nombreSeguro(nombre, extension) {
   if (typeof nombre !== "string" || !nombre.toLowerCase().endsWith(extension)) return false;
-  if (/[\u0000-\u001f\\/]/.test(nombre)) return false;
+  if (nombre.includes("/") || nombre.includes("\\")) return false;
+  if ([...nombre].some((letra) => letra.charCodeAt(0) < 32)) return false;
   const partes = nombre.toLowerCase().split(".").slice(1, -1).map((parte) => parte.trim());
   return !partes.some((parte) => EXTENSIONES_PELIGROSAS.has(parte));
 }
