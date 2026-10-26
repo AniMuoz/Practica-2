@@ -5,21 +5,57 @@ const multer = require("multer");
 const carpetaImagenes = path.join(__dirname, "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
 
-function subidaEnMemoria(extension, mensaje, limite = 15 * 1024 * 1024) {
-  return multer({
+// Extensiones ejecutables o de script que no pueden aparecer en ninguna parte del nombre (doble extension).
+const EXTENSIONES_PELIGROSAS = new Set([
+  "exe", "dll", "bat", "cmd", "com", "scr", "msi", "ps1", "psm1", "vbs", "vbe", "js", "jse", "mjs", "cjs",
+  "wsf", "wsh", "jar", "sh", "bash", "php", "phtml", "php3", "php4", "php5", "asp", "aspx", "jsp", "cgi",
+  "pl", "py", "rb", "lnk", "hta", "reg", "html", "htm", "svg", "xlsm", "xlsb", "xltm", "docm", "pptm",
+]);
+
+function nombreSeguro(nombre, extension) {
+  if (typeof nombre !== "string" || !nombre.toLowerCase().endsWith(extension)) return false;
+  if (/[\u0000-\u001f\\/]/.test(nombre)) return false;
+  const partes = nombre.toLowerCase().split(".").slice(1, -1).map((parte) => parte.trim());
+  return !partes.some((parte) => EXTENSIONES_PELIGROSAS.has(parte));
+}
+
+const empieza = (buffer, texto) =>
+  Buffer.isBuffer(buffer) && buffer.length >= texto.length && buffer.toString("latin1", 0, texto.length) === texto;
+// Un .xlsx es un ZIP: empieza con PK\x03\x04.
+const esXlsxReal = (buffer) => empieza(buffer, "PK\x03\x04") && buffer.length >= 22;
+const esPdfReal = (buffer) => empieza(buffer, "%PDF-");
+
+// Envuelve un multer para revisar los bytes reales de cada archivo (el nombre y el mimetype los manda el cliente).
+function verificandoContenido(instancia, esValido, mensaje) {
+  const envolver = (metodo) => (...args) => {
+    const medio = instancia[metodo](...args);
+    return (req, res, siguiente) =>
+      medio(req, res, (error) => {
+        if (error) return siguiente(error);
+        const archivos = [req.file, ...Object.values(req.files || {}).flat()].filter(Boolean);
+        if (archivos.some((archivo) => !esValido(archivo.buffer))) return siguiente(new Error(mensaje));
+        siguiente();
+      });
+  };
+  return { single: envolver("single"), fields: envolver("fields"), array: envolver("array") };
+}
+
+function subidaEnMemoria(extension, mensaje, esValido, mensajeContenido, limite = 15 * 1024 * 1024) {
+  const instancia = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: limite },
+    limits: { fileSize: limite, files: 2 },
     fileFilter: (_req, file, cb) => {
-      if (file.originalname.toLowerCase().endsWith(extension)) cb(null, true);
+      if (nombreSeguro(file.originalname, extension)) cb(null, true);
       else cb(new Error(mensaje));
     },
   });
+  return verificandoContenido(instancia, esValido, mensajeContenido);
 }
 
-const uploadXlsx = subidaEnMemoria(".xlsx", "Solo se aceptan archivos .xlsx.");
-const uploadPdf = subidaEnMemoria(".pdf", "Solo se aceptan archivos PDF.");
+const uploadXlsx = subidaEnMemoria(".xlsx", "Solo se aceptan archivos .xlsx.", esXlsxReal, "El archivo no es un .xlsx válido.");
+const uploadPdf = subidaEnMemoria(".pdf", "Solo se aceptan archivos PDF.", esPdfReal, "El archivo no es un PDF válido.");
 
-const uploadFirma = multer({
+const uploadFirmaBase = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 },
   fileFilter: (_req, file, cb) => {
@@ -42,6 +78,13 @@ function esImagenReal(buffer) {
     (buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP")
   );
 }
+
+const esPngOJpeg = (buffer) =>
+  Buffer.isBuffer(buffer) &&
+  buffer.length >= 12 &&
+  ((buffer[0] === 0x89 && buffer.toString("ascii", 1, 4) === "PNG") || (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff));
+
+const uploadFirma = verificandoContenido(uploadFirmaBase, esPngOJpeg, "La imagen de la firma debe ser un archivo PNG o JPG.");
 
 const upload = multer({
   storage: multer.diskStorage({
