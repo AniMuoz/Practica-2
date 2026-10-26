@@ -70,6 +70,7 @@ export function filtrarFilas(filas, filtros) {
     orden = "",
     bodega = "",
     subUbicacion = "",
+    caracteristica = "",
     stockMinimo = "",
     soloConPrecio = false,
     soloConUbicacion = false,
@@ -90,6 +91,9 @@ export function filtrarFilas(filas, filtros) {
   }
   if (subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
+  }
+  if (caracteristica) {
+    lista = lista.filter((fila) => String(fila.Caracteristica ?? "").trim() === caracteristica);
   }
   if (String(stockMinimo).trim() !== "") {
     const minimo = Number(stockMinimo);

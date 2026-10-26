@@ -22,6 +22,28 @@ function nombreInventarioPorDefecto(fecha = new Date()) {
   return `INVENTARIO ${dd}-${mm}-${fecha.getFullYear()}`;
 }
 
+// Como useState, pero guarda el valor en sessionStorage para que los filtros
+// sigan aplicados al volver desde el detalle de un material o desde admin.
+function useFiltroPersistente(clave, inicial) {
+  const llave = `filtro-tabla:${clave}`;
+  const [valor, setValor] = useState(() => {
+    try {
+      const guardado = sessionStorage.getItem(llave);
+      return guardado === null ? inicial : JSON.parse(guardado);
+    } catch {
+      return inicial;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(llave, JSON.stringify(valor));
+    } catch {
+      // almacenamiento no disponible: se ignora
+    }
+  }, [llave, valor]);
+  return [valor, setValor];
+}
+
 export default function App() {
   const navigate = useNavigate();
   const [parametros, setParametros] = useSearchParams();
@@ -33,18 +55,19 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
   const [pagina, setPagina] = useState(0);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const [orden, setOrden] = useState("codigo-asc");
-  const [bodega, setBodega] = useState("");
-  const [subUbicacion, setSubUbicacion] = useState("");
-  const [stockMinimo, setStockMinimo] = useState("");
-  const [soloConPrecio, setSoloConPrecio] = useState(false);
-  const [soloConUbicacion, setSoloConUbicacion] = useState(false);
-  const [soloStockCritico, setSoloStockCritico] = useState(false);
-  const [soloStockCero, setSoloStockCero] = useState(false);
-  const [soloInventarioOComentario, setSoloInventarioOComentario] = useState(false);
-  const [soloMarcados, setSoloMarcados] = useState(false);
-  const [soloConRombo, setSoloConRombo] = useState(false);
-  const [ignorarNulo, setIgnorarNulo] = useState(true);
+  const [orden, setOrden] = useFiltroPersistente("orden", "codigo-asc");
+  const [bodega, setBodega] = useFiltroPersistente("bodega", "");
+  const [subUbicacion, setSubUbicacion] = useFiltroPersistente("subUbicacion", "");
+  const [caracteristica, setCaracteristica] = useFiltroPersistente("caracteristica", "");
+  const [stockMinimo, setStockMinimo] = useFiltroPersistente("stockMinimo", "");
+  const [soloConPrecio, setSoloConPrecio] = useFiltroPersistente("soloConPrecio", false);
+  const [soloConUbicacion, setSoloConUbicacion] = useFiltroPersistente("soloConUbicacion", false);
+  const [soloStockCritico, setSoloStockCritico] = useFiltroPersistente("soloStockCritico", false);
+  const [soloStockCero, setSoloStockCero] = useFiltroPersistente("soloStockCero", false);
+  const [soloInventarioOComentario, setSoloInventarioOComentario] = useFiltroPersistente("soloInventarioOComentario", false);
+  const [soloMarcados, setSoloMarcados] = useFiltroPersistente("soloMarcados", false);
+  const [soloConRombo, setSoloConRombo] = useFiltroPersistente("soloConRombo", false);
+  const [ignorarNulo, setIgnorarNulo] = useFiltroPersistente("ignorarNulo", true);
   const [bloquearPagina, setBloquearPagina] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
   const [urlDescarga, setUrlDescarga] = useState("");
@@ -79,14 +102,21 @@ export default function App() {
   const subUbicaciones = useMemo(() => subUbicacionesDe(filas, bodega), [filas, bodega]);
 
   useEffect(() => {
-    if (subUbicacion && !subUbicaciones.includes(subUbicacion)) setSubUbicacion("");
-  }, [subUbicacion, subUbicaciones]);
+    if (filas.length > 0 && subUbicacion && !subUbicaciones.includes(subUbicacion)) setSubUbicacion("");
+  }, [filas, subUbicacion, subUbicaciones]);
+
+  const caracteristicas = useMemo(
+    () => [...new Set(filas.map((fila) => String(fila.Caracteristica ?? "").trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "es")),
+    [filas]
+  );
 
   const visibles = useMemo(
     () => filtrarFilas(filas, {
       orden,
       bodega,
       subUbicacion,
+      caracteristica,
       stockMinimo,
       soloConPrecio,
       soloConUbicacion,
@@ -98,12 +128,12 @@ export default function App() {
       ignorarNulo,
       texto,
     }),
-    [filas, orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]
+    [filas, orden, bodega, subUbicacion, caracteristica, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]
   );
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]);
+  }, [orden, bodega, subUbicacion, caracteristica, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]);
 
   function cargarTabla() {
     const headers = {};
@@ -467,6 +497,21 @@ export default function App() {
                   </select>
                 </label>
                 <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                  Característica
+                  <select
+                    value={caracteristica}
+                    onChange={(event) => setCaracteristica(event.target.value)}
+                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">Todas</option>
+                    {caracteristicas.map((valor) => (
+                      <option key={valor} value={valor}>
+                        {valor}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
                   Stock igual o mayor a
                   <input
                     inputMode="decimal"
@@ -553,6 +598,7 @@ export default function App() {
                   setOrden("codigo-asc");
                   setBodega("");
                   setSubUbicacion("");
+                  setCaracteristica("");
                   setStockMinimo("");
                   setSoloConPrecio(false);
                   setSoloConUbicacion(false);
