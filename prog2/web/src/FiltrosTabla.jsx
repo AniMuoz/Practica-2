@@ -15,10 +15,10 @@ const CHECKS = [
 
 const ORDENES = [
   ["", "Sin orden extra"],
-  ["codigo", "Ordenar códigos de mayor a menor"],
   ["codigo-asc", "Ordenar códigos de menor a mayor"],
-  ["ubicacion", "Ordenar ubicaciones de mayor a menor", true],
+  ["codigo", "Ordenar códigos de mayor a menor"],
   ["ubicacion-asc", "Ordenar ubicaciones de menor a mayor", true],
+  ["ubicacion", "Ordenar ubicaciones de mayor a menor", true],
   ["descripcion", "Ordenar descripciones alfabéticamente"],
   ["descripcion-desc", "Ordenar descripciones alfabéticamente al revés"],
 ];

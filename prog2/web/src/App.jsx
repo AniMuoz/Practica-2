@@ -384,15 +384,6 @@ export default function App() {
                   <input
                     type="radio"
                     name="orden"
-                    checked={orden === "codigo"}
-                    onChange={() => setOrden("codigo")}
-                  />
-                  Ordenar códigos de mayor a menor
-                </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                  <input
-                    type="radio"
-                    name="orden"
                     checked={orden === "codigo-asc"}
                     onChange={() => setOrden("codigo-asc")}
                   />
@@ -402,10 +393,10 @@ export default function App() {
                   <input
                     type="radio"
                     name="orden"
-                    checked={orden === "ubicacion"}
-                    onChange={() => setOrden("ubicacion")}
+                    checked={orden === "codigo"}
+                    onChange={() => setOrden("codigo")}
                   />
-                  Ordenar ubicaciones de mayor a menor
+                  Ordenar códigos de mayor a menor
                 </label>
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
@@ -415,6 +406,15 @@ export default function App() {
                     onChange={() => setOrden("ubicacion-asc")}
                   />
                   Ordenar ubicaciones de menor a mayor
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "ubicacion"}
+                    onChange={() => setOrden("ubicacion")}
+                  />
+                  Ordenar ubicaciones de mayor a menor
                 </label>
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
