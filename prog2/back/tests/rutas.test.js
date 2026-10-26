@@ -1,4 +1,4 @@
-process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 
@@ -98,7 +98,9 @@ function formulario(campos = {}, archivos = {}) {
   const form = new FormData();
   for (const [nombre, valor] of Object.entries(campos)) form.append(nombre, valor);
   for (const [nombre, { contenido, archivo, tipo }] of Object.entries(archivos)) {
-    form.append(nombre, new Blob([contenido], { type: tipo || "application/octet-stream" }), archivo);
+    // El servidor revisa los bytes iniciales: se antepone la firma real del formato.
+    const firma = /\.xlsx$/i.test(archivo) ? "PK\x03\x04" + "\0".repeat(20) : /\.pdf$/i.test(archivo) ? "%PDF-" : "";
+    form.append(nombre, new Blob([firma, contenido], { type: tipo || "application/octet-stream" }), archivo);
   }
   return form;
 }
@@ -271,7 +273,7 @@ test("POST /api/reserva lee el PDF y POST /api/reserva/excel devuelve la planill
   const pdf = { archivo: { contenido: "pdf-falso", archivo: "Reserva.PDF" } };
   const lectura = await pedir("POST", "/api/reserva", { form: formulario({}, pdf) });
   assert.deepEqual(lectura.json, { columnas: ["a"], filas: [] });
-  assert.equal(llamadasA("revisarReserva")[0].args[0].toString(), "pdf-falso");
+  assert.equal(llamadasA("revisarReserva")[0].args[0].toString().replace(/^%PDF-/, ""), "pdf-falso");
   const excel = await pedir("POST", "/api/reserva/excel", { form: formulario({ colores: "0" }, pdf) });
   assert.equal(excel.status, 200);
   assert.equal(excel.headers.get("content-type"), XLSX_TIPO);
@@ -336,7 +338,7 @@ test("POST /api/ventas en modo orden entrega el archivo y traduce errores", asyn
     form: formulario({ contratista: "1", movimiento: "1" }, { orden: { contenido: "ORDEN", archivo: "orden.xlsx" } }),
   });
   const { ordenBuffer, itemsManuales } = llamadasVentas[0].args[0];
-  assert.equal(ordenBuffer.toString(), "ORDEN");
+  assert.equal(ordenBuffer.toString().replace(/^PK\x03\x04\0+/, ""), "ORDEN");
   assert.equal(itemsManuales, null);
 
   const orden = { orden: { contenido: "x", archivo: "orden.xlsx" } };
@@ -419,7 +421,7 @@ for (const [modo, funcion] of MODOS) {
     assert.deepEqual(respuesta.json, { agregados: 1 });
     const { args } = llamadasA(funcion)[0];
     assert.equal(args[0], "k");
-    assert.equal(args[1].toString(), "datos");
+    assert.equal(args[1].toString().replace(/^PK\x03\x04\0+/, ""), "datos");
     if (modo === "dos-columnas") assert.equal(args[2], "Precio");
     assert.deepEqual(llamadasA("registrarCarga")[0].args, [modo, "Precio"]);
     assert.equal(llamadas.filter((llamada) => llamada.nombre.startsWith("importar")).length, 1);
