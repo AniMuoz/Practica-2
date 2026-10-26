@@ -260,6 +260,12 @@ const PASOS = {
       texto:
         "Muestra cada cambio de la planilla de ventas (productos añadidos, celdas editadas, filas quitadas y descargas) con el usuario que lo hizo. Más abajo se listan las planillas por mes; presiona una para ver sus filas y su historial.",
     },
+    {
+      id: "auditoria-usuarios",
+      titulo: "Cambios de usuarios",
+      texto:
+        "Muestra altas, bajas, cambios de contraseña y cambios de rol (de qué rol a cuál), con quién hizo el cambio y a qué usuario. Se puede filtrar por persona, usuario afectado, acción y fechas. La contraseña nueva no se guarda.",
+    },
   ],
 };
 

@@ -17,7 +17,49 @@ async function leerUsuario(nombre) {
   return data;
 }
 
+const LIMITE_LOG = 50;
+
+async function registrarCambio(actor, evento) {
+  try {
+    const { error } = await supabase.from("usuarios_log").insert({
+      actor: String(actor || ""),
+      objetivo: evento.objetivo,
+      accion: evento.accion,
+      rol_anterior: evento.rol_anterior ?? null,
+      rol_nuevo: evento.rol_nuevo ?? null,
+    });
+    if (error) console.error("No se pudo registrar el cambio de usuario:", error);
+  } catch (error) {
+    console.error("No se pudo registrar el cambio de usuario:", error);
+  }
+}
+
+async function listarCambios(filtros = {}) {
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  let q = supabase
+    .from("usuarios_log")
+    .select("id, creado_en, actor, objetivo, accion, rol_anterior, rol_nuevo", { count: "exact" });
+  if (filtros.actor) q = q.eq("actor", String(filtros.actor));
+  if (filtros.objetivo) q = q.eq("objetivo", String(filtros.objetivo));
+  if (filtros.accion) q = q.eq("accion", String(filtros.accion));
+  if (filtros.desde && typeof q.gte === "function") q = q.gte("creado_en", `${filtros.desde}T00:00:00`);
+  if (filtros.hasta && typeof q.lte === "function") q = q.lte("creado_en", `${filtros.hasta}T23:59:59.999`);
+  const desde = (pagina - 1) * LIMITE_LOG;
+  const { data, count, error } = await q.order("creado_en", { ascending: false }).range(desde, desde + LIMITE_LOG - 1);
+  if (error) falloBd(error);
+  return { eventos: data || [], total: count || 0, pagina, por_pagina: LIMITE_LOG };
+}
+
 module.exports = function rutasUsuarios(app) {
+  app.get("/api/usuarios/auditoria", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      res.json(await listarCambios(req.query || {}));
+    } catch (error) {
+      responderError(res, error, "No se pudo leer la auditoría de usuarios.");
+    }
+  });
+
   app.get("/api/usuarios", async (req, res) => {
     try {
       await exigirAdmin(req);
@@ -45,6 +87,7 @@ module.exports = function rutasUsuarios(app) {
         falloBd(error);
       }
       cacheUsuarios.delete(usuario);
+      await registrarCambio(req.usuario, { objetivo: usuario, accion: "crear_usuario", rol_nuevo: rol });
       res.status(201).json({ usuario, rol });
     } catch (error) {
       responderError(res, error, "No se pudo crear el usuario.");
@@ -64,6 +107,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").update({ rol }).eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
+      await registrarCambio(req.usuario, { objetivo: usuario, accion: "cambiar_rol", rol_anterior: objetivo.rol, rol_nuevo: rol });
       res.json({ ok: true, usuario, rol });
     } catch (error) {
       responderError(res, error, "No se pudo cambiar el rol.");
@@ -81,6 +125,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").update({ clave_hash: await hashClave(req.body.clave) }).eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
+      await registrarCambio(req.usuario, { objetivo: usuario, accion: "cambiar_clave" });
       res.json({ ok: true, usuario });
     } catch (error) {
       responderError(res, error, "No se pudo cambiar la contraseña.");
@@ -103,6 +148,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").delete().eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
+      await registrarCambio(req.usuario, { objetivo: usuario, accion: "eliminar_usuario", rol_anterior: objetivo.rol });
       res.json({ ok: true, usuario });
     } catch (error) {
       responderError(res, error, "No se pudo eliminar el usuario.");

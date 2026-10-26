@@ -415,6 +415,105 @@ function Ventas() {
   );
 }
 
+const ACCIONES_USUARIOS = {
+  crear_usuario: "Creó un usuario",
+  eliminar_usuario: "Eliminó un usuario",
+  cambiar_clave: "Cambió la contraseña",
+  cambiar_rol: "Cambió el rol",
+};
+
+const ROLES = { admin: "administrador", operador: "operador", desactivado: "desactivado" };
+const rolLegible = (rol) => ROLES[rol] || rol || "—";
+
+function descripcionUsuario(e) {
+  const base = ACCIONES_USUARIOS[e.accion] || e.accion;
+  if (e.accion === "cambiar_rol") return `${base} de ${e.objetivo}: ${rolLegible(e.rol_anterior)} → ${rolLegible(e.rol_nuevo)}`;
+  if (e.accion === "crear_usuario") return `${base}: ${e.objetivo} (${rolLegible(e.rol_nuevo)})`;
+  if (e.accion === "eliminar_usuario") return `${base}: ${e.objetivo} (era ${rolLegible(e.rol_anterior)})`;
+  return `${base} de ${e.objetivo}`;
+}
+
+function Usuarios() {
+  const [filtros, setFiltros] = useState({ actor: "", objetivo: "", accion: "", desde: "", hasta: "" });
+  const [pagina, setPagina] = useState(1);
+  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
+  const [error, setError] = useState("");
+
+  function cargar(p, f) {
+    const q = new URLSearchParams({ pagina: String(p) });
+    Object.entries(f).forEach(([k, v]) => v.trim() && q.set(k, v.trim()));
+    leer(`/api/usuarios/auditoria?${q}`)
+      .then((d) => {
+        setError("");
+        setDatos(d);
+      })
+      .catch((e) => setError(e.message));
+  }
+
+  useEffect(() => {
+    cargar(pagina, filtros);
+  }, [pagina]);
+
+  const paginas = Math.max(1, Math.ceil(datos.total / datos.por_pagina));
+  const cambiar = (k) => (ev) => setFiltros({ ...filtros, [k]: ev.target.value });
+
+  return (
+    <div data-tour="auditoria-usuarios">
+      <form
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          if (pagina === 1) cargar(1, filtros);
+          else setPagina(1);
+        }}
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}
+      >
+        <input placeholder="Quién lo hizo" aria-label="Quién lo hizo" value={filtros.actor} onChange={cambiar("actor")} style={{ ...CAMPO, width: 140 }} />
+        <input placeholder="Usuario afectado" aria-label="Usuario afectado" value={filtros.objetivo} onChange={cambiar("objetivo")} style={{ ...CAMPO, width: 150 }} />
+        <select aria-label="Acción de usuario" value={filtros.accion} onChange={cambiar("accion")} style={CAMPO}>
+          <option value="">Todas las acciones</option>
+          {Object.entries(ACCIONES_USUARIOS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <label style={{ fontSize: 13 }}>Desde <input type="date" value={filtros.desde} onChange={cambiar("desde")} style={CAMPO} /></label>
+        <label style={{ fontSize: 13 }}>Hasta <input type="date" value={filtros.hasta} onChange={cambiar("hasta")} style={CAMPO} /></label>
+        <button type="submit" style={{ ...BOTON, background: "var(--boton)", color: "var(--sobre)", border: 0 }}>Filtrar</button>
+      </form>
+      {error ? <p style={{ color: "var(--peligro)" }}>{error}</p> : null}
+      {datos.eventos.length === 0 && !error ? <p>Sin cambios de usuarios registrados.</p> : null}
+      {datos.eventos.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={TH}>Fecha y hora</th>
+                <th style={TH}>Quién lo hizo</th>
+                <th style={TH}>Usuario</th>
+                <th style={TH}>Cambio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {datos.eventos.map((e) => (
+                <tr key={e.id}>
+                  <td style={{ ...TD, whiteSpace: "nowrap" }}>{fecha(e.creado_en)}</td>
+                  <td style={{ ...TD, fontWeight: 600 }}>{e.actor || "—"}</td>
+                  <td style={TD}>{e.objetivo}</td>
+                  <td style={TD}>{descripcionUsuario(e)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, fontSize: 14 }}>
+        <button type="button" style={BOTON} disabled={pagina <= 1} onClick={() => setPagina(pagina - 1)}>Anterior</button>
+        <span>Página {pagina} de {paginas} · {datos.total} eventos</span>
+        <button type="button" style={BOTON} disabled={pagina >= paginas} onClick={() => setPagina(pagina + 1)}>Siguiente</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Auditoria() {
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
@@ -430,7 +529,7 @@ export default function Auditoria() {
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras y ventas</h1>
+      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras, ventas y usuarios</h1>
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 24 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Actividad</h2>
         <Actividad alListo={sumar} />
@@ -442,6 +541,10 @@ export default function Auditoria() {
       <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginTop: 24 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Planilla de ventas</h2>
         <Ventas />
+      </section>
+      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginTop: 24 }}>
+        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Usuarios</h2>
+        <Usuarios />
       </section>
     </main>
   );

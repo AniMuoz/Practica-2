@@ -15,6 +15,19 @@ alter table public.usuarios add constraint usuarios_rol_check check (rol in ('ad
 
 alter table public.usuarios enable row level security;
 
+create table if not exists public.usuarios_log (
+  id bigint generated always as identity primary key,
+  creado_en timestamptz not null default now(),
+  actor text not null default '',
+  objetivo text not null default '',
+  accion text not null,
+  rol_anterior text,
+  rol_nuevo text
+);
+
+create index if not exists usuarios_log_creado_idx on public.usuarios_log (creado_en desc);
+alter table public.usuarios_log enable row level security;
+
 create table if not exists public.ultimas_cargas (
   clave text primary key,
   fecha text not null
