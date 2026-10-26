@@ -1431,7 +1431,7 @@ export default function Admin() {
             <VistaPrevia
               filas={busquedaReserva.filas}
               columnas={busquedaReserva.columnas.length}
-              altoMaximo={320}
+              altoMaximo={430}
               clave={busquedaReserva.consulta}
               alFinal={() => {
                 const numero = busquedaReserva.consulta;
