@@ -514,6 +514,24 @@ function Usuarios() {
   );
 }
 
+function Seccion({ titulo, abiertaInicial = false, children }) {
+  const [abierta, setAbierta] = useState(abiertaInicial);
+  return (
+    <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+      <button
+        type="button"
+        aria-expanded={abierta}
+        onClick={() => setAbierta((valor) => !valor)}
+        style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 12, margin: 0, padding: 0, border: 0, background: "transparent", color: "inherit", cursor: "pointer", textAlign: "left" }}
+      >
+        <h2 style={{ margin: 0, fontSize: 18 }}>{titulo}</h2>
+        <span style={{ fontSize: 14 }}>{abierta ? "Ocultar" : "Mostrar"}</span>
+      </button>
+      {abierta && <div style={{ marginTop: 12 }}>{children}</div>}
+    </section>
+  );
+}
+
 export default function Auditoria() {
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
@@ -529,23 +547,19 @@ export default function Auditoria() {
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de bitácoras, ventas y usuarios</h1>
-      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginBottom: 24 }}>
-        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Actividad</h2>
-        <Actividad alListo={sumar} />
-      </section>
-      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16 }}>
-        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Folios</h2>
-        <Folios alListo={sumar} />
-      </section>
-      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginTop: 24 }}>
-        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Planilla de ventas</h2>
-        <Ventas />
-      </section>
-      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, marginTop: 24 }}>
-        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Usuarios</h2>
+      <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de usuarios, ventas y bitácoras</h1>
+      <Seccion titulo="Usuarios" abiertaInicial>
         <Usuarios />
-      </section>
+      </Seccion>
+      <Seccion titulo="Planilla de ventas">
+        <Ventas />
+      </Seccion>
+      <Seccion titulo="Actividad de bitácora">
+        <Actividad alListo={sumar} />
+      </Seccion>
+      <Seccion titulo="Folios de bitácora">
+        <Folios alListo={sumar} />
+      </Seccion>
     </main>
   );
 }
