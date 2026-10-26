@@ -17,7 +17,7 @@ async function leerUsuario(nombre) {
   return data;
 }
 
-const LIMITE_LOG = 50;
+const LIMITE_LOG = 25;
 
 async function registrarCambio(actor, evento) {
   try {

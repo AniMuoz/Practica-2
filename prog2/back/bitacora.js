@@ -201,7 +201,7 @@ async function registrarLog(usuario, evento) {
   }
 }
 
-const LIMITE_LOG = 50;
+const LIMITE_LOG = 25;
 
 async function listarLog(filtros = {}) {
   const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);

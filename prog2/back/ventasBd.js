@@ -5,7 +5,7 @@ const { compactarPlanilla, filasConBodegas } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");
 const { itemsDesdeOrden, itemsDesdeTraspaso, itemsDesdeManual, enteroCelda, escribirEncabezadoVentas } = require("./ventas");
 
-const LIMITE_LOG = 50;
+const LIMITE_LOG = 25;
 const CAMPOS_TEXTO = ["contratista", "n_venta", "gd_esval", "estado", "fecha_gd", "gd_esval2", "observacion"];
 const CAMPOS_NUMERO = ["solicitado", "entregar", "cant_gd"];
 const CAMPOS_EDITABLES = [...CAMPOS_NUMERO, ...CAMPOS_TEXTO];

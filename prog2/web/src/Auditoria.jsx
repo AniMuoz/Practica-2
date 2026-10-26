@@ -73,7 +73,7 @@ function TablaLog({ eventos, conFolio = true }) {
 function Actividad({ alListo }) {
   const [filtros, setFiltros] = useState({ usuario: "", accion: "", folio: "", desde: "", hasta: "" });
   const [pagina, setPagina] = useState(1);
-  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
+  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 25 });
   const [error, setError] = useState("");
 
   function cargar(p, f) {
@@ -303,7 +303,7 @@ function Ventas() {
   const [error, setError] = useState("");
   const [filtros, setFiltros] = useState({ usuario: "", accion: "", desde: "", hasta: "" });
   const [pagina, setPagina] = useState(1);
-  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
+  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 25 });
 
   function cargarLog(p, f) {
     const q = new URLSearchParams({ pagina: String(p) });
@@ -436,7 +436,7 @@ function descripcionUsuario(e) {
 function Usuarios() {
   const [filtros, setFiltros] = useState({ actor: "", objetivo: "", accion: "", desde: "", hasta: "" });
   const [pagina, setPagina] = useState(1);
-  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 50 });
+  const [datos, setDatos] = useState({ eventos: [], total: 0, por_pagina: 25 });
   const [error, setError] = useState("");
 
   function cargar(p, f) {
