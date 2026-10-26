@@ -81,14 +81,15 @@ test("leerCodigosMovimientos ordena por posición y guarda el resultado", () => 
   assert.equal(operaciones.length, consultas);
 });
 
-test("planillaMovimientos rescata los datos por código, numera y omite códigos desconocidos", () => {
+test("planillaMovimientos rescata los datos por código, numera y marca códigos desconocidos", () => {
   const { planillaMovimientos } = cargar({ movimientos: [{ codigo: "300", pos: 0 }, { codigo: "999", pos: 1 }, { codigo: "100", pos: 2 }, { codigo: "200", pos: 3 }] });
   const { columnas, filas } = planillaMovimientos();
   assert.deepEqual(columnas, ["N°", "Código", "Descripción", "Ubicación", "Sub-Ubicación", "M501", "Físico"]);
   assert.deepEqual(filas, [
     [1, "300", "Clavo", "02-B", "02-B", 4, "", ""],
-    [2, "100", "Perno", "01-A", "01-A", 10, "", "9"],
-    [3, "200", "Tuerca", "", "", 0, "", ""],
+    [2, "999", "Código desconocido en la base de datos", "", "", "", "", ""],
+    [3, "100", "Perno", "01-A", "01-A", 10, "", "9"],
+    [4, "200", "Tuerca", "", "", 0, "", ""],
   ]);
 });
 

@@ -402,6 +402,24 @@ export default function App() {
                   <input
                     type="radio"
                     name="orden"
+                    checked={orden === "ubicacion"}
+                    onChange={() => setOrden("ubicacion")}
+                  />
+                  Ordenar ubicaciones de mayor a menor
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
+                    checked={orden === "ubicacion-asc"}
+                    onChange={() => setOrden("ubicacion-asc")}
+                  />
+                  Ordenar ubicaciones de menor a mayor
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="orden"
                     checked={orden === "descripcion"}
                     onChange={() => setOrden("descripcion")}
                   />

@@ -52,6 +52,7 @@ module.exports = {
   planillaMovimientos: movimientos.planillaMovimientos,
   exportarMovimientos: movimientos.exportarMovimientos,
   importarMovimientos: movimientos.importarMovimientos,
+  agregarCodigoMovimiento: movimientos.agregarCodigoMovimiento,
   stockDetallado: stock.stockDetallado,
   exportarStockDetallado: stock.exportarStockDetallado,
   revisarReserva: ventas.revisarReserva,

@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla } = require("../compartido");
 
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
@@ -117,6 +117,15 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo leer la planilla de movimientos." });
+    }
+  });
+
+  app.post("/api/movimientos/codigo", (req, res) => {
+    try {
+      res.status(201).json(agregarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo añadir el código." });
     }
   });
 

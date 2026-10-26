@@ -17,12 +17,14 @@ const ORDENES = [
   ["", "Sin orden extra"],
   ["codigo", "Ordenar códigos de mayor a menor"],
   ["codigo-asc", "Ordenar códigos de menor a mayor"],
+  ["ubicacion", "Ordenar ubicaciones de mayor a menor", true],
+  ["ubicacion-asc", "Ordenar ubicaciones de menor a mayor", true],
   ["descripcion", "Ordenar descripciones alfabéticamente"],
   ["descripcion-desc", "Ordenar descripciones alfabéticamente al revés"],
 ];
 
 // Mismos filtros que la tabla principal (ver filtrarFilas en reglasPlanilla.js).
-export default function FiltrosTabla({ filas, filtros, onChange, centrado = false, sinOrden = false }) {
+export default function FiltrosTabla({ filas, filtros, onChange, centrado = false, sinOrden = false, conOrdenUbicacion = false }) {
   const poner = (clave, valor) => onChange({ ...filtros, [clave]: valor });
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
@@ -30,7 +32,7 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
     <div className={centrado ? `filtros-panel filtros-centrado${sinOrden ? " filtros-2col" : ""}` : "filtros-panel"}>
       {!sinOrden && (
         <div className="filtros-col">
-          {ORDENES.map(([valor, texto]) => (
+          {ORDENES.filter(([, , soloUbic]) => !soloUbic || conOrdenUbicacion).map(([valor, texto]) => (
             <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
               <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
               {texto}

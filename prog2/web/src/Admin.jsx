@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { useSesion } from "./Acceso.jsx";
@@ -86,6 +86,8 @@ export default function Admin() {
   const [movimientos, setMovimientos] = useState({ columnas: [], filas: [] });
   const [cargandoMovimientos, setCargandoMovimientos] = useState(false);
   const [avisoMovimientos, setAvisoMovimientos] = useState("");
+  const [codigoMovimiento, setCodigoMovimiento] = useState("");
+  const [errorCodigoMovimiento, setErrorCodigoMovimiento] = useState("");
   const excelInventario = (ruta) =>
     rutaConFiltros(rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia), filtrosStock);
   function alternarExistencia() {
@@ -142,7 +144,7 @@ export default function Admin() {
     fontSize: 14,
     cursor: "pointer",
   };
-  const panelFiltros = (
+  const crearPanelFiltros = (conOrdenUbicacion) => (
     <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
         <button
@@ -161,10 +163,12 @@ export default function Admin() {
         </button>
       </div>
       {verFiltrosStock && (
-        <FiltrosTabla centrado filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
+        <FiltrosTabla centrado conOrdenUbicacion={conOrdenUbicacion} filas={filasMaestro} filtros={filtrosStock} onChange={setFiltrosStock} />
       )}
     </div>
   );
+  const panelFiltros = crearPanelFiltros(false);
+  const panelFiltrosUbicacion = crearPanelFiltros(true);
   const filasInventario = aplicarFiltrosStock(
     filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia),
     0
@@ -230,6 +234,19 @@ export default function Admin() {
       });
       return siguientes;
     });
+  }
+
+  function añadirCodigoMovimiento(evento) {
+    evento.preventDefault();
+    const codigo = codigoMovimiento.trim();
+    if (!codigo) return;
+    setErrorCodigoMovimiento("");
+    enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo añadir el código.")
+      .then(() => {
+        setCodigoMovimiento("");
+        return cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true);
+      })
+      .catch((err) => setErrorCodigoMovimiento(err.message));
   }
 
   function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
@@ -1095,7 +1112,7 @@ export default function Admin() {
             </a>
             </div>
           </div>
-          {panelFiltros}
+          {panelFiltrosUbicacion}
           {cargandoInventario && <p style={{ margin: 0 }}>Cargando inventario...</p>}
           {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
           {!cargandoInventario && !avisoInventario && (
@@ -1175,7 +1192,24 @@ export default function Admin() {
               </a>
             </div>
           </div>
-          {panelFiltros}
+          <form onSubmit={añadirCodigoMovimiento} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <input
+              type="text"
+              value={codigoMovimiento}
+              onChange={(e) => setCodigoMovimiento(e.target.value)}
+              placeholder="Añadir código"
+              aria-label="Añadir código"
+              style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--borde)", fontSize: 14 }}
+            />
+            <button
+              type="submit"
+              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
+            >
+              Añadir código
+            </button>
+            {errorCodigoMovimiento && <span style={{ fontSize: 14 }}>{errorCodigoMovimiento}</span>}
+          </form>
+          {panelFiltrosUbicacion}
           {cargandoMovimientos && <p style={{ margin: 0 }}>Cargando movimientos...</p>}
           {avisoMovimientos && <p style={{ margin: 0 }}>{avisoMovimientos}</p>}
           {!cargandoMovimientos && !avisoMovimientos && (
@@ -1245,7 +1279,7 @@ export default function Admin() {
               Descargar planilla
             </a>
           </div>
-          {panelFiltros}
+          {panelFiltrosUbicacion}
           {cargandoDetallado && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (

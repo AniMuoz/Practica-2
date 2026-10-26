@@ -42,12 +42,30 @@ function importarMovimientos(clave, buffer) {
   return { agregados: codigos.length, actualizados: 0, omitidos: leidos.length - codigos.length };
 }
 
+function agregarCodigoMovimiento(clave, codigoCrudo) {
+  exigirClave(clave);
+  const codigo = String(codigoCrudo ?? "").trim();
+  if (!codigo) throw errorPeticion("Escribe un código.");
+  const actuales = leerCodigosMovimientos();
+  if (actuales.includes(codigo)) throw errorPeticion("Ese código ya está en la planilla.");
+  const codigos = [...actuales, codigo];
+  ejecutar("reemplazar", {
+    tabla: "movimientos",
+    columna: "codigo",
+    filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
+  });
+  cacheCodigos = codigos;
+  return { codigo };
+}
+
+const CODIGO_DESCONOCIDO = "Código desconocido en la base de datos";
+
 function planillaMovimientos() {
   const porCodigo = new Map(filasConBodegas().map((fila) => [String(fila.Codigo ?? "").trim(), fila]));
   const filas = leerCodigosMovimientos()
-    .filter((codigo) => porCodigo.has(codigo))
     .map((codigo, indice) => {
       const fila = porCodigo.get(codigo);
+      if (!fila) return [indice + 1, codigo, CODIGO_DESCONOCIDO, "", "", "", "", ""];
       return [
         indice + 1,
         codigo,
@@ -98,6 +116,7 @@ async function exportarMovimientos(colores = true, origenExistencia = "", filtro
 
 module.exports = {
   importarMovimientos,
+  agregarCodigoMovimiento,
   leerCodigosMovimientos,
   planillaMovimientos,
   exportarMovimientos,
