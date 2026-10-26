@@ -487,6 +487,17 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
         : String(a.Codigo).localeCompare(String(b.Codigo), "es", { numeric: true });
       return comparado * sentido;
     });
+  } else if (orden === "ubicacion" || orden === "ubicacion-asc") {
+    // Por bodega (01, 02...) y dentro de ella alfabético; sin ubicación siempre al final.
+    const sentido = orden === "ubicacion" ? -1 : 1;
+    lista = [...lista].sort((a, b) => {
+      const ua = String(a["Ubicación"] ?? "").trim();
+      const ub = String(b["Ubicación"] ?? "").trim();
+      if (!ua && !ub) return 0;
+      if (!ua) return 1;
+      if (!ub) return -1;
+      return ua.localeCompare(ub, "es", { numeric: true, sensitivity: "base" }) * sentido;
+    });
   } else if (orden === "descripcion" || orden === "descripcion-desc") {
     const sentido = orden === "descripcion" ? 1 : -1;
     lista = [...lista].sort((a, b) =>
