@@ -110,11 +110,10 @@ describe("Ventas", () => {
     await act(async () => {});
     const fila = perno.closest("tr");
     const celdas = fila.cells;
-    // Tras la columna N°: [0]=N°, [1]=Pos, [2]=Código, [3]=Descripción
-    document.elementFromPoint = () => celdas[3];
-    fireEvent.mouseDown(celdas[2], { button: 0 });
-    fireEvent.mouseMove(celdas[3], { button: 0 });
-    fireEvent.mouseUp(celdas[3]);
+    document.elementFromPoint = () => celdas[2];
+    fireEvent.mouseDown(celdas[1], { button: 0 });
+    fireEvent.mouseMove(celdas[2], { button: 0 });
+    fireEvent.mouseUp(celdas[2]);
     const datos = {};
     const evento = new Event("copy", { bubbles: true, cancelable: true });
     evento.clipboardData = { setData: (tipo, valor) => { datos[tipo] = valor; } };
