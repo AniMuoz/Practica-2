@@ -5,6 +5,7 @@ import "./buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };
+const COLOR_ESTADO = { "sin revisar": "#d32f2f", revisando: "#ef6c00", cerrado: "#2e7d32" };
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
 
 async function pedir(url, opciones) {
@@ -91,7 +92,7 @@ function Formulario({ alEnviar }) {
 
   return (
     <form onSubmit={enviar} className="buzon-form">
-      <h3>Nueva sugerencia o reclamo</h3>
+      <h3>Nueva emergencia</h3>
       <label>
         Título
         <input value={titulo} maxLength={120} onChange={(e) => setTitulo(e.target.value)} />
@@ -150,13 +151,21 @@ export default function Buzon() {
     <main style={{ minHeight: "100vh", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
       <div className="buzon">
-        <h2>Buzón de sugerencias y reclamos</h2>
+        <h2>Buzón de emergencia</h2>
         {!admin && <Formulario alEnviar={cargar} />}
         {admin && (
           <div className="buzon-tabs">
             {ESTADOS.map((e) => (
-              <button key={e} type="button" className={`buzon-btn${seccion === e ? " activa" : ""}`} onClick={() => setSeccion(e)}>
-                {e} ({mensajes.filter((m) => m.estado === e).length})
+              <button
+                key={e}
+                type="button"
+                className={`buzon-tab${seccion === e ? " activa" : ""}`}
+                style={{ "--c": COLOR_ESTADO[e] }}
+                onClick={() => setSeccion(e)}
+              >
+                <span className="punto" />
+                <span>{e}</span>
+                <span className="cuenta">{mensajes.filter((m) => m.estado === e).length}</span>
               </button>
             ))}
           </div>
