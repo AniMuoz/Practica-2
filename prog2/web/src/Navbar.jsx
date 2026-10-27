@@ -443,6 +443,11 @@ export default function Navbar() {
         Admin
       </Link>
       )}
+      {menuVisible && (
+        <Link to="/buzon" className="barra-buzon" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0 }}>
+          Buzón
+        </Link>
+      )}
       {rol === "admin" && menuVisible && (
         <>
           <Link to="/personal" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>

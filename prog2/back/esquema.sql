@@ -173,3 +173,15 @@ create table if not exists public.ventas_log (
 create index if not exists ventas_log_planilla_idx on public.ventas_log (planilla_id);
 create index if not exists ventas_log_creado_idx on public.ventas_log (creado_en desc);
 alter table public.ventas_log enable row level security;
+
+create table if not exists public.buzon (
+  id bigint generated always as identity primary key,
+  creado_en timestamptz not null default now(),
+  usuario text not null,
+  titulo text not null,
+  descripcion text not null,
+  urgencia text not null check (urgencia in ('leve', 'media', 'alta', 'urgente')),
+  estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado'))
+);
+
+alter table public.buzon enable row level security;

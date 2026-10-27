@@ -4,6 +4,7 @@ import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Acceso from "./Acceso.jsx";
 import Admin from "./Admin.jsx";
 import Auditoria from "./Auditoria.jsx";
+import Buzon from "./Buzon.jsx";
 import GeneradorQr from "./GeneradorQr.jsx";
 import Gastos from "./Gastos.jsx";
 import Personal from "./Personal.jsx";
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: "/auditoria", element: <Auditoria /> },
       { path: "/qr", element: <GeneradorQr /> },
       { path: "/gastos", element: <Gastos /> },
+      { path: "/buzon", element: <Buzon /> },
       { path: "/:codigo", element: <Detalle /> },
     ],
   },

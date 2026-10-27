@@ -101,6 +101,7 @@ require("./rutas/bitacora")(app);
 require("./rutas/materiales")(app);
 require("./rutas/usuarios")(app);
 require("./rutas/gastos")(app);
+require("./rutas/buzon")(app);
 
 process.on("unhandledRejection", (motivo) => {
   console.error("Promesa rechazada sin manejar:", motivo);
