@@ -380,7 +380,7 @@ function Preview({ colores, recarga }) {
                   </tr>
                   {grupo.filas.map((fila, i) => (
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
-                      <td data-sin-copia="1" style={TD}>{(i + 1) * 10}</td>
+                      <td data-sin-copia="1" style={TD}>{i*10 + 1}</td>
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
                           {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
