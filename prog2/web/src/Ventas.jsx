@@ -338,7 +338,7 @@ function Preview({ colores, recarga }) {
           <Planilla style={{ width: "auto", fontSize: 13 }}>
             <thead>
               <tr>
-                <th data-sin-copia="1" style={TH}>N°</th>
+                {/* <th data-sin-copia="1" style={TH}>N°</th> */}
                 {COLUMNAS.map(([clave, titulo]) => <th key={clave} style={TH}>{titulo}</th>)}
                 <th data-sin-copia="1" style={TH}></th>
               </tr>
@@ -380,7 +380,7 @@ function Preview({ colores, recarga }) {
                   </tr>
                   {grupo.filas.map((fila, i) => (
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
-                      <td data-sin-copia="1" style={TD}>{i*10 + 1}</td>
+                      <td data-sin-copia="1" style={TD}>{i + 1}</td>
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
                           {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
