@@ -548,7 +548,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
 
   return (
     <>
-      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: 640, width: "100%" }}>
+      <section style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: 760, width: "100%", boxSizing: "border-box" }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 18, textAlign: "center" }}>Añadir venta</h2>
         <form key={formKey} onSubmit={enviar} style={{ display: "grid", gap: 12 }}>
           <label style={ETIQUETA}>
@@ -591,7 +591,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     onPaste={(e) => {
                       if (pegarColumna(indice, "codigo", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
-                    style={{ ...CAMPO, flex: 2 }}
+                    style={{ ...CAMPO, flex: 2, minWidth: 0, boxSizing: "border-box" }}
                   />
                   <input
                     value={fila.cantidad}
@@ -601,7 +601,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     onPaste={(e) => {
                       if (pegarColumna(indice, "cantidad", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
-                    style={{ ...CAMPO, flex: 1 }}
+                    style={{ ...CAMPO, flex: 1, minWidth: 0, boxSizing: "border-box" }}
                   />
                   <input
                     value={fila.med ?? ""}
@@ -611,7 +611,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                     onPaste={(e) => {
                       if (pegarColumna(indice, "med", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
-                    style={{ ...CAMPO, flex: 1, minWidth: 0 }}
+                    style={{ ...CAMPO, flex: 1, minWidth: 0, boxSizing: "border-box" }}
                   />
                   <button
                     type="button"
@@ -622,6 +622,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                       display: "inline-grid",
                       placeItems: "center",
                       width: 36,
+                      flexShrink: 0,
                       padding: 0,
                       border: "1px solid var(--borde)",
                       background: "var(--superficie)",
