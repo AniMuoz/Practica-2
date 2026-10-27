@@ -380,7 +380,7 @@ function Preview({ colores, recarga }) {
                   </tr>
                   {grupo.filas.map((fila, i) => (
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
-                      <td data-sin-copia="1" style={TD}>{i + 1}</td>
+                      {/* <td data-sin-copia="1" style={TD}>{i + 1}</td> */}
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
                           {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
@@ -583,7 +583,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
               <span style={{ fontSize: 14 }}>Productos</span>
               {productos.map((fila, indice) => (
                 <div key={indice} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ minWidth: 24, textAlign: "right", fontSize: 13 }}>{indice + 1}</span>
+                  <span style={{ minWidth: 24, textAlign: "right", fontSize: 13 }}>{indice*10 + 1}</span>
                   <input
                     value={fila.codigo}
                     placeholder="Código"
