@@ -1,0 +1,55 @@
+.buzon { max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
+.buzon h2, .buzon h3 { margin: 0; text-align: center; }
+.buzon-sub { margin: 0; text-align: center; opacity: 0.7; font-size: 14px; }
+
+.buzon-form, .buzon-card {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.buzon-form input, .buzon-form textarea, .buzon-form select {
+  width: 100%; box-sizing: border-box; padding: 10px 12px;
+  border: 1px solid var(--borde); border-radius: 8px; font: inherit; font-size: 14px;
+}
+.buzon-form textarea { resize: vertical; }
+.buzon-form label { display: grid; gap: 4px; font-size: 14px; }
+.buzon-form .buzon-enviar { justify-self: center; }
+
+.buzon-btn {
+  padding: 9px 16px; border: 0; border-radius: 8px; background: var(--boton);
+  color: var(--sobre); font-size: 14px; cursor: pointer;
+}
+.buzon-btn:disabled { background: var(--apagado); color: var(--apagado-texto); cursor: default; }
+.buzon-btn.peligro { background: var(--peligro); }
+.buzon-btn.suave { background: var(--apagado); color: var(--apagado-texto); }
+
+.buzon-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.buzon-tabs .buzon-btn { text-transform: capitalize; }
+.buzon-tabs .buzon-btn.activa { background: var(--acento); font-weight: 700; }
+
+.buzon-cabeza { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.buzon-titulo { flex: 1 1 180px; font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.buzon-chip {
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--borde); text-transform: capitalize; white-space: nowrap;
+}
+.buzon-chip.id { opacity: 0.75; }
+.buzon-desc {
+  border: 1px solid var(--borde-suave, var(--borde)); border-radius: 8px; padding: 10px 12px;
+  min-height: 70px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px;
+}
+.buzon-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.buzon-acciones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.buzon-vacio { text-align: center; opacity: 0.7; }
+.buzon-error { color: var(--peligro); text-align: center; margin: 0; }
+
+@media (max-width: 600px) {
+  .buzon-form, .buzon-card { padding: 12px; border-radius: 10px; }
+  .buzon-tabs .buzon-btn { flex: 1 1 100%; }
+  .buzon-acciones .buzon-btn { flex: 1 1 100%; }
+  .buzon-pie { flex-direction: column; align-items: flex-start; }
+}

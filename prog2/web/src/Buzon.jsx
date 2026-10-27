@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { useSesion } from "./Acceso.jsx";
+import "./buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
-
-const cajaEstilo = { border: "2px solid var(--texto)", borderRadius: 4, padding: "6px 10px", fontSize: 14 };
-const botonEstilo = (fondo = "var(--boton)") => ({ padding: "8px 14px", border: 0, borderRadius: 6, background: fondo, color: "var(--sobre)", fontSize: 14, cursor: "pointer" });
 
 async function pedir(url, opciones) {
   const res = await fetch(url, opciones);
@@ -21,39 +19,37 @@ function fechaLegible(iso) {
   return Number.isNaN(f.getTime()) ? "" : f.toLocaleString("es-CL");
 }
 
-// Tarjeta con la disposición de la maqueta: título / estado / ID, descripción, usuario / urgencia / fecha.
 function Mensaje({ m, admin, onEstado, onEliminar }) {
   const [minimizado, setMinimizado] = useState(false);
+  const color = COLOR_URGENCIA[m.urgencia];
   return (
-    <article style={{ background: "var(--superficie)", border: "1px solid var(--borde)", borderRadius: 8, padding: 12, display: "grid", gap: 10 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ ...cajaEstilo, flex: "1 1 200px", fontWeight: 700 }}>{m.titulo}</div>
-        {!minimizado && <div style={{ ...cajaEstilo, textTransform: "capitalize" }}>{m.estado}</div>}
-        <div style={{ ...cajaEstilo }}>ID {m.id}</div>
-        {minimizado && <div style={{ ...cajaEstilo }}>{m.usuario}</div>}
-        <button type="button" onClick={() => setMinimizado(!minimizado)} style={botonEstilo("var(--apagado)")} aria-label={minimizado ? "Expandir" : "Minimizar"}>
+    <article className="buzon-card" style={{ borderLeft: `6px solid ${color}` }}>
+      <div className="buzon-cabeza">
+        <div className="buzon-titulo">{m.titulo}</div>
+        {!minimizado && <span className="buzon-chip">{m.estado}</span>}
+        <span className="buzon-chip id">ID {m.id}</span>
+        {minimizado && <span className="buzon-chip">{m.usuario}</span>}
+        <button type="button" className="buzon-btn suave" onClick={() => setMinimizado(!minimizado)} aria-label={minimizado ? "Expandir" : "Minimizar"}>
           {minimizado ? "+" : "−"}
         </button>
       </div>
       {!minimizado && (
         <>
-          <div style={{ ...cajaEstilo, minHeight: 80, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.descripcion}</div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={cajaEstilo}>{m.usuario}</div>
-            <div style={{ ...cajaEstilo, borderColor: COLOR_URGENCIA[m.urgencia], color: COLOR_URGENCIA[m.urgencia], fontWeight: 700, textTransform: "capitalize" }}>
-              {m.urgencia}
-            </div>
-            <div style={{ ...cajaEstilo, marginLeft: "auto" }}>{fechaLegible(m.creado_en)}</div>
+          <div className="buzon-desc">{m.descripcion}</div>
+          <div className="buzon-pie">
+            <span>👤 {m.usuario}</span>
+            <span className="buzon-chip" style={{ borderColor: color, color }}>{m.urgencia}</span>
+            <span>{fechaLegible(m.creado_en)}</span>
           </div>
           {admin && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="buzon-acciones">
               {ESTADOS.filter((e) => e !== m.estado).map((e) => (
-                <button key={e} type="button" onClick={() => onEstado(m.id, e)} style={botonEstilo()}>
+                <button key={e} type="button" className="buzon-btn" onClick={() => onEstado(m.id, e)}>
                   Pasar a {e}
                 </button>
               ))}
               {m.estado === "cerrado" && (
-                <button type="button" onClick={() => onEliminar(m.id)} style={botonEstilo("var(--peligro)")}>
+                <button type="button" className="buzon-btn peligro" onClick={() => onEliminar(m.id)}>
                   Eliminar
                 </button>
               )}
@@ -94,24 +90,28 @@ function Formulario({ alEnviar }) {
   }
 
   return (
-    <form onSubmit={enviar} style={{ background: "var(--superficie)", borderRadius: 8, padding: 14, display: "grid", gap: 10, marginBottom: 16, maxWidth: 720 }}>
-      <h3 style={{ margin: 0 }}>Nueva sugerencia o reclamo</h3>
-      <input value={titulo} maxLength={120} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" aria-label="Título" style={{ ...cajaEstilo, fontWeight: 400 }} />
-      <textarea value={descripcion} maxLength={2000} rows={5} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" aria-label="Descripción" style={{ ...cajaEstilo, resize: "vertical" }} />
-      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+    <form onSubmit={enviar} className="buzon-form">
+      <h3>Nueva sugerencia o reclamo</h3>
+      <label>
+        Título
+        <input value={titulo} maxLength={120} onChange={(e) => setTitulo(e.target.value)} />
+      </label>
+      <label>
+        Descripción
+        <textarea value={descripcion} maxLength={2000} rows={5} onChange={(e) => setDescripcion(e.target.value)} />
+      </label>
+      <label>
         Nivel de urgencia
-        <select value={urgencia} onChange={(e) => setUrgencia(e.target.value)} style={{ padding: "8px 10px", borderRadius: 6, fontSize: 14 }}>
+        <select value={urgencia} onChange={(e) => setUrgencia(e.target.value)}>
           {URGENCIAS.map((u) => (
             <option key={u} value={u}>{u[0].toUpperCase() + u.slice(1)}</option>
           ))}
         </select>
       </label>
-      {error && <p style={{ margin: 0, color: "var(--peligro)" }}>{error}</p>}
-      <div>
-        <button type="submit" disabled={enviando || !titulo.trim() || !descripcion.trim()} style={botonEstilo()}>
-          {enviando ? "Enviando..." : "Enviar"}
-        </button>
-      </div>
+      {error && <p className="buzon-error">{error}</p>}
+      <button type="submit" className="buzon-btn buzon-enviar" disabled={enviando || !titulo.trim() || !descripcion.trim()}>
+        {enviando ? "Enviando..." : "Enviar"}
+      </button>
     </form>
   );
 }
@@ -149,26 +149,21 @@ export default function Buzon() {
   return (
     <main style={{ minHeight: "100vh", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
-      <h2 style={{ marginTop: 0 }}>Buzón de sugerencias y reclamos</h2>
-      {!admin && <Formulario alEnviar={cargar} />}
-      {admin && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-          {ESTADOS.map((e) => (
-            <button
-              key={e}
-              type="button"
-              onClick={() => setSeccion(e)}
-              style={{ ...botonEstilo(seccion === e ? "var(--acento)" : "var(--boton)"), textTransform: "capitalize" }}
-            >
-              {e} ({mensajes.filter((m) => m.estado === e).length})
-            </button>
-          ))}
-        </div>
-      )}
-      {!admin && <h3>Mis mensajes enviados</h3>}
-      {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
-      <div style={{ display: "grid", gap: 12, maxWidth: 820 }}>
-        {visibles.length === 0 && <p>No hay mensajes.</p>}
+      <div className="buzon">
+        <h2>Buzón de sugerencias y reclamos</h2>
+        {!admin && <Formulario alEnviar={cargar} />}
+        {admin && (
+          <div className="buzon-tabs">
+            {ESTADOS.map((e) => (
+              <button key={e} type="button" className={`buzon-btn${seccion === e ? " activa" : ""}`} onClick={() => setSeccion(e)}>
+                {e} ({mensajes.filter((m) => m.estado === e).length})
+              </button>
+            ))}
+          </div>
+        )}
+        {!admin && <h3>Mis mensajes enviados</h3>}
+        {error && <p className="buzon-error">{error}</p>}
+        {visibles.length === 0 && <p className="buzon-vacio">No hay mensajes.</p>}
         {visibles.map((m) => (
           <Mensaje key={m.id} m={m} admin={admin} onEstado={cambiarEstado} onEliminar={eliminar} />
         ))}
