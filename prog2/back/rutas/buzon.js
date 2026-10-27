@@ -28,6 +28,18 @@ module.exports = function rutasBuzon(app) {
     }
   });
 
+  // Cantidad de mensajes sin revisar (solo admin).
+  app.get("/api/buzon/pendientes", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const { count, error } = await supabase.from("buzon").select("id", { count: "exact", head: true }).eq("estado", "sin revisar");
+      if (error) throw error;
+      res.json({ pendientes: count || 0 });
+    } catch (error) {
+      responder(res, error, "No se pudo leer el buzón.");
+    }
+  });
+
   // Todos los mensajes (solo admin).
   app.get("/api/buzon", async (req, res) => {
     try {

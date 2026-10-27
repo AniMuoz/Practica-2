@@ -4,7 +4,7 @@ import logo from "../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
-import { useSonido } from "./sonido.js";
+import { sonarActualizacion, useSonido } from "./sonido.js";
 
 export default function Navbar() {
   const { rol } = useSesion();
@@ -89,6 +89,34 @@ export default function Navbar() {
   }
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
   const { sonido, cambiarSonido } = useSonido();
+  const [pendientes, setPendientes] = useState(0);
+  const pendientesPrevios = useRef(null);
+
+  useEffect(() => {
+    if (rol !== "admin") return undefined;
+    let activo = true;
+    function leer() {
+      if (document.visibilityState !== "visible") return;
+      fetch("/api/buzon/pendientes", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (!activo) return;
+          const nuevo = Number(data.pendientes) || 0;
+          if (pendientesPrevios.current !== null && nuevo > pendientesPrevios.current) sonarActualizacion();
+          pendientesPrevios.current = nuevo;
+          setPendientes(nuevo);
+        })
+        .catch(() => {});
+    }
+    leer();
+    const intervalo = setInterval(leer, 60000);
+    document.addEventListener("visibilitychange", leer);
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", leer);
+    };
+  }, [rol, pathname]);
 
   function cerrarSesion() {
     fetch("/api/logout", { method: "POST" })
@@ -444,8 +472,15 @@ export default function Navbar() {
       </Link>
       )}
       {menuVisible && (
-        <Link to="/buzon" className="barra-buzon" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0 }}>
+        <Link to="/buzon" className="barra-buzon" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0, position: "relative" }}>
           Buzón
+          {rol === "admin" && pendientes > 0 && (
+            <span
+              role="status"
+              aria-label={`${pendientes} mensajes sin revisar`}
+              style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: "#d32f2f", border: "2px solid var(--superficie)", boxSizing: "border-box" }}
+            />
+          )}
         </Link>
       )}
       {rol === "admin" && menuVisible && (
