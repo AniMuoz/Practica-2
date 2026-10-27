@@ -92,7 +92,7 @@ function Formulario({ alEnviar }) {
 
   return (
     <form onSubmit={enviar} className="buzon-form">
-      <h3>Nueva emergencia</h3>
+      <h3>Nueva emergencia o necesidad</h3>
       <label>
         Título
         <input value={titulo} maxLength={120} onChange={(e) => setTitulo(e.target.value)} />
@@ -151,7 +151,7 @@ export default function Buzon() {
     <main style={{ minHeight: "100vh", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
       <div className="buzon">
-        <h2>Buzón de emergencia</h2>
+        <h2>Buzón de emergencia y necesidad</h2>
         {!admin && <Formulario alEnviar={cargar} />}
         {admin && (
           <div className="buzon-tabs">
