@@ -583,7 +583,7 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
               <span style={{ fontSize: 14 }}>Productos</span>
               {productos.map((fila, indice) => (
                 <div key={indice} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ minWidth: 24, textAlign: "right", fontSize: 13 }}>{indice*10 + 1}</span>
+                  <span style={{ minWidth: 24, textAlign: "right", fontSize: 13 }}>{(indice + 1)*10}</span>
                   <input
                     value={fila.codigo}
                     placeholder="Código"
