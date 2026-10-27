@@ -279,7 +279,7 @@ function itemsDesdeManual(lista) {
     const cantidad = fila?.cantidad;
     if (!codigo) return [];
     if (cantidad == null || cantidad === "" || Number(cantidad) === 0) return [];
-    return [{ codigo, unidad: "", cantidad }];
+    return [{ codigo, unidad: String(fila?.med ?? "").trim(), cantidad }];
   });
 }
 

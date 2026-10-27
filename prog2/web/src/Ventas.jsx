@@ -338,6 +338,7 @@ function Preview({ colores, recarga }) {
           <Planilla style={{ width: "auto", fontSize: 13 }}>
             <thead>
               <tr>
+                <th data-sin-copia="1" style={TH}>N°</th>
                 {COLUMNAS.map(([clave, titulo]) => <th key={clave} style={TH}>{titulo}</th>)}
                 <th data-sin-copia="1" style={TH}></th>
               </tr>
@@ -346,7 +347,7 @@ function Preview({ colores, recarga }) {
               {ordenes.map((grupo) => (
                 <Fragment key={grupo.fila.lote}>
                   <tr data-sin-copia="1">
-                    <td colSpan={COLUMNAS.length + 1} style={{ ...TD, background: "var(--acento)", color: "var(--sobre)", fontWeight: 700 }}>
+                    <td colSpan={COLUMNAS.length + 2} style={{ ...TD, background: "var(--acento)", color: "var(--sobre)", fontWeight: 700 }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
                       <button
                         type="button"
@@ -377,8 +378,9 @@ function Preview({ colores, recarga }) {
                       </button>
                     </td>
                   </tr>
-                  {grupo.filas.map((fila) => (
+                  {grupo.filas.map((fila, i) => (
                     <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
+                      <td data-sin-copia="1" style={TD}>{i + 1}</td>
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>
                           {editable ? <Celda fila={fila} campo={clave} editando={editando} valor={borradores[fila.id]?.[clave] ?? String(fila[clave] ?? "")} onCambio={cambiar} onPegar={pegar} onPropagar={propagar} /> : String(fila[clave] ?? "")}
@@ -580,7 +582,8 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
             <div style={{ display: "grid", gap: 8 }}>
               <span style={{ fontSize: 14 }}>Productos</span>
               {productos.map((fila, indice) => (
-                <div key={indice} style={{ display: "flex", gap: 8 }}>
+                <div key={indice} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ minWidth: 24, textAlign: "right", fontSize: 13 }}>{indice + 1}</span>
                   <input
                     value={fila.codigo}
                     placeholder="Código"
@@ -599,6 +602,16 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
                       if (pegarColumna(indice, "cantidad", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
                     style={{ ...CAMPO, flex: 1 }}
+                  />
+                  <input
+                    value={fila.med ?? ""}
+                    placeholder="Med"
+                    aria-label={`Med producto ${indice + 1}`}
+                    onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, med: e.target.value } : f)))}
+                    onPaste={(e) => {
+                      if (pegarColumna(indice, "med", e.clipboardData.getData("text"))) e.preventDefault();
+                    }}
+                    style={{ ...CAMPO, flex: 1, minWidth: 0 }}
                   />
                   <button
                     type="button"
