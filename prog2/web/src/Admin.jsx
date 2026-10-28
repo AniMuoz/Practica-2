@@ -239,7 +239,7 @@ export default function Admin() {
     });
   }
 
-  function añadirCodigoMovimiento(evento) {
+  function agregarCodigoMovimientoForm(evento) {
     evento.preventDefault();
     const codigo = codigoMovimiento.trim();
     if (!codigo) return;
@@ -1237,7 +1237,7 @@ export default function Admin() {
               </a>
             </div>
           </div>
-          <form onSubmit={añadirCodigoMovimiento} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+          <form onSubmit={agregarCodigoMovimientoForm} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
             <input
               type="text"
               value={codigoMovimiento}
@@ -1252,7 +1252,7 @@ export default function Admin() {
             >
               Añadir código
             </button>
-            {errorCodigoMovimiento && <span style={{ fontSize: 14 }}>{errorCodigoMovimiento}</span>}
+            {errorCodigoMovimiento && <span style={{ fontSize: 14, color: "var(--peligro, #d32f2f)" }}>{errorCodigoMovimiento}</span>}
           </form>
           {panelFiltrosUbicacion}
           {cargandoMovimientos && <p style={{ margin: 0 }}>Cargando movimientos...</p>}
