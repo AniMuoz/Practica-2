@@ -176,15 +176,31 @@ export default function Admin() {
     filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia),
     0
   ).filas;
+  // Códigos fuera del maestro (o si el maestro aún no cargó) se muestran siempre;
+  // si no, al editar/añadir parecen borrarse por el filtro de stock.
+  const codigosEnMaestro = new Set(filasMaestro.map((f) => String(f.Codigo)));
+  const filasMovimientosVisibles = filasInventarioVisibles(
+    movimientos.filas,
+    copiarInventario,
+    copiarExistencia,
+    POSICIONES_MOVIMIENTOS
+  ).filter((fila) => {
+    const codigo = String(fila[1]);
+    if (!codigosEnMaestro.has(codigo)) return true;
+    return codigosFiltrados.has(codigo);
+  });
   const filasMovimientos = numerarFilas(
     // Sin orden elegido se conserva el del archivo cargado; con uno elegido manda el de los filtros.
     filtrosStock.orden
-      ? aplicarFiltrosStock(
-          filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS),
-          1
-        ).filas
-      : filasInventarioVisibles(movimientos.filas, copiarInventario, copiarExistencia, POSICIONES_MOVIMIENTOS)
-          .filter((fila) => codigosFiltrados.has(String(fila[1])))
+      ? [...filasMovimientosVisibles].sort((a, b) => {
+          const ordenA = ordenCodigos.get(String(a[1]));
+          const ordenB = ordenCodigos.get(String(b[1]));
+          if (ordenA == null && ordenB == null) return 0;
+          if (ordenA == null) return 1;
+          if (ordenB == null) return -1;
+          return ordenA - ordenB;
+        })
+      : filasMovimientosVisibles
   );
   const [mostrarReserva, setMostrarReserva] = useState(false);
   const [archivoReserva, setArchivoReserva] = useState(null);
