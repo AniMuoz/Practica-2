@@ -6,8 +6,8 @@ import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
 import { sonarActualizacion, useSonido } from "./sonido.js";
 
-export default function Navbar() {
-  const { rol } = useSesion();
+export default function Navbar({ buzonNovedades = 0 }) {
+  const { rol, usuario } = useSesion();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [parametros, setParametros] = useSearchParams();
@@ -87,11 +87,15 @@ export default function Navbar() {
     soltarFoco();
     navigate(`/${encodeURIComponent(buscado)}`);
   }
+
   const { colores, cambiarColores, oscuro, cambiarOscuro } = useColoresPlanilla();
   const { sonido, cambiarSonido } = useSonido();
   const [pendientes, setPendientes] = useState(0);
   const pendientesPrevios = useRef(null);
 
+  // Polling de mensajes sin revisar (solo admin).
+  // Cuando el admin está en /buzon, Buzon.jsx también hace su propio polling de novedades
+  // y pasa el total via prop buzonNovedades — aquí solo rastreamos los mensajes pendientes.
   useEffect(() => {
     if (rol !== "admin") return undefined;
     let activo = true;
@@ -116,7 +120,46 @@ export default function Navbar() {
       clearInterval(intervalo);
       document.removeEventListener("visibilitychange", leer);
     };
-  }, [rol, pathname]);
+  }, [rol, pathname, usuario]);
+
+  // Polling de novedades para operador (respuestas del admin en sus mensajes).
+  // Solo corre cuando buzonNovedades no viene de prop (es decir, cuando NO estamos en /buzon).
+  const [novedadesOperador, setNovedadesOperador] = useState(0);
+  const prevNovedadesOp = useRef(0);
+  useEffect(() => {
+    if (rol === "admin") return undefined;
+    // Si ya estamos en /buzon Buzon.jsx gestiona todo, pero aun así mostramos el badge
+    // usando la prop. El polling aquí sirve para las OTRAS páginas.
+    if (pathname === "/buzon") return undefined;
+    let activo = true;
+    function leer() {
+      if (document.visibilityState !== "visible") return;
+      fetch("/api/buzon/novedades", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then(({ novedades }) => {
+          if (!activo) return;
+          // leer vistos desde localStorage
+          let vistos = {};
+          try { vistos = JSON.parse(localStorage.getItem(`buzon-visto-${usuario}`) || "{}"); } catch { /* noop */ }
+          let total = 0;
+          for (const [bid, ultimaId] of Object.entries(novedades || {})) {
+            if (ultimaId > (vistos[bid] ?? -1)) total += 1;
+          }
+          if (total > prevNovedadesOp.current) sonarActualizacion();
+          prevNovedadesOp.current = total;
+          setNovedadesOperador(total);
+        })
+        .catch(() => {});
+    }
+    leer();
+    const id = setInterval(leer, 15000);
+    document.addEventListener("visibilitychange", leer);
+    return () => {
+      activo = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", leer);
+    };
+  }, [rol, pathname, usuario]);
 
   function cerrarSesion() {
     fetch("/api/logout", { method: "POST" })
@@ -144,6 +187,15 @@ export default function Navbar() {
       window.removeEventListener("resize", ajustar);
     };
   }, [menuVisible, rol, colores, oscuro, sonido, codigo]);
+
+  // El badge del Buzón se muestra si:
+  //   admin    → hay mensajes sin revisar (pendientes) O hay respuestas nuevas de operadores (buzonNovedades)
+  //   operador → hay respuestas nuevas del admin:
+  //              · en /buzon  → usa la prop buzonNovedades (gestionada por Buzon.jsx)
+  //              · en otras   → usa novedadesOperador (polling propio del Navbar)
+  const novedadesEfectivas = pathname === "/buzon" ? buzonNovedades : novedadesOperador;
+  const mostrarBadgeBuzon =
+    rol === "admin" ? pendientes > 0 || buzonNovedades > 0 : novedadesEfectivas > 0;
 
   return (
     <header
@@ -456,28 +508,36 @@ export default function Navbar() {
         </button>
       </form>
       {menuVisible && (
-      <Link
-        to="/admin"
-        className="barra-admin"
-        style={{
-          padding: "8px 14px",
-          borderRadius: 6,
-          background: "var(--boton)",
-          color: "var(--sobre)",
-          fontSize: 14,
-          textDecoration: "none",
-        }}
-      >
-        Admin
-      </Link>
+        <Link
+          to="/admin"
+          className="barra-admin"
+          style={{
+            padding: "8px 14px",
+            borderRadius: 6,
+            background: "var(--boton)",
+            color: "var(--sobre)",
+            fontSize: 14,
+            textDecoration: "none",
+          }}
+        >
+          Admin
+        </Link>
       )}
       {menuVisible && (
-        <Link to="/buzon" className="barra-buzon" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0, position: "relative" }}>
+        <Link
+          to="/buzon"
+          className="barra-buzon"
+          style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0, position: "relative" }}
+        >
           Buzón
-          {rol === "admin" && pendientes > 0 && (
+          {mostrarBadgeBuzon && (
             <span
               role="status"
-              aria-label={`${pendientes} mensajes sin revisar`}
+              aria-label={
+                rol === "admin" && pendientes > 0
+                  ? `${pendientes} mensajes sin revisar`
+                  : `${buzonNovedades} respuestas nuevas`
+              }
               style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: "#d32f2f", border: "2px solid var(--superficie)", boxSizing: "border-box" }}
             />
           )}

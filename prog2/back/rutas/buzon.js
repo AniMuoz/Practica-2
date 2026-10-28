@@ -41,6 +41,64 @@ module.exports = function rutasBuzon(app) {
     }
   });
 
+  // Novedades de respuestas para el usuario que llama:
+  //   - Operador → devuelve el id de la última respuesta de CADA uno de sus mensajes
+  //     (para que el front detecte si llegó algo nuevo desde lo que ya vio).
+  //   - Admin → además devuelve cuántas respuestas nuevas hay agrupadas por estado del mensaje,
+  //     útil para pintar los badges en las tabs.
+  app.get("/api/buzon/novedades", async (req, res) => {
+    try {
+      const registro = await buscarUsuario(req.usuario);
+      const esAdmin = registro && registro.rol === "admin";
+
+      if (esAdmin) {
+        // Para admin: id de la última respuesta de CADA mensaje (de operadores, es_admin=false).
+        // Agrupamos por mensaje y por estado del mensaje.
+        const { data, error } = await supabase
+          .from("buzon_respuestas")
+          .select("id, buzon_id, buzon:buzon_id(estado)")
+          .eq("es_admin", false)
+          .order("id", { ascending: false });
+        if (error) throw error;
+
+        // ultima respuesta (de operador) por buzon_id
+        const porMensaje = {};
+        for (const r of data || []) {
+          if (!porMensaje[r.buzon_id]) {
+            porMensaje[r.buzon_id] = { ultimaId: r.id, estado: r.buzon?.estado ?? null };
+          }
+        }
+        res.json({ novedades: porMensaje });
+      } else {
+        // Para operador: id de la última respuesta de admin en CADA uno de sus mensajes.
+        const { data: msgs, error: errMsgs } = await supabase
+          .from("buzon")
+          .select("id")
+          .eq("usuario", req.usuario);
+        if (errMsgs) throw errMsgs;
+
+        const ids = (msgs || []).map((m) => m.id);
+        if (ids.length === 0) return res.json({ novedades: {} });
+
+        const { data, error } = await supabase
+          .from("buzon_respuestas")
+          .select("id, buzon_id")
+          .eq("es_admin", true)
+          .in("buzon_id", ids)
+          .order("id", { ascending: false });
+        if (error) throw error;
+
+        const porMensaje = {};
+        for (const r of data || []) {
+          if (!porMensaje[r.buzon_id]) porMensaje[r.buzon_id] = r.id;
+        }
+        res.json({ novedades: porMensaje });
+      }
+    } catch (error) {
+      responder(res, error, "No se pudieron leer las novedades.");
+    }
+  });
+
   // Todos los mensajes (solo admin).
   app.get("/api/buzon", async (req, res) => {
     try {

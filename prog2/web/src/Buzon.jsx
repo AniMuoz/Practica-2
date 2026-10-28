@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { useSesion } from "./Acceso.jsx";
+import { sonarActualizacion } from "./sonido.js";
 import "./buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
@@ -8,6 +9,7 @@ const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urg
 const COLOR_ESTADO = { "sin revisar": "#d32f2f", revisando: "#ef6c00", cerrado: "#2e7d32" };
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
 const MAX_DESC = 200;
+const INTERVALO_NOVEDADES = 15_000; // 15 segundos
 
 async function pedir(url, opciones) {
   const res = await fetch(url, opciones);
@@ -21,28 +23,156 @@ function fechaLegible(iso) {
   return Number.isNaN(f.getTime()) ? "" : f.toLocaleString("es-CL");
 }
 
+// ── Helpers de localStorage para rastrear lo "ya visto" ─────────────────────
+// Guardamos { [buzonId]: ultimoIdVisto } por usuario en localStorage.
+
+function claveStorage(usuario) {
+  return `buzon-visto-${usuario}`;
+}
+
+function leerVistos(usuario) {
+  try {
+    return JSON.parse(localStorage.getItem(claveStorage(usuario)) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function guardarVisto(usuario, buzonId, ultimoId) {
+  try {
+    const vistos = leerVistos(usuario);
+    vistos[buzonId] = ultimoId;
+    localStorage.setItem(claveStorage(usuario), JSON.stringify(vistos));
+  } catch {
+    // sin localStorage
+  }
+}
+
+// ── Hook de novedades ────────────────────────────────────────────────────────
+// Devuelve:
+//   novedadTotal    → número total de mensajes con respuestas nuevas no vistas
+//   novedadesPorEstado → { "sin revisar": n, "revisando": n, ... } (admin)
+//   novedadesPorMensaje → Set de buzonIds con novedades (para resaltar tarjeta)
+//   marcarVisto(buzonId, ultimoId) → registra que ya se vio hasta ese id
+
+function useBuzonNovedades(usuario, admin) {
+  const [novedadTotal, setNovedadTotal] = useState(0);
+  const [novedadesPorEstado, setNovedadesPorEstado] = useState({});
+  const [novedadesPorMensaje, setNovedadesPorMensaje] = useState(new Set());
+  const prevTotal = useRef(0);
+
+  const marcarVisto = useCallback(
+    (buzonId, ultimoId) => {
+      guardarVisto(usuario, buzonId, ultimoId);
+      setNovedadesPorMensaje((prev) => {
+        const next = new Set(prev);
+        next.delete(String(buzonId));
+        return next;
+      });
+      setNovedadTotal((prev) => Math.max(0, prev - 1));
+    },
+    [usuario]
+  );
+
+  const verificar = useCallback(() => {
+    if (document.visibilityState !== "visible") return;
+    fetch("/api/buzon/novedades", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(({ novedades }) => {
+        const vistos = leerVistos(usuario);
+        const conNovedad = new Set();
+        const porEstado = {};
+
+        for (const [bid, valor] of Object.entries(novedades || {})) {
+          // admin: valor = { ultimaId, estado }; operador: valor = ultimaId (número)
+          const ultimaId = admin ? valor.ultimaId : valor;
+          const estado = admin ? valor.estado : null;
+          const visto = vistos[bid] ?? -1;
+
+          if (ultimaId > visto) {
+            conNovedad.add(bid);
+            if (admin && estado) {
+              porEstado[estado] = (porEstado[estado] || 0) + 1;
+            }
+          }
+        }
+
+        const total = conNovedad.size;
+        if (total > prevTotal.current) sonarActualizacion();
+        prevTotal.current = total;
+
+        setNovedadTotal(total);
+        setNovedadesPorEstado(porEstado);
+        setNovedadesPorMensaje(conNovedad);
+      })
+      .catch(() => {});
+  }, [usuario, admin]);
+
+  useEffect(() => {
+    if (!usuario) return undefined;
+    verificar();
+    const id = setInterval(verificar, INTERVALO_NOVEDADES);
+    document.addEventListener("visibilitychange", verificar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", verificar);
+    };
+  }, [verificar, usuario]);
+
+  return { novedadTotal, novedadesPorEstado, novedadesPorMensaje, marcarVisto };
+}
+
 // ── Hilo de conversación ─────────────────────────────────────────────────────
 
-function Conversacion({ buzonId, cerrado }) {
-  const [respuestas, setRespuestas] = useState(null); // null = no cargado
+function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto }) {
+  const [respuestas, setRespuestas] = useState(null);
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const finRef = useRef(null);
+  const ultimoIdRef = useRef(null);
 
-  const cargarRespuestas = useCallback(() => {
-    pedir(`/api/buzon/${buzonId}/respuestas`)
-      .then((d) => setRespuestas(d.respuestas || []))
-      .catch((e) => setError(e.message));
-  }, [buzonId]);
+  const cargarRespuestas = useCallback(
+    (silencioso = false) => {
+      fetch(`/api/buzon/${buzonId}/respuestas`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then(({ respuestas: lista }) => {
+          setRespuestas(lista || []);
+          if (!silencioso && lista && lista.length > 0) {
+            const ultimo = lista[lista.length - 1];
+            // Si es nuevo (mayor al previo que teníamos) → sonido + marcar visto
+            if (ultimoIdRef.current !== null && ultimo.id > ultimoIdRef.current) {
+              sonarActualizacion();
+            }
+            ultimoIdRef.current = ultimo.id;
+            marcarVisto(buzonId, ultimo.id);
+          } else if (lista && lista.length === 0) {
+            marcarVisto(buzonId, -1);
+          }
+        })
+        .catch((e) => {
+          if (!silencioso) setError(e.message);
+        });
+    },
+    [buzonId, marcarVisto]
+  );
+
+  // Polling mientras el hilo está abierto.
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const id = setInterval(() => cargarRespuestas(true), INTERVALO_NOVEDADES);
+    return () => clearInterval(id);
+  }, [abierto, cargarRespuestas]);
 
   function toggleAbrir() {
-    if (!abierto && respuestas === null) cargarRespuestas();
+    if (!abierto) {
+      cargarRespuestas(false);
+    }
     setAbierto((v) => !v);
   }
 
-  // Desplazar al final cuando llegan nuevas respuestas.
+  // Scroll al final cuando llegan respuestas.
   useEffect(() => {
     if (abierto && finRef.current) finRef.current.scrollIntoView({ behavior: "smooth" });
   }, [respuestas, abierto]);
@@ -59,7 +189,7 @@ function Conversacion({ buzonId, cerrado }) {
         body: JSON.stringify({ texto }),
       });
       setTexto("");
-      cargarRespuestas();
+      cargarRespuestas(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,7 +202,10 @@ function Conversacion({ buzonId, cerrado }) {
   return (
     <div className="buzon-conv">
       <button type="button" className="buzon-conv-toggle" onClick={toggleAbrir}>
-        💬 Conversación {respuestas !== null && <span className="buzon-chip">{conteo}</span>}
+        <span className="buzon-conv-toggle-inner">
+          💬 Conversación {respuestas !== null && <span className="buzon-chip">{conteo}</span>}
+          {tieneNovedad && !abierto && <span className="buzon-novedad-dot" aria-label="Respuesta nueva" />}
+        </span>
         <span className="buzon-conv-arrow">{abierto ? "▲" : "▼"}</span>
       </button>
 
@@ -111,16 +244,16 @@ function Conversacion({ buzonId, cerrado }) {
                 </span>
               </div>
               {error && <p className="buzon-error">{error}</p>}
-              <button
-                type="submit"
-                className="buzon-btn"
-                disabled={enviando || !texto.trim()}
-              >
+              <button type="submit" className="buzon-btn" disabled={enviando || !texto.trim()}>
                 {enviando ? "Enviando…" : "Responder"}
               </button>
             </form>
           )}
-          {cerrado && <p className="buzon-vacio" style={{ fontSize: 12 }}>Mensaje cerrado · no se aceptan más respuestas.</p>}
+          {cerrado && (
+            <p className="buzon-vacio" style={{ fontSize: 12 }}>
+              Mensaje cerrado · no se aceptan más respuestas.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -129,17 +262,23 @@ function Conversacion({ buzonId, cerrado }) {
 
 // ── Tarjeta de mensaje ───────────────────────────────────────────────────────
 
-function Mensaje({ m, admin, onEstado, onEliminar }) {
+function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcarVisto }) {
   const [minimizado, setMinimizado] = useState(false);
   const color = COLOR_URGENCIA[m.urgencia];
   return (
-    <article className="buzon-card" style={{ borderLeft: `6px solid ${color}` }}>
+    <article className={`buzon-card${tieneNovedad ? " con-novedad" : ""}`} style={{ borderLeft: `6px solid ${color}` }}>
       <div className="buzon-cabeza">
         <div className="buzon-titulo">{m.titulo}</div>
         {!minimizado && <span className="buzon-chip">{m.estado}</span>}
         <span className="buzon-chip id">ID {m.id}</span>
         {minimizado && <span className="buzon-chip">{m.usuario}</span>}
-        <button type="button" className="buzon-btn suave" onClick={() => setMinimizado(!minimizado)} aria-label={minimizado ? "Expandir" : "Minimizar"}>
+        {tieneNovedad && minimizado && <span className="buzon-novedad-dot" aria-label="Respuesta nueva" />}
+        <button
+          type="button"
+          className="buzon-btn suave"
+          onClick={() => setMinimizado(!minimizado)}
+          aria-label={minimizado ? "Expandir" : "Minimizar"}
+        >
           {minimizado ? "+" : "−"}
         </button>
       </div>
@@ -152,8 +291,13 @@ function Mensaje({ m, admin, onEstado, onEliminar }) {
             <span>{fechaLegible(m.creado_en)}</span>
           </div>
 
-          {/* Hilo de conversación */}
-          <Conversacion buzonId={m.id} cerrado={m.estado === "cerrado"} />
+          <Conversacion
+            buzonId={m.id}
+            cerrado={m.estado === "cerrado"}
+            usuario={usuario}
+            tieneNovedad={tieneNovedad}
+            marcarVisto={marcarVisto}
+          />
 
           {admin && (
             <div className="buzon-acciones">
@@ -240,11 +384,14 @@ function Formulario({ alEnviar }) {
 // ── Vista principal ──────────────────────────────────────────────────────────
 
 export default function Buzon() {
-  const { rol } = useSesion();
+  const { rol, usuario } = useSesion();
   const admin = rol === "admin";
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState("");
   const [seccion, setSeccion] = useState("sin revisar");
+
+  const { novedadTotal, novedadesPorEstado, novedadesPorMensaje, marcarVisto } =
+    useBuzonNovedades(usuario, admin);
 
   const cargar = useCallback(() => {
     pedir(admin ? "/api/buzon" : "/api/buzon/mios")
@@ -257,7 +404,11 @@ export default function Buzon() {
   }, [cargar]);
 
   function cambiarEstado(id, estado) {
-    pedir(`/api/buzon/${id}/estado`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado }) })
+    pedir(`/api/buzon/${id}/estado`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    })
       .then(cargar)
       .catch((e) => setError(e.message));
   }
@@ -271,7 +422,7 @@ export default function Buzon() {
 
   return (
     <main style={{ minHeight: "100vh", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
-      <Navbar />
+      <Navbar buzonNovedades={novedadTotal} />
       <div className="buzon">
         <h2>Buzón de emergencia y necesidad</h2>
         {!admin && <Formulario alEnviar={cargar} />}
@@ -288,15 +439,36 @@ export default function Buzon() {
                 <span className="punto" />
                 <span>{e}</span>
                 <span className="cuenta">{mensajes.filter((m) => m.estado === e).length}</span>
+                {/* Badge de novedad en esta tab */}
+                {novedadesPorEstado[e] > 0 && (
+                  <span
+                    className="buzon-tab-novedad"
+                    aria-label={`${novedadesPorEstado[e]} respuesta${novedadesPorEstado[e] > 1 ? "s" : ""} nueva${novedadesPorEstado[e] > 1 ? "s" : ""}`}
+                  />
+                )}
               </button>
             ))}
           </div>
+        )}
+        {!admin && novedadTotal > 0 && (
+          <p className="buzon-aviso-novedad">
+            🔔 Tienes {novedadTotal} respuesta{novedadTotal > 1 ? "s" : ""} nueva{novedadTotal > 1 ? "s" : ""} del administrador
+          </p>
         )}
         {!admin && <h3>Mis mensajes enviados</h3>}
         {error && <p className="buzon-error">{error}</p>}
         {visibles.length === 0 && <p className="buzon-vacio">No hay mensajes.</p>}
         {visibles.map((m) => (
-          <Mensaje key={m.id} m={m} admin={admin} onEstado={cambiarEstado} onEliminar={eliminar} />
+          <Mensaje
+            key={m.id}
+            m={m}
+            admin={admin}
+            usuario={usuario}
+            onEstado={cambiarEstado}
+            onEliminar={eliminar}
+            tieneNovedad={novedadesPorMensaje.has(String(m.id))}
+            marcarVisto={marcarVisto}
+          />
         ))}
       </div>
     </main>

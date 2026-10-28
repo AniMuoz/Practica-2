@@ -11,6 +11,18 @@
   display: grid;
   gap: 12px;
 }
+
+/* Tarjeta con respuesta nueva sin leer */
+.buzon-card.con-novedad {
+  box-shadow: 0 0 0 2px #d32f2f44, 0 2px 10px rgba(0, 0, 0, 0.08);
+  animation: buzon-pulso 2s ease-in-out 1;
+}
+@keyframes buzon-pulso {
+  0%   { box-shadow: 0 0 0 2px #d32f2f88, 0 2px 10px rgba(0,0,0,0.08); }
+  50%  { box-shadow: 0 0 0 5px #d32f2f22, 0 2px 10px rgba(0,0,0,0.08); }
+  100% { box-shadow: 0 0 0 2px #d32f2f44, 0 2px 10px rgba(0,0,0,0.08); }
+}
+
 .buzon-form input, .buzon-form textarea, .buzon-form select {
   width: 100%; box-sizing: border-box; padding: 10px 12px;
   border: 1px solid var(--borde); border-radius: 8px; font: inherit; font-size: 14px;
@@ -46,6 +58,7 @@
   padding: 10px 8px; border: 0; border-radius: 999px; background: transparent; color: var(--texto);
   font-size: 14px; font-weight: 600; text-transform: capitalize; cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
 }
 .buzon-tab:hover { background: var(--borde-suave, rgba(128, 128, 128, 0.15)); }
 .buzon-tab .punto { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
@@ -56,6 +69,20 @@
 .buzon-tab.activa { background: var(--c); color: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
 .buzon-tab.activa .punto { background: #fff; }
 .buzon-tab.activa .cuenta { background: rgba(255, 255, 255, 0.3); }
+
+/* Badge de novedad en las tabs del admin */
+.buzon-tab-novedad {
+  position: absolute; top: 4px; right: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #d32f2f; border: 1.5px solid var(--superficie);
+  box-sizing: border-box;
+  animation: buzon-parpadeo 1.5s ease-in-out infinite;
+}
+.buzon-tab.activa .buzon-tab-novedad { border-color: var(--c); }
+@keyframes buzon-parpadeo {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
 
 .buzon-cabeza { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .buzon-titulo { flex: 1 1 180px; font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
@@ -73,6 +100,25 @@
 .buzon-vacio { text-align: center; opacity: 0.7; }
 .buzon-error { color: var(--peligro); text-align: center; margin: 0; }
 
+/* Aviso de novedad para operador */
+.buzon-aviso-novedad {
+  text-align: center; margin: 0;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(211, 47, 47, 0.1); color: #c62828;
+  border: 1px solid rgba(211, 47, 47, 0.3);
+  font-size: 14px; font-weight: 600;
+}
+
+/* Dot de novedad reutilizable */
+.buzon-novedad-dot {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #d32f2f;
+  margin-left: 2px;
+  flex-shrink: 0;
+  animation: buzon-parpadeo 1.5s ease-in-out infinite;
+}
+
 /* ── Conversación ────────────────────────────────────────────────────────── */
 .buzon-conv {
   border-top: 1px solid var(--borde-suave, var(--borde));
@@ -82,12 +128,15 @@
 }
 
 .buzon-conv-toggle {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; justify-content: space-between;
   background: none; border: none; cursor: pointer;
   color: var(--texto); font-size: 13px; font-weight: 600; padding: 4px 0;
-  text-align: left;
+  text-align: left; width: 100%;
 }
-.buzon-conv-arrow { margin-left: auto; font-size: 10px; opacity: 0.6; }
+.buzon-conv-toggle-inner {
+  display: flex; align-items: center; gap: 6px;
+}
+.buzon-conv-arrow { font-size: 10px; opacity: 0.6; flex-shrink: 0; }
 
 .buzon-conv-hilo {
   display: grid;
