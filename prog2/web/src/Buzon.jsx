@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { useSesion } from "./Acceso.jsx";
 import "./buzon.css";
@@ -7,6 +7,7 @@ const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };
 const COLOR_ESTADO = { "sin revisar": "#d32f2f", revisando: "#ef6c00", cerrado: "#2e7d32" };
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
+const MAX_DESC = 200;
 
 async function pedir(url, opciones) {
   const res = await fetch(url, opciones);
@@ -19,6 +20,114 @@ function fechaLegible(iso) {
   const f = new Date(iso);
   return Number.isNaN(f.getTime()) ? "" : f.toLocaleString("es-CL");
 }
+
+// ── Hilo de conversación ─────────────────────────────────────────────────────
+
+function Conversacion({ buzonId, cerrado }) {
+  const [respuestas, setRespuestas] = useState(null); // null = no cargado
+  const [abierto, setAbierto] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState("");
+  const finRef = useRef(null);
+
+  const cargarRespuestas = useCallback(() => {
+    pedir(`/api/buzon/${buzonId}/respuestas`)
+      .then((d) => setRespuestas(d.respuestas || []))
+      .catch((e) => setError(e.message));
+  }, [buzonId]);
+
+  function toggleAbrir() {
+    if (!abierto && respuestas === null) cargarRespuestas();
+    setAbierto((v) => !v);
+  }
+
+  // Desplazar al final cuando llegan nuevas respuestas.
+  useEffect(() => {
+    if (abierto && finRef.current) finRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [respuestas, abierto]);
+
+  async function enviar(e) {
+    e.preventDefault();
+    if (!texto.trim()) return;
+    setError("");
+    setEnviando(true);
+    try {
+      await pedir(`/api/buzon/${buzonId}/respuestas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
+      setTexto("");
+      cargarRespuestas();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const conteo = respuestas !== null ? respuestas.length : "…";
+
+  return (
+    <div className="buzon-conv">
+      <button type="button" className="buzon-conv-toggle" onClick={toggleAbrir}>
+        💬 Conversación {respuestas !== null && <span className="buzon-chip">{conteo}</span>}
+        <span className="buzon-conv-arrow">{abierto ? "▲" : "▼"}</span>
+      </button>
+
+      {abierto && (
+        <div className="buzon-conv-hilo">
+          {respuestas === null && <p className="buzon-vacio">Cargando…</p>}
+          {respuestas !== null && respuestas.length === 0 && (
+            <p className="buzon-vacio">Sin respuestas todavía.</p>
+          )}
+          {respuestas !== null &&
+            respuestas.map((r) => (
+              <div key={r.id} className={`buzon-burbuja ${r.es_admin ? "admin" : "operador"}`}>
+                <div className="buzon-burbuja-meta">
+                  {r.es_admin && <span className="buzon-admin-badge">Admin</span>}
+                  <span className="buzon-burbuja-autor">{r.autor}</span>
+                  <span className="buzon-burbuja-fecha">{fechaLegible(r.creado_en)}</span>
+                </div>
+                <div className="buzon-burbuja-texto">{r.texto}</div>
+              </div>
+            ))}
+          <div ref={finRef} />
+
+          {!cerrado && (
+            <form onSubmit={enviar} className="buzon-conv-form">
+              <div className="buzon-conv-input-wrap">
+                <textarea
+                  value={texto}
+                  maxLength={MAX_DESC}
+                  rows={2}
+                  placeholder="Escribe una respuesta…"
+                  onChange={(e) => setTexto(e.target.value)}
+                  disabled={enviando}
+                />
+                <span className={`buzon-contador ${texto.length >= MAX_DESC ? "lleno" : ""}`}>
+                  {texto.length}/{MAX_DESC}
+                </span>
+              </div>
+              {error && <p className="buzon-error">{error}</p>}
+              <button
+                type="submit"
+                className="buzon-btn"
+                disabled={enviando || !texto.trim()}
+              >
+                {enviando ? "Enviando…" : "Responder"}
+              </button>
+            </form>
+          )}
+          {cerrado && <p className="buzon-vacio" style={{ fontSize: 12 }}>Mensaje cerrado · no se aceptan más respuestas.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tarjeta de mensaje ───────────────────────────────────────────────────────
 
 function Mensaje({ m, admin, onEstado, onEliminar }) {
   const [minimizado, setMinimizado] = useState(false);
@@ -42,6 +151,10 @@ function Mensaje({ m, admin, onEstado, onEliminar }) {
             <span className="buzon-chip" style={{ borderColor: color, color }}>{m.urgencia}</span>
             <span>{fechaLegible(m.creado_en)}</span>
           </div>
+
+          {/* Hilo de conversación */}
+          <Conversacion buzonId={m.id} cerrado={m.estado === "cerrado"} />
+
           {admin && (
             <div className="buzon-acciones">
               {ESTADOS.filter((e) => e !== m.estado).map((e) => (
@@ -61,6 +174,8 @@ function Mensaje({ m, admin, onEstado, onEliminar }) {
     </article>
   );
 }
+
+// ── Formulario nuevo mensaje ─────────────────────────────────────────────────
 
 function Formulario({ alEnviar }) {
   const [titulo, setTitulo] = useState("");
@@ -99,7 +214,12 @@ function Formulario({ alEnviar }) {
       </label>
       <label>
         Descripción
-        <textarea value={descripcion} maxLength={2000} rows={5} onChange={(e) => setDescripcion(e.target.value)} />
+        <div className="buzon-input-wrap">
+          <textarea value={descripcion} maxLength={MAX_DESC} rows={4} onChange={(e) => setDescripcion(e.target.value)} />
+          <span className={`buzon-contador ${descripcion.length >= MAX_DESC ? "lleno" : ""}`}>
+            {descripcion.length}/{MAX_DESC}
+          </span>
+        </div>
       </label>
       <label>
         Nivel de urgencia
@@ -116,6 +236,8 @@ function Formulario({ alEnviar }) {
     </form>
   );
 }
+
+// ── Vista principal ──────────────────────────────────────────────────────────
 
 export default function Buzon() {
   const { rol } = useSesion();

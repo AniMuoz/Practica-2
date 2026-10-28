@@ -1,9 +1,10 @@
 const { supabase } = require("../supabase");
-const { exigirAdmin } = require("../auth");
+const { exigirAdmin, buscarUsuario } = require("../auth");
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
 const CAMPOS = "id, creado_en, usuario, titulo, descripcion, urgencia, estado";
+const MAX_DESC = 200;
 
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
@@ -59,7 +60,7 @@ module.exports = function rutasBuzon(app) {
       const descripcion = String(cuerpo.descripcion || "").trim();
       const urgencia = String(cuerpo.urgencia || "").trim().toLowerCase();
       if (!titulo || titulo.length > 120) throw errorHttp(400, "El título es obligatorio (máximo 120 caracteres).");
-      if (!descripcion || descripcion.length > 2000) throw errorHttp(400, "La descripción es obligatoria (máximo 2000 caracteres).");
+      if (!descripcion || descripcion.length > MAX_DESC) throw errorHttp(400, `La descripción es obligatoria (máximo ${MAX_DESC} caracteres).`);
       if (!URGENCIAS.includes(urgencia)) throw errorHttp(400, "Nivel de urgencia no válido.");
       const { data, error } = await supabase.from("buzon").insert({ usuario: req.usuario, titulo, descripcion, urgencia }).select(CAMPOS).single();
       if (error) throw error;
@@ -95,6 +96,72 @@ module.exports = function rutasBuzon(app) {
       res.json({ ok: true });
     } catch (error) {
       responder(res, error, "No se pudo eliminar el mensaje.");
+    }
+  });
+
+  // ── Conversación (respuestas) ────────────────────────────────────────────────
+
+  // Leer respuestas de un mensaje.
+  // Admin: puede leer cualquier mensaje. Operador: solo sus propios mensajes.
+  app.get("/api/buzon/:id/respuestas", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const registro = await buscarUsuario(req.usuario);
+      const esAdmin = registro && registro.rol === "admin";
+
+      if (!esAdmin) {
+        // Verificar que el mensaje pertenece al usuario.
+        const { data: msg, error: errMsg } = await supabase.from("buzon").select("usuario").eq("id", id).maybeSingle();
+        if (errMsg) throw errMsg;
+        if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
+        if (msg.usuario !== req.usuario) throw errorHttp(403, "No tienes permiso para ver este mensaje.");
+      }
+
+      const { data, error } = await supabase
+        .from("buzon_respuestas")
+        .select("id, creado_en, autor, es_admin, texto")
+        .eq("buzon_id", id)
+        .order("creado_en", { ascending: true });
+      if (error) throw error;
+      res.json({ respuestas: data });
+    } catch (error) {
+      responder(res, error, "No se pudo leer las respuestas.");
+    }
+  });
+
+  // Agregar respuesta a un mensaje.
+  // Admin puede responder cualquier mensaje; operador solo los suyos.
+  app.post("/api/buzon/:id/respuestas", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const texto = String((req.body && req.body.texto) || "").trim();
+      if (!texto || texto.length > MAX_DESC) throw errorHttp(400, `La respuesta es obligatoria (máximo ${MAX_DESC} caracteres).`);
+
+      const registro = await buscarUsuario(req.usuario);
+      const esAdmin = registro && registro.rol === "admin";
+
+      // Verificar existencia y permisos.
+      const { data: msg, error: errMsg } = await supabase.from("buzon").select("usuario, estado").eq("id", id).maybeSingle();
+      if (errMsg) throw errMsg;
+      if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
+      if (!esAdmin && msg.usuario !== req.usuario) throw errorHttp(403, "No tienes permiso para responder este mensaje.");
+      if (msg.estado === "cerrado") throw errorHttp(400, "No se puede responder a un mensaje cerrado.");
+
+      const { data, error } = await supabase
+        .from("buzon_respuestas")
+        .insert({ buzon_id: id, autor: req.usuario, es_admin: esAdmin, texto })
+        .select("id, creado_en, autor, es_admin, texto")
+        .single();
+      if (error) throw error;
+
+      // Si el admin responde por primera vez, pasar automáticamente a "revisando".
+      if (esAdmin && msg.estado === "sin revisar") {
+        await supabase.from("buzon").update({ estado: "revisando" }).eq("id", id);
+      }
+
+      res.status(201).json({ respuesta: data });
+    } catch (error) {
+      responder(res, error, "No se pudo enviar la respuesta.");
     }
   });
 };
