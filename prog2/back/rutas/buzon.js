@@ -1,5 +1,6 @@
 const { supabase } = require("../supabase");
 const { exigirAdmin, buscarUsuario } = require("../auth");
+const { emitir } = require("../compartido");
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
@@ -122,6 +123,7 @@ module.exports = function rutasBuzon(app) {
       if (!URGENCIAS.includes(urgencia)) throw errorHttp(400, "Nivel de urgencia no válido.");
       const { data, error } = await supabase.from("buzon").insert({ usuario: req.usuario, titulo, descripcion, urgencia }).select(CAMPOS).single();
       if (error) throw error;
+      emitir({ tipo: "buzon" });
       res.status(201).json({ mensaje: data });
     } catch (error) {
       responder(res, error, "No se pudo enviar el mensaje.");
@@ -136,6 +138,7 @@ module.exports = function rutasBuzon(app) {
       const { data, error } = await supabase.from("buzon").update({ estado }).eq("id", req.params.id).select(CAMPOS).maybeSingle();
       if (error) throw error;
       if (!data) throw errorHttp(404, "Mensaje no encontrado.");
+      emitir({ tipo: "buzon" });
       res.json({ mensaje: data });
     } catch (error) {
       responder(res, error, "No se pudo cambiar el estado.");
@@ -151,6 +154,7 @@ module.exports = function rutasBuzon(app) {
       if (data.estado !== "cerrado") throw errorHttp(400, "Solo se pueden eliminar mensajes cerrados.");
       const borrado = await supabase.from("buzon").delete().eq("id", req.params.id);
       if (borrado.error) throw borrado.error;
+      emitir({ tipo: "buzon" });
       res.json({ ok: true });
     } catch (error) {
       responder(res, error, "No se pudo eliminar el mensaje.");
@@ -217,6 +221,7 @@ module.exports = function rutasBuzon(app) {
         await supabase.from("buzon").update({ estado: "revisando" }).eq("id", id);
       }
 
+      emitir({ tipo: "buzon" });
       res.status(201).json({ respuesta: data });
     } catch (error) {
       responder(res, error, "No se pudo enviar la respuesta.");

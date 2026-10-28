@@ -124,7 +124,7 @@ function useBuzonNovedades(usuario, admin) {
 
 // ── Hilo de conversación ─────────────────────────────────────────────────────
 
-function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto }) {
+function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pulso }) {
   const [respuestas, setRespuestas] = useState(null);
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
@@ -139,17 +139,17 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto }) 
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(({ respuestas: lista }) => {
           setRespuestas(lista || []);
-          if (!silencioso && lista && lista.length > 0) {
-            const ultimo = lista[lista.length - 1];
-            // Si es nuevo (mayor al previo que teníamos) → sonido + marcar visto
-            if (ultimoIdRef.current !== null && ultimo.id > ultimoIdRef.current) {
-              sonarActualizacion();
-            }
-            ultimoIdRef.current = ultimo.id;
-            marcarVisto(buzonId, ultimo.id);
-          } else if (lista && lista.length === 0) {
+          if (!lista || lista.length === 0) {
             marcarVisto(buzonId, -1);
+            return;
           }
+          const ultimo = lista[lista.length - 1];
+          // Si es nuevo (mayor al previo que teníamos) → sonido + marcar visto
+          if (ultimoIdRef.current !== null && ultimo.id > ultimoIdRef.current) {
+            sonarActualizacion();
+          }
+          ultimoIdRef.current = ultimo.id;
+          marcarVisto(buzonId, ultimo.id);
         })
         .catch((e) => {
           if (!silencioso) setError(e.message);
@@ -158,12 +158,17 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto }) 
     [buzonId, marcarVisto]
   );
 
-  // Polling mientras el hilo está abierto.
+  // Polling mientras el hilo está abierto + refresco inmediato vía pulso SSE.
   useEffect(() => {
     if (!abierto) return undefined;
     const id = setInterval(() => cargarRespuestas(true), INTERVALO_NOVEDADES);
     return () => clearInterval(id);
   }, [abierto, cargarRespuestas]);
+
+  useEffect(() => {
+    if (!abierto || pulso === 0) return;
+    cargarRespuestas(true);
+  }, [pulso, abierto, cargarRespuestas]);
 
   function toggleAbrir() {
     if (!abierto) {
@@ -262,7 +267,7 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto }) 
 
 // ── Tarjeta de mensaje ───────────────────────────────────────────────────────
 
-function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcarVisto }) {
+function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcarVisto, pulso }) {
   const [minimizado, setMinimizado] = useState(false);
   const color = COLOR_URGENCIA[m.urgencia];
   return (
@@ -297,6 +302,7 @@ function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcar
             usuario={usuario}
             tieneNovedad={tieneNovedad}
             marcarVisto={marcarVisto}
+            pulso={pulso}
           />
 
           {admin && (
@@ -393,14 +399,58 @@ export default function Buzon() {
   const { novedadTotal, novedadesPorEstado, novedadesPorMensaje, marcarVisto } =
     useBuzonNovedades(usuario, admin);
 
+  const idsPrevios = useRef(null);
+  const [pulso, setPulso] = useState(0);
+
   const cargar = useCallback(() => {
+    if (document.visibilityState !== "visible") return;
     pedir(admin ? "/api/buzon" : "/api/buzon/mios")
-      .then((data) => setMensajes(data.mensajes || []))
+      .then((data) => {
+        const lista = data.mensajes || [];
+        // Admin: aviso sonoro si llega un mensaje nuevo mientras está en el buzón.
+        if (admin && idsPrevios.current !== null) {
+          const prev = idsPrevios.current;
+          if (lista.some((m) => !prev.has(m.id))) sonarActualizacion();
+        }
+        idsPrevios.current = new Set(lista.map((m) => m.id));
+        setMensajes(lista);
+      })
       .catch((e) => setError(e.message));
   }, [admin]);
 
+  // Carga inicial + sondeo periódico (respaldo si el SSE queda en búfer).
   useEffect(() => {
     cargar();
+    const id = setInterval(cargar, INTERVALO_NOVEDADES);
+    document.addEventListener("visibilitychange", cargar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", cargar);
+    };
+  }, [cargar]);
+
+  // Actualización inmediata vía SSE cuando alguien crea/cambia un mensaje.
+  useEffect(() => {
+    const fuente = new EventSource("/api/eventos");
+    let pendiente = 0;
+    fuente.onmessage = (evento) => {
+      let data;
+      try {
+        data = JSON.parse(evento.data);
+      } catch {
+        return;
+      }
+      if (data.tipo !== "buzon") return;
+      window.clearTimeout(pendiente);
+      pendiente = window.setTimeout(() => {
+        cargar();
+        setPulso((n) => n + 1);
+      }, 200);
+    };
+    return () => {
+      window.clearTimeout(pendiente);
+      fuente.close();
+    };
   }, [cargar]);
 
   function cambiarEstado(id, estado) {
@@ -468,6 +518,7 @@ export default function Buzon() {
             onEliminar={eliminar}
             tieneNovedad={novedadesPorMensaje.has(String(m.id))}
             marcarVisto={marcarVisto}
+            pulso={pulso}
           />
         ))}
       </div>

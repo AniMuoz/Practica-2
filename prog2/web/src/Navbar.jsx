@@ -93,12 +93,13 @@ export default function Navbar({ buzonNovedades = 0 }) {
   const [pendientes, setPendientes] = useState(0);
   const pendientesPrevios = useRef(null);
 
-  // Polling de mensajes sin revisar (solo admin).
+  // Polling + SSE de mensajes sin revisar (solo admin).
   // Cuando el admin está en /buzon, Buzon.jsx también hace su propio polling de novedades
   // y pasa el total via prop buzonNovedades — aquí solo rastreamos los mensajes pendientes.
   useEffect(() => {
     if (rol !== "admin") return undefined;
     let activo = true;
+    let pendienteSse = 0;
     function leer() {
       if (document.visibilityState !== "visible") return;
       fetch("/api/buzon/pendientes", { cache: "no-store" })
@@ -106,7 +107,14 @@ export default function Navbar({ buzonNovedades = 0 }) {
         .then((data) => {
           if (!activo) return;
           const nuevo = Number(data.pendientes) || 0;
-          if (pendientesPrevios.current !== null && nuevo > pendientesPrevios.current) sonarActualizacion();
+          // En /buzon el sonido lo dispara Buzon.jsx al detectar ids nuevos.
+          if (
+            pathname !== "/buzon" &&
+            pendientesPrevios.current !== null &&
+            nuevo > pendientesPrevios.current
+          ) {
+            sonarActualizacion();
+          }
           pendientesPrevios.current = nuevo;
           setPendientes(nuevo);
         })
@@ -115,10 +123,24 @@ export default function Navbar({ buzonNovedades = 0 }) {
     leer();
     const intervalo = setInterval(leer, 60000);
     document.addEventListener("visibilitychange", leer);
+    const fuente = new EventSource("/api/eventos");
+    fuente.onmessage = (evento) => {
+      let data;
+      try {
+        data = JSON.parse(evento.data);
+      } catch {
+        return;
+      }
+      if (data.tipo !== "buzon") return;
+      window.clearTimeout(pendienteSse);
+      pendienteSse = window.setTimeout(leer, 200);
+    };
     return () => {
       activo = false;
       clearInterval(intervalo);
+      window.clearTimeout(pendienteSse);
       document.removeEventListener("visibilitychange", leer);
+      fuente.close();
     };
   }, [rol, pathname, usuario]);
 
