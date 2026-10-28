@@ -22,6 +22,7 @@ import {
   filasInventarioVisibles,
   filtrarFilas,
   numerarFilas,
+  pasaFiltrosFilaMovimiento,
   POSICIONES_MOVIMIENTOS,
   rutaConFiltros,
   rutaExcel,
@@ -176,19 +177,20 @@ export default function Admin() {
     filasInventarioVisibles(inventario.filas, copiarInventario, copiarExistencia),
     0
   ).filas;
-  // Códigos fuera del maestro (o si el maestro aún no cargó) se muestran siempre;
-  // si no, al editar/añadir parecen borrarse por el filtro de stock.
+  // Códigos fuera del maestro no se ocultan solo por eso (si no, al editar parecen borrarse),
+  // pero sí respetan bodega / texto / checks del panel de filtros.
   const codigosEnMaestro = new Set(filasMaestro.map((f) => String(f.Codigo)));
+  const filasMovimientosFiltradas = movimientos.filas.filter((fila) => {
+    const codigo = String(fila[1]);
+    if (codigosEnMaestro.has(codigo)) return codigosFiltrados.has(codigo);
+    return pasaFiltrosFilaMovimiento(fila, filtrosStock);
+  });
   const filasMovimientosVisibles = filasInventarioVisibles(
-    movimientos.filas,
+    filasMovimientosFiltradas,
     copiarInventario,
     copiarExistencia,
     POSICIONES_MOVIMIENTOS
-  ).filter((fila) => {
-    const codigo = String(fila[1]);
-    if (!codigosEnMaestro.has(codigo)) return true;
-    return codigosFiltrados.has(codigo);
-  });
+  );
   const filasMovimientos = numerarFilas(
     // Sin orden elegido se conserva el del archivo cargado; con uno elegido manda el de los filtros.
     filtrosStock.orden

@@ -232,6 +232,54 @@ export function normalizarBusqueda(valor) {
     .trim();
 }
 
+/** Filtros de panel (bodega, texto, checks) sobre una fila de movimientos [N°, Código, ...]. */
+export function pasaFiltrosFilaMovimiento(fila, filtros = {}) {
+  const {
+    bodega = "",
+    subUbicacion = "",
+    stockMinimo = "",
+    soloConPrecio = false,
+    soloConUbicacion = false,
+    soloStockCritico = false,
+    soloStockCero = false,
+    soloInventarioOComentario = false,
+    soloMarcados = false,
+    soloConRombo = false,
+    ignorarNulo = false,
+    texto = "",
+  } = filtros;
+  const codigo = String(fila?.[1] ?? "");
+  const descripcion = String(fila?.[2] ?? "");
+  const ubicacion = String(fila?.[3] ?? "").trim();
+  const sub = String(fila?.[4] ?? "").trim();
+  const stock = String(fila?.[5] ?? "").trim();
+  const inventario = String(fila?.[7] ?? "").trim();
+
+  if (ignorarNulo && descripcion.trim().toUpperCase() === "NULO") return false;
+  if (bodega && ubicacion.slice(0, 2) !== bodega) return false;
+  if (subUbicacion && sub !== subUbicacion) return false;
+  if (String(stockMinimo).trim() !== "") {
+    const minimo = Number(stockMinimo);
+    const n = Number(stock);
+    if (!Number.isFinite(n) || n < minimo) return false;
+  }
+  if (soloConPrecio) return false;
+  if (soloConUbicacion && !ubicacion) return false;
+  if (soloStockCritico) return false;
+  if (soloStockCero && Number(stock) !== 0) return false;
+  if (soloInventarioOComentario && inventario === "") return false;
+  if (soloMarcados) return false;
+  if (soloConRombo) return false;
+
+  const consulta = normalizarBusqueda(texto);
+  if (consulta.length >= 2) {
+    const coincide =
+      normalizarBusqueda(codigo).includes(consulta) || normalizarBusqueda(descripcion).includes(consulta);
+    if (!coincide) return false;
+  }
+  return true;
+}
+
 export function rangoPagina(pagina, tamano, total) {
   if (total === 0) return "0 de 0";
   return `${pagina * tamano + 1}–${Math.min((pagina + 1) * tamano, total)} de ${total}`;

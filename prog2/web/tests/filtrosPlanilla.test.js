@@ -15,6 +15,7 @@ import {
   POSICIONES_MOVIMIENTOS,
   filtrarFilas,
   normalizarBusqueda,
+  pasaFiltrosFilaMovimiento,
   rangoPagina,
   rutaExcelInventario,
   subUbicacionesDe,
@@ -238,4 +239,14 @@ test("filasInventarioVisibles con las posiciones de movimientos rellena Físico 
   assert.deepEqual(filasInventarioVisibles(origen, false, true, POSICIONES_MOVIMIENTOS).map((fila) => fila[6]), [4, 8]);
   assert.deepEqual(filasInventarioVisibles(origen, true, false, POSICIONES_MOVIMIENTOS).map((fila) => fila[6]), ["inv", ""]);
   assert.deepEqual(numerarFilas([[7, "a"], [9, "b"]]), [[1, "a"], [2, "b"]]);
+});
+
+test("pasaFiltrosFilaMovimiento deja pasar códigos desconocidos sin filtros y respeta checks/texto", () => {
+  const desconocido = [1, "999", "Código desconocido en la base de datos", "", "", "", "", ""];
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, {}), true);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { soloConUbicacion: true }), false);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { soloConPrecio: true }), false);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { texto: "999" }), true);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { texto: "abc" }), false);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { bodega: "01" }), false);
 });
