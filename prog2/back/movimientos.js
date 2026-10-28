@@ -114,9 +114,51 @@ async function exportarMovimientos(colores = true, origenExistencia = "", filtro
   return libro.xlsx.writeBuffer();
 }
 
+function eliminarCodigoMovimiento(clave, codigoCrudo) {
+  exigirClave(clave);
+  const codigo = String(codigoCrudo ?? "").trim();
+  if (!codigo) throw errorPeticion("Escribe un código.");
+  const actuales = leerCodigosMovimientos();
+  const indice = actuales.indexOf(codigo);
+  if (indice === -1) throw errorPeticion("Ese código no está en la planilla.");
+  const codigos = actuales.filter((c) => c !== codigo);
+  ejecutar("reemplazar", {
+    tabla: "movimientos",
+    columna: "codigo",
+    filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
+  });
+  cacheCodigos = codigos;
+  return { codigo };
+}
+
+function editarCodigoMovimiento(clave, codigoAnteriorCrudo, codigoNuevoCrudo) {
+  exigirClave(clave);
+  const anterior = String(codigoAnteriorCrudo ?? "").trim();
+  const nuevo = String(codigoNuevoCrudo ?? "").trim();
+  if (!anterior) throw errorPeticion("Código actual no válido.");
+  if (!nuevo) throw errorPeticion("Escribe el nuevo código.");
+  const actuales = leerCodigosMovimientos();
+  const indice = actuales.indexOf(anterior);
+  if (indice === -1) throw errorPeticion("El código original no está en la planilla.");
+  if (anterior !== nuevo && actuales.includes(nuevo)) {
+    throw errorPeticion("El nuevo código ya está en la planilla.");
+  }
+  const codigos = [...actuales];
+  codigos[indice] = nuevo;
+  ejecutar("reemplazar", {
+    tabla: "movimientos",
+    columna: "codigo",
+    filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
+  });
+  cacheCodigos = codigos;
+  return { anterior, nuevo };
+}
+
 module.exports = {
   importarMovimientos,
   agregarCodigoMovimiento,
+  eliminarCodigoMovimiento,
+  editarCodigoMovimiento,
   leerCodigosMovimientos,
   planillaMovimientos,
   exportarMovimientos,

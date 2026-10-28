@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla } = require("../compartido");
 
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
@@ -126,6 +126,24 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo añadir el código." });
+    }
+  });
+
+  app.delete("/api/movimientos/codigo", (req, res) => {
+    try {
+      res.json(eliminarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo eliminar el código." });
+    }
+  });
+
+  app.put("/api/movimientos/codigo", (req, res) => {
+    try {
+      res.json(editarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigoAnterior, req.body && req.body.codigoNuevo));
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo editar el código." });
     }
   });
 

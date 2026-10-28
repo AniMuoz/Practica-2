@@ -53,6 +53,8 @@ module.exports = {
   exportarMovimientos: movimientos.exportarMovimientos,
   importarMovimientos: movimientos.importarMovimientos,
   agregarCodigoMovimiento: movimientos.agregarCodigoMovimiento,
+  eliminarCodigoMovimiento: movimientos.eliminarCodigoMovimiento,
+  editarCodigoMovimiento: movimientos.editarCodigoMovimiento,
   stockDetallado: stock.stockDetallado,
   exportarStockDetallado: stock.exportarStockDetallado,
   revisarReserva: ventas.revisarReserva,

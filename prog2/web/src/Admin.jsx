@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useBlocker, useNavigate } from "react-router-dom";
 import { useSesion } from "./Acceso.jsx";
@@ -88,6 +88,9 @@ export default function Admin() {
   const [avisoMovimientos, setAvisoMovimientos] = useState("");
   const [codigoMovimiento, setCodigoMovimiento] = useState("");
   const [errorCodigoMovimiento, setErrorCodigoMovimiento] = useState("");
+  const [codigoEditando, setCodigoEditando] = useState(null);
+  const [valorCodigoEditando, setValorCodigoEditando] = useState("");
+  const [guardandoFilaMovimiento, setGuardandoFilaMovimiento] = useState(false);
   const excelInventario = (ruta) =>
     rutaConFiltros(rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia), filtrosStock);
   function alternarExistencia() {
@@ -247,6 +250,48 @@ export default function Admin() {
         return cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true);
       })
       .catch((err) => setErrorCodigoMovimiento(err.message));
+  }
+
+  function eliminarFilaMovimiento(codigo) {
+    if (!window.confirm(`¿Eliminar el código ${codigo} de movimientos?`)) return;
+    setErrorCodigoMovimiento("");
+    setGuardandoFilaMovimiento(true);
+    enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo eliminar el código.", "DELETE")
+      .then(() => cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true))
+      .catch((err) => setErrorCodigoMovimiento(err.message))
+      .finally(() => setGuardandoFilaMovimiento(false));
+  }
+
+  function iniciarEdicionCodigo(codigo) {
+    setCodigoEditando(codigo);
+    setValorCodigoEditando(codigo);
+    setErrorCodigoMovimiento("");
+  }
+
+  function cancelarEdicionCodigo() {
+    setCodigoEditando(null);
+    setValorCodigoEditando("");
+  }
+
+  function guardarEdicionCodigo(codigoAnterior) {
+    const nuevo = valorCodigoEditando.trim();
+    if (!nuevo) {
+      setErrorCodigoMovimiento("Escribe un código.");
+      return;
+    }
+    if (nuevo === codigoAnterior) {
+      cancelarEdicionCodigo();
+      return;
+    }
+    setErrorCodigoMovimiento("");
+    setGuardandoFilaMovimiento(true);
+    enviarJson("/api/movimientos/codigo", { clave, codigoAnterior, codigoNuevo: nuevo }, "No se pudo actualizar el código.", "PUT")
+      .then(() => {
+        cancelarEdicionCodigo();
+        return cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true);
+      })
+      .catch((err) => setErrorCodigoMovimiento(err.message))
+      .finally(() => setGuardandoFilaMovimiento(false));
   }
 
   function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
@@ -1215,21 +1260,133 @@ export default function Admin() {
           {!cargandoMovimientos && !avisoMovimientos && (
             <VistaPrevia
               filas={filasMovimientos}
-              columnas={movimientos.columnas.length}
+              columnas={movimientos.columnas.length + 1}
               className={clasePlanilla}
               vacio="No hay movimientos cargados."
-              renderFila={(fila, indice) => (
-                <tr key={`${fila[1]}-${indice}`}>
-                  {fila.map((valor, columna) => (
+              renderFila={(fila, indice) => {
+                const codigoFila = String(fila[1] ?? "");
+                const estaEditando = codigoEditando === codigoFila;
+                return (
+                  <tr key={`${fila[1]}-${indice}`}>
+                    {fila.map((valor, columna) => (
+                      <td
+                        key={columna}
+                        style={{ padding: "8px 10px", border: "1px solid var(--borde-suave)", background: "var(--superficie)" }}
+                      >
+                        {columna === 1 && estaEditando ? (
+                          <input
+                            type="text"
+                            value={valorCodigoEditando}
+                            autoFocus
+                            disabled={guardandoFilaMovimiento}
+                            onChange={(e) => setValorCodigoEditando(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                guardarEdicionCodigo(codigoFila);
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelarEdicionCodigo();
+                              }
+                            }}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              border: "1px solid var(--borde)",
+                              fontSize: 14,
+                              width: "100%",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        ) : (
+                          valor === "" || valor == null ? "" : String(valor)
+                        )}
+                      </td>
+                    ))}
                     <td
-                      key={columna}
-                      style={{ padding: "8px 10px", border: "1px solid var(--borde-suave)", background: "var(--superficie)" }}
+                      style={{
+                        padding: "4px 8px",
+                        border: "1px solid var(--borde-suave)",
+                        background: "var(--superficie)",
+                        whiteSpace: "nowrap",
+                        textAlign: "center",
+                      }}
                     >
-                      {valor === "" || valor == null ? "" : String(valor)}
+                      {estaEditando ? (
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => guardarEdicionCodigo(codigoFila)}
+                            disabled={guardandoFilaMovimiento}
+                            style={{
+                              padding: "4px 8px",
+                              border: 0,
+                              borderRadius: 4,
+                              background: "var(--acento)",
+                              color: "var(--sobre)",
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelarEdicionCodigo}
+                            disabled={guardandoFilaMovimiento}
+                            style={{
+                              padding: "4px 8px",
+                              border: "1px solid var(--borde)",
+                              borderRadius: 4,
+                              background: "var(--superficie)",
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => iniciarEdicionCodigo(codigoFila)}
+                            disabled={guardandoFilaMovimiento}
+                            title="Editar código"
+                            style={{
+                              padding: "4px 8px",
+                              border: "1px solid var(--borde)",
+                              borderRadius: 4,
+                              background: "var(--superficie)",
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => eliminarFilaMovimiento(codigoFila)}
+                            disabled={guardandoFilaMovimiento}
+                            title="Eliminar fila"
+                            style={{
+                              padding: "4px 8px",
+                              border: 0,
+                              borderRadius: 4,
+                              background: "var(--peligro)",
+                              color: "var(--sobre)",
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </td>
-                  ))}
-                </tr>
-              )}
+                  </tr>
+                );
+              }}
             >
                 <thead>
                   <tr>
@@ -1248,6 +1405,18 @@ export default function Admin() {
                         {columna}
                       </th>
                     ))}
+                    <th
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        textAlign: "center",
+                        padding: "8px 10px",
+                        background: colores ? "#a9e5e5" : "var(--superficie)",
+                        border: "1px solid var(--borde)",
+                      }}
+                    >
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
             </VistaPrevia>

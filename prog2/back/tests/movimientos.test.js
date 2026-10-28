@@ -107,3 +107,24 @@ test("exportarMovimientos escribe encabezados y rellena Físico según el origen
   assert.equal(inventario.getCell(2, 7).value, "9");
   assert.equal(inventario.getCell(1, 1).fill?.fgColor?.argb, undefined);
 });
+
+test("eliminarCodigoMovimiento elimina el código y actualiza la lista", () => {
+  const { eliminarCodigoMovimiento, leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
+  assert.throws(() => eliminarCodigoMovimiento("mala", "100"), { status: 403 });
+  assert.throws(() => eliminarCodigoMovimiento(CLAVE, "999"), { status: 400, message: /no está/ });
+  const resultado = eliminarCodigoMovimiento(CLAVE, "100");
+  assert.deepEqual(resultado, { codigo: "100" });
+  assert.deepEqual(leerCodigosMovimientos(), ["200"]);
+  assert.deepEqual(bd.movimientos, [{ codigo: "200", pos: 0 }]);
+});
+
+test("editarCodigoMovimiento actualiza el código conservando la posición", () => {
+  const { editarCodigoMovimiento, leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
+  assert.throws(() => editarCodigoMovimiento("mala", "100", "300"), { status: 403 });
+  assert.throws(() => editarCodigoMovimiento(CLAVE, "999", "300"), { status: 400, message: /no está/ });
+  assert.throws(() => editarCodigoMovimiento(CLAVE, "100", "200"), { status: 400, message: /ya está/ });
+  const resultado = editarCodigoMovimiento(CLAVE, "100", "300");
+  assert.deepEqual(resultado, { anterior: "100", nuevo: "300" });
+  assert.deepEqual(leerCodigosMovimientos(), ["300", "200"]);
+  assert.deepEqual(bd.movimientos, [{ codigo: "300", pos: 0 }, { codigo: "200", pos: 1 }]);
+});
