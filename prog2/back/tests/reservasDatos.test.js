@@ -237,6 +237,15 @@ test("revisionReservas busca por coincidencia parcial, sin importar mayúsculas,
   assert.equal(revisar(undefined).filas.length, 0);
 });
 
+test("revisionReservas puede buscar por número de orden", () => {
+  const { revisionReservas } = cargar({ reservas: RESERVAS });
+  assert.equal(revisionReservas("6001", "orden").filas.length, 2);
+  assert.equal(revisionReservas("6002", "orden").filas.length, 1);
+  assert.equal(revisionReservas("600", "orden").filas.length, 3);
+  assert.equal(revisionReservas("9001", "orden").filas.length, 0);
+  assert.equal(revisionReservas("6001", "reserva").filas.length, 0);
+});
+
 test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", () => {
   const muchas = Array.from({ length: 600 }, (_, i) => registro({ orden: String(i), n_reserva: "7", material: "100", cantidad_necesaria: "1" }));
   const { buscarReservas } = cargar({ reservas: muchas });
@@ -260,8 +269,13 @@ test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", ()
 
 test("exportarRevisionPorReserva valida el número y que existan reservas", async () => {
   await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("  "), { status: 400, message: /número de reserva/ });
+  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("  ", true, "orden"), { status: 400, message: /número de orden/ });
   await assert.rejects(cargar().exportarRevisionPorReserva("9001"), { status: 400, message: /Todavía no hay reservas/ });
   await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("55555"), { status: 404 });
+  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("55555", true, "orden"), {
+    status: 404,
+    message: /número de orden/,
+  });
 });
 
 test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados con color", async () => {

@@ -188,8 +188,13 @@ function numeroReserva(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
-function revisionReservas(reserva) {
+function modoBusquedaReserva(por) {
+  return String(por ?? "").trim().toLowerCase() === "orden" ? "orden" : "reserva";
+}
+
+function revisionReservas(reserva, por = "reserva") {
   const termino = String(reserva ?? "").trim().toLowerCase();
+  const modo = modoBusquedaReserva(por);
   const { columnas, filas } = leerReservas();
   const vacio = {
     columnas: [],
@@ -200,13 +205,14 @@ function revisionReservas(reserva) {
     movimiento: "",
   };
   if (!termino) return vacio;
-  const indiceReserva = indiceEncabezado(columnas, /^n[ºo°.]?\s*reserva$/i);
-  const coinciden =
-    indiceReserva < 0
-      ? []
-      : filas.filter((fila) => String(fila[indiceReserva] ?? "").trim().toLowerCase().includes(termino));
   const indice = (patron) => indiceEncabezado(columnas, patron);
   const iOrden = indice(/^orden$/i);
+  const indiceReserva = indice(/^n[ºo°.]?\s*reserva$/i);
+  const indiceBusqueda = modo === "orden" ? iOrden : indiceReserva;
+  const coinciden =
+    indiceBusqueda < 0
+      ? []
+      : filas.filter((fila) => String(fila[indiceBusqueda] ?? "").trim().toLowerCase().includes(termino));
   const iMaterial = indice(/^material$/i);
   const iTexto = indice(/texto breve/i);
   const iCentro = indice(/^centro$/i);
@@ -289,8 +295,8 @@ function revisionReservas(reserva) {
   };
 }
 
-function buscarReservas(reserva, pagina = 0, tamano = 100) {
-  const revision = revisionReservas(reserva);
+function buscarReservas(reserva, pagina = 0, tamano = 100, por = "reserva") {
+  const revision = revisionReservas(reserva, por);
   const cantidad = Number(tamano);
   const limite = Number.isFinite(cantidad) && cantidad > 0 ? Math.min(Math.trunc(cantidad), 500) : 100;
   const indice = Math.max(0, Math.trunc(Number(pagina) || 0));
@@ -313,20 +319,22 @@ function precargarDatos() {
   leerReservas();
 }
 
-async function exportarRevisionPorReserva(reserva, colores = true) {
+async function exportarRevisionPorReserva(reserva, colores = true, por = "reserva") {
+  const modo = modoBusquedaReserva(por);
+  const etiqueta = modo === "orden" ? "orden" : "reserva";
   if (!String(reserva ?? "").trim()) {
-    const error = new Error("Escribe un número de reserva.");
+    const error = new Error(`Escribe un número de ${etiqueta}.`);
     error.status = 400;
     throw error;
   }
-  const revision = revisionReservas(reserva);
+  const revision = revisionReservas(reserva, modo);
   if (revision.total === 0) {
     const error = new Error("Todavía no hay reservas cargadas.");
     error.status = 400;
     throw error;
   }
   if (revision.filas.length === 0) {
-    const error = new Error("No hay reservas con ese número de reserva.");
+    const error = new Error(`No hay reservas con ese número de ${etiqueta}.`);
     error.status = 404;
     throw error;
   }
@@ -406,6 +414,7 @@ module.exports = {
   indiceEncabezado,
   celdaReserva,
   numeroReserva,
+  modoBusquedaReserva,
   revisionReservas,
   buscarReservas,
   precargarDatos,

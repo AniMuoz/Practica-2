@@ -210,6 +210,7 @@ export default function Admin() {
   const [revisandoReserva, setRevisandoReserva] = useState(false);
   const [avisoReserva, setAvisoReserva] = useState("");
   const [ordenReserva, setOrdenReserva] = useState("");
+  const [buscarPorReserva, setBuscarPorReserva] = useState("reserva");
   const [busquedaReserva, setBusquedaReserva] = useState({ columnas: [], filas: [], total: 0 });
   const [buscandoReserva, setBuscandoReserva] = useState(false);
   const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
@@ -1538,8 +1539,9 @@ export default function Admin() {
             onSubmit={(event) => {
               event.preventDefault();
               const numero = ordenReserva.trim();
+              const etiqueta = buscarPorReserva === "orden" ? "orden" : "reserva";
               if (!numero) {
-                setAvisoBusquedaReserva("Escribe un número de reserva.");
+                setAvisoBusquedaReserva(`Escribe un número de ${etiqueta}.`);
                 setBusquedaReserva({ columnas: [], filas: [], total: 0 });
                 return;
               }
@@ -1547,7 +1549,13 @@ export default function Admin() {
               setBuscandoReserva(true);
               paginaReserva.current = 0;
               hayMasReservas.current = false;
-              obtenerJson(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=0&tamano=100`, "No se pudo buscar la reserva.")
+              const params = new URLSearchParams({
+                reserva: numero,
+                por: buscarPorReserva,
+                pagina: "0",
+                tamano: "100",
+              });
+              obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
                 .then((data) => {
                   const coincidencias = data.coincidencias ?? (data.filas || []).length;
                   setBusquedaReserva({
@@ -1555,21 +1563,43 @@ export default function Admin() {
                     filas: data.filas || [],
                     total: data.total || 0,
                     consulta: numero,
+                    por: buscarPorReserva,
                   });
                   hayMasReservas.current = (data.filas || []).length < coincidencias;
                   if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
-                  else if (coincidencias === 0) setAvisoBusquedaReserva("No hay reservas con ese número de reserva.");
+                  else if (coincidencias === 0) setAvisoBusquedaReserva(`No hay reservas con ese número de ${etiqueta}.`);
                 })
                 .catch((err) => setAvisoBusquedaReserva(err.message))
                 .finally(() => setBuscandoReserva(false));
             }}
             style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}
           >
+            <button
+              type="button"
+              aria-label={`Buscar por ${buscarPorReserva === "orden" ? "N° orden" : "N° reserva"}. Clic para cambiar`}
+              title="Cambiar entre N° orden y N° reserva"
+              onClick={() => {
+                setBuscarPorReserva((actual) => (actual === "orden" ? "reserva" : "orden"));
+                setAvisoBusquedaReserva("");
+              }}
+              style={{
+                padding: "8px 14px",
+                border: "1px solid var(--borde)",
+                borderRadius: 6,
+                background: "var(--pista)",
+                color: "var(--texto)",
+                fontSize: 14,
+                cursor: "pointer",
+                minWidth: 120,
+              }}
+            >
+              {buscarPorReserva === "orden" ? "N° orden" : "N° reserva"}
+            </button>
             <input
               type="search"
-              aria-label="Número de reserva"
+              aria-label={buscarPorReserva === "orden" ? "Número de orden" : "Número de reserva"}
               value={ordenReserva}
-              placeholder="Buscar número de reserva"
+              placeholder={buscarPorReserva === "orden" ? "Buscar número de orden" : "Buscar número de reserva"}
               onChange={(event) => setOrdenReserva(event.target.value)}
               style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, minWidth: 220 }}
             />
@@ -1586,7 +1616,7 @@ export default function Admin() {
                 cursor: "pointer",
               }}
             >
-              {buscandoReserva ? "Buscando..." : "Buscar reserva"}
+              {buscandoReserva ? "Buscando..." : buscarPorReserva === "orden" ? "Buscar orden" : "Buscar reserva"}
             </button>
             <button
               type="button"
@@ -1594,7 +1624,11 @@ export default function Admin() {
               onClick={() => {
                 const numero = ordenReserva.trim();
                 if (!numero) return;
-                const params = new URLSearchParams({ reserva: numero, colores: colores ? "1" : "0" });
+                const params = new URLSearchParams({
+                  reserva: numero,
+                  por: buscarPorReserva,
+                  colores: colores ? "1" : "0",
+                });
                 descargarBlob(`/api/reservas/excel?${params.toString()}`)
                   .then((blob) => guardarBlob(blob, "Revisión stock en reserva.xlsx"))
                   .catch((err) => setAvisoBusquedaReserva(err.message));
@@ -1619,13 +1653,20 @@ export default function Admin() {
               filas={busquedaReserva.filas}
               columnas={busquedaReserva.columnas.length}
               altoMaximo={430}
-              clave={busquedaReserva.consulta}
+              clave={`${busquedaReserva.por || "reserva"}:${busquedaReserva.consulta}`}
               alFinal={() => {
                 const numero = busquedaReserva.consulta;
+                const por = busquedaReserva.por || "reserva";
                 if (!numero || !hayMasReservas.current || cargandoPaginaReserva.current) return;
                 cargandoPaginaReserva.current = true;
                 const pagina = paginaReserva.current + 1;
-                obtenerJson(`/api/reservas?reserva=${encodeURIComponent(numero)}&pagina=${pagina}&tamano=100`, "No se pudo buscar la reserva.")
+                const params = new URLSearchParams({
+                  reserva: numero,
+                  por,
+                  pagina: String(pagina),
+                  tamano: "100",
+                });
+                obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
                   .then((data) => {
                     const lote = data.filas || [];
                     paginaReserva.current = pagina;

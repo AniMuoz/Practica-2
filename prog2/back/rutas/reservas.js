@@ -18,7 +18,7 @@ module.exports = function rutasReservas(app) {
 
   app.get("/api/reservas", (req, res) => {
     try {
-      res.json(buscarReservas(req.query.reserva, req.query.pagina, req.query.tamano));
+      res.json(buscarReservas(req.query.reserva, req.query.pagina, req.query.tamano, req.query.por));
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudieron leer las reservas." });
@@ -27,7 +27,7 @@ module.exports = function rutasReservas(app) {
 
   app.get("/api/reservas/excel", async (req, res) => {
     try {
-      const buffer = await exportarRevisionPorReserva(req.query.reserva, conColores(req.query.colores));
+      const buffer = await exportarRevisionPorReserva(req.query.reserva, conColores(req.query.colores), req.query.por);
       enviarPlanilla(res, buffer, "attachment; filename=Revision%20stock%20en%20reserva.xlsx");
     } catch (error) {
       console.error(error);
