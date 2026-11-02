@@ -35,6 +35,7 @@ module.exports = {
   claveCorrecta: nucleo.claveCorrecta,
   actualizarDatos: nucleo.actualizarDatos,
   actualizarCamposDetallado: nucleo.actualizarCamposDetallado,
+  limpiarColumnaDetallado: nucleo.limpiarColumnaDetallado,
   guardarImagen: nucleo.guardarImagen,
   exportarTabla: stock.exportarTabla,
   agregarMaterial: nucleo.agregarMaterial,

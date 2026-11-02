@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado } = require("../fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../compartido");
 
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
@@ -180,6 +180,17 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.message || "No se pudo guardar el campo." });
+    }
+  });
+
+  app.delete("/api/stock-detallado/columna", async (req, res) => {
+    try {
+      const resultado = await limpiarColumnaDetallado(req.body?.clave, req.body?.columna);
+      emitir({ tipo: "recarga" });
+      res.json(resultado);
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.message || "No se pudo limpiar la columna." });
     }
   });
 

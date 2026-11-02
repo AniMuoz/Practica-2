@@ -537,6 +537,42 @@ async function actualizarCamposDetallado(codigo, clave, datos) {
   return actualizarDatos(codigo, clave, permitidos, false);
 }
 
+async function limpiarColumnaDetallado(clave, columna) {
+  exigirClave(clave);
+  const titulo = String(columna ?? "");
+  if (!COLUMNAS_DETALLADO.includes(titulo)) {
+    const error = new Error("Esa columna no se puede limpiar.");
+    error.status = 400;
+    throw error;
+  }
+  const campoBd = CAMPOS_MATERIAL.find(([nombre]) => nombre === titulo)?.[1];
+  if (!campoBd) {
+    const error = new Error("Esa columna no se puede limpiar.");
+    error.status = 400;
+    throw error;
+  }
+
+  const { matriz } = editarMateriales();
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
+  const indice = columnas.indexOf(titulo);
+  if (indice < 0) {
+    const error = new Error("La tabla no tiene esa columna.");
+    error.status = 500;
+    throw error;
+  }
+  for (let fila = 1; fila < matriz.length; fila += 1) {
+    const actual = matriz[fila] || [];
+    while (actual.length <= indice) actual.push("");
+    actual[indice] = "";
+    matriz[fila] = actual;
+  }
+
+  const { error } = await supabase.from("materiales").update({ [campoBd]: "" }).neq("codigo", "");
+  if (error) falloSupabase(error);
+  recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
+  return { columna: titulo };
+}
+
 async function actualizarDatos(codigo, clave, datos, reemplazar) {
   exigirClave(clave);
   if (!datos || typeof datos !== "object") {
@@ -777,6 +813,7 @@ module.exports = {
   claveCorrecta,
   exigirClave,
   actualizarCamposDetallado,
+  limpiarColumnaDetallado,
   actualizarDatos,
   guardarImagen,
   eliminarMaterial,

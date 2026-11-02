@@ -320,6 +320,28 @@ export default function Admin() {
     });
   }
 
+  function limpiarColumnaDetallado(nombreColumna, indiceColumna) {
+    if (!window.confirm(`¿Limpiar todos los datos de la columna "${nombreColumna}"?`)) return;
+    setErrorDetallado("");
+    enviarJson(
+      "/api/stock-detallado/columna",
+      { clave, columna: nombreColumna },
+      "No se pudo limpiar la columna.",
+      "DELETE"
+    )
+      .then(() => {
+        setDetallado((prev) => ({
+          ...prev,
+          filas: prev.filas.map((fila) => {
+            const copia = fila.slice();
+            copia[indiceColumna] = "";
+            return copia;
+          }),
+        }));
+      })
+      .catch((err) => setErrorDetallado(err.message));
+  }
+
   function guardarEdicionCodigo(codigoAnterior) {
     const nuevo = valorCodigoEditando.trim();
     if (!nuevo) {
@@ -1566,22 +1588,46 @@ export default function Admin() {
             >
                 <thead>
                   <tr>
-                    {detallado.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
+                    {detallado.columnas.map((columna, indiceColumna) => {
+                      const editable = COLUMNAS_EDITABLES_DETALLADO.has(indiceColumna);
+                      return (
+                        <th
+                          key={columna}
+                          style={{
+                            position: "sticky",
+                            top: 0,
+                            textAlign: "left",
+                            padding: "8px 10px",
+                            background: colores ? "#a9e5e5" : "var(--superficie)",
+                            border: "1px solid var(--borde)",
+                            whiteSpace: "nowrap",
+                            verticalAlign: "bottom",
+                          }}
+                        >
+                          {editable && (
+                            <button
+                              type="button"
+                              onClick={() => limpiarColumnaDetallado(columna, indiceColumna)}
+                              style={{
+                                display: "block",
+                                marginBottom: 6,
+                                padding: "4px 10px",
+                                border: 0,
+                                borderRadius: 4,
+                                background: "#c62828",
+                                color: "#fff",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              limpiar
+                            </button>
+                          )}
+                          {columna}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
             </VistaPrevia>

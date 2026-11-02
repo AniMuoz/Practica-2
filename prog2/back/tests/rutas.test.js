@@ -537,6 +537,17 @@ test("PUT /api/stock-detallado guarda campos locales o responde 404", async () =
   assert.equal((await pedir("PUT", "/api/stock-detallado", { json: { clave: "x", codigo: "1", datos: {} } })).status, 403);
 });
 
+test("DELETE /api/stock-detallado/columna limpia una columna editable", async () => {
+  responder({ limpiarColumnaDetallado: { columna: "INDICADOR" } });
+  const bien = await pedir("DELETE", "/api/stock-detallado/columna", {
+    json: { clave: "k", columna: "INDICADOR" },
+  });
+  assert.equal(bien.status, 200);
+  assert.deepEqual(llamadasA("limpiarColumnaDetallado")[0].args, ["k", "INDICADOR"]);
+  responder({ limpiarColumnaDetallado: fallar(400, "Esa columna no se puede limpiar.") });
+  assert.equal((await pedir("DELETE", "/api/stock-detallado/columna", { json: { clave: "k", columna: "Stock" } })).status, 400);
+});
+
 test("POST /api/material responde 201 y traduce los errores", async () => {
   responder({ agregarMaterial: { fila: { Codigo: "5" } } });
   const creado = await pedir("POST", "/api/material", { json: { clave: "k", datos: { Codigo: "5" } } });
