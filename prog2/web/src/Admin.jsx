@@ -119,6 +119,7 @@ export default function Admin() {
   const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
   const [avisoDetallado, setAvisoDetallado] = useState("");
+  const [errorDetallado, setErrorDetallado] = useState("");
   const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
   const [filasMaestro, setFilasMaestro] = useState([]);
   const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarMovimientos || mostrarDetallado;
@@ -307,14 +308,15 @@ export default function Admin() {
 
   function guardarCeldaDetallado(codigo, nombreColumna, indiceColumna, valor, valorOriginal) {
     if (String(valor ?? "") === String(valorOriginal ?? "")) return;
-    setAvisoDetallado("");
+    setErrorDetallado("");
     enviarJson(
       `/api/material/${encodeURIComponent(codigo)}/datos`,
       { clave, datos: { [nombreColumna]: valor } },
-      "No se pudo guardar el campo."
+      "No se pudo guardar el campo.",
+      "PUT"
     ).catch((err) => {
       actualizarCeldaDetallado(codigo, indiceColumna, valorOriginal);
-      setAvisoDetallado(err.message);
+      setErrorDetallado(err.message);
     });
   }
 
@@ -759,6 +761,7 @@ export default function Admin() {
                     const abrir = !mostrarDetallado;
                     if (abrir) {
                       cerrarPaneles(["detallado"]);
+                      setErrorDetallado("");
                       cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
                     }
                     setMostrarDetallado(abrir);
@@ -1496,6 +1499,7 @@ export default function Admin() {
           {panelFiltrosUbicacion}
           {cargandoDetallado && <p style={{ margin: 0 }}>Cargando stock...</p>}
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
+          {errorDetallado && <p style={{ margin: "0 0 8px", color: "var(--peligro, #b00020)" }}>{errorDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
             <VistaPrevia
               filas={detalladoFiltrado.filas}
