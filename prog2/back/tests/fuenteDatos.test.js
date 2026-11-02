@@ -248,6 +248,10 @@ test("crearBase deja el esquema vacío de materiales, contratistas y reservas", 
   assert.ok(columnas.includes("codigo"));
   assert.ok(columnas.includes("stock_critico"));
   assert.ok(columnas.includes("m505"));
+  assert.ok(columnas.includes("cons_prom_mensual"));
+  assert.ok(columnas.includes("stock_max"));
+  assert.ok(columnas.includes("indicador"));
+  assert.ok(columnas.includes("cambio_de_ubicacion"));
   db.close();
   fs.unlinkSync(destino);
 });

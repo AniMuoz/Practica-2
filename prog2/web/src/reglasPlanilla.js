@@ -329,7 +329,16 @@ export function colorCantidad(valor) {
   return "#73c883";
 }
 
-export function colorStockDetallado(columna, valor, marcado) {
+export function stockDetalladoEnCritico(fila) {
+  const textoCritico = String(fila?.[12] ?? "").trim();
+  if (textoCritico === "") return false;
+  const critico = Number(textoCritico);
+  const stock = Number(String(fila?.[3] ?? "").trim());
+  return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
+}
+
+export function colorStockDetallado(columna, valor, marcado, oscuro = false, fila) {
+  if (columna === 12 && stockDetalladoEnCritico(fila)) return oscuro ? "#A711D0" : "#FFFF00";
   const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
   const marcada = Boolean(marcado) && [3, 6, 7, 8, 9, 10].includes(columna);
   if (marcada) return "#00FF00";

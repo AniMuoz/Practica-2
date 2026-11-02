@@ -198,3 +198,8 @@ create table if not exists public.buzon_respuestas (
 create index if not exists buzon_respuestas_buzon_idx on public.buzon_respuestas (buzon_id, creado_en);
 
 alter table public.buzon_respuestas enable row level security;
+
+alter table public.materiales add column if not exists cons_prom_mensual text not null default '';
+alter table public.materiales add column if not exists stock_max text not null default '';
+alter table public.materiales add column if not exists indicador text not null default '';
+alter table public.materiales add column if not exists cambio_de_ubicacion text not null default '';

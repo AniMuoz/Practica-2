@@ -345,15 +345,23 @@ function stockDetallado() {
         cantidades[3],
         cantidades[4],
         total,
-        "",
+        fila["Cons.Prom.Mensual"] ?? "",
         fila["Stock critico"] ?? "",
-        "",
-        "",
-        "",
+        fila["Stock Max"] ?? "",
+        fila.INDICADOR ?? "",
+        fila["Cambio de ubicación"] ?? "",
       ]);
       marcados.push(String(fila.Marcado) === "1");
     });
   return { columnas, filas: resultado, marcados };
+}
+
+function stockDetalladoEnCritico(fila) {
+  const textoCritico = String(fila?.[12] ?? "").trim();
+  if (textoCritico === "") return false;
+  const critico = Number(textoCritico);
+  const stock = Number(String(fila?.[3] ?? "").trim());
+  return Number.isFinite(critico) && Number.isFinite(stock) && stock <= critico;
 }
 
 function colorStockDetallado(valor) {
@@ -399,11 +407,16 @@ async function exportarStockDetallado(colores = true, filtros = null) {
 
   filas.forEach((fila, indice) => {
     const numero = indice + 4;
+    const enCritico = stockDetalladoEnCritico(fila);
     fila.forEach((valor, columna) => {
       const celda = hoja.getCell(numero, columna + 1);
       celda.value = valor ?? "";
       celda.border = borde;
       if (columna === 10) celda.font = { bold: true };
+      if (columna === 12 && enCritico) {
+        pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } }, colores);
+        return;
+      }
       if (!coloreadas.has(columna)) return;
       const color = marcados[indice] && COLUMNAS_MARCA_DETALLADO.has(columna) ? "FF00FF00" : colorStockDetallado(valor);
       pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
@@ -619,6 +632,7 @@ module.exports = {
   aplicarExistencia,
   exportarPlanillaInventario,
   stockDetallado,
+  stockDetalladoEnCritico,
   colorStockDetallado,
   COLUMNAS_MARCA_DETALLADO,
   exportarStockDetallado,

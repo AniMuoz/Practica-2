@@ -10,9 +10,25 @@ const ExcelJS = require("exceljs");
 const nucleo = require("../nucleoDatos");
 
 const MATERIALES = [
-  { Codigo: "1", Descripcion: "Perno", Stock: "5", M502: "2", M503: "", M504: "x", M505: "1", "Ubicación": "01-A", Precio: "100", "Stock critico": "6", Marcado: "1" },
+  {
+    Codigo: "1",
+    Descripcion: "Perno",
+    Stock: "5",
+    M502: "2",
+    M503: "",
+    M504: "x",
+    M505: "1",
+    "Ubicación": "01-A",
+    Precio: "100",
+    "Stock critico": "6",
+    Marcado: "1",
+    "Cons.Prom.Mensual": "2.5",
+    "Stock Max": "20",
+    INDICADOR: "A",
+    "Cambio de ubicación": "01-B",
+  },
   { Codigo: "2", Descripcion: "NULO", Stock: "1" },
-  { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "" },
+  { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "", "Stock critico": "" },
 ];
 let TABLA = { columnas: [], filas: [] };
 nucleo.cargarMateriales = () => ({ filasBodega: MATERIALES });
@@ -228,6 +244,25 @@ test("exportarStockDetallado pinta de verde fuerte las columnas de un material m
   assert.equal(relleno(hoja, 5, 5), "FFF9E37C");
   assert.equal(relleno(hoja, 5, 4), "FFD3D3D3");
   assert.equal(hoja.getCell(4, 11).font.bold, true);
+});
+
+test("stockDetallado incluye los campos locales editables", () => {
+  const { filas } = stock.stockDetallado();
+  const perno = filas.find((fila) => String(fila[1]) === "1");
+  assert.deepEqual(perno.slice(11), ["2.5", "6", "20", "A", "01-B"]);
+});
+
+test("exportarStockDetallado pinta STOCK CRITICO en amarillo cuando el stock está crítico", async () => {
+  const hoja = await leerLibro(await stock.exportarStockDetallado(true));
+  assert.equal(valor(hoja, 4, 12), "2.5");
+  assert.equal(valor(hoja, 4, 13), "6");
+  assert.equal(valor(hoja, 4, 14), "20");
+  assert.equal(valor(hoja, 4, 15), "A");
+  assert.equal(valor(hoja, 4, 16), "01-B");
+  assert.equal(relleno(hoja, 4, 13), "FFFFFF00");
+  assert.equal(relleno(hoja, 5, 13), undefined);
+  assert.equal(stock.stockDetalladoEnCritico(["", "", "", 5, "", "", "", "", "", "", "", "", "6"]), true);
+  assert.equal(stock.stockDetalladoEnCritico(["", "", "", 7, "", "", "", "", "", "", "", "", "6"]), false);
 });
 
 test("exportarPlanillaInventario respeta el origen de la columna Existencia y marca las celdas vacías", async () => {

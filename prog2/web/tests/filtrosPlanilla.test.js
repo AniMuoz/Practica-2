@@ -179,6 +179,10 @@ test("los colores de stock cubren cero, vacío, sin precio y columnas no colorea
   assert.equal(colorStockDetallado(11, 5, true), "var(--superficie)");
   assert.equal(colorStockDetallado(3, 5, true), "#00FF00");
   assert.equal(colorStockDetallado(2, 5, true), "#73c883");
+  const filaCritica = ["", "1", "Perno", 5, "$1", "", "", "", "", "", 5, "", "6", "", "", ""];
+  assert.equal(colorStockDetallado(12, "6", false, false, filaCritica), "#FFFF00");
+  assert.equal(colorStockDetallado(12, "6", false, true, filaCritica), "#A711D0");
+  assert.equal(colorStockDetallado(12, "6", false, false, ["", "", "", 7, "", "", "", "", "", "", "", "", "6"]), "var(--superficie)");
 });
 
 // ---------- listas y paginación ----------

@@ -30,6 +30,7 @@ import {
 } from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
+const COLUMNAS_EDITABLES_DETALLADO = new Set([11, 13, 14, 15]);
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -290,6 +291,31 @@ export default function Admin() {
   function cancelarEdicionCodigo() {
     setCodigoEditando(null);
     setValorCodigoEditando("");
+  }
+
+  function actualizarCeldaDetallado(codigo, indiceColumna, valor) {
+    setDetallado((prev) => ({
+      ...prev,
+      filas: prev.filas.map((fila) => {
+        if (String(fila[1]) !== String(codigo)) return fila;
+        const copia = fila.slice();
+        copia[indiceColumna] = valor;
+        return copia;
+      }),
+    }));
+  }
+
+  function guardarCeldaDetallado(codigo, nombreColumna, indiceColumna, valor, valorOriginal) {
+    if (String(valor ?? "") === String(valorOriginal ?? "")) return;
+    setAvisoDetallado("");
+    enviarJson(
+      `/api/material/${encodeURIComponent(codigo)}/datos`,
+      { clave, datos: { [nombreColumna]: valor } },
+      "No se pudo guardar el campo."
+    ).catch((err) => {
+      actualizarCeldaDetallado(codigo, indiceColumna, valorOriginal);
+      setAvisoDetallado(err.message);
+    });
   }
 
   function guardarEdicionCodigo(codigoAnterior) {
@@ -1479,21 +1505,54 @@ export default function Admin() {
               renderFila={(fila, indice) => (
                 <tr key={`${fila[1]}-${indice}`}>
                   {fila.map((valor, columna) => {
-                    const coloreada = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
-                    const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice]);
+                    const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
+                    const coloreada = editable || columna === 12 || [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
+                    const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice], oscuro, fila);
+                    const nombreColumna = detallado.columnas[columna];
                     return (
                       <td
                         key={columna}
                         className={colores && coloreada ? "celda-color" : undefined}
                         style={{
-                          padding: "8px 10px",
+                          padding: editable ? "4px 6px" : "8px 10px",
                           border: "1px solid var(--borde-suave)",
                           background: colores ? fondo : "var(--superficie)",
                           fontWeight: columna === 10 ? 700 : 400,
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {valor === "" || valor == null ? "" : String(valor)}
+                        {editable ? (
+                          <input
+                            aria-label={`${nombreColumna} ${fila[1]}`}
+                            value={valor == null ? "" : String(valor)}
+                            onChange={(event) => actualizarCeldaDetallado(fila[1], columna, event.target.value)}
+                            onFocus={(event) => {
+                              event.target.dataset.original = event.target.value;
+                            }}
+                            onBlur={(event) =>
+                              guardarCeldaDetallado(
+                                fila[1],
+                                nombreColumna,
+                                columna,
+                                event.target.value,
+                                event.target.dataset.original ?? ""
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              minWidth: 72,
+                              boxSizing: "border-box",
+                              padding: "4px 6px",
+                              border: "1px solid var(--borde)",
+                              borderRadius: 4,
+                              background: "transparent",
+                              color: "inherit",
+                              font: "inherit",
+                            }}
+                          />
+                        ) : (
+                          valor === "" || valor == null ? "" : String(valor)
+                        )}
                       </td>
                     );
                   })}

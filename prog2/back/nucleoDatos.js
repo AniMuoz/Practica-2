@@ -27,6 +27,10 @@ const CAMPOS_MATERIAL = [
   ["M503", "m503"],
   ["M504", "m504"],
   ["M505", "m505"],
+  ["Cons.Prom.Mensual", "cons_prom_mensual"],
+  ["Stock Max", "stock_max"],
+  ["INDICADOR", "indicador"],
+  ["Cambio de ubicación", "cambio_de_ubicacion"],
 ];
 
 const CAMPOS_RESERVA = [
@@ -153,12 +157,14 @@ const ENCABEZADO_MATERIALES = [
   "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio",
   "Caracteristica", "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario",
   "Marcado", "M502", "M503", "M504", "M505",
+  "Cons.Prom.Mensual", "Stock Max", "INDICADOR", "Cambio de ubicación",
 ];
 
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
 const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
 const COLUMNA_MARCADO = "Marcado";
-const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO]);
+const COLUMNAS_DETALLADO = ["Cons.Prom.Mensual", "Stock Max", "INDICADOR", "Cambio de ubicación"];
+const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_DETALLADO]);
 const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
 const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";

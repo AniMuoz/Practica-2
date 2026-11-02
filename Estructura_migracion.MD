@@ -31,8 +31,17 @@ create table if not exists public.materiales (
   m502 text not null default '',
   m503 text not null default '',
   m504 text not null default '',
-  m505 text not null default ''
+  m505 text not null default '',
+  cons_prom_mensual text not null default '',
+  stock_max text not null default '',
+  indicador text not null default '',
+  cambio_de_ubicacion text not null default ''
 );
+
+alter table public.materiales add column if not exists cons_prom_mensual text not null default '';
+alter table public.materiales add column if not exists stock_max text not null default '';
+alter table public.materiales add column if not exists indicador text not null default '';
+alter table public.materiales add column if not exists cambio_de_ubicacion text not null default '';
 
 create table if not exists public.contratistas (
   id integer primary key,

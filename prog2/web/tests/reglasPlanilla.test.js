@@ -125,6 +125,9 @@ test("los colores de stock distinguen cero, vacío y marcado", () => {
   assert.equal(colorStockDetallado(3, 2, true), "#00FF00");
   assert.equal(colorStockDetallado(1, 2, true), "var(--superficie)");
   assert.equal(colorStockDetallado(4, "Sin precio", false), "#f9e37c");
+  const critica = ["", "1", "x", 4, "", "", "", "", "", "", 4, "", "5", "", "", ""];
+  assert.equal(colorStockDetallado(12, "5", false, false, critica), "#FFFF00");
+  assert.equal(colorStockDetallado(12, "5", false, true, critica), "#A711D0");
 });
 
 test("los contratistas necesitan nombre e id único", () => {
