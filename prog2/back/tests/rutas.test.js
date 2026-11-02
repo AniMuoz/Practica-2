@@ -243,7 +243,7 @@ test("GET /api/reservas pasa reserva, página, tamaño y modo de búsqueda", asy
   assert.deepEqual(llamadasA("buscarReservas")[0].args, ["9001", "1", "5", undefined]);
   responder({ buscarReservas: { filas: [] } });
   await pedir("GET", "/api/reservas?reserva=6001&pagina=0&tamano=100&por=orden");
-  assert.deepEqual(llamadasA("buscarReservas")[0].args, ["6001", "0", "100", "orden"]);
+  assert.deepEqual(llamadasA("buscarReservas")[1].args, ["6001", "0", "100", "orden"]);
   responder({ buscarReservas: fallar(0, "x") });
   const falla = await pedir("GET", "/api/reservas");
   assert.equal(falla.status, 500);
@@ -258,7 +258,7 @@ test("GET /api/reservas/excel usa el estado del error y respeta colores", async 
   assert.deepEqual(llamadasA("exportarRevisionPorReserva")[0].args, ["9001", false, undefined]);
   responder({ exportarRevisionPorReserva: Buffer.from("r") });
   await pedir("GET", "/api/reservas/excel?reserva=6001&colores=1&por=orden");
-  assert.deepEqual(llamadasA("exportarRevisionPorReserva")[0].args, ["6001", true, "orden"]);
+  assert.deepEqual(llamadasA("exportarRevisionPorReserva")[1].args, ["6001", true, "orden"]);
   responder({ exportarRevisionPorReserva: fallar(404, "No hay reservas con ese número de reserva.") });
   const falla = await pedir("GET", "/api/reservas/excel?reserva=1");
   assert.equal(falla.status, 404);
