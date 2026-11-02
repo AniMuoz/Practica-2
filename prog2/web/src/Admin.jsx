@@ -1510,13 +1510,14 @@ export default function Admin() {
                 <tr key={`${fila[1]}-${indice}`}>
                   {fila.map((valor, columna) => {
                     const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
-                    const coloreada = editable || columna === 12 || [0, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(columna);
                     const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice], oscuro, fila);
+                    // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
+                    const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");
                     const nombreColumna = detallado.columnas[columna];
                     return (
                       <td
                         key={columna}
-                        className={colores && coloreada ? "celda-color" : undefined}
+                        className={usaColorCelda ? "celda-color" : undefined}
                         style={{
                           padding: editable ? "4px 6px" : "8px 10px",
                           border: "1px solid var(--borde-suave)",
@@ -1549,8 +1550,8 @@ export default function Admin() {
                               padding: "4px 6px",
                               border: "1px solid var(--borde)",
                               borderRadius: 4,
-                              background: "transparent",
-                              color: "inherit",
+                              background: "var(--campo)",
+                              color: "var(--texto)",
                               font: "inherit",
                             }}
                           />
