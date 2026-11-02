@@ -560,6 +560,9 @@ export default function Auditoria() {
       <Seccion titulo="Folios de bitácora">
         <Folios alListo={sumar} />
       </Seccion>
+      <div className="footer">
+        <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
     </main>
   );
 }

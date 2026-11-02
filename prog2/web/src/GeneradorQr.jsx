@@ -255,6 +255,9 @@ export default function GeneradorQr() {
       </div>
 
       </div>
+      <div className="footer">
+        <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
+    </div>
     </main>
   );
 }
