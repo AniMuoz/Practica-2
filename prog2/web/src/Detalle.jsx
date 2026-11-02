@@ -676,9 +676,14 @@ export default function Detalle() {
                     {editando ? (
                       <input
                         value={datos[columna] ?? ""}
-                        onChange={(event) =>
-                          setDatos((actual) => ({ ...actual, [columna]: event.target.value }))
-                        }
+                        onChange={(event) => {
+                          const valor = event.target.value;
+                          setDatos((actual) =>
+                            columna === "Ubicación"
+                              ? { ...actual, Ubicación: valor, "Sub-ubicación": valor.slice(0, 4) }
+                              : { ...actual, [columna]: valor }
+                          );
+                        }}
                         style={{
                           width: "100%",
                           boxSizing: "border-box",

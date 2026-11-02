@@ -581,6 +581,11 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
+  const valores = { ...datos };
+  if ("Ubicación" in valores) {
+    valores["Sub-ubicación"] = String(valores["Ubicación"] ?? "").slice(0, 4);
+  }
+
   const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
@@ -594,8 +599,8 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
   if (indiceFila < 0) return null;
 
   columnas.forEach((columna, indice) => {
-    if (COLUMNAS_BLOQUEADAS.has(columna) || !(columna in datos)) return;
-    matriz[indiceFila][indice] = datos[columna] ?? "";
+    if (COLUMNAS_BLOQUEADAS.has(columna) || !(columna in valores)) return;
+    matriz[indiceFila][indice] = valores[columna] ?? "";
   });
 
   const codigoNuevo = String(matriz[indiceFila][indiceCodigo] ?? "").trim();
@@ -742,12 +747,15 @@ async function agregarMaterial(clave, datos) {
   const indiceExistente = indicePorCodigo(porCodigo, codigoNuevo);
   const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
 
+  const subUbicacion =
+    "Ubicación" in datos ? String(datos["Ubicación"] ?? "").slice(0, 4) : datos["Sub-ubicación"];
   const filaNueva = columnas.map((columna, indice) => {
     if (columna === "Codigo") return codigoNuevo;
     if (columna === "Inventario") {
       const valor = String(datos.Inventario ?? "").trim();
       return valor === "" ? "" : Number(valor);
     }
+    if (columna === "Sub-ubicación" && "Ubicación" in datos) return subUbicacion;
     if (CAMPOS_IMAGEN.has(columna) || columna === COLUMNA_MARCADO) return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";
   });

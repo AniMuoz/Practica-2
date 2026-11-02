@@ -2024,7 +2024,11 @@ export default function Admin() {
                 onChange={(event) => {
                   const valor = event.target.value;
                   if (columna === "Inventario" && valor !== "" && !/^-?\d+$/.test(valor)) return;
-                  setDatos((actual) => ({ ...actual, [columna]: valor }));
+                  setDatos((actual) =>
+                    columna === "Ubicación"
+                      ? { ...actual, Ubicación: valor, "Sub-ubicación": valor.slice(0, 4) }
+                      : { ...actual, [columna]: valor }
+                  );
                 }}
                 style={{
                   padding: "8px 10px",

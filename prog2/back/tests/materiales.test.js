@@ -256,6 +256,16 @@ test("actualizarDatos permite borrar un campo con null", async () => {
   assert.equal(resultado.fila.Descripcion, "");
 });
 
+test("actualizarDatos completa Sub-ubicación al guardar Ubicación", async () => {
+  const nucleo = cargar();
+  const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, {
+    "Ubicación": "0102-A",
+    "Sub-ubicación": "",
+  });
+  assert.equal(resultado.fila["Ubicación"], "0102-A");
+  assert.equal(resultado.fila["Sub-ubicación"], "0102");
+});
+
 test("cambiar el código borra el registro anterior y guarda el nuevo", async () => {
   const nucleo = cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Codigo: " 150 ", Descripcion: "Nuevo" });
@@ -394,6 +404,16 @@ test("agregarMaterial crea un material nuevo con inventario numérico", async ()
   assert.equal(resultado.fila.Marcado, "");
   assert.equal(nucleo.leerTabla().filas.length, 4);
   assert.equal(upserts()[0].registro.codigo, "400");
+});
+
+test("agregarMaterial completa Sub-ubicación al guardar Ubicación", async () => {
+  const nucleo = cargar();
+  const resultado = await nucleo.agregarMaterial(nucleo.CLAVE_DATOS, {
+    Codigo: "500",
+    "Ubicación": "01-A",
+  });
+  assert.equal(resultado.fila["Ubicación"], "01-A");
+  assert.equal(resultado.fila["Sub-ubicación"], "01-A");
 });
 
 test("agregarMaterial sobre un código existente actualiza sus datos y conserva imágenes y marcado", async () => {
