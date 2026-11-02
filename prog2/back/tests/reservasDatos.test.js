@@ -61,7 +61,7 @@ function registro(datos) {
 const RESERVAS = [
   registro({
     orden: "6001", n_reserva: "9001", material: "100", cantidad_necesaria: "5", texto_breve_de_material: "Perno ses",
-    centro: "C1", almacen: "M501", un_medida_de_entrada: "UN", fecha_de_necesidad: "05/10/2026",
+    centro: "C1", almacen: "M501", unidad_medida_base: "UN", fecha_de_necesidad: "05/10/2026",
     nombre_del_usuario: "jperez", clase_de_movimiento: "201", cantid_reducidas: "1", cantidad_diferencia: "2",
   }),
   registro({ orden: "6001", n_reserva: "9001", material: "200", cantidad_necesaria: "30", texto_breve_de_material: "Tuerca" }),
