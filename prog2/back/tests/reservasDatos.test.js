@@ -246,6 +246,48 @@ test("revisionReservas puede buscar por número de orden", () => {
   assert.equal(revisionReservas("6001", "reserva").filas.length, 0);
 });
 
+test("revisionReservas omite la copia incompleta cuando hay otra completa de la misma reserva", () => {
+  const incompleta = registro({
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "1",
+    material: "100",
+    cantidad_necesaria: "5",
+    texto_breve_de_material: "Perno",
+  });
+  const completa = registro({
+    orden: "6001",
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "1",
+    material: "100",
+    cantidad_necesaria: "5",
+    texto_breve_de_material: "Perno",
+    centro: "C1",
+    almacen: "M501",
+    unidad_medida_base: "UN",
+    fecha_de_necesidad: "05/10/2026",
+  });
+  const otraLinea = registro({
+    orden: "6001",
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "2",
+    material: "200",
+    cantidad_necesaria: "3",
+    texto_breve_de_material: "Tuerca",
+    centro: "C1",
+    almacen: "M501",
+  });
+  const { revisionReservas } = cargar({ reservas: [incompleta, completa, otraLinea] });
+  const revision = revisionReservas("9001");
+  assert.equal(revision.filas.length, 2);
+  assert.deepEqual(
+    revision.filas.map((fila) => [fila[1], fila[3], fila[5], fila[6]]),
+    [
+      ["6001", "100", "C1", "M501"],
+      ["6001", "200", "C1", "M501"],
+    ]
+  );
+});
+
 test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", () => {
   const muchas = Array.from({ length: 600 }, (_, i) => registro({ orden: String(i), n_reserva: "7", material: "100", cantidad_necesaria: "1" }));
   const { buscarReservas } = cargar({ reservas: muchas });

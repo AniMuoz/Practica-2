@@ -192,6 +192,35 @@ function modoBusquedaReserva(por) {
   return String(por ?? "").trim().toLowerCase() === "orden" ? "orden" : "reserva";
 }
 
+function celdaNoVacia(valor) {
+  return String(valor ?? "").trim() !== "";
+}
+
+function preferirReservasCompletas(filas, iOrden, indiceReserva, iPosicion, iMaterial, iCentro, iAlmacen) {
+  if (filas.length < 2) return filas;
+  const texto = (fila, indice) => (indice < 0 ? "" : String(fila[indice] ?? "").trim().toLowerCase());
+  // La copia incompleta suele faltar orden/centro/almacén; la línea se identifica por reserva+posición+material.
+  const claveLinea = (fila) => [texto(fila, indiceReserva), texto(fila, iPosicion), texto(fila, iMaterial)].join("|");
+  const scoreDatos = (fila) =>
+    [iOrden, iCentro, iAlmacen].reduce((total, indice) => total + (indice >= 0 && celdaNoVacia(fila[indice]) ? 1 : 0), 0);
+  const grupos = new Map();
+  filas.forEach((fila, origen) => {
+    const clave = claveLinea(fila);
+    const grupo = grupos.get(clave);
+    const item = { fila, origen, score: scoreDatos(fila) };
+    if (grupo) grupo.push(item);
+    else grupos.set(clave, [item]);
+  });
+  const elegidas = [];
+  grupos.forEach((grupo) => {
+    const mejor = Math.max(...grupo.map((item) => item.score));
+    grupo.forEach((item) => {
+      if (item.score === mejor) elegidas.push(item);
+    });
+  });
+  return elegidas.sort((a, b) => a.origen - b.origen).map((item) => item.fila);
+}
+
 function revisionReservas(reserva, por = "reserva") {
   const termino = String(reserva ?? "").trim().toLowerCase();
   const modo = modoBusquedaReserva(por);
@@ -208,8 +237,9 @@ function revisionReservas(reserva, por = "reserva") {
   const indice = (patron) => indiceEncabezado(columnas, patron);
   const iOrden = indice(/^orden$/i);
   const indiceReserva = indice(/^n[ºo°.]?\s*reserva$/i);
+  const iPosicion = indice(/pos\.?reserva/i);
   const indiceBusqueda = modo === "orden" ? iOrden : indiceReserva;
-  const coinciden =
+  const coincidenCrudas =
     indiceBusqueda < 0
       ? []
       : filas.filter((fila) => String(fila[indiceBusqueda] ?? "").trim().toLowerCase().includes(termino));
@@ -217,6 +247,15 @@ function revisionReservas(reserva, por = "reserva") {
   const iTexto = indice(/texto breve/i);
   const iCentro = indice(/^centro$/i);
   const iAlmacen = indice(/^almac[eé]n$/i);
+  const coinciden = preferirReservasCompletas(
+    coincidenCrudas,
+    iOrden,
+    indiceReserva,
+    iPosicion,
+    iMaterial,
+    iCentro,
+    iAlmacen
+  );
   const iNecesaria = indice(/cantidad necesaria/i);
   const iUnidad = indice(/unidad medida base/i);
   const iFecha = indice(/fecha de necesidad/i);
