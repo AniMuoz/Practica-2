@@ -524,6 +524,19 @@ test("PUT /api/material/:codigo/datos pasa la clave, los datos y reemplazar solo
   assert.equal((await pedir("PUT", "/api/material/1/datos", { json: { clave: "k", datos: {} } })).status, 404);
 });
 
+test("PUT /api/stock-detallado guarda campos locales o responde 404", async () => {
+  responder({ actualizarCamposDetallado: { fila: { Codigo: "1" } } });
+  const bien = await pedir("PUT", "/api/stock-detallado", {
+    json: { clave: "k", codigo: "1", datos: { "Stock Max": "10" } },
+  });
+  assert.equal(bien.status, 200);
+  assert.deepEqual(llamadasA("actualizarCamposDetallado")[0].args, ["1", "k", { "Stock Max": "10" }]);
+  responder({ actualizarCamposDetallado: { fila: null } });
+  assert.equal((await pedir("PUT", "/api/stock-detallado", { json: { clave: "k", codigo: "9", datos: {} } })).status, 404);
+  responder({ actualizarCamposDetallado: fallar(403, "Contraseña incorrecta.") });
+  assert.equal((await pedir("PUT", "/api/stock-detallado", { json: { clave: "x", codigo: "1", datos: {} } })).status, 403);
+});
+
 test("POST /api/material responde 201 y traduce los errores", async () => {
   responder({ agregarMaterial: { fila: { Codigo: "5" } } });
   const creado = await pedir("POST", "/api/material", { json: { clave: "k", datos: { Codigo: "5" } } });

@@ -518,6 +518,25 @@ function exigirClave(clave) {
   }
 }
 
+async function actualizarCamposDetallado(codigo, clave, datos) {
+  exigirClave(clave);
+  if (!datos || typeof datos !== "object") {
+    const error = new Error("No hay datos para guardar.");
+    error.status = 400;
+    throw error;
+  }
+  const permitidos = {};
+  for (const columna of COLUMNAS_DETALLADO) {
+    if (Object.prototype.hasOwnProperty.call(datos, columna)) permitidos[columna] = datos[columna];
+  }
+  if (!Object.keys(permitidos).length) {
+    const error = new Error("Ese campo no se puede editar en stock detallado.");
+    error.status = 400;
+    throw error;
+  }
+  return actualizarDatos(codigo, clave, permitidos, false);
+}
+
 async function actualizarDatos(codigo, clave, datos, reemplazar) {
   exigirClave(clave);
   if (!datos || typeof datos !== "object") {
@@ -722,6 +741,7 @@ module.exports = {
   BODEGAS_EXTRA,
   BODEGAS_EXPORT,
   COLUMNA_MARCADO,
+  COLUMNAS_DETALLADO,
   COLUMNAS_OCULTAS,
   COLUMNAS_EXTRA,
   CAMPOS_IMAGEN,
@@ -756,6 +776,7 @@ module.exports = {
   CLAVE_DATOS,
   claveCorrecta,
   exigirClave,
+  actualizarCamposDetallado,
   actualizarDatos,
   guardarImagen,
   eliminarMaterial,

@@ -1,5 +1,5 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado } = require("../fuenteDatos");
-const { conColores, nombreConFecha, enviarPlanilla } = require("../compartido");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado } = require("../fuenteDatos");
+const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../compartido");
 
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
 function filtrosDeConsulta(q) {
@@ -164,6 +164,22 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo leer el stock detallado." });
+    }
+  });
+
+  app.put("/api/stock-detallado", async (req, res) => {
+    try {
+      const codigo = String(req.body?.codigo ?? "").trim();
+      const resultado = await actualizarCamposDetallado(codigo, req.body?.clave, req.body?.datos);
+      if (!resultado || !resultado.fila) {
+        res.status(404).json({ error: "Material no encontrado." });
+        return;
+      }
+      emitir({ tipo: "fila", fila: resultado.fila, codigoAnterior: codigo });
+      res.json(resultado);
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.message || "No se pudo guardar el campo." });
     }
   });
 

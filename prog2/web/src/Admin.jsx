@@ -310,8 +310,8 @@ export default function Admin() {
     if (String(valor ?? "") === String(valorOriginal ?? "")) return;
     setErrorDetallado("");
     enviarJson(
-      `/api/material/${encodeURIComponent(codigo)}/datos`,
-      { clave, datos: { [nombreColumna]: valor } },
+      "/api/stock-detallado",
+      { clave, codigo: String(codigo ?? "").trim(), datos: { [nombreColumna]: valor } },
       "No se pudo guardar el campo.",
       "PUT"
     ).catch((err) => {
