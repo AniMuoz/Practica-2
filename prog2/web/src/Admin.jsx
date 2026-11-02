@@ -1523,74 +1523,106 @@ export default function Admin() {
           {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
           {errorDetallado && <p style={{ margin: "0 0 8px", color: "var(--peligro, #b00020)" }}>{errorDetallado}</p>}
           {!cargandoDetallado && !avisoDetallado && (
-            <VistaPrevia
-              filas={detalladoFiltrado.filas}
-              columnas={detallado.columnas.length}
-              className={clasePlanilla}
-              vacio="No hay stock detallado cargado."
-              renderFila={(fila, indice) => (
-                <tr key={`${fila[1]}-${indice}`}>
-                  {fila.map((valor, columna) => {
-                    const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
-                    const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice], oscuro, fila);
-                    // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
-                    const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");
-                    const nombreColumna = detallado.columnas[columna];
-                    return (
-                      <td
-                        key={columna}
-                        className={usaColorCelda ? "celda-color" : undefined}
-                        style={{
-                          padding: editable ? "4px 6px" : "8px 10px",
-                          border: "1px solid var(--borde-suave)",
-                          background: colores ? fondo : "var(--superficie)",
-                          fontWeight: columna === 10 ? 700 : 400,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {editable ? (
-                          <input
-                            aria-label={`${nombreColumna} ${fila[1]}`}
-                            value={valor == null ? "" : String(valor)}
-                            onChange={(event) => actualizarCeldaDetallado(fila[1], columna, event.target.value)}
-                            onFocus={(event) => {
-                              event.target.dataset.original = event.target.value;
-                            }}
-                            onBlur={(event) =>
-                              guardarCeldaDetallado(
-                                fila[1],
-                                nombreColumna,
-                                columna,
-                                event.target.value,
-                                event.target.dataset.original ?? ""
-                              )
-                            }
-                            style={{
-                              width: "100%",
-                              minWidth: 72,
-                              boxSizing: "border-box",
-                              padding: "4px 6px",
-                              border: "1px solid var(--borde)",
-                              borderRadius: 4,
-                              background: "var(--campo)",
-                              color: "var(--texto)",
-                              font: "inherit",
-                            }}
-                          />
-                        ) : (
-                          valor === "" || valor == null ? "" : String(valor)
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              )}
-            >
-                <thead>
-                  <tr>
-                    {detallado.columnas.map((columna, indiceColumna) => {
-                      const editable = COLUMNAS_EDITABLES_DETALLADO.has(indiceColumna);
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginBottom: 10,
+                  alignItems: "center",
+                }}
+              >
+                {[...COLUMNAS_EDITABLES_DETALLADO].sort((a, b) => a - b).map((indiceColumna) => {
+                  const columna = detallado.columnas[indiceColumna];
+                  if (!columna) return null;
+                  return (
+                    <button
+                      key={columna}
+                      type="button"
+                      onClick={() => limpiarColumnaDetallado(columna, indiceColumna)}
+                      style={{
+                        padding: "6px 12px",
+                        border: 0,
+                        borderRadius: 4,
+                        background: "#c62828",
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      limpiar {columna}
+                    </button>
+                  );
+                })}
+              </div>
+              <VistaPrevia
+                filas={detalladoFiltrado.filas}
+                columnas={detallado.columnas.length}
+                className={clasePlanilla}
+                vacio="No hay stock detallado cargado."
+                renderFila={(fila, indice) => (
+                  <tr key={`${fila[1]}-${indice}`}>
+                    {fila.map((valor, columna) => {
+                      const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
+                      const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice], oscuro, fila);
+                      // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
+                      const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");
+                      const nombreColumna = detallado.columnas[columna];
                       return (
+                        <td
+                          key={columna}
+                          className={usaColorCelda ? "celda-color" : undefined}
+                          style={{
+                            padding: editable ? "4px 6px" : "8px 10px",
+                            border: "1px solid var(--borde-suave)",
+                            background: colores ? fondo : "var(--superficie)",
+                            fontWeight: columna === 10 ? 700 : 400,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {editable ? (
+                            <input
+                              aria-label={`${nombreColumna} ${fila[1]}`}
+                              value={valor == null ? "" : String(valor)}
+                              onChange={(event) => actualizarCeldaDetallado(fila[1], columna, event.target.value)}
+                              onFocus={(event) => {
+                                event.target.dataset.original = event.target.value;
+                              }}
+                              onBlur={(event) =>
+                                guardarCeldaDetallado(
+                                  fila[1],
+                                  nombreColumna,
+                                  columna,
+                                  event.target.value,
+                                  event.target.dataset.original ?? ""
+                                )
+                              }
+                              style={{
+                                width: "100%",
+                                minWidth: 72,
+                                boxSizing: "border-box",
+                                padding: "4px 6px",
+                                border: "1px solid var(--borde)",
+                                borderRadius: 4,
+                                background: "var(--campo)",
+                                color: "var(--texto)",
+                                font: "inherit",
+                              }}
+                            />
+                          ) : (
+                            valor === "" || valor == null ? "" : String(valor)
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                )}
+              >
+                  <thead>
+                    <tr>
+                      {detallado.columnas.map((columna) => (
                         <th
                           key={columna}
                           style={{
@@ -1601,36 +1633,15 @@ export default function Admin() {
                             background: colores ? "#a9e5e5" : "var(--superficie)",
                             border: "1px solid var(--borde)",
                             whiteSpace: "nowrap",
-                            verticalAlign: "bottom",
                           }}
                         >
-                          {editable && (
-                            <button
-                              type="button"
-                              onClick={() => limpiarColumnaDetallado(columna, indiceColumna)}
-                              style={{
-                                display: "block",
-                                marginBottom: 6,
-                                padding: "4px 10px",
-                                border: 0,
-                                borderRadius: 4,
-                                background: "#c62828",
-                                color: "#fff",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              }}
-                            >
-                              limpiar
-                            </button>
-                          )}
                           {columna}
                         </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-            </VistaPrevia>
+                      ))}
+                    </tr>
+                  </thead>
+              </VistaPrevia>
+            </>
           )}
         </section>
       )}
