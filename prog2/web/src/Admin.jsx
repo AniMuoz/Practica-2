@@ -27,8 +27,9 @@ import { usePaneles } from "./admin/usePaneles.js";
 import { useRefrescoSse } from "./admin/useRefrescoSse.js";
 import { useSalidaSegura } from "./admin/useSalidaSegura.js";
 import { useUltimasCargas } from "./admin/useUltimasCargas.js";
+import { useCargaDatos } from "./admin/useCargaDatos.js";
 import { filtrarYOrdenarPorCodigo, textoUltimaCarga } from "./admin/utilidades.js";
-import { obtenerJson, enviarJson, enviarFormulario } from "./api.js";
+import { obtenerJson, enviarJson } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
@@ -44,6 +45,20 @@ import {
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
+// Paneles que enciende cada boton de la barra (para marcarlo como activo).
+const PANELES_BOTON = {
+  "Añadir/cargar datos": ["carga", "formulario"],
+  "Bitacora camion": ["bitacora"],
+  "Stock en bodega": ["bodega"],
+  "Stock regional": ["regional"],
+  "Planilla de inventario": ["inventario"],
+  Movimientos: ["movimientos"],
+  "Stock detallado": ["detallado"],
+  "Revisar stock de reserva": ["reserva"],
+  "Editar contratistas": ["contratistas"],
+  "Planilla de ventas": ["ventas"],
+};
+
 export default function Admin() {
   const navigate = useNavigate();
   const { colores, oscuro } = useColoresPlanilla();
@@ -52,17 +67,7 @@ export default function Admin() {
   const excelFiltrado = (ruta) => rutaConFiltros(excel(ruta), filtrosStock);
   const esMovilCarga = useEsMovil();
   const [botonesMinimizados, setBotonesMinimizados] = useState(false);
-  const esBotonActivo = (nombre) =>
-    (nombre === "Añadir/cargar datos" && (mostrarCarga || mostrarFormulario)) ||
-    (nombre === "Bitacora camion" && mostrarBitacora) ||
-    (nombre === "Stock en bodega" && mostrarBodega) ||
-    (nombre === "Stock regional" && mostrarRegional) ||
-    (nombre === "Planilla de inventario" && mostrarInventario) ||
-    (nombre === "Movimientos" && mostrarMovimientos) ||
-    (nombre === "Stock detallado" && mostrarDetallado) ||
-    (nombre === "Revisar stock de reserva" && mostrarReserva) ||
-    (nombre === "Editar contratistas" && mostrarContratistas) ||
-    (nombre === "Planilla de ventas" && mostrarVentas);
+  const esBotonActivo = (nombre) => PANELES_BOTON[nombre]?.some((panel) => abierto[panel]) ?? false;
   const { rol } = useSesion();
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
@@ -71,14 +76,23 @@ export default function Admin() {
   const [datos, setDatos] = useState({});
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [archivo, setArchivo] = useState(null);
-  const [archivosQr, setArchivosQr] = useState([]);
-  const [importando, setImportando] = useState(false);
-  const [avisoCarga, setAvisoCarga] = useState("");
   const { ultimasCargas, cargarUltimasCargas } = useUltimasCargas();
-  const [modoCarga, setModoCarga] = useState("completa");
-  const [columnaCarga, setColumnaCarga] = useState("");
-  const [columnasDestino, setColumnasDestino] = useState([]);
+  const {
+    archivo,
+    setArchivo,
+    setArchivosQr,
+    importando,
+    avisoCarga,
+    modoCarga,
+    setModoCarga,
+    columnaCarga,
+    setColumnaCarga,
+    columnasDestino,
+    cargaKey,
+    aplicarDestino,
+    descartarCarga,
+    enviarCarga,
+  } = useCargaDatos({ clave, refrescarVistas: () => refrescarVistas(), cargarUltimasCargas });
   const [agrandarBotones, setAgrandarBotones] = useState(false);
   const { abierto, fijar: fijarPanel, cerrarOtros: cerrarPaneles } = usePaneles();
   const {
@@ -229,7 +243,6 @@ export default function Admin() {
   const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
   const [ventaPendiente, setVentaPendiente] = useState(false);
   const [ventaKey, setVentaKey] = useState(0);
-  const [cargaKey, setCargaKey] = useState(0);
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -237,8 +250,7 @@ export default function Admin() {
     const destino = (data.columnas || []).filter(
       (columna) => !["Codigo", "Inventario", "Comentario"].includes(columna)
     );
-    setColumnasDestino(destino);
-    setColumnaCarga((actual) => (destino.includes(actual) ? actual : destino[0] || ""));
+    aplicarDestino(destino);
     setDatos((actual) => {
       const siguientes = {};
       lista.forEach((columna) => {
@@ -294,8 +306,7 @@ export default function Admin() {
     }
     if (contratistasSinGuardar) descartarContratistas();
     if (cargaSinGuardar) {
-      setArchivo(null);
-      setCargaKey((actual) => actual + 1);
+      descartarCarga();
     }
     if (ventaSinGuardar) {
       setVentaPendiente(false);
@@ -328,107 +339,6 @@ export default function Admin() {
     if (recorridoPendiente("admin")) iniciarRecorrido("admin");
   }, [autorizado]);
 
-  function enviarCarga(event) {
-    event.preventDefault();
-    if (modoCarga === "qr" || modoCarga === "rombo" || modoCarga === "foto") {
-      const prefijo = modoCarga;
-      const campoImagen = { qr: "QR", rombo: "Rombo", foto: "Foto" }[modoCarga];
-      const maxBytes = 100 * 1024;
-      const patron = new RegExp(`^${prefijo}_(.+)\\.(png|jpe?g)$`, "i");
-      const coincidentes = archivosQr
-        .map((f) => ({ f, m: patron.exec(f.name) }))
-        .filter((x) => x.m);
-      const grandes = coincidentes.filter((x) => x.f.size > maxBytes);
-      const validos = coincidentes.filter((x) => x.f.size <= maxBytes);
-      if (!validos.length) {
-        setAvisoCarga(
-          coincidentes.length
-            ? "Todas las imágenes superan los 100 KB."
-            : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png o .jpg.`
-        );
-        return;
-      }
-      const omitidasTxt = grandes.length ? ` (${grandes.length} se omiten por superar 100 KB)` : "";
-      if (!window.confirm(`¿Subir ${validos.length} imágenes de ${campoImagen} a sus materiales?${omitidasTxt}`)) return;
-      const formulario = event.target;
-      setAvisoCarga("");
-      setImportando(true);
-      (async () => {
-        let ok = 0;
-        const fallidos = [];
-        for (let i = 0; i < validos.length; i++) {
-          const { f, m } = validos[i];
-          setAvisoCarga(`Subiendo ${i + 1} de ${validos.length}...`);
-          try {
-            const cuerpo = new FormData();
-            cuerpo.append("clave", clave);
-            cuerpo.append("campo", campoImagen);
-            cuerpo.append("archivo", f);
-            await enviarFormulario(`/api/material/${encodeURIComponent(m[1])}/imagen`, cuerpo);
-            ok++;
-          } catch {
-            fallidos.push(m[1]);
-          }
-        }
-        setArchivosQr([]);
-        formulario.reset();
-        const detalle =
-          (fallidos.length
-            ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
-            : "") + (grandes.length ? `, ${grandes.length} omitidos por superar 100 KB` : "");
-        setAvisoCarga(`Listo: ${ok} imágenes de ${campoImagen} subidas${detalle}.`);
-        refrescarVistas();
-      })().finally(() => setImportando(false));
-      return;
-    }
-    if (!archivo) {
-      setAvisoCarga("Elige un archivo .xlsx.");
-      return;
-    }
-    if (modoCarga === "dos-columnas" && !columnaCarga) {
-      setAvisoCarga("Elige la columna que va a llenar la planilla.");
-      return;
-    }
-    const secciones = {
-      completa: "Planilla completa",
-      sap: "Planilla EXPORT SAP",
-      ubicaciones: "Planilla de ubicaciones",
-      precios: "Planilla de precios",
-      "dos-columnas": columnaCarga
-        ? `Planilla de 2 columnas (columna ${columnaCarga})`
-        : "Planilla de 2 columnas",
-      reservas: "Añadir reservas",
-      movimientos: "Movimientos",
-    };
-    const seccion = secciones[modoCarga] || modoCarga;
-    const confirmar = window.confirm(
-      `¿Confirmas la carga del archivo "${archivo.name}" en la sección ${seccion}?`
-    );
-    if (!confirmar) return;
-    setAvisoCarga("");
-    setImportando(true);
-    const cuerpo = new FormData();
-    cuerpo.append("clave", clave);
-    cuerpo.append("modo", modoCarga);
-    if (modoCarga === "dos-columnas") cuerpo.append("columna", columnaCarga);
-    cuerpo.append("archivo", archivo);
-    enviarFormulario("/api/tabla/excel", cuerpo, "No se pudo importar.")
-      .then((data) => {
-        setArchivo(null);
-        event.target.reset();
-        const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
-        setAvisoCarga(
-          modoCarga === "movimientos"
-            ? `Listo: ${data.agregados} códigos cargados${omitidos}.`
-            : `Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`
-        );
-        cargarUltimasCargas();
-        refrescarVistas();
-      })
-      .catch((err) => setAvisoCarga(err.message))
-      .finally(() => setImportando(false));
-  }
-
   function enviarAlta(event) {
     event.preventDefault();
     setAviso("");
@@ -440,6 +350,50 @@ export default function Admin() {
       })
       .catch((err) => setAviso(err.message))
       .finally(() => setGuardando(false));
+  }
+
+  // Abre el panel y cierra los demas (recargando lo que haga falta); si ya estaba abierto, lo cierra.
+  function alternarPanel(panel, alAbrir, alCerrar) {
+    const abrir = !abierto[panel];
+    if (abrir) {
+      cerrarPaneles([panel]);
+      alAbrir?.();
+    } else {
+      alCerrar?.();
+    }
+    fijarPanel(panel, abrir);
+  }
+
+  function alternarBoton(nombre) {
+    switch (nombre) {
+      case "Bitacora camion":
+        return alternarPanel("bitacora", null, () => setBitacoraSinGuardar(false));
+      case "Añadir/cargar datos": {
+        const abrir = !(mostrarCarga && mostrarFormulario);
+        if (abrir) cerrarPaneles(["carga", "formulario"]);
+        fijarPanel("carga", abrir);
+        return fijarPanel("formulario", abrir);
+      }
+      case "Stock en bodega":
+        return alternarPanel("bodega", () => recargarBodega());
+      case "Stock regional":
+        return alternarPanel("regional", () => recargarRegional());
+      case "Planilla de inventario":
+        return alternarPanel("inventario", () => recargarInventario());
+      case "Movimientos":
+        return alternarPanel("movimientos", () => recargarMovimientos());
+      case "Stock detallado":
+        return alternarPanel("detallado", () => {
+          setErrorDetallado("");
+          recargarDetallado();
+        });
+      case "Revisar stock de reserva":
+        return alternarPanel("reserva");
+      case "Planilla de ventas":
+        return alternarPanel("ventas", () => cargarNombresContratistas().catch(() => {}));
+      case "Editar contratistas":
+        return alternarPanel("contratistas", () => abrirContratistas());
+    }
   }
 
   return (
@@ -620,83 +574,7 @@ export default function Admin() {
                 disabled={importando}
                 onClick={() => {
                   if (importando) return;
-                  const cambiar = () => {
-                  if (nombre === "Bitacora camion") {
-                    const abrir = !mostrarBitacora;
-                    if (abrir) cerrarPaneles(["bitacora"]);
-                    else setBitacoraSinGuardar(false);
-                    fijarPanel("bitacora", abrir);
-                  }
-                  if (nombre === "Añadir/cargar datos") {
-                    const abrir = !(mostrarCarga && mostrarFormulario);
-                    if (abrir) cerrarPaneles(["carga", "formulario"]);
-                    fijarPanel("carga", abrir);
-                    fijarPanel("formulario", abrir);
-                  }
-                  if (nombre === "Stock en bodega") {
-                    const abrir = !mostrarBodega;
-                    if (abrir) {
-                      cerrarPaneles(["bodega"]);
-                      recargarBodega();
-                    }
-                    fijarPanel("bodega", abrir);
-                  }
-                  if (nombre === "Stock regional") {
-                    const abrir = !mostrarRegional;
-                    if (abrir) {
-                      cerrarPaneles(["regional"]);
-                      recargarRegional();
-                    }
-                    fijarPanel("regional", abrir);
-                  }
-                  if (nombre === "Planilla de inventario") {
-                    const abrir = !mostrarInventario;
-                    if (abrir) {
-                      cerrarPaneles(["inventario"]);
-                      recargarInventario();
-                    }
-                    fijarPanel("inventario", abrir);
-                  }
-                  if (nombre === "Movimientos") {
-                    const abrir = !mostrarMovimientos;
-                    if (abrir) {
-                      cerrarPaneles(["movimientos"]);
-                      recargarMovimientos();
-                    }
-                    fijarPanel("movimientos", abrir);
-                  }
-                  if (nombre === "Stock detallado") {
-                    const abrir = !mostrarDetallado;
-                    if (abrir) {
-                      cerrarPaneles(["detallado"]);
-                      setErrorDetallado("");
-                      recargarDetallado();
-                    }
-                    fijarPanel("detallado", abrir);
-                  }
-                  if (nombre === "Revisar stock de reserva") {
-                    const abrir = !mostrarReserva;
-                    if (abrir) cerrarPaneles(["reserva"]);
-                    fijarPanel("reserva", abrir);
-                  }
-                  if (nombre === "Planilla de ventas") {
-                    const abrir = !mostrarVentas;
-                    if (abrir) {
-                      cerrarPaneles(["ventas"]);
-                      cargarNombresContratistas().catch(() => {});
-                    }
-                    fijarPanel("ventas", abrir);
-                  }
-                  if (nombre === "Editar contratistas") {
-                    const abrir = !mostrarContratistas;
-                    if (abrir) {
-                      cerrarPaneles(["contratistas"]);
-                      abrirContratistas();
-                    }
-                    fijarPanel("contratistas", abrir);
-                  }
-                  };
-                  intentarSalir(cambiar);
+                  intentarSalir(() => alternarBoton(nombre));
                 }}
                 style={{
                   boxSizing: "border-box",
