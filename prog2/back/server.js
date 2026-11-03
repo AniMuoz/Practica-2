@@ -23,7 +23,8 @@ app.use(express.json({ limit: "1mb" }));
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
 });
-// Igual que /healthz pero consulta Supabase (lo llama el cron del Worker una vez al dia).
+app.use(exigirProxy);
+// Igual que /healthz pero consulta Supabase (lo llama el cron del Worker una vez al dia). Va despues de exigirProxy: exige el secreto.
 app.get("/healthz/db", async (_req, res) => {
   try {
     const { ok } = await comprobarBase(supabase);
@@ -33,7 +34,7 @@ app.get("/healthz/db", async (_req, res) => {
     res.status(502).json({ ok: false });
   }
 });
-app.use(exigirProxy);
+
 app.use("/api", conIpDeClave);
 if (require.main === module) {
   app.use("/api", limitarPeticiones);

@@ -203,3 +203,6 @@ alter table public.materiales add column if not exists cons_prom_mensual text no
 alter table public.materiales add column if not exists stock_max text not null default '';
 alter table public.materiales add column if not exists indicador text not null default '';
 alter table public.materiales add column if not exists cambio_de_ubicacion text not null default '';
+
+-- Contador de sesion: al cerrar sesion sube y anula los tokens anteriores.
+alter table public.usuarios add column if not exists sesion_version integer not null default 0;

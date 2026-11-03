@@ -14,6 +14,10 @@ const MAX_INTENTOS = 10;
 const MAX_INTENTOS_USUARIO = 30;
 const VENTANA_INTENTOS_MS = 15 * 60 * 1000;
 const CACHE_USUARIO_MS = 30 * 1000;
+const MAX_LARGO_USUARIO = 64;
+const MAX_LARGO_CLAVE = 256;
+const MAX_CACHE_USUARIOS = 500;
+const MAX_REGISTROS_INTENTOS = 5000;
 const LARGO_MINIMO_CLAVE = 8;
 const MENSAJE_DESACTIVADA = "Cuenta desactivada, contactese con un administrador";
 const RUTAS_PUBLICAS = new Set(["/login", "/logout", "/sesion", "/cambiar-clave"]);
@@ -34,11 +38,23 @@ function falloBd(error) {
 
 const cacheUsuarios = new Map();
 
+// Tope de memoria: se descartan primero las entradas vencidas y, si sigue lleno, las mas antiguas.
+function recortar(mapa, maximo, vencida) {
+  if (mapa.size < maximo) return;
+  for (const [clave, valor] of mapa) if (vencida(valor)) mapa.delete(clave);
+  while (mapa.size >= maximo) mapa.delete(mapa.keys().next().value);
+}
+
+function datosValidos(usuario, clave) {
+  return usuario.length > 0 && usuario.length <= MAX_LARGO_USUARIO && String(clave).length <= MAX_LARGO_CLAVE;
+}
+
 async function buscarUsuario(nombre) {
   const guardado = cacheUsuarios.get(nombre);
   if (guardado && guardado.hasta > Date.now()) return guardado.registro;
-  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash, rol").eq("usuario", nombre).maybeSingle();
+  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash, rol, sesion_version").eq("usuario", nombre).maybeSingle();
   if (error) falloBd(error);
+  recortar(cacheUsuarios, MAX_CACHE_USUARIOS, (v) => v.hasta <= Date.now());
   cacheUsuarios.set(nombre, { registro: data, hasta: Date.now() + CACHE_USUARIO_MS });
   return data;
 }
@@ -112,9 +128,14 @@ function versionDe(registro) {
   return String(registro.clave_hash).split(":")[0];
 }
 
+// Contador de sesion: sube al cerrar sesion y anula todos los tokens emitidos antes.
+function contadorDe(registro) {
+  return Number(registro.sesion_version) || 0;
+}
+
 function crearToken(registro) {
   const cuerpo = Buffer.from(
-    JSON.stringify({ u: registro.usuario, v: versionDe(registro), exp: Date.now() + DURACION_MS })
+    JSON.stringify({ u: registro.usuario, v: versionDe(registro), s: contadorDe(registro), exp: Date.now() + DURACION_MS })
   ).toString("base64url");
   return `${cuerpo}.${firmar(cuerpo)}`;
 }
@@ -175,6 +196,7 @@ function bloqueado(clave, maximo = MAX_INTENTOS) {
 
 function registrarFallo(clave) {
   const registro = intentos.get(clave);
+  if (!registro) recortar(intentos, MAX_REGISTROS_INTENTOS, (v) => Date.now() - v.desde > VENTANA_INTENTOS_MS);
   if (!registro || Date.now() - registro.desde > VENTANA_INTENTOS_MS) {
     intentos.set(clave, { desde: Date.now(), cantidad: 1 });
   } else {
@@ -186,7 +208,7 @@ async function sesionDe(req) {
   const datos = leerToken(leerCookie(req, NOMBRE_COOKIE));
   if (!datos) return null;
   const registro = await buscarUsuario(datos.u);
-  if (!registro || versionDe(registro) !== datos.v) return null;
+  if (!registro || versionDe(registro) !== datos.v || contadorDe(registro) !== (Number(datos.s) || 0)) return null;
   return { datos, registro };
 }
 
@@ -232,6 +254,10 @@ function rutasAuth(app) {
       const usuario = String((req.body && req.body.usuario) || "").trim().toLowerCase();
       const clave = String((req.body && req.body.clave) || "");
       const llave = clienteDe(req);
+      if (!datosValidos(usuario, clave)) {
+        registrarFallo(llave);
+        throw errorHttp(401, "Usuario o contraseña incorrectos.");
+      }
       const llaveUsuario = `usuario:${usuario}`;
       if (bloqueado(llave) || bloqueado(llaveUsuario, MAX_INTENTOS_USUARIO)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
@@ -257,6 +283,10 @@ function rutasAuth(app) {
       const claveActual = String((req.body && req.body.claveActual) || "");
       const claveNueva = String((req.body && req.body.claveNueva) || "");
       const llave = clienteDe(req);
+      if (!datosValidos(usuario, claveActual) || claveNueva.length > MAX_LARGO_CLAVE) {
+        registrarFallo(llave);
+        throw errorHttp(401, "Usuario o contraseña actual incorrectos.");
+      }
       const llaveUsuario = `usuario:${usuario}`;
       if (bloqueado(llave) || bloqueado(llaveUsuario, MAX_INTENTOS_USUARIO)) throw errorHttp(429, "Demasiados intentos. Espera unos minutos.");
       const registro = await buscarUsuario(usuario);
@@ -271,7 +301,7 @@ function rutasAuth(app) {
       intentos.delete(llave);
       intentos.delete(llaveUsuario);
       await guardarUsuario(usuario, claveNueva);
-      const actualizado = { usuario, clave_hash: (await buscarUsuario(usuario)).clave_hash };
+      const actualizado = await buscarUsuario(usuario);
       ponerCookie(req, res, crearToken(actualizado), DURACION_MS);
       res.json({ ok: true, usuario });
     } catch (error) {
@@ -279,7 +309,17 @@ function rutasAuth(app) {
     }
   });
 
-  app.post("/api/logout", (req, res) => {
+  app.post("/api/logout", async (req, res) => {
+    try {
+      const sesion = await sesionDe(req);
+      if (sesion) {
+        const { error } = await supabase.from("usuarios").update({ sesion_version: contadorDe(sesion.registro) + 1 }).eq("usuario", sesion.registro.usuario);
+        if (error) console.error(error);
+        cacheUsuarios.delete(sesion.registro.usuario);
+      }
+    } catch (error) {
+      console.error(error);
+    }
     ponerCookie(req, res, "", 0);
     res.json({ ok: true });
   });

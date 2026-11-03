@@ -12,7 +12,7 @@ export default {
     const rutas = event?.cron === CRON_BASE ? ["/healthz", "/healthz/db"] : ["/healthz"];
     for (const ruta of rutas) {
       try {
-        await fetch(new URL(ruta, API), { method: "GET" });
+        await fetch(new URL(ruta, API), { method: "GET", headers: { "x-secreto-proxy": String(env?.SECRETO_PROXY || "").trim() } });
       } catch (error) {
         console.error(`Ping a ${ruta} fallo: ${error.message}`);
       }
