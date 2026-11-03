@@ -215,7 +215,7 @@ export default function Admin() {
   const [avisoReserva, setAvisoReserva] = useState("");
   const [ordenReserva, setOrdenReserva] = useState("");
   const [buscarPorReserva, setBuscarPorReserva] = useState("reserva");
-  const [busquedaReserva, setBusquedaReserva] = useState({ columnas: [], filas: [], total: 0 });
+  const [busquedaReserva, setBusquedaReserva] = useState({ columnas: [], filas: [], marcadosCodigo: [], total: 0 });
   const [buscandoReserva, setBuscandoReserva] = useState(false);
   const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
   const [mostrarContratistas, setMostrarContratistas] = useState(false);
@@ -1770,7 +1770,7 @@ export default function Admin() {
               const etiqueta = buscarPorReserva === "orden" ? "orden" : "reserva";
               if (!numero) {
                 setAvisoBusquedaReserva(`Escribe un número de ${etiqueta}.`);
-                setBusquedaReserva({ columnas: [], filas: [], total: 0 });
+                setBusquedaReserva({ columnas: [], filas: [], marcadosCodigo: [], total: 0 });
                 return;
               }
               setAvisoBusquedaReserva("");
@@ -1789,6 +1789,7 @@ export default function Admin() {
                   setBusquedaReserva({
                     columnas: data.columnas || [],
                     filas: data.filas || [],
+                    marcadosCodigo: data.marcadosCodigo || [],
                     total: data.total || 0,
                     consulta: numero,
                     por: buscarPorReserva,
@@ -1904,6 +1905,7 @@ export default function Admin() {
                       ...actual,
                       columnas: data.columnas || actual.columnas,
                       filas: actual.filas.concat(lote),
+                      marcadosCodigo: (actual.marcadosCodigo || []).concat(data.marcadosCodigo || []),
                     }));
                   })
                   .catch(() => {
@@ -1918,19 +1920,23 @@ export default function Admin() {
                 <tr key={indice}>
                   {busquedaReserva.columnas.map((nombre, columna) => {
                     const esEstado = nombre === "Estado";
+                    const esCodigoConflicto = nombre === "Código" && busquedaReserva.marcadosCodigo?.[indice];
                     const valor = fila[columna];
                     return (
                       <td
                         key={columna}
+                        className={colores && (esEstado || esCodigoConflicto) ? "celda-color" : undefined}
                         style={{
                           padding: "8px 10px",
                           border: "1px solid var(--borde-suave)",
                           background:
-                            colores && esEstado
-                              ? valor === "Disponible"
-                                ? "#73c883"
-                                : "#f9e37c"
-                              : "var(--superficie)",
+                            colores && esCodigoConflicto
+                              ? "#f9e37c"
+                              : colores && esEstado
+                                ? valor === "Disponible"
+                                  ? "#73c883"
+                                  : "#f9e37c"
+                                : "var(--superficie)",
                           whiteSpace: "nowrap",
                         }}
                       >

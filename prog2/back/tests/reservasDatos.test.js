@@ -286,6 +286,86 @@ test("revisionReservas omite la copia incompleta cuando hay otra completa de la 
       ["6001", "200", "C1", "M501"],
     ]
   );
+  assert.deepEqual(revision.marcadosCodigo, [false, false]);
+});
+
+test("revisionReservas deja una sola fila cuando hay copias exactamente iguales", () => {
+  const linea = registro({
+    orden: "6001",
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "1",
+    material: "100",
+    cantidad_necesaria: "5",
+    texto_breve_de_material: "Perno",
+    centro: "C1",
+    almacen: "M501",
+  });
+  const { revisionReservas } = cargar({ reservas: [linea, { ...linea }, linea] });
+  const revision = revisionReservas("9001");
+  assert.equal(revision.filas.length, 1);
+  assert.equal(revision.filas[0][3], "100");
+  assert.deepEqual(revision.marcadosCodigo, [false]);
+});
+
+test("revisionReservas marca el código cuando el mismo material aparece con datos distintos", () => {
+  const base = {
+    orden: "6001",
+    n_reserva: "9001",
+    material: "100",
+    texto_breve_de_material: "Perno",
+    centro: "C1",
+    almacen: "M501",
+  };
+  const { revisionReservas } = cargar({
+    reservas: [
+      registro({ ...base, n_pos_reserva_traslado: "1", cantidad_necesaria: "5" }),
+      registro({ ...base, n_pos_reserva_traslado: "2", cantidad_necesaria: "8" }),
+      registro({
+        orden: "6001",
+        n_reserva: "9001",
+        n_pos_reserva_traslado: "3",
+        material: "200",
+        cantidad_necesaria: "1",
+        texto_breve_de_material: "Tuerca",
+        centro: "C1",
+        almacen: "M501",
+      }),
+    ],
+  });
+  const revision = revisionReservas("9001");
+  assert.equal(revision.filas.length, 3);
+  assert.deepEqual(revision.marcadosCodigo, [true, true, false]);
+  assert.deepEqual(
+    revision.filas.map((fila) => [fila[3], fila[8]]),
+    [
+      ["100", 5],
+      ["100", 8],
+      ["200", 1],
+    ]
+  );
+});
+
+test("revisionReservas prioriza la completa y no marca conflicto si la incompleta se descarta", () => {
+  const incompleta = registro({
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "1",
+    material: "100",
+    cantidad_necesaria: "5",
+  });
+  const completa = registro({
+    orden: "6001",
+    n_reserva: "9001",
+    n_pos_reserva_traslado: "1",
+    material: "100",
+    cantidad_necesaria: "5",
+    centro: "C1",
+    almacen: "M501",
+  });
+  const { revisionReservas } = cargar({ reservas: [incompleta, completa] });
+  const revision = revisionReservas("9001");
+  assert.equal(revision.filas.length, 1);
+  assert.deepEqual(revision.marcadosCodigo, [false]);
+  assert.equal(revision.filas[0][1], "6001");
 });
 
 test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", () => {
@@ -342,6 +422,28 @@ test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados 
   const sinColores = new ExcelJS.Workbook();
   await sinColores.xlsx.load(await cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("9001", false));
   assert.equal(sinColores.worksheets[0].getCell(4, 16).fill?.fgColor, undefined);
+});
+
+test("exportarRevisionPorReserva pinta de amarillo el código con variantes", async () => {
+  const base = {
+    orden: "6001",
+    n_reserva: "9001",
+    material: "100",
+    centro: "C1",
+    almacen: "M501",
+  };
+  const buffer = await cargar({
+    reservas: [
+      registro({ ...base, n_pos_reserva_traslado: "1", cantidad_necesaria: "5" }),
+      registro({ ...base, n_pos_reserva_traslado: "2", cantidad_necesaria: "9" }),
+    ],
+  }).exportarRevisionPorReserva("9001", true);
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(buffer);
+  const hoja = libro.worksheets[0];
+  assert.equal(hoja.getCell(4, 6).value, "100");
+  assert.equal(hoja.getCell(4, 6).fill.fgColor.argb, "FFF9E37C");
+  assert.equal(hoja.getCell(5, 6).fill.fgColor.argb, "FFF9E37C");
 });
 
 // ---------- últimas cargas ----------

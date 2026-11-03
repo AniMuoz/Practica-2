@@ -221,6 +221,42 @@ function preferirReservasCompletas(filas, iOrden, indiceReserva, iPosicion, iMat
   return elegidas.sort((a, b) => a.origen - b.origen).map((item) => item.fila);
 }
 
+function firmaFilaReserva(fila) {
+  return (fila || []).map((celda) => String(celda ?? "").trim().toLowerCase()).join("\0");
+}
+
+// Tras preferirReservasCompletas: deja una sola copia de filas idénticas.
+function deduplicarFilasExactas(filas) {
+  if (filas.length < 2) return filas;
+  const vistas = new Set();
+  const unicas = [];
+  filas.forEach((fila) => {
+    const firma = firmaFilaReserva(fila);
+    if (vistas.has(firma)) return;
+    vistas.add(firma);
+    unicas.push(fila);
+  });
+  return unicas;
+}
+
+function codigosConVariantes(filas, iMaterial) {
+  if (iMaterial < 0 || filas.length < 2) return new Set();
+  const porCodigo = new Map();
+  filas.forEach((fila) => {
+    const codigo = String(fila[iMaterial] ?? "").trim().toLowerCase();
+    if (!codigo) return;
+    const firma = firmaFilaReserva(fila);
+    const firmas = porCodigo.get(codigo);
+    if (firmas) firmas.add(firma);
+    else porCodigo.set(codigo, new Set([firma]));
+  });
+  const conflicto = new Set();
+  porCodigo.forEach((firmas, codigo) => {
+    if (firmas.size > 1) conflicto.add(codigo);
+  });
+  return conflicto;
+}
+
 function revisionReservas(reserva, por = "reserva") {
   const termino = String(reserva ?? "").trim().toLowerCase();
   const modo = modoBusquedaReserva(por);
@@ -247,15 +283,18 @@ function revisionReservas(reserva, por = "reserva") {
   const iTexto = indice(/texto breve/i);
   const iCentro = indice(/^centro$/i);
   const iAlmacen = indice(/^almac[eé]n$/i);
-  const coinciden = preferirReservasCompletas(
-    coincidenCrudas,
-    iOrden,
-    indiceReserva,
-    iPosicion,
-    iMaterial,
-    iCentro,
-    iAlmacen
+  const coinciden = deduplicarFilasExactas(
+    preferirReservasCompletas(
+      coincidenCrudas,
+      iOrden,
+      indiceReserva,
+      iPosicion,
+      iMaterial,
+      iCentro,
+      iAlmacen
+    )
   );
+  const codigosConflicto = codigosConVariantes(coinciden, iMaterial);
   const iNecesaria = indice(/cantidad necesaria/i);
   const iUnidad = indice(/unidad medida base/i);
   const iFecha = indice(/fecha de necesidad/i);
@@ -291,8 +330,10 @@ function revisionReservas(reserva, por = "reserva") {
     "Reducido",
     "Diferencia",
   ];
+  const marcadosCodigo = [];
   const filasRevision = coinciden.map((fila, posicion) => {
     const codigo = String(celdaReserva(fila, iMaterial)).trim();
+    marcadosCodigo.push(codigosConflicto.has(codigo.toLowerCase()));
     const material = materiales.get(codigo);
     const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
     const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? material["Ubicación"] : "No se encontro ubicación";
@@ -327,6 +368,7 @@ function revisionReservas(reserva, por = "reserva") {
   return {
     columnas: salida,
     filas: filasRevision,
+    marcadosCodigo,
     total: filas.length,
     fecha: celdaReserva(primera, iFecha),
     solicitante: celdaReserva(primera, iUsuario),
@@ -343,6 +385,7 @@ function buscarReservas(reserva, pagina = 0, tamano = 100, por = "reserva") {
   return {
     columnas: revision.columnas,
     filas: revision.filas.slice(inicio, inicio + limite),
+    marcadosCodigo: (revision.marcadosCodigo || []).slice(inicio, inicio + limite),
     total: revision.total,
     coincidencias: revision.filas.length,
     pagina: indice,
@@ -419,12 +462,18 @@ async function exportarRevisionPorReserva(reserva, colores = true, por = "reserv
   });
 
   const columnaEstado = revision.columnas.indexOf("Estado");
+  const columnaCodigo = revision.columnas.indexOf("Código");
+  const marcadosCodigo = revision.marcadosCodigo || [];
   revision.filas.forEach((fila, indice) => {
     const numero = indice + 4;
     fila.forEach((valor, columna) => {
       const celda = hoja.getCell(numero, columna + 3);
       celda.value = valor ?? "";
       celda.border = borde;
+      if (columna === columnaCodigo && marcadosCodigo[indice]) {
+        pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9E37C" } }, colores);
+        return;
+      }
       if (columna !== columnaEstado) return;
       const color = valor === "Disponible" ? "FF73C883" : "FFF9E37C";
       pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
