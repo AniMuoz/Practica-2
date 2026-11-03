@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import { useSesion } from "./Acceso.jsx";
@@ -14,6 +14,10 @@ import PanelContratistas from "./admin/PanelContratistas.jsx";
 import PanelBodega from "./admin/PanelBodega.jsx";
 import PanelRegional from "./admin/PanelRegional.jsx";
 import PanelInventario from "./admin/PanelInventario.jsx";
+import PanelMovimientos from "./admin/PanelMovimientos.jsx";
+import PanelReserva from "./admin/PanelReserva.jsx";
+import PanelCarga from "./admin/PanelCarga.jsx";
+import PanelFormulario from "./admin/PanelFormulario.jsx";
 import { useEsMovil } from "./useEsMovil.js";
 import { useCargaPlanilla } from "./admin/useCargaPlanilla.js";
 import { useDetallado } from "./admin/useDetallado.js";
@@ -23,7 +27,7 @@ import { useRefrescoSse } from "./admin/useRefrescoSse.js";
 import { useSalidaSegura } from "./admin/useSalidaSegura.js";
 import { useUltimasCargas } from "./admin/useUltimasCargas.js";
 import { filtrarYOrdenarPorCodigo, textoUltimaCarga } from "./admin/utilidades.js";
-import { obtenerJson, enviarJson, enviarFormulario, descargarBlob, guardarBlob } from "./api.js";
+import { obtenerJson, enviarJson, enviarFormulario } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
@@ -101,11 +105,6 @@ export default function Admin() {
   const [copiarInventario, setCopiarInventario] = useState(false);
   const { tabla: movimientos, cargando: cargandoMovimientos, aviso: avisoMovimientos, recargar: recargarMovimientos } =
     useCargaPlanilla("/api/movimientos", "No se pudieron leer los movimientos.");
-  const [codigoMovimiento, setCodigoMovimiento] = useState("");
-  const [errorCodigoMovimiento, setErrorCodigoMovimiento] = useState("");
-  const [codigoEditando, setCodigoEditando] = useState(null);
-  const [valorCodigoEditando, setValorCodigoEditando] = useState("");
-  const [guardandoFilaMovimiento, setGuardandoFilaMovimiento] = useState(false);
   const excelInventario = (ruta) =>
     rutaConFiltros(rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia), filtrosStock);
   function alternarExistencia() {
@@ -211,21 +210,6 @@ export default function Admin() {
         })
       : filasMovimientosVisibles
   );
-  const [archivoReserva, setArchivoReserva] = useState(null);
-  const [reserva, setReserva] = useState({ columnas: [], filas: [] });
-  const [revisandoReserva, setRevisandoReserva] = useState(false);
-  const [avisoReserva, setAvisoReserva] = useState("");
-  const [ordenReserva, setOrdenReserva] = useState("");
-  const [buscarPorReserva, setBuscarPorReserva] = useState("reserva");
-  const [busquedaReserva, setBusquedaReserva] = useState({
-    columnas: [],
-    filas: [],
-    marcadosCodigo: [],
-    repeticiones: [],
-    total: 0,
-  });
-  const [buscandoReserva, setBuscandoReserva] = useState(false);
-  const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
   const {
     contratistas,
     setContratistas,
@@ -247,9 +231,6 @@ export default function Admin() {
   const [ventaPendiente, setVentaPendiente] = useState(false);
   const [ventaKey, setVentaKey] = useState(0);
   const [cargaKey, setCargaKey] = useState(0);
-  const paginaReserva = useRef(0);
-  const cargandoPaginaReserva = useRef(false);
-  const hayMasReservas = useRef(false);
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -266,61 +247,6 @@ export default function Admin() {
       });
       return siguientes;
     });
-  }
-
-  function agregarCodigoMovimientoForm(evento) {
-    evento.preventDefault();
-    const codigo = codigoMovimiento.trim();
-    if (!codigo) return;
-    setErrorCodigoMovimiento("");
-    enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo añadir el código.")
-      .then(() => {
-        setCodigoMovimiento("");
-        return recargarMovimientos(true);
-      })
-      .catch((err) => setErrorCodigoMovimiento(err.message));
-  }
-
-  function eliminarFilaMovimiento(codigo) {
-    if (!window.confirm(`¿Eliminar el código ${codigo} de movimientos?`)) return;
-    setErrorCodigoMovimiento("");
-    setGuardandoFilaMovimiento(true);
-    enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo eliminar el código.", "DELETE")
-      .then(() => recargarMovimientos(true))
-      .catch((err) => setErrorCodigoMovimiento(err.message))
-      .finally(() => setGuardandoFilaMovimiento(false));
-  }
-
-  function iniciarEdicionCodigo(codigo) {
-    setCodigoEditando(codigo);
-    setValorCodigoEditando(codigo);
-    setErrorCodigoMovimiento("");
-  }
-
-  function cancelarEdicionCodigo() {
-    setCodigoEditando(null);
-    setValorCodigoEditando("");
-  }
-
-  function guardarEdicionCodigo(codigoAnterior) {
-    const nuevo = valorCodigoEditando.trim();
-    if (!nuevo) {
-      setErrorCodigoMovimiento("Escribe un código.");
-      return;
-    }
-    if (nuevo === codigoAnterior) {
-      cancelarEdicionCodigo();
-      return;
-    }
-    setErrorCodigoMovimiento("");
-    setGuardandoFilaMovimiento(true);
-    enviarJson("/api/movimientos/codigo", { clave, codigoAnterior, codigoNuevo: nuevo }, "No se pudo actualizar el código.", "PUT")
-      .then(() => {
-        cancelarEdicionCodigo();
-        return recargarMovimientos(true);
-      })
-      .catch((err) => setErrorCodigoMovimiento(err.message))
-      .finally(() => setGuardandoFilaMovimiento(false));
   }
 
   function guardarContratistasConfirmado() {
@@ -402,6 +328,120 @@ export default function Admin() {
     cargarUltimasCargas();
     if (recorridoPendiente("admin")) iniciarRecorrido("admin");
   }, [autorizado]);
+
+  function enviarCarga(event) {
+    event.preventDefault();
+    if (modoCarga === "qr" || modoCarga === "rombo" || modoCarga === "foto") {
+      const prefijo = modoCarga;
+      const campoImagen = { qr: "QR", rombo: "Rombo", foto: "Foto" }[modoCarga];
+      const maxBytes = 100 * 1024;
+      const patron = new RegExp(`^${prefijo}_(.+)\\.(png|jpe?g)$`, "i");
+      const coincidentes = archivosQr
+        .map((f) => ({ f, m: patron.exec(f.name) }))
+        .filter((x) => x.m);
+      const grandes = coincidentes.filter((x) => x.f.size > maxBytes);
+      const validos = coincidentes.filter((x) => x.f.size <= maxBytes);
+      if (!validos.length) {
+        setAvisoCarga(
+          coincidentes.length
+            ? "Todas las imágenes superan los 100 KB."
+            : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png o .jpg.`
+        );
+        return;
+      }
+      const omitidasTxt = grandes.length ? ` (${grandes.length} se omiten por superar 100 KB)` : "";
+      if (!window.confirm(`¿Subir ${validos.length} imágenes de ${campoImagen} a sus materiales?${omitidasTxt}`)) return;
+      const formulario = event.target;
+      setAvisoCarga("");
+      setImportando(true);
+      (async () => {
+        let ok = 0;
+        const fallidos = [];
+        for (let i = 0; i < validos.length; i++) {
+          const { f, m } = validos[i];
+          setAvisoCarga(`Subiendo ${i + 1} de ${validos.length}...`);
+          try {
+            const cuerpo = new FormData();
+            cuerpo.append("clave", clave);
+            cuerpo.append("campo", campoImagen);
+            cuerpo.append("archivo", f);
+            await enviarFormulario(`/api/material/${encodeURIComponent(m[1])}/imagen`, cuerpo);
+            ok++;
+          } catch {
+            fallidos.push(m[1]);
+          }
+        }
+        setArchivosQr([]);
+        formulario.reset();
+        const detalle =
+          (fallidos.length
+            ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
+            : "") + (grandes.length ? `, ${grandes.length} omitidos por superar 100 KB` : "");
+        setAvisoCarga(`Listo: ${ok} imágenes de ${campoImagen} subidas${detalle}.`);
+        refrescarVistas();
+      })().finally(() => setImportando(false));
+      return;
+    }
+    if (!archivo) {
+      setAvisoCarga("Elige un archivo .xlsx.");
+      return;
+    }
+    if (modoCarga === "dos-columnas" && !columnaCarga) {
+      setAvisoCarga("Elige la columna que va a llenar la planilla.");
+      return;
+    }
+    const secciones = {
+      completa: "Planilla completa",
+      sap: "Planilla EXPORT SAP",
+      ubicaciones: "Planilla de ubicaciones",
+      precios: "Planilla de precios",
+      "dos-columnas": columnaCarga
+        ? `Planilla de 2 columnas (columna ${columnaCarga})`
+        : "Planilla de 2 columnas",
+      reservas: "Añadir reservas",
+      movimientos: "Movimientos",
+    };
+    const seccion = secciones[modoCarga] || modoCarga;
+    const confirmar = window.confirm(
+      `¿Confirmas la carga del archivo "${archivo.name}" en la sección ${seccion}?`
+    );
+    if (!confirmar) return;
+    setAvisoCarga("");
+    setImportando(true);
+    const cuerpo = new FormData();
+    cuerpo.append("clave", clave);
+    cuerpo.append("modo", modoCarga);
+    if (modoCarga === "dos-columnas") cuerpo.append("columna", columnaCarga);
+    cuerpo.append("archivo", archivo);
+    enviarFormulario("/api/tabla/excel", cuerpo, "No se pudo importar.")
+      .then((data) => {
+        setArchivo(null);
+        event.target.reset();
+        const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
+        setAvisoCarga(
+          modoCarga === "movimientos"
+            ? `Listo: ${data.agregados} códigos cargados${omitidos}.`
+            : `Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`
+        );
+        cargarUltimasCargas();
+        refrescarVistas();
+      })
+      .catch((err) => setAvisoCarga(err.message))
+      .finally(() => setImportando(false));
+  }
+
+  function enviarAlta(event) {
+    event.preventDefault();
+    setAviso("");
+    setGuardando(true);
+    enviarJson("/api/material", { clave, datos }, "No se pudo agregar.")
+      .then((data) => {
+        permitirSalida.current = true;
+        navigate(`/${encodeURIComponent(data.fila.Codigo)}`);
+      })
+      .catch((err) => setAviso(err.message))
+      .finally(() => setGuardando(false));
+  }
 
   return (
     <main
@@ -689,192 +729,21 @@ export default function Admin() {
         </p>
       )}
       {autorizado && mostrarCarga && (
-        <form
-          key={cargaKey}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (modoCarga === "qr" || modoCarga === "rombo" || modoCarga === "foto") {
-              const prefijo = modoCarga;
-              const campoImagen = { qr: "QR", rombo: "Rombo", foto: "Foto" }[modoCarga];
-              const maxBytes = 100 * 1024;
-              const patron = new RegExp(`^${prefijo}_(.+)\\.(png|jpe?g)$`, "i");
-              const coincidentes = archivosQr
-                .map((f) => ({ f, m: patron.exec(f.name) }))
-                .filter((x) => x.m);
-              const grandes = coincidentes.filter((x) => x.f.size > maxBytes);
-              const validos = coincidentes.filter((x) => x.f.size <= maxBytes);
-              if (!validos.length) {
-                setAvisoCarga(
-                  coincidentes.length
-                    ? "Todas las imágenes superan los 100 KB."
-                    : `La carpeta no tiene imágenes con formato ${prefijo}_{codigo}.png o .jpg.`
-                );
-                return;
-              }
-              const omitidasTxt = grandes.length ? ` (${grandes.length} se omiten por superar 100 KB)` : "";
-              if (!window.confirm(`¿Subir ${validos.length} imágenes de ${campoImagen} a sus materiales?${omitidasTxt}`)) return;
-              const formulario = event.target;
-              setAvisoCarga("");
-              setImportando(true);
-              (async () => {
-                let ok = 0;
-                const fallidos = [];
-                for (let i = 0; i < validos.length; i++) {
-                  const { f, m } = validos[i];
-                  setAvisoCarga(`Subiendo ${i + 1} de ${validos.length}...`);
-                  try {
-                    const cuerpo = new FormData();
-                    cuerpo.append("clave", clave);
-                    cuerpo.append("campo", campoImagen);
-                    cuerpo.append("archivo", f);
-                    await enviarFormulario(`/api/material/${encodeURIComponent(m[1])}/imagen`, cuerpo);
-                    ok++;
-                  } catch {
-                    fallidos.push(m[1]);
-                  }
-                }
-                setArchivosQr([]);
-                formulario.reset();
-                const detalle =
-                  (fallidos.length
-                    ? `, ${fallidos.length} fallidos (${fallidos.slice(0, 10).join(", ")}${fallidos.length > 10 ? "..." : ""})`
-                    : "") + (grandes.length ? `, ${grandes.length} omitidos por superar 100 KB` : "");
-                setAvisoCarga(`Listo: ${ok} imágenes de ${campoImagen} subidas${detalle}.`);
-                refrescarVistas();
-              })().finally(() => setImportando(false));
-              return;
-            }
-            if (!archivo) {
-              setAvisoCarga("Elige un archivo .xlsx.");
-              return;
-            }
-            if (modoCarga === "dos-columnas" && !columnaCarga) {
-              setAvisoCarga("Elige la columna que va a llenar la planilla.");
-              return;
-            }
-            const secciones = {
-              completa: "Planilla completa",
-              sap: "Planilla EXPORT SAP",
-              ubicaciones: "Planilla de ubicaciones",
-              precios: "Planilla de precios",
-              "dos-columnas": columnaCarga
-                ? `Planilla de 2 columnas (columna ${columnaCarga})`
-                : "Planilla de 2 columnas",
-              reservas: "Añadir reservas",
-              movimientos: "Movimientos",
-            };
-            const seccion = secciones[modoCarga] || modoCarga;
-            const confirmar = window.confirm(
-              `¿Confirmas la carga del archivo "${archivo.name}" en la sección ${seccion}?`
-            );
-            if (!confirmar) return;
-            setAvisoCarga("");
-            setImportando(true);
-            const cuerpo = new FormData();
-            cuerpo.append("clave", clave);
-            cuerpo.append("modo", modoCarga);
-            if (modoCarga === "dos-columnas") cuerpo.append("columna", columnaCarga);
-            cuerpo.append("archivo", archivo);
-            enviarFormulario("/api/tabla/excel", cuerpo, "No se pudo importar.")
-              .then((data) => {
-                setArchivo(null);
-                event.target.reset();
-                const omitidos = data.omitidos ? `, ${data.omitidos} omitidos` : "";
-                setAvisoCarga(
-                  modoCarga === "movimientos"
-                    ? `Listo: ${data.agregados} códigos cargados${omitidos}.`
-                    : `Listo: ${data.agregados} nuevos, ${data.actualizados} actualizados${omitidos}.`
-                );
-                cargarUltimasCargas();
-                refrescarVistas();
-              })
-              .catch((err) => setAvisoCarga(err.message))
-              .finally(() => setImportando(false));
-          }}
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
-          <strong style={{ fontSize: 14 }}>Carga masiva</strong>
-          <select
-            aria-label="Tipo de planilla"
-            value={modoCarga}
-            onChange={(event) => setModoCarga(event.target.value)}
-            style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-          >
-            <option value="completa">Planilla completa</option>
-            <option value="sap">Planilla EXPORT SAP</option>
-            <option value="ubicaciones">Planilla de ubicaciones</option>
-            <option value="precios">Planilla de precios</option>
-            <option value="dos-columnas">Planilla de 2 columnas</option>
-            <option value="reservas">Añadir reservas</option>
-            <option value="movimientos">Movimientos</option>
-            {esMovilCarga ? (
-              <option value="" disabled>
-                Opción no disponible para la versión móvil, intente desde un PC
-              </option>
-            ) : (
-              <>
-                <option value="qr">Cargar QR</option>
-                <option value="rombo">Cargar rombo</option>
-                <option value="foto">Cargar fotos</option>
-              </>
-            )}
-          </select>
-          {modoCarga === "dos-columnas" && (
-            <select
-              aria-label="Columna a llenar"
-              value={columnaCarga}
-              onChange={(event) => setColumnaCarga(event.target.value)}
-              style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-            >
-              {columnasDestino.map((columna) => (
-                <option key={columna} value={columna}>
-                  {columna}
-                </option>
-              ))}
-            </select>
-          )}
-          {["qr", "rombo", "foto"].includes(modoCarga) ? (
-            <input
-              type="file"
-              webkitdirectory=""
-              directory=""
-              multiple
-              onChange={(event) => setArchivosQr(Array.from(event.target.files || []))}
-            />
-          ) : (
-            <input
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={(event) => setArchivo(event.target.files?.[0] || null)}
-            />
-          )}
-          <button
-            type="submit"
-            disabled={importando}
-            style={{
-              padding: "8px 14px",
-              border: 0,
-              borderRadius: 6,
-              background: "var(--boton)",
-              color: "var(--sobre)",
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : modoCarga === "rombo" ? "Subir rombo" : modoCarga === "foto" ? "Subir fotos" : "Importar planilla"}
-          </button>
-          <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga(ultimasCargas[claveUltimaCarga(modoCarga, columnaCarga)])}</p>
-          {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
-        </form>
+        <PanelCarga
+          alEnviar={enviarCarga}
+          cargaKey={cargaKey}
+          modoCarga={modoCarga}
+          setModoCarga={setModoCarga}
+          columnaCarga={columnaCarga}
+          setColumnaCarga={setColumnaCarga}
+          columnasDestino={columnasDestino}
+          esMovilCarga={esMovilCarga}
+          setArchivosQr={setArchivosQr}
+          setArchivo={setArchivo}
+          importando={importando}
+          textoUltima={textoUltimaCarga(ultimasCargas[claveUltimaCarga(modoCarga, columnaCarga)])}
+          avisoCarga={avisoCarga}
+        />
       )}
       {autorizado && mostrarBitacora && (
         <Bitacora clave={clave} colores={colores} alPendiente={setBitacoraSinGuardar} />
@@ -920,219 +789,22 @@ export default function Admin() {
         />
       )}
       {autorizado && mostrarMovimientos && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Movimientos</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-              <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
-              <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
-              <a
-                href={excelInventario("/api/movimientos/excel")}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 6,
-                  background: "var(--boton)",
-                  color: "var(--sobre)",
-                  fontSize: 14,
-                  textDecoration: "none",
-                }}
-              >
-                Descargar planilla
-              </a>
-            </div>
-          </div>
-          <form onSubmit={agregarCodigoMovimientoForm} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-            <input
-              type="text"
-              value={codigoMovimiento}
-              onChange={(e) => setCodigoMovimiento(e.target.value)}
-              placeholder="Añadir código"
-              aria-label="Añadir código"
-              style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--borde)", fontSize: 14 }}
-            />
-            <button
-              type="submit"
-              style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
-            >
-              Añadir código
-            </button>
-            {errorCodigoMovimiento && <span style={{ fontSize: 14, color: "var(--peligro, #d32f2f)" }}>{errorCodigoMovimiento}</span>}
-          </form>
-          {panelFiltrosUbicacion}
-          {cargandoMovimientos && <p style={{ margin: 0 }}>Cargando movimientos...</p>}
-          {avisoMovimientos && <p style={{ margin: 0 }}>{avisoMovimientos}</p>}
-          {!cargandoMovimientos && !avisoMovimientos && (
-            <VistaPrevia
-              filas={filasMovimientos}
-              columnas={movimientos.columnas.length + 1}
-              className={clasePlanilla}
-              vacio="No hay movimientos cargados."
-              renderFila={(fila, indice) => {
-                const codigoFila = String(fila[1] ?? "");
-                const estaEditando = codigoEditando === codigoFila;
-                return (
-                  <tr key={`${fila[1]}-${indice}`}>
-                    {fila.map((valor, columna) => (
-                      <td
-                        key={columna}
-                        style={{ padding: "8px 10px", border: "1px solid var(--borde-suave)", background: "var(--superficie)" }}
-                      >
-                        {columna === 1 && estaEditando ? (
-                          <input
-                            type="text"
-                            value={valorCodigoEditando}
-                            autoFocus
-                            disabled={guardandoFilaMovimiento}
-                            onChange={(e) => setValorCodigoEditando(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                guardarEdicionCodigo(codigoFila);
-                              } else if (e.key === "Escape") {
-                                e.preventDefault();
-                                cancelarEdicionCodigo();
-                              }
-                            }}
-                            style={{
-                              padding: "4px 8px",
-                              borderRadius: 4,
-                              border: "1px solid var(--borde)",
-                              fontSize: 14,
-                              width: "100%",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                        ) : (
-                          valor === "" || valor == null ? "" : String(valor)
-                        )}
-                      </td>
-                    ))}
-                    <td
-                      style={{
-                        padding: "4px 8px",
-                        border: "1px solid var(--borde-suave)",
-                        background: "var(--superficie)",
-                        whiteSpace: "nowrap",
-                        textAlign: "center",
-                      }}
-                    >
-                      {estaEditando ? (
-                        <div style={{ display: "inline-flex", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => guardarEdicionCodigo(codigoFila)}
-                            disabled={guardandoFilaMovimiento}
-                            style={{
-                              padding: "4px 8px",
-                              border: 0,
-                              borderRadius: 4,
-                              background: "var(--acento)",
-                              color: "var(--sobre)",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Guardar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelarEdicionCodigo}
-                            disabled={guardandoFilaMovimiento}
-                            style={{
-                              padding: "4px 8px",
-                              border: "1px solid var(--borde)",
-                              borderRadius: 4,
-                              background: "var(--superficie)",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: "inline-flex", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => iniciarEdicionCodigo(codigoFila)}
-                            disabled={guardandoFilaMovimiento}
-                            title="Editar código"
-                            style={{
-                              padding: "4px 8px",
-                              border: "1px solid var(--borde)",
-                              borderRadius: 4,
-                              background: "var(--superficie)",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => eliminarFilaMovimiento(codigoFila)}
-                            disabled={guardandoFilaMovimiento}
-                            title="Eliminar fila"
-                            style={{
-                              padding: "4px 8px",
-                              border: 0,
-                              borderRadius: 4,
-                              background: "var(--peligro)",
-                              color: "var(--sobre)",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              }}
-            >
-                <thead>
-                  <tr>
-                    {movimientos.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                    <th
-                      style={{
-                        position: "sticky",
-                        top: 0,
-                        textAlign: "center",
-                        padding: "8px 10px",
-                        background: colores ? "#a9e5e5" : "var(--superficie)",
-                        border: "1px solid var(--borde)",
-                      }}
-                    >
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-            </VistaPrevia>
-          )}
-        </section>
+        <PanelMovimientos
+          clave={clave}
+          tabla={movimientos}
+          filas={filasMovimientos}
+          cargando={cargandoMovimientos}
+          aviso={avisoMovimientos}
+          recargar={recargarMovimientos}
+          hrefExcel={excelInventario("/api/movimientos/excel")}
+          filtros={panelFiltrosUbicacion}
+          colores={colores}
+          clasePlanilla={clasePlanilla}
+          copiarExistencia={copiarExistencia}
+          copiarInventario={copiarInventario}
+          alternarExistencia={alternarExistencia}
+          alternarInventario={alternarInventario}
+        />
       )}
       {autorizado && mostrarDetallado && (
         <section
@@ -1300,367 +972,7 @@ export default function Admin() {
           )}
         </section>
       )}
-      {autorizado && mostrarReserva && (
-        <section
-          className="admin-reserva"
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Revisión de stock de reserva</h2>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const numero = ordenReserva.trim();
-              const etiqueta = buscarPorReserva === "orden" ? "orden" : "reserva";
-              if (!numero) {
-                setAvisoBusquedaReserva(`Escribe un número de ${etiqueta}.`);
-                setBusquedaReserva({ columnas: [], filas: [], marcadosCodigo: [], repeticiones: [], total: 0 });
-                return;
-              }
-              setAvisoBusquedaReserva("");
-              setBuscandoReserva(true);
-              paginaReserva.current = 0;
-              hayMasReservas.current = false;
-              const params = new URLSearchParams({
-                reserva: numero,
-                por: buscarPorReserva,
-                pagina: "0",
-                tamano: "100",
-              });
-              obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
-                .then((data) => {
-                  const coincidencias = data.coincidencias ?? (data.filas || []).length;
-                  setBusquedaReserva({
-                    columnas: data.columnas || [],
-                    filas: data.filas || [],
-                    marcadosCodigo: data.marcadosCodigo || [],
-                    repeticiones: data.repeticiones || [],
-                    total: data.total || 0,
-                    consulta: numero,
-                    por: buscarPorReserva,
-                  });
-                  hayMasReservas.current = (data.filas || []).length < coincidencias;
-                  if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
-                  else if (coincidencias === 0) setAvisoBusquedaReserva(`No hay reservas con ese número de ${etiqueta}.`);
-                })
-                .catch((err) => setAvisoBusquedaReserva(err.message))
-                .finally(() => setBuscandoReserva(false));
-            }}
-            style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}
-          >
-            <button
-              type="button"
-              aria-label={`Buscar por ${buscarPorReserva === "orden" ? "N° orden" : "N° reserva"}. Clic para cambiar`}
-              title="Cambiar entre N° orden y N° reserva"
-              onClick={() => {
-                setBuscarPorReserva((actual) => (actual === "orden" ? "reserva" : "orden"));
-                setAvisoBusquedaReserva("");
-              }}
-              style={{
-                padding: "8px 14px",
-                border: "1px solid var(--borde)",
-                borderRadius: 6,
-                background: "var(--pista)",
-                color: "var(--texto)",
-                fontSize: 14,
-                cursor: "pointer",
-                minWidth: 120,
-              }}
-            >
-              {buscarPorReserva === "orden" ? "N° orden" : "N° reserva"}
-            </button>
-            <input
-              type="search"
-              aria-label={buscarPorReserva === "orden" ? "Número de orden" : "Número de reserva"}
-              value={ordenReserva}
-              placeholder={buscarPorReserva === "orden" ? "Buscar número de orden" : "Buscar número de reserva"}
-              onChange={(event) => setOrdenReserva(event.target.value)}
-              style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, minWidth: 220 }}
-            />
-            <button
-              type="submit"
-              disabled={buscandoReserva}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              {buscandoReserva ? "Buscando..." : buscarPorReserva === "orden" ? "Buscar orden" : "Buscar reserva"}
-            </button>
-            <button
-              type="button"
-              disabled={busquedaReserva.filas.length === 0}
-              onClick={() => {
-                const numero = ordenReserva.trim();
-                if (!numero) return;
-                const params = new URLSearchParams({
-                  reserva: numero,
-                  por: buscarPorReserva,
-                  colores: colores ? "1" : "0",
-                });
-                descargarBlob(`/api/reservas/excel?${params.toString()}`)
-                  .then((blob) => guardarBlob(blob, "Revisión stock en reserva.xlsx"))
-                  .catch((err) => setAvisoBusquedaReserva(err.message));
-              }}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: busquedaReserva.filas.length === 0 ? "var(--pista)" : "var(--acento)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              Descargar planilla
-            </button>
-            {avisoBusquedaReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoBusquedaReserva}</p>}
-          </form>
-          {busquedaReserva.columnas.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-            <VistaPrevia
-              filas={busquedaReserva.filas}
-              columnas={busquedaReserva.columnas.length}
-              altoMaximo={430}
-              clave={`${busquedaReserva.por || "reserva"}:${busquedaReserva.consulta}`}
-              alFinal={() => {
-                const numero = busquedaReserva.consulta;
-                const por = busquedaReserva.por || "reserva";
-                if (!numero || !hayMasReservas.current || cargandoPaginaReserva.current) return;
-                cargandoPaginaReserva.current = true;
-                const pagina = paginaReserva.current + 1;
-                const params = new URLSearchParams({
-                  reserva: numero,
-                  por,
-                  pagina: String(pagina),
-                  tamano: "100",
-                });
-                obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
-                  .then((data) => {
-                    const lote = data.filas || [];
-                    paginaReserva.current = pagina;
-                    const coincidencias = data.coincidencias ?? lote.length;
-                    hayMasReservas.current = (pagina + 1) * 100 < coincidencias;
-                    setBusquedaReserva((actual) => ({
-                      ...actual,
-                      columnas: data.columnas || actual.columnas,
-                      filas: actual.filas.concat(lote),
-                      marcadosCodigo: (actual.marcadosCodigo || []).concat(data.marcadosCodigo || []),
-                      repeticiones: (actual.repeticiones || []).concat(data.repeticiones || []),
-                    }));
-                  })
-                  .catch(() => {
-                    hayMasReservas.current = false;
-                  })
-                  .finally(() => {
-                    cargandoPaginaReserva.current = false;
-                  });
-              }}
-              className={clasePlanilla}
-              renderFila={(fila, indice) => (
-                <tr key={indice}>
-                  {busquedaReserva.columnas.map((nombre, columna) => {
-                    const esEstado = nombre === "Estado";
-                    const esCodigoConflicto = nombre === "Código" && busquedaReserva.marcadosCodigo?.[indice];
-                    const valor = fila[columna];
-                    const veces = busquedaReserva.repeticiones?.[indice] || 1;
-                    return (
-                      <td
-                        key={columna}
-                        className={colores && (esEstado || esCodigoConflicto) ? "celda-color" : undefined}
-                        style={{
-                          padding: "8px 10px",
-                          border: "1px solid var(--borde-suave)",
-                          background:
-                            colores && esCodigoConflicto
-                              ? "#f9e37c"
-                              : colores && esEstado
-                                ? valor === "Disponible"
-                                  ? "#73c883"
-                                  : "#f9e37c"
-                                : "var(--superficie)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {nombre === "N°" && veces > 1 ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            {valor === "" || valor == null ? "" : String(valor)}
-                            <span
-                              title={`Aparece ${veces} veces en la reserva`}
-                              style={{
-                                display: "inline-block",
-                                padding: "1px 6px",
-                                borderRadius: 4,
-                                background: colores ? "#f9e37c" : "var(--pista)",
-                                color: colores ? "#111" : "var(--texto)",
-                                fontSize: 12,
-                                fontWeight: 600,
-                              }}
-                            >
-                              ×{veces}
-                            </span>
-                          </span>
-                        ) : valor === "" || valor == null ? (
-                          ""
-                        ) : (
-                          String(valor)
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              )}
-            >
-                <thead>
-                  <tr>
-                    {busquedaReserva.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-            </VistaPrevia>
-            </div>
-          )}
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!archivoReserva) {
-                setAvisoReserva("Elige el PDF de la reserva.");
-                return;
-              }
-              setAvisoReserva("");
-              setRevisandoReserva(true);
-              const cuerpo = new FormData();
-              cuerpo.append("archivo", archivoReserva);
-              enviarFormulario("/api/reserva", cuerpo, "No se pudo leer la reserva.")
-                .then((data) => {
-                  setReserva({ columnas: data.columnas || [], filas: data.filas || [] });
-                })
-                .catch((err) => setAvisoReserva(err.message))
-                .finally(() => setRevisandoReserva(false));
-            }}
-            style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 12 }}
-          >
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={(event) => {
-                setArchivoReserva(event.target.files?.[0] || null);
-                setReserva({ columnas: [], filas: [] });
-              }}
-            />
-            <button
-              type="submit"
-              disabled={revisandoReserva}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              {revisandoReserva ? "Revisando..." : "Revisar reserva"}
-            </button>
-            <button
-              type="button"
-              disabled={!archivoReserva || reserva.filas.length === 0}
-              onClick={() => {
-                const cuerpo = new FormData();
-                cuerpo.append("archivo", archivoReserva);
-                cuerpo.append("colores", colores ? "1" : "0");
-                descargarBlob("/api/reserva/excel", { method: "POST", body: cuerpo })
-                  .then((blob) => guardarBlob(blob, "Revisión stock en reserva.xlsx"))
-                  .catch((err) => setAvisoReserva(err.message));
-              }}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: reserva.filas.length === 0 ? "var(--pista)" : "var(--acento)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              Descargar planilla
-            </button>
-            {avisoReserva && <p style={{ margin: 0, fontSize: 14 }}>{avisoReserva}</p>}
-          </form>
-          {reserva.columnas.length > 0 && (
-            <VistaPrevia
-              filas={reserva.filas}
-              columnas={reserva.columnas.length}
-              className={clasePlanilla}
-              vacio="El PDF no tiene líneas de reserva."
-              renderFila={(fila) => (
-                <tr key={fila[0]}>
-                  {fila.map((valor, columna) => (
-                    <td
-                      key={columna}
-                      className={colores && columna === 7 ? "celda-color" : undefined}
-                      style={{
-                        padding: "8px 10px",
-                        border: "1px solid var(--borde-suave)",
-                        background:
-                          !colores || columna !== 7 ? "var(--superficie)" : valor === "Disponible" ? "#73c883" : "#f9e37c",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {valor === "" || valor == null ? "" : String(valor)}
-                    </td>
-                  ))}
-                </tr>
-              )}
-            >
-                <thead>
-                  <tr>
-                    {reserva.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-            </VistaPrevia>
-          )}
-        </section>
-      )}
+      {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
       {autorizado && mostrarVentas && (
         <Ventas key={ventaKey} colores={colores} listaContratistas={listaContratistas} onSinGuardar={setVentaPendiente} />
       )}
@@ -1678,72 +990,14 @@ export default function Admin() {
         />
       )}
       {autorizado && mostrarFormulario && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            setAviso("");
-            setGuardando(true);
-            enviarJson("/api/material", { clave, datos }, "No se pudo agregar.")
-              .then((data) => {
-                permitirSalida.current = true;
-                navigate(`/${encodeURIComponent(data.fila.Codigo)}`);
-              })
-              .catch((err) => setAviso(err.message))
-              .finally(() => setGuardando(false));
-          }}
-          className="form-admin"
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 12,
-          }}
-        >
-          {columnas.map((columna) => (
-            <label key={columna} style={{ display: "grid", gap: 4, fontSize: 13 }}>
-              {columna}
-              <input
-                value={datos[columna] ?? ""}
-                inputMode={columna === "Inventario" ? "numeric" : "text"}
-                onChange={(event) => {
-                  const valor = event.target.value;
-                  if (columna === "Inventario" && valor !== "" && !/^-?\d+$/.test(valor)) return;
-                  setDatos((actual) =>
-                    columna === "Ubicación"
-                      ? { ...actual, Ubicación: valor, "Sub-ubicación": valor.slice(0, 4) }
-                      : { ...actual, [columna]: valor }
-                  );
-                }}
-                style={{
-                  padding: "8px 10px",
-                  border: "1px solid var(--borde)",
-                  borderRadius: 6,
-                  fontSize: 14,
-                }}
-              />
-            </label>
-          ))}
-          <div style={{ display: "flex", alignItems: "end", gap: 12 }}>
-            <button
-              type="submit"
-              disabled={guardando}
-              style={{
-                padding: "8px 14px",
-                border: 0,
-                borderRadius: 6,
-                background: "var(--acento)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              {guardando ? "Guardando..." : "Agregar"}
-            </button>
-            {aviso && <p style={{ margin: 0, fontSize: 14 }}>{aviso}</p>}
-          </div>
-        </form>
+        <PanelFormulario
+          alEnviar={enviarAlta}
+          columnas={columnas}
+          datos={datos}
+          setDatos={setDatos}
+          guardando={guardando}
+          aviso={aviso}
+        />
       )}
       {confirmarContratistas && (
         <div
