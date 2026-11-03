@@ -7,10 +7,13 @@ const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad");
 const { conIpDeClave } = require("./limiteClave");
+const { comprobarBase } = require("./salud");
 const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+// Los nombres de imagen son unicos (nunca se reemplaza el contenido de un nombre), asi que 24 h es seguro.
+const CACHE_IMAGENES = "private, max-age=86400, must-revalidate";
 
 app.disable("x-powered-by");
 app.use(cabecerasSeguras);
@@ -19,6 +22,16 @@ app.use(express.json({ limit: "1mb" }));
 // Comprobacion de vida para Render/Docker: publica, sin sesion y sin tocar Supabase.
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
+});
+// Igual que /healthz pero consulta Supabase (lo llama el cron del Worker una vez al dia).
+app.get("/healthz/db", async (_req, res) => {
+  try {
+    const { ok } = await comprobarBase(supabase);
+    res.status(ok ? 200 : 502).json({ ok });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ ok: false });
+  }
 });
 app.use(exigirProxy);
 app.use("/api", conIpDeClave);
@@ -43,7 +56,7 @@ app.get("/api/imagenes/:nombre", async (req, res) => {
     if (remoto) {
       res.type(path.extname(nombre));
       // Cache privada en el navegador: las vistas repetidas no vuelven a pasar por el Worker.
-      res.set("Cache-Control", "private, max-age=3600, must-revalidate");
+      res.set("Cache-Control", CACHE_IMAGENES);
       res.send(remoto);
       return;
     }
@@ -54,7 +67,7 @@ app.get("/api/imagenes/:nombre", async (req, res) => {
   }
   const local = path.join(carpetaImagenes, nombre);
   if (fs.existsSync(local)) {
-    res.sendFile(local, { headers: { "Cache-Control": "private, max-age=3600, must-revalidate" } });
+    res.sendFile(local, { headers: { "Cache-Control": CACHE_IMAGENES } });
     return;
   }
   res.status(404).end();

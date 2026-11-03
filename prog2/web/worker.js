@@ -1,8 +1,24 @@
 import { API_BUILD } from "./api-build.js";
 
 const METODOS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
+// Cron diario (ver wrangler.jsonc): ademas de despertar a Render, toca Supabase para que no se pause.
+export const CRON_BASE = "0 12 * * *";
 
 export default {
+  // Cron Trigger: mantiene despierto Render (plan gratis) y, una vez al dia, Supabase.
+  async scheduled(event, env) {
+    const API = String(env?.API || API_BUILD || "").trim();
+    if (!API) return;
+    const rutas = event?.cron === CRON_BASE ? ["/healthz", "/healthz/db"] : ["/healthz"];
+    for (const ruta of rutas) {
+      try {
+        await fetch(new URL(ruta, API), { method: "GET" });
+      } catch (error) {
+        console.error(`Ping a ${ruta} fallo: ${error.message}`);
+      }
+    }
+  },
+
   async fetch(request, env) {
     // Metodos que la API no usa (TRACE, CONNECT, etc.) se cortan aqui y no llegan a Render.
     if (!METODOS.has(request.method)) {

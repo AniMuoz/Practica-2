@@ -17,7 +17,19 @@ En lugar de reescribir todo con `exceljs` (las funciones de lectura son sincrona
 ## Avance en `web/src/Admin.jsx`
 Ya existe el cliente `src/api.js` (todos los `fetch` de `Admin.jsx` lo usan), el hook `src/useEsMovil.js` (usado en `Admin` y `Detalle`) y el panel `admin/PanelContratistas.jsx` con tests. Quedan por migrar a `api.js` los `fetch` de `Detalle.jsx`, `Bitacora.jsx`, `Ventas.jsx`, `Gastos.jsx`, `App.jsx` y otros, y extraer el resto de paneles.
 
-## Pendiente: dividir `web/src/Admin.jsx`
+## Division de `Admin.jsx`: avance (pasos 0 a 4 hechos)
+- Paso 0: `tests-ui/Admin.test.jsx` fija el comportamiento (carga inicial, paneles exclusivos, refresco por SSE con rebote, errores, contratistas). Correr `npm test` tras cada paso.
+- Paso 1: funciones puras en `admin/utilidades.js` (con `tests/utilidadesAdmin.test.js`).
+- Paso 2: `admin/useCargaPlanilla.js` (bodega, regional, inventario, movimientos y detallado).
+- Paso 3: `admin/useUltimasCargas.js`.
+- Paso 4: `admin/useContratistas.js` (lo usa tambien Ventas via `listaContratistas`).
+- Tests de los hooks: `tests-ui/hooksAdmin.test.jsx`.
+- Pendientes, en este orden: 5 `usePaneles` (reemplaza los 11 `mostrarX`; cambiar a la vez `cerrarPaneles` y `refrescarVistas`), 6 `useSalidaSegura` (blocker, `beforeunload`, `descartarCambios`), 7 `useRefrescoSse` (funcion estable que lea refs), 8 JSX por panel (`PanelBodega`, `PanelRegional`, ...), 9 `useDetallado` (el mas riesgoso: edicion optimista y `suspenderRefrescoRef`). Antes de 5 a 9 conviene ampliar los tests de cambios sin guardar y del detallado.
+
+## Mantener despiertos Render y Supabase
+`worker.js` tiene un handler `scheduled` (cron en `wrangler.jsonc`): cada 14 min llama a `/healthz` de Render y una vez al dia (12:00 UTC) tambien a `/healthz/db`, que consulta Supabase (`back/salud.js`). Cuesta unas 103 invocaciones diarias del Worker. Ojo con las horas gratis de Render (~750 al mes): un solo servicio las consume casi todas.
+
+## Pendiente (original): dividir `web/src/Admin.jsx`
 Ya se extrajeron los componentes puros `web/src/admin/VistaPrevia.jsx` e `Interruptor.jsx`. Lo que queda es el componente `Admin` (~2000 lineas): mas de 100 variables de estado compartidas entre todas las secciones (carga, formulario, bodega, regional, inventario, detallado, reserva, contratistas, bitacora, ventas) y funciones que se llaman entre si (`refrescarVistas`, `cerrarPaneles`, `cargarPlanilla`). Dividirlo sin poder probar la interfaz a mano es riesgoso; sugerencia: 
 1. Crear hooks por seccion (`useBodega`, `useReserva`, `useVentas`, ...) que agrupen su estado y sus llamadas de red, empezando por la mas aislada (Contratistas).
 2. Extraer luego el JSX de cada panel a `web/src/admin/Panel<Seccion>.jsx`, pasando por props lo compartido.

@@ -13,6 +13,10 @@ import Interruptor from "./admin/Interruptor.jsx";
 import PanelContratistas from "./admin/PanelContratistas.jsx";
 import { useEsMovil } from "./useEsMovil.js";
 import { suscribirEventos } from "./eventos.js";
+import { useCargaPlanilla } from "./admin/useCargaPlanilla.js";
+import { useContratistas } from "./admin/useContratistas.js";
+import { useUltimasCargas } from "./admin/useUltimasCargas.js";
+import { filtrarYOrdenarPorCodigo, textoUltimaCarga } from "./admin/utilidades.js";
 import { obtenerJson, enviarJson, enviarFormulario, descargarBlob, guardarBlob } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
@@ -64,7 +68,7 @@ export default function Admin() {
   const [archivosQr, setArchivosQr] = useState([]);
   const [importando, setImportando] = useState(false);
   const [avisoCarga, setAvisoCarga] = useState("");
-  const [ultimasCargas, setUltimasCargas] = useState({});
+  const { ultimasCargas, cargarUltimasCargas } = useUltimasCargas();
   const [modoCarga, setModoCarga] = useState("completa");
   const [columnaCarga, setColumnaCarga] = useState("");
   const [columnasDestino, setColumnasDestino] = useState([]);
@@ -72,23 +76,19 @@ export default function Admin() {
   const [mostrarCarga, setMostrarCarga] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarBodega, setMostrarBodega] = useState(false);
-  const [bodega, setBodega] = useState({ columnas: [], filas: [] });
-  const [cargandoBodega, setCargandoBodega] = useState(false);
-  const [avisoBodega, setAvisoBodega] = useState("");
+  const { tabla: bodega, cargando: cargandoBodega, aviso: avisoBodega, recargar: recargarBodega } =
+    useCargaPlanilla("/api/bodega", "No se pudo leer el stock.");
   const [mostrarRegional, setMostrarRegional] = useState(false);
-  const [regional, setRegional] = useState({ columnas: [], filas: [] });
-  const [cargandoRegional, setCargandoRegional] = useState(false);
-  const [avisoRegional, setAvisoRegional] = useState("");
+  const { tabla: regional, cargando: cargandoRegional, aviso: avisoRegional, recargar: recargarRegional } =
+    useCargaPlanilla("/api/regional", "No se pudo leer el stock regional.");
   const [mostrarInventario, setMostrarInventario] = useState(false);
-  const [inventario, setInventario] = useState({ columnas: [], filas: [] });
-  const [cargandoInventario, setCargandoInventario] = useState(false);
-  const [avisoInventario, setAvisoInventario] = useState("");
+  const { tabla: inventario, cargando: cargandoInventario, aviso: avisoInventario, recargar: recargarInventario } =
+    useCargaPlanilla("/api/inventario", "No se pudo leer el inventario.");
   const [copiarExistencia, setCopiarExistencia] = useState(false);
   const [copiarInventario, setCopiarInventario] = useState(false);
   const [mostrarMovimientos, setMostrarMovimientos] = useState(false);
-  const [movimientos, setMovimientos] = useState({ columnas: [], filas: [] });
-  const [cargandoMovimientos, setCargandoMovimientos] = useState(false);
-  const [avisoMovimientos, setAvisoMovimientos] = useState("");
+  const { tabla: movimientos, cargando: cargandoMovimientos, aviso: avisoMovimientos, recargar: recargarMovimientos } =
+    useCargaPlanilla("/api/movimientos", "No se pudieron leer los movimientos.");
   const [codigoMovimiento, setCodigoMovimiento] = useState("");
   const [errorCodigoMovimiento, setErrorCodigoMovimiento] = useState("");
   const [codigoEditando, setCodigoEditando] = useState(null);
@@ -117,9 +117,8 @@ export default function Admin() {
     setCopiarInventario(true);
   }
   const [mostrarDetallado, setMostrarDetallado] = useState(false);
-  const [detallado, setDetallado] = useState({ columnas: [], filas: [] });
-  const [cargandoDetallado, setCargandoDetallado] = useState(false);
-  const [avisoDetallado, setAvisoDetallado] = useState("");
+  const { tabla: detallado, setTabla: setDetallado, cargando: cargandoDetallado, aviso: avisoDetallado, recargar: recargarDetallado } =
+    useCargaPlanilla("/api/stock-detallado", "No se pudo leer el stock detallado.");
   const [errorDetallado, setErrorDetallado] = useState("");
   const suspenderRefrescoRef = useRef(0);
   const pendienteRefrescoRef = useRef(0);
@@ -135,13 +134,8 @@ export default function Admin() {
   const filasMaestroFiltradas = filtrarFilas(filasMaestro, filtrosStock);
   const codigosFiltrados = new Set(filasMaestroFiltradas.map((f) => String(f.Codigo)));
   const ordenCodigos = new Map(filasMaestroFiltradas.map((f, i) => [String(f.Codigo), i]));
-  function aplicarFiltrosStock(filas, indiceCodigo, marcados) {
-    const pares = filas
-      .map((fila, i) => ({ fila, i }))
-      .filter(({ fila }) => codigosFiltrados.has(String(fila[indiceCodigo])))
-      .sort((a, b) => (ordenCodigos.get(String(a.fila[indiceCodigo])) ?? 0) - (ordenCodigos.get(String(b.fila[indiceCodigo])) ?? 0));
-    return { filas: pares.map((p) => p.fila), marcados: marcados ? pares.map((p) => marcados[p.i]) : undefined };
-  }
+  const aplicarFiltrosStock = (filas, indiceCodigo, marcados) =>
+    filtrarYOrdenarPorCodigo(filas, indiceCodigo, marcados, codigosFiltrados, ordenCodigos);
   const detalladoFiltrado = aplicarFiltrosStock(detallado.filas, 1, detallado.marcados);
   const [verFiltrosStock, setVerFiltrosStock] = useState(true);
   const estiloBotonFiltro = {
@@ -226,18 +220,28 @@ export default function Admin() {
   const [buscandoReserva, setBuscandoReserva] = useState(false);
   const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
   const [mostrarContratistas, setMostrarContratistas] = useState(false);
-  const [contratistas, setContratistas] = useState([]);
-  const [cargandoContratistas, setCargandoContratistas] = useState(false);
-  const [guardandoContratistas, setGuardandoContratistas] = useState(false);
-  const [avisoContratistas, setAvisoContratistas] = useState("");
+  const {
+    contratistas,
+    setContratistas,
+    cargando: cargandoContratistas,
+    guardando: guardandoContratistas,
+    aviso: avisoContratistas,
+    setAviso: setAvisoContratistas,
+    listaContratistas,
+    confirmando: confirmarContratistas,
+    setConfirmando: setConfirmarContratistas,
+    cargarNombres: cargarNombresContratistas,
+    abrir: abrirContratistas,
+    guardarConfirmado: guardarContratistasHook,
+    refrescar: refrescarContratistas,
+    hayCambios: contratistasCambiaron,
+    descartar: descartarContratistas,
+  } = useContratistas();
   const [mostrarBitacora, setMostrarBitacora] = useState(false);
   const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
   const [mostrarVentas, setMostrarVentas] = useState(false);
   const [ventaPendiente, setVentaPendiente] = useState(false);
-  const [listaContratistas, setListaContratistas] = useState([]);
-  const [baseContratistas, setBaseContratistas] = useState("[]");
   const [salidaPendiente, setSalidaPendiente] = useState(null);
-  const [confirmarContratistas, setConfirmarContratistas] = useState(false);
   const [ventaKey, setVentaKey] = useState(0);
   const [cargaKey, setCargaKey] = useState(0);
   const permitirSalida = useRef(false);
@@ -245,12 +249,6 @@ export default function Admin() {
   const cargandoPaginaReserva = useRef(false);
   const hayMasReservas = useRef(false);
   const hayCambiosRef = useRef(false);
-
-  function fijarContratistas(filas) {
-    const lista = filas || [];
-    setContratistas(lista);
-    setBaseContratistas(JSON.stringify(lista));
-  }
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -277,7 +275,7 @@ export default function Admin() {
     enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo añadir el código.")
       .then(() => {
         setCodigoMovimiento("");
-        return cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true);
+        return recargarMovimientos(true);
       })
       .catch((err) => setErrorCodigoMovimiento(err.message));
   }
@@ -287,7 +285,7 @@ export default function Admin() {
     setErrorCodigoMovimiento("");
     setGuardandoFilaMovimiento(true);
     enviarJson("/api/movimientos/codigo", { clave, codigo }, "No se pudo eliminar el código.", "DELETE")
-      .then(() => cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true))
+      .then(() => recargarMovimientos(true))
       .catch((err) => setErrorCodigoMovimiento(err.message))
       .finally(() => setGuardandoFilaMovimiento(false));
   }
@@ -457,45 +455,14 @@ export default function Admin() {
     enviarJson("/api/movimientos/codigo", { clave, codigoAnterior, codigoNuevo: nuevo }, "No se pudo actualizar el código.", "PUT")
       .then(() => {
         cancelarEdicionCodigo();
-        return cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", true);
+        return recargarMovimientos(true);
       })
       .catch((err) => setErrorCodigoMovimiento(err.message))
       .finally(() => setGuardandoFilaMovimiento(false));
   }
 
-  function cargarPlanilla(url, setCargando, setAviso, setTabla, mensaje, silencioso = false) {
-    if (!silencioso) setCargando(true);
-    setAviso("");
-    return obtenerJson(url, mensaje)
-      .then((data) => {
-        setTabla({ columnas: data.columnas || [], filas: data.filas || [], marcados: data.marcados || [] });
-      })
-      .catch((err) => setAviso(err.message))
-      .finally(() => setCargando(false));
-  }
-
-  function cargarNombresContratistas() {
-    return obtenerJson("/api/contratistas")
-      .then((data) => {
-        const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
-        setListaContratistas(nombres);
-        return data.filas || [];
-      });
-  }
-
   function guardarContratistasConfirmado() {
-    setConfirmarContratistas(false);
-    setAvisoContratistas("");
-    setGuardandoContratistas(true);
-    enviarJson("/api/contratistas", { clave, filas: contratistas }, "No se pudo guardar.", "PUT")
-      .then((data) => {
-        fijarContratistas(data.filas || []);
-        const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
-        setListaContratistas(nombres);
-        setAvisoContratistas("Contratistas guardados.");
-      })
-      .catch((err) => setAvisoContratistas(err.message))
-      .finally(() => setGuardandoContratistas(false));
+    guardarContratistasHook(clave);
   }
 
   function cerrarPaneles(permitidos) {
@@ -513,46 +480,16 @@ export default function Admin() {
     if (!ok.has("bitacora")) setMostrarBitacora(false);
   }
 
-  function cargarUltimasCargas() {
-    return obtenerJson("/api/tabla/ultimas-cargas")
-      .then((data) => setUltimasCargas(data.cargas || {}))
-      .catch(() => {});
-  }
-
-  function textoUltimaCarga() {
-    const clave = claveUltimaCarga(modoCarga, columnaCarga);
-    const iso = ultimasCargas[clave];
-    if (!iso) return "Todavía no hay una carga registrada para esta opción.";
-    const fecha = new Date(iso);
-    if (Number.isNaN(fecha.getTime())) return "Todavía no hay una carga registrada para esta opción.";
-    const texto = fecha.toLocaleString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `Último cambio: ${texto}`;
-  }
-
   function refrescarVistas(silencioso = false) {
     obtenerJson("/api/tabla")
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
-    if (mostrarBodega) cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.", silencioso);
-    if (mostrarRegional) cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.", silencioso);
-    if (mostrarInventario) cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.", silencioso);
-    if (mostrarMovimientos) cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.", silencioso);
-    if (mostrarDetallado) cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.", silencioso);
-    if (mostrarContratistas || mostrarVentas) {
-      cargarNombresContratistas()
-        .then((filas) => {
-          if (mostrarContratistas) fijarContratistas(filas);
-        })
-        .catch(() => {
-          if (mostrarContratistas) setAvisoContratistas("No se pudieron leer los contratistas.");
-        });
-    }
+    if (mostrarBodega) recargarBodega(silencioso);
+    if (mostrarRegional) recargarRegional(silencioso);
+    if (mostrarInventario) recargarInventario(silencioso);
+    if (mostrarMovimientos) recargarMovimientos(silencioso);
+    if (mostrarDetallado) recargarDetallado(silencioso);
+    if (mostrarContratistas || mostrarVentas) refrescarContratistas(mostrarContratistas);
   }
 
   const refrescarRef = useRef(() => {});
@@ -576,7 +513,7 @@ export default function Admin() {
   const formularioSinGuardar =
     mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
   const contratistasSinGuardar =
-    mostrarContratistas && JSON.stringify(contratistas) !== baseContratistas;
+    mostrarContratistas && contratistasCambiaron();
   const ventaSinGuardar = mostrarVentas && ventaPendiente;
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
   const hayCambiosSinGuardar =
@@ -604,7 +541,7 @@ export default function Admin() {
         return siguientes;
       });
     }
-    if (contratistasSinGuardar) setContratistas(JSON.parse(baseContratistas));
+    if (contratistasSinGuardar) descartarContratistas();
     if (cargaSinGuardar) {
       setArchivo(null);
       setCargaKey((actual) => actual + 1);
@@ -846,7 +783,7 @@ export default function Admin() {
                     const abrir = !mostrarBodega;
                     if (abrir) {
                       cerrarPaneles(["bodega"]);
-                      cargarPlanilla("/api/bodega", setCargandoBodega, setAvisoBodega, setBodega, "No se pudo leer el stock.");
+                      recargarBodega();
                     }
                     setMostrarBodega(abrir);
                   }
@@ -854,7 +791,7 @@ export default function Admin() {
                     const abrir = !mostrarRegional;
                     if (abrir) {
                       cerrarPaneles(["regional"]);
-                      cargarPlanilla("/api/regional", setCargandoRegional, setAvisoRegional, setRegional, "No se pudo leer el stock regional.");
+                      recargarRegional();
                     }
                     setMostrarRegional(abrir);
                   }
@@ -862,7 +799,7 @@ export default function Admin() {
                     const abrir = !mostrarInventario;
                     if (abrir) {
                       cerrarPaneles(["inventario"]);
-                      cargarPlanilla("/api/inventario", setCargandoInventario, setAvisoInventario, setInventario, "No se pudo leer el inventario.");
+                      recargarInventario();
                     }
                     setMostrarInventario(abrir);
                   }
@@ -870,7 +807,7 @@ export default function Admin() {
                     const abrir = !mostrarMovimientos;
                     if (abrir) {
                       cerrarPaneles(["movimientos"]);
-                      cargarPlanilla("/api/movimientos", setCargandoMovimientos, setAvisoMovimientos, setMovimientos, "No se pudieron leer los movimientos.");
+                      recargarMovimientos();
                     }
                     setMostrarMovimientos(abrir);
                   }
@@ -879,7 +816,7 @@ export default function Admin() {
                     if (abrir) {
                       cerrarPaneles(["detallado"]);
                       setErrorDetallado("");
-                      cargarPlanilla("/api/stock-detallado", setCargandoDetallado, setAvisoDetallado, setDetallado, "No se pudo leer el stock detallado.");
+                      recargarDetallado();
                     }
                     setMostrarDetallado(abrir);
                   }
@@ -900,16 +837,7 @@ export default function Admin() {
                     const abrir = !mostrarContratistas;
                     if (abrir) {
                       cerrarPaneles(["contratistas"]);
-                      setCargandoContratistas(true);
-                      setAvisoContratistas("");
-                      obtenerJson("/api/contratistas", "No se pudieron leer los contratistas.")
-                        .then((data) => {
-                          fijarContratistas(data.filas || []);
-                          const nombres = (data.filas || []).map((fila) => fila.nombre).filter(Boolean);
-                          setListaContratistas(nombres);
-                        })
-                        .catch((err) => setAvisoContratistas(err.message))
-                        .finally(() => setCargandoContratistas(false));
+                      abrirContratistas();
                     }
                     setMostrarContratistas(abrir);
                   }
@@ -1129,7 +1057,7 @@ export default function Admin() {
           >
             {importando ? "Importando..." : modoCarga === "qr" ? "Subir QR" : modoCarga === "rombo" ? "Subir rombo" : modoCarga === "foto" ? "Subir fotos" : "Importar planilla"}
           </button>
-          <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga()}</p>
+          <p style={{ margin: 0, fontSize: 14, flexBasis: "100%" }}>{textoUltimaCarga(ultimasCargas[claveUltimaCarga(modoCarga, columnaCarga)])}</p>
           {avisoCarga && <p style={{ margin: 0, fontSize: 14 }}>{avisoCarga}</p>}
         </form>
       )}

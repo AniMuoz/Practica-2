@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import worker from "../worker.js";
+import worker, { CRON_BASE } from "../worker.js";
 
 const DESTINO = "https://practica-2-vnu7.onrender.com";
 
@@ -90,4 +90,26 @@ test("el worker rechaza metodos que la API no usa sin llamarla", async () => {
   const { llamadas, resultado } = await conFetchFalso(new Request("https://miapp.example.com/api/tabla", { method: "OPTIONS" }));
   assert.equal(resultado.status, 405);
   assert.equal(llamadas.length, 0);
+});
+
+test("el cron llama a /healthz y solo el diario tambien a /healthz/db", async () => {
+  const original = globalThis.fetch;
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return new Response("ok");
+  };
+  try {
+    await worker.scheduled({ cron: "*/14 * * * *" }, { API: DESTINO });
+    assert.deepEqual(urls, [`${DESTINO}/healthz`]);
+    urls.length = 0;
+    await worker.scheduled({ cron: CRON_BASE }, { API: DESTINO });
+    assert.deepEqual(urls, [`${DESTINO}/healthz`, `${DESTINO}/healthz/db`]);
+    globalThis.fetch = async () => {
+      throw new Error("sin red");
+    };
+    await worker.scheduled({ cron: CRON_BASE }, { API: DESTINO });
+  } finally {
+    globalThis.fetch = original;
+  }
 });
