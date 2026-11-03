@@ -433,12 +433,16 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
   const bodega = String(filtros.bodega ?? "").trim();
   const subUbicacion = String(filtros.subUbicacion ?? "").trim();
+  const caracteristica = String(filtros.caracteristica ?? "").trim();
   const stockMinimo = String(filtros.stockMinimo ?? "").trim();
   if (bodega) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
   }
   if (subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
+  }
+  if (caracteristica) {
+    lista = lista.filter((fila) => String(fila.Caracteristica ?? "").trim() === caracteristica);
   }
   if (stockMinimo !== "") {
     const minimo = Number(stockMinimo);

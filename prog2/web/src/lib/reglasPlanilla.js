@@ -65,6 +65,13 @@ export function subUbicacionesDe(filas, bodega) {
   return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
 }
 
+export function caracteristicasDe(filas) {
+  const valores = new Set(
+    filas.map((fila) => String(fila.Caracteristica ?? "").trim()).filter(Boolean)
+  );
+  return [...valores].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+}
+
 export function filtrarFilas(filas, filtros) {
   const {
     orden = "",
@@ -177,6 +184,7 @@ export function consultaExcel(filtros) {
   if (filtros.orden) params.set("orden", filtros.orden);
   if (filtros.bodega) params.set("bodega", filtros.bodega);
   if (filtros.subUbicacion) params.set("subUbicacion", filtros.subUbicacion);
+  if (filtros.caracteristica) params.set("caracteristica", filtros.caracteristica);
   if (String(filtros.stockMinimo ?? "").trim() !== "") params.set("stockMinimo", String(filtros.stockMinimo).trim());
   if (filtros.soloConPrecio) params.set("precio", "1");
   if (filtros.soloConUbicacion) params.set("ubicacion", "1");
@@ -198,6 +206,7 @@ export function rutaConFiltros(ruta, filtros) {
   if (filtros.orden) params.set("orden", filtros.orden);
   if (filtros.bodega) params.set("bodega", filtros.bodega);
   if (filtros.subUbicacion) params.set("subUbicacion", filtros.subUbicacion);
+  if (filtros.caracteristica) params.set("caracteristica", filtros.caracteristica);
   if (String(filtros.stockMinimo ?? "").trim() !== "") params.set("stockMinimo", String(filtros.stockMinimo).trim());
   if (filtros.soloConPrecio) params.set("precio", "1");
   if (filtros.soloConUbicacion) params.set("ubicacion", "1");
@@ -237,6 +246,7 @@ export function pasaFiltrosFilaMovimiento(fila, filtros = {}) {
   const {
     bodega = "",
     subUbicacion = "",
+    caracteristica = "",
     stockMinimo = "",
     soloConPrecio = false,
     soloConUbicacion = false,
@@ -258,6 +268,8 @@ export function pasaFiltrosFilaMovimiento(fila, filtros = {}) {
   if (ignorarNulo && descripcion.trim().toUpperCase() === "NULO") return false;
   if (bodega && ubicacion.slice(0, 2) !== bodega) return false;
   if (subUbicacion && sub !== subUbicacion) return false;
+  // Sin dato de característica en la fila de movimientos: si hay filtro, no pasa.
+  if (caracteristica) return false;
   if (String(stockMinimo).trim() !== "") {
     const minimo = Number(stockMinimo);
     const n = Number(stock);

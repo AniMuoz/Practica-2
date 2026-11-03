@@ -298,9 +298,13 @@ test("aplicarFiltrosTabla sin filtros descarta solo las filas sin stock", () => 
   assert.deepEqual(codigos(stock.aplicarFiltrosTabla(FILAS_TABLA, {})), ["10", "2", "33", "7"]);
 });
 
-test("aplicarFiltrosTabla filtra por bodega, sub-ubicación y stock mínimo", () => {
+test("aplicarFiltrosTabla filtra por bodega, sub-ubicación, característica y stock mínimo", () => {
   assert.deepEqual(codigos(stock.aplicarFiltrosTabla(FILAS_TABLA, { bodega: "01" })), ["10", "7"]);
   assert.deepEqual(codigos(stock.aplicarFiltrosTabla(FILAS_TABLA, { subUbicacion: "02-B" })), ["2"]);
+  assert.deepEqual(codigos(stock.aplicarFiltrosTabla(
+    FILAS_TABLA.map((f, i) => ({ ...f, Caracteristica: i === 0 ? "Eléctrico" : i === 1 ? "Mecánico" : "" })),
+    { caracteristica: "Eléctrico" }
+  )), ["10"]);
   assert.deepEqual(codigos(stock.aplicarFiltrosTabla(FILAS_TABLA, { stockMinimo: "4" })), ["10", "33"]);
   assert.deepEqual(codigos(stock.aplicarFiltrosTabla(FILAS_TABLA, { stockMinimo: 0 })), ["10", "2", "33", "7"]);
 });

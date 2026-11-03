@@ -161,14 +161,14 @@ test("GET /api/tabla/ultimas-cargas envuelve el resultado en { cargas }", async 
 
 test("GET /api/tabla/excel traduce el query a filtros y nombra el archivo", async () => {
   responder({ exportarTabla: Buffer.from("excel-tabla") });
-  const query = "colores=0&orden=codigo&bodega=01&subUbicacion=01-A&stockMinimo=2&precio=1&ubicacion=1&critico=1&stockCero=1&inventario=1&marcado=1&ignorarNulo=1&q=codo&nombre=" + encodeURIComponent('Inv:*2026?"');
+  const query = "colores=0&orden=codigo&bodega=01&subUbicacion=01-A&caracteristica=El%C3%A9ctrico&stockMinimo=2&precio=1&ubicacion=1&critico=1&stockCero=1&inventario=1&marcado=1&ignorarNulo=1&q=codo&nombre=" + encodeURIComponent('Inv:*2026?"');
   const respuesta = await pedir("GET", `/api/tabla/excel?${query}`);
   assert.equal(respuesta.status, 200);
   assert.equal(respuesta.headers.get("content-type"), XLSX_TIPO);
   assert.equal(respuesta.headers.get("content-disposition"), "attachment; filename=Inv2026.xlsx");
   assert.equal(respuesta.cuerpo.toString(), "excel-tabla");
   assert.deepEqual(llamadasA("exportarTabla")[0].args, [false, {
-    orden: "codigo", bodega: "01", subUbicacion: "01-A", stockMinimo: "2", soloConPrecio: true, soloConUbicacion: true,
+    orden: "codigo", bodega: "01", subUbicacion: "01-A", caracteristica: "Eléctrico", stockMinimo: "2", soloConPrecio: true, soloConUbicacion: true,
     soloStockCritico: true, soloStockCero: true, soloInventarioOComentario: true, soloMarcados: true, soloConRombo: false, ignorarNulo: true, texto: "codo",
   }]);
 });
@@ -229,12 +229,13 @@ test("el Excel de inventario pasa el origen de la columna Existencia", async () 
 
 test("las planillas de admin pasan los filtros solo si filtrar=1", async () => {
   responder({ exportarStockBodega: Buffer.from("x") });
-  await pedir("GET", "/api/bodega/excel?filtrar=1&bodega=M5&critico=1&orden=codigo");
+  await pedir("GET", "/api/bodega/excel?filtrar=1&bodega=M5&critico=1&orden=codigo&caracteristica=El%C3%A9ctrico");
   const filtros = llamadasA("exportarStockBodega")[0].args[1];
   assert.equal(filtros.bodega, "M5");
   assert.equal(filtros.soloStockCritico, true);
   assert.equal(filtros.soloStockCero, false);
   assert.equal(filtros.orden, "codigo");
+  assert.equal(filtros.caracteristica, "Eléctrico");
 });
 
 // ---------- reservas ----------

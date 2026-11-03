@@ -366,6 +366,7 @@ export default function App() {
                 orden,
                 bodega,
                 subUbicacion,
+                caracteristica,
                 stockMinimo,
                 soloConPrecio,
                 soloConUbicacion,

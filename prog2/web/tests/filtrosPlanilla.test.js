@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   aplicarFilaRecibida,
   bodegasDe,
+  caracteristicasDe,
   colorCantidad,
   colorCelda,
   colorInventario,
@@ -23,15 +24,15 @@ import {
 
 const A = {
   Codigo: "10", Descripcion: "Codo PVC", Stock: "4", Precio: "100", "Ubicación": "01-A", "Sub-ubicación": "01-A",
-  "Stock critico": "5", Inventario: "", Comentario: "", Marcado: "1",
+  Caracteristica: "Eléctrico", "Stock critico": "5", Inventario: "", Comentario: "", Marcado: "1",
 };
 const B = {
   Codigo: "2", Descripcion: "Tubo", Stock: "0", Precio: "", "Ubicación": "02-B", "Sub-ubicación": "02-B",
-  "Stock critico": "", Inventario: "3", Comentario: "", Marcado: "",
+  Caracteristica: "Mecánico", "Stock critico": "", Inventario: "3", Comentario: "", Marcado: "",
 };
 const C = {
   Codigo: "33", Descripcion: "Válvula", Stock: "20", Precio: "50", "Ubicación": "", "Sub-ubicación": "",
-  "Stock critico": "10", Inventario: "", Comentario: "revisar", Marcado: "",
+  Caracteristica: "Eléctrico", "Stock critico": "10", Inventario: "", Comentario: "revisar", Marcado: "",
 };
 const FILAS = [A, B, C];
 const codigos = (lista) => lista.map((fila) => fila.Codigo);
@@ -47,6 +48,12 @@ test("filtra por bodega y sub-ubicación", () => {
   assert.deepEqual(codigos(filtrarFilas(FILAS, { bodega: "01" })), ["10"]);
   assert.deepEqual(codigos(filtrarFilas(FILAS, { subUbicacion: "02-B" })), ["2"]);
   assert.deepEqual(codigos(filtrarFilas(FILAS, { bodega: "01", subUbicacion: "02-B" })), []);
+});
+
+test("filtra por característica", () => {
+  assert.deepEqual(codigos(filtrarFilas(FILAS, { caracteristica: "Eléctrico" })), ["10", "33"]);
+  assert.deepEqual(codigos(filtrarFilas(FILAS, { caracteristica: "Mecánico" })), ["2"]);
+  assert.deepEqual(codigos(filtrarFilas(FILAS, { caracteristica: "Otro" })), []);
 });
 
 test("el stock mínimo incluye el valor exacto y acepta cero", () => {
@@ -119,14 +126,14 @@ test("normalizarBusqueda quita acentos, pasa a minúsculas y recorta", () => {
 
 test("consultaExcel envía todos los filtros activos y recorta el texto", () => {
   const url = consultaExcel({
-    colores: false, orden: "codigo", bodega: "01", subUbicacion: "01-A", stockMinimo: 3,
+    colores: false, orden: "codigo", bodega: "01", subUbicacion: "01-A", caracteristica: "Eléctrico", stockMinimo: 3,
     soloConPrecio: true, soloConUbicacion: true, soloStockCritico: true, soloStockCero: true,
     soloInventarioOComentario: true, soloMarcados: true, ignorarNulo: true, texto: "  codo ",
   });
   const params = new URL(url, "http://x").searchParams;
   assert.equal(new URL(url, "http://x").pathname, "/api/tabla/excel");
   assert.deepEqual(Object.fromEntries(params), {
-    colores: "0", orden: "codigo", bodega: "01", subUbicacion: "01-A", stockMinimo: "3",
+    colores: "0", orden: "codigo", bodega: "01", subUbicacion: "01-A", caracteristica: "Eléctrico", stockMinimo: "3",
     precio: "1", ubicacion: "1", critico: "1", stockCero: "1", inventario: "1", marcado: "1",
     ignorarNulo: "1", q: "codo",
   });
@@ -207,6 +214,11 @@ test("subUbicacionesDe sin bodega junta todas, sin repetidos ni vacías", () => 
   assert.deepEqual(subUbicacionesDe(filas, "99"), []);
 });
 
+test("caracteristicasDe quita repetidos, vacíos y ordena", () => {
+  assert.deepEqual(caracteristicasDe(FILAS), ["Eléctrico", "Mecánico"]);
+  assert.deepEqual(caracteristicasDe([{ Caracteristica: " " }, { Caracteristica: "B" }, { Caracteristica: "A" }, {}]), ["A", "B"]);
+});
+
 test("aplicarFilaRecibida no modifica la lista y al renombrar elimina el duplicado", () => {
   const actuales = [{ Codigo: "1" }, { Codigo: "2" }, { Codigo: "3" }];
   const copia = JSON.parse(JSON.stringify(actuales));
@@ -253,4 +265,5 @@ test("pasaFiltrosFilaMovimiento deja pasar códigos desconocidos sin filtros y r
   assert.equal(pasaFiltrosFilaMovimiento(desconocido, { texto: "999" }), true);
   assert.equal(pasaFiltrosFilaMovimiento(desconocido, { texto: "abc" }), false);
   assert.equal(pasaFiltrosFilaMovimiento(desconocido, { bodega: "01" }), false);
+  assert.equal(pasaFiltrosFilaMovimiento(desconocido, { caracteristica: "Eléctrico" }), false);
 });
