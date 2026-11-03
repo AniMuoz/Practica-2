@@ -320,6 +320,78 @@ export default function Admin() {
     });
   }
 
+  // Pega una columna copiada de Excel: reparte los valores hacia abajo desde la fila visible actual.
+  // Devuelve el primer valor aplicado (string) si manejó el pegado, o null si debe usarse el pegado normal.
+  function pegarColumnaDetallado(indiceFila, indiceColumna, nombreColumna, texto) {
+    const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
+    if (lineas[lineas.length - 1] === "") lineas.pop();
+    if (lineas.length < 2) return null;
+    if (lineas.length > 500) {
+      setErrorDetallado("Se pueden pegar hasta 500 filas a la vez.");
+      return false;
+    }
+
+    const visibles = detalladoFiltrado.filas;
+    const actualizaciones = [];
+    for (let i = 0; i < lineas.length; i += 1) {
+      const fila = visibles[indiceFila + i];
+      if (!fila) break;
+      actualizaciones.push({
+        codigo: fila[1],
+        valor: lineas[i].split("\t")[0].trim(),
+        anterior: fila[indiceColumna] == null ? "" : String(fila[indiceColumna]),
+      });
+    }
+    if (actualizaciones.length === 0) return null;
+
+    const porCodigo = new Map(actualizaciones.map((item) => [String(item.codigo), item.valor]));
+    setDetallado((prev) => ({
+      ...prev,
+      filas: prev.filas.map((fila) => {
+        const nuevo = porCodigo.get(String(fila[1]));
+        if (nuevo === undefined) return fila;
+        const copia = fila.slice();
+        copia[indiceColumna] = nuevo;
+        return copia;
+      }),
+    }));
+
+    const pendientes = actualizaciones.filter((item) => String(item.valor) !== String(item.anterior));
+    if (pendientes.length === 0) return actualizaciones[0].valor;
+
+    setErrorDetallado("");
+    Promise.all(
+      pendientes.map((item) =>
+        enviarJson(
+          "/api/stock-detallado",
+          { clave, codigo: String(item.codigo ?? "").trim(), datos: { [nombreColumna]: item.valor } },
+          "No se pudo guardar el campo.",
+          "PUT"
+        ).then(
+          () => ({ ok: true, ...item }),
+          (err) => ({ ok: false, error: err, ...item })
+        )
+      )
+    ).then((resultados) => {
+      const fallidos = resultados.filter((item) => !item.ok);
+      if (fallidos.length === 0) return;
+      const revertir = new Map(fallidos.map((item) => [String(item.codigo), item.anterior]));
+      setDetallado((prev) => ({
+        ...prev,
+        filas: prev.filas.map((fila) => {
+          const anterior = revertir.get(String(fila[1]));
+          if (anterior === undefined) return fila;
+          const copia = fila.slice();
+          copia[indiceColumna] = anterior;
+          return copia;
+        }),
+      }));
+      setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
+    });
+
+    return actualizaciones[0].valor;
+  }
+
   function limpiarColumnaDetallado(nombreColumna, indiceColumna) {
     if (!window.confirm(`¿Limpiar todos los datos de la columna "${nombreColumna}"?`)) return;
     setErrorDetallado("");
@@ -1556,6 +1628,9 @@ export default function Admin() {
                     </button>
                   );
                 })}
+                <span style={{ fontSize: 13, color: "var(--texto-suave, #666)" }}>
+                  En una celda editable puedes pegar una columna de Excel para rellenar hacia abajo.
+                </span>
               </div>
               <VistaPrevia
                 filas={detalladoFiltrado.filas}
@@ -1589,6 +1664,17 @@ export default function Admin() {
                               onChange={(event) => actualizarCeldaDetallado(fila[1], columna, event.target.value)}
                               onFocus={(event) => {
                                 event.target.dataset.original = event.target.value;
+                              }}
+                              onPaste={(event) => {
+                                const aplicado = pegarColumnaDetallado(
+                                  indice,
+                                  columna,
+                                  nombreColumna,
+                                  event.clipboardData.getData("text")
+                                );
+                                if (aplicado == null) return;
+                                event.preventDefault();
+                                if (typeof aplicado === "string") event.target.dataset.original = aplicado;
                               }}
                               onBlur={(event) =>
                                 guardarCeldaDetallado(

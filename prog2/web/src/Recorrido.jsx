@@ -97,7 +97,7 @@ const PASOS = {
     {
       id: "Stock detallado",
       titulo: "Stock detallado",
-      texto: "Genera una planilla detallada del stock, con casillas para revisar y comparar con datos de fuera del sistema.",
+      texto: "Genera una planilla detallada del stock, con casillas para revisar y comparar con datos de fuera del sistema. En las columnas editables puedes pegar una columna copiada de Excel: los valores se reparten hacia abajo desde la celda donde pegas.",
     },
     {
       id: "Planilla de inventario",
