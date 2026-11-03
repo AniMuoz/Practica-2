@@ -24,7 +24,7 @@ Ya existe el cliente `src/api.js` (todos los `fetch` de `Admin.jsx` lo usan), el
 - Paso 3: `admin/useUltimasCargas.js`.
 - Paso 4: `admin/useContratistas.js` (lo usa tambien Ventas via `listaContratistas`).
 - Tests de los hooks: `tests-ui/hooksAdmin.test.jsx`.
-- Pendientes, en este orden: 5 `usePaneles` (reemplaza los 11 `mostrarX`; cambiar a la vez `cerrarPaneles` y `refrescarVistas`), 6 `useSalidaSegura` (blocker, `beforeunload`, `descartarCambios`), 7 `useRefrescoSse` (funcion estable que lea refs), 8 JSX por panel (`PanelBodega`, `PanelRegional`, ...), 9 `useDetallado` (el mas riesgoso: edicion optimista y `suspenderRefrescoRef`). Antes de 5 a 9 conviene ampliar los tests de cambios sin guardar y del detallado.
+- Pasos 5 a 9 hechos: hooks `usePaneles`, `useSalidaSegura`, `useRefrescoSse`, `useDetallado` y paneles `PanelBodega`, `PanelRegional`, `PanelInventario`, `PanelMovimientos`, `PanelReserva` (queda montado oculto para conservar la busqueda), `PanelCarga`, `PanelFormulario` y `PanelDetallado` (tests en `PanelesStock.test.jsx`, `useDetallado.test.jsx`, `hooksAdmin2.test.jsx`). `Admin.jsx` bajo de ~2000 a ~950 lineas. `PanelCarga` y `PanelFormulario` reciben el envio desde `Admin` (`enviarCarga`, `enviarAlta`). Pendiente opcional: mover esos dos envios a hooks, la barra de botones y los dialogos de confirmacion.
 
 ## Mantener despiertos Render y Supabase
 `worker.js` tiene un handler `scheduled` (cron en `wrangler.jsonc`): cada 14 min llama a `/healthz` de Render y una vez al dia (12:00 UTC) tambien a `/healthz/db`, que consulta Supabase (`back/salud.js`). Cuesta unas 103 invocaciones diarias del Worker. Ojo con las horas gratis de Render (~750 al mes): un solo servicio las consume casi todas.

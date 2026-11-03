@@ -16,6 +16,7 @@ import PanelRegional from "./admin/PanelRegional.jsx";
 import PanelInventario from "./admin/PanelInventario.jsx";
 import PanelMovimientos from "./admin/PanelMovimientos.jsx";
 import PanelReserva from "./admin/PanelReserva.jsx";
+import PanelDetallado from "./admin/PanelDetallado.jsx";
 import PanelCarga from "./admin/PanelCarga.jsx";
 import PanelFormulario from "./admin/PanelFormulario.jsx";
 import { useEsMovil } from "./useEsMovil.js";
@@ -31,7 +32,6 @@ import { obtenerJson, enviarJson, enviarFormulario } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
-  colorStockDetallado,
   filasInventarioVisibles,
   filtrarFilas,
   numerarFilas,
@@ -43,7 +43,6 @@ import {
 } from "./reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
-const COLUMNAS_EDITABLES_DETALLADO = new Set([11, 13, 14, 15]);
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -807,170 +806,22 @@ export default function Admin() {
         />
       )}
       {autorizado && mostrarDetallado && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Stock detallado</h2>
-            <a
-              href={excelFiltrado("/api/stock-detallado/excel")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Descargar planilla
-            </a>
-          </div>
-          {panelFiltrosUbicacion}
-          {cargandoDetallado && <p style={{ margin: 0 }}>Cargando stock...</p>}
-          {avisoDetallado && <p style={{ margin: 0 }}>{avisoDetallado}</p>}
-          {errorDetallado && <p style={{ margin: "0 0 8px", color: "var(--peligro, #b00020)" }}>{errorDetallado}</p>}
-          {!cargandoDetallado && !avisoDetallado && (
-            <>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  marginBottom: 10,
-                  alignItems: "center",
-                }}
-              >
-                {[...COLUMNAS_EDITABLES_DETALLADO].sort((a, b) => a - b).map((indiceColumna) => {
-                  const columna = detallado.columnas[indiceColumna];
-                  if (!columna) return null;
-                  return (
-                    <button
-                      key={columna}
-                      type="button"
-                      onClick={() => limpiarColumnaDetallado(columna, indiceColumna)}
-                      style={{
-                        padding: "6px 12px",
-                        border: 0,
-                        borderRadius: 4,
-                        background: "#c62828",
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      limpiar {columna}
-                    </button>
-                  );
-                })}
-                <span style={{ fontSize: 13, color: "var(--texto-suave, #666)" }}>
-                  En una celda editable puedes pegar una columna de Excel para rellenar hacia abajo.
-                </span>
-              </div>
-              <VistaPrevia
-                filas={detalladoFiltrado.filas}
-                columnas={detallado.columnas.length}
-                className={clasePlanilla}
-                vacio="No hay stock detallado cargado."
-                renderFila={(fila, indice) => (
-                  <tr key={`${fila[1]}-${indice}`}>
-                    {fila.map((valor, columna) => {
-                      const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
-                      const fondo = colorStockDetallado(columna, valor, detalladoFiltrado.marcados?.[indice], oscuro, fila);
-                      // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
-                      const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");
-                      const nombreColumna = detallado.columnas[columna];
-                      return (
-                        <td
-                          key={columna}
-                          className={usaColorCelda ? "celda-color" : undefined}
-                          style={{
-                            padding: editable ? "4px 6px" : "8px 10px",
-                            border: "1px solid var(--borde-suave)",
-                            background: colores ? fondo : "var(--superficie)",
-                            fontWeight: columna === 10 ? 700 : 400,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {editable ? (
-                            <input
-                              aria-label={`${nombreColumna} ${fila[1]}`}
-                              value={valor == null ? "" : String(valor)}
-                              onChange={(event) => actualizarCeldaDetallado(fila[1], columna, event.target.value)}
-                              onFocus={(event) => {
-                                event.target.dataset.original = event.target.value;
-                              }}
-                              onPaste={(event) => {
-                                const aplicado = pegarColumnaDetallado(
-                                  indice,
-                                  columna,
-                                  nombreColumna,
-                                  event.clipboardData.getData("text")
-                                );
-                                if (aplicado == null) return;
-                                event.preventDefault();
-                                if (typeof aplicado === "string") event.target.dataset.original = aplicado;
-                              }}
-                              onBlur={(event) =>
-                                guardarCeldaDetallado(
-                                  fila[1],
-                                  nombreColumna,
-                                  columna,
-                                  event.target.value,
-                                  event.target.dataset.original ?? ""
-                                )
-                              }
-                              style={{
-                                width: "100%",
-                                minWidth: 72,
-                                boxSizing: "border-box",
-                                padding: "4px 6px",
-                                border: "1px solid var(--borde)",
-                                borderRadius: 4,
-                                background: "var(--campo)",
-                                color: "var(--texto)",
-                                font: "inherit",
-                              }}
-                            />
-                          ) : (
-                            valor === "" || valor == null ? "" : String(valor)
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )}
-              >
-                  <thead>
-                    <tr>
-                      {detallado.columnas.map((columna) => (
-                        <th
-                          key={columna}
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            textAlign: "left",
-                            padding: "8px 10px",
-                            background: colores ? "#a9e5e5" : "var(--superficie)",
-                            border: "1px solid var(--borde)",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {columna}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-              </VistaPrevia>
-            </>
-          )}
-        </section>
+        <PanelDetallado
+          tabla={detallado}
+          filtrado={detalladoFiltrado}
+          cargando={cargandoDetallado}
+          aviso={avisoDetallado}
+          error={errorDetallado}
+          hrefExcel={excelFiltrado("/api/stock-detallado/excel")}
+          filtros={panelFiltrosUbicacion}
+          colores={colores}
+          oscuro={oscuro}
+          clasePlanilla={clasePlanilla}
+          limpiarColumna={limpiarColumnaDetallado}
+          actualizarCelda={actualizarCeldaDetallado}
+          guardarCelda={guardarCeldaDetallado}
+          pegarColumna={pegarColumnaDetallado}
+        />
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
       {autorizado && mostrarVentas && (
