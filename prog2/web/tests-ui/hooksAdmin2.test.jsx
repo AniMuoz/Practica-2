@@ -11,8 +11,8 @@ vi.mock("../src/eventos.js", () => ({
   },
 }));
 
-import { usePaneles } from "../src/admin/usePaneles.js";
-import { useRefrescoSse } from "../src/admin/useRefrescoSse.js";
+import { usePaneles } from "../src/admin/hooks/usePaneles.js";
+import { useRefrescoSse } from "../src/admin/hooks/useRefrescoSse.js";
 
 beforeEach(() => {
   vi.useFakeTimers();

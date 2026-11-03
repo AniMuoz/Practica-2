@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Interruptor from "./Interruptor.jsx";
 import VistaPrevia from "./VistaPrevia.jsx";
-import { enviarJson } from "../api.js";
+import { enviarJson } from "../../api.js";
 
 // Movimientos: planilla con alta, edicion y baja de codigos.
 export default function PanelMovimientos({

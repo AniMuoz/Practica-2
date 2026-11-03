@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { enviarJson } from "../api.js";
+import { enviarJson } from "../../api.js";
 
 // Edicion del stock detallado: celdas con guardado optimista (se revierten si el servidor falla),
 // pegado masivo desde Excel y limpieza de columnas.

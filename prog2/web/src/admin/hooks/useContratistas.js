@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { enviarJson, obtenerJson } from "../api.js";
-import { nombresContratistas } from "./utilidades.js";
+import { enviarJson, obtenerJson } from "../../api.js";
+import { nombresContratistas } from "../utilidades.js";
 
 // Estado y llamadas de red de contratistas. `listaContratistas` (solo nombres) tambien la usa Ventas,
 // por eso el hook vive en Admin y no dentro del panel.

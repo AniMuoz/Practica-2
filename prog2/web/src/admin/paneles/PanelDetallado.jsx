@@ -1,5 +1,5 @@
 import VistaPrevia from "./VistaPrevia.jsx";
-import { colorStockDetallado } from "../reglasPlanilla.js";
+import { colorStockDetallado } from "../../reglasPlanilla.js";
 
 // Columnas de Stock detallado que se pueden editar a mano.
 const COLUMNAS_EDITABLES_DETALLADO = new Set([11, 13, 14, 15]);

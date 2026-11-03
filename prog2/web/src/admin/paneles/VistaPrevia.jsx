@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Planilla from "../Planilla.jsx";
+import Planilla from "../../Planilla.jsx";
 
 const ALTO_FILA = 36;
 const FILAS_EXTRA = 12;

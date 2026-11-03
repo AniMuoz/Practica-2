@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { enviarFormulario } from "../api.js";
+import { enviarFormulario } from "../../api.js";
 
 // Estado y envio de la carga masiva (planilla .xlsx o carpeta de imagenes QR, rombo y foto).
 export function useCargaDatos({ clave, refrescarVistas, cargarUltimasCargas }) {

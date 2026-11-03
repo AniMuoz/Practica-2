@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import PanelReserva from "../src/admin/PanelReserva.jsx";
-import PanelMovimientos from "../src/admin/PanelMovimientos.jsx";
-import PanelInventario from "../src/admin/PanelInventario.jsx";
-import PanelBodega from "../src/admin/PanelBodega.jsx";
-import PanelPlanilla from "../src/admin/PanelPlanilla.jsx";
-import PanelRegional from "../src/admin/PanelRegional.jsx";
+import PanelReserva from "../src/admin/paneles/PanelReserva.jsx";
+import PanelMovimientos from "../src/admin/paneles/PanelMovimientos.jsx";
+import PanelInventario from "../src/admin/paneles/PanelInventario.jsx";
+import PanelBodega from "../src/admin/paneles/PanelBodega.jsx";
+import PanelPlanilla from "../src/admin/paneles/PanelPlanilla.jsx";
+import PanelRegional from "../src/admin/paneles/PanelRegional.jsx";
 
 afterEach(() => cleanup());
 
