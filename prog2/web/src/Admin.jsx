@@ -12,6 +12,7 @@ import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
 import PanelContratistas from "./admin/PanelContratistas.jsx";
 import { useEsMovil } from "./useEsMovil.js";
+import { suscribirEventos } from "./eventos.js";
 import { obtenerJson, enviarJson, enviarFormulario, descargarBlob, guardarBlob } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
@@ -558,22 +559,17 @@ export default function Admin() {
   refrescarRef.current = () => refrescarVistas(true);
 
   useEffect(() => {
-    const fuente = new EventSource("/api/eventos");
-    fuente.onmessage = (evento) => {
-      let data;
-      try {
-        data = JSON.parse(evento.data);
-      } catch {
-        return;
-      }
-      if (data.tipo !== "recarga" && data.tipo !== "fila") return;
-      if (suspenderRefrescoRef.current > 0) return;
-      window.clearTimeout(pendienteRefrescoRef.current);
-      pendienteRefrescoRef.current = window.setTimeout(() => refrescarRef.current(), 200);
-    };
+    const cancelar = suscribirEventos({
+      alMensaje: (data) => {
+        if (data.tipo !== "recarga" && data.tipo !== "fila") return;
+        if (suspenderRefrescoRef.current > 0) return;
+        window.clearTimeout(pendienteRefrescoRef.current);
+        pendienteRefrescoRef.current = window.setTimeout(() => refrescarRef.current(), 200);
+      },
+    });
     return () => {
       window.clearTimeout(pendienteRefrescoRef.current);
-      fuente.close();
+      cancelar();
     };
   }, []);
 

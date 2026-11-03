@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { sonarActualizacion } from "./sonido.js";
+import { useSondeo } from "./useSondeo.js";
+import { suscribirEventos } from "./eventos.js";
 import "./buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
@@ -9,7 +11,7 @@ const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urg
 const COLOR_ESTADO = { "sin revisar": "#d32f2f", revisando: "#ef6c00", cerrado: "#2e7d32" };
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
 const MAX_DESC = 200;
-const INTERVALO_NOVEDADES = 15_000; // 15 segundos
+const INTERVALO_NOVEDADES = 45_000; // 45 s: el SSE avisa al instante, el sondeo es solo respaldo
 
 async function pedir(url, opciones) {
   const res = await fetch(url, opciones);
@@ -75,8 +77,8 @@ function useBuzonNovedades(usuario, admin) {
   );
 
   const verificar = useCallback(() => {
-    if (document.visibilityState !== "visible") return;
-    fetch("/api/buzon/novedades", { cache: "no-store" })
+    if (document.visibilityState !== "visible") return Promise.resolve();
+    return fetch("/api/buzon/novedades", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ novedades }) => {
         const vistos = leerVistos(usuario);
@@ -104,20 +106,10 @@ function useBuzonNovedades(usuario, admin) {
         setNovedadTotal(total);
         setNovedadesPorEstado(porEstado);
         setNovedadesPorMensaje(conNovedad);
-      })
-      .catch(() => {});
+      });
   }, [usuario, admin]);
 
-  useEffect(() => {
-    if (!usuario) return undefined;
-    verificar();
-    const id = setInterval(verificar, INTERVALO_NOVEDADES);
-    document.addEventListener("visibilitychange", verificar);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", verificar);
-    };
-  }, [verificar, usuario]);
+  useSondeo(verificar, INTERVALO_NOVEDADES, Boolean(usuario));
 
   return { novedadTotal, novedadesPorEstado, novedadesPorMensaje, marcarVisto };
 }
@@ -159,11 +151,8 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pu
   );
 
   // Polling mientras el hilo está abierto + refresco inmediato vía pulso SSE.
-  useEffect(() => {
-    if (!abierto) return undefined;
-    const id = setInterval(() => cargarRespuestas(true), INTERVALO_NOVEDADES);
-    return () => clearInterval(id);
-  }, [abierto, cargarRespuestas]);
+  const sondearRespuestas = useCallback(() => cargarRespuestas(true), [cargarRespuestas]);
+  useSondeo(sondearRespuestas, INTERVALO_NOVEDADES, abierto, false);
 
   useEffect(() => {
     if (!abierto || pulso === 0) return;
@@ -419,37 +408,24 @@ export default function Buzon() {
   }, [admin]);
 
   // Carga inicial + sondeo periódico (respaldo si el SSE queda en búfer).
-  useEffect(() => {
-    cargar();
-    const id = setInterval(cargar, INTERVALO_NOVEDADES);
-    document.addEventListener("visibilitychange", cargar);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", cargar);
-    };
-  }, [cargar]);
+  useSondeo(cargar, INTERVALO_NOVEDADES);
 
   // Actualización inmediata vía SSE cuando alguien crea/cambia un mensaje.
   useEffect(() => {
-    const fuente = new EventSource("/api/eventos");
     let pendiente = 0;
-    fuente.onmessage = (evento) => {
-      let data;
-      try {
-        data = JSON.parse(evento.data);
-      } catch {
-        return;
-      }
-      if (data.tipo !== "buzon") return;
-      window.clearTimeout(pendiente);
-      pendiente = window.setTimeout(() => {
-        cargar();
-        setPulso((n) => n + 1);
-      }, 200);
-    };
+    const cancelar = suscribirEventos({
+      alMensaje: (data) => {
+        if (data.tipo !== "buzon") return;
+        window.clearTimeout(pendiente);
+        pendiente = window.setTimeout(() => {
+          cargar();
+          setPulso((n) => n + 1);
+        }, 200);
+      },
+    });
     return () => {
       window.clearTimeout(pendiente);
-      fuente.close();
+      cancelar();
     };
   }, [cargar]);
 

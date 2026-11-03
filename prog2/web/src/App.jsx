@@ -5,6 +5,7 @@ import Navbar from "./Navbar.jsx";
 import Planilla from "./Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import { sonarActualizacion } from "./sonido.js";
+import { suscribirEventos } from "./eventos.js";
 import {
   aplicarFilaRecibida,
   bodegasDe,
@@ -168,7 +169,6 @@ export default function App() {
   useEffect(() => {
     const INTERVALO = 60000;
     const INACTIVIDAD = 120000;
-    const fuente = new EventSource("/api/eventos");
     let sondeo = null;
     let inactividad = null;
     const iniciarSondeo = () => {
@@ -203,10 +203,6 @@ export default function App() {
       if (sondeo) setEnDescanso(false);
       if (leerAhora && estabaDetenido) cargarTabla().catch(() => {});
     };
-    fuente.onopen = () => {
-      cargarTabla().catch(() => {});
-    };
-    fuente.onerror = () => {};
     // Cloudflare puede almacenar en búfer el SSE sin disparar error:
     // se sondea como respaldo, cada 60 s, y se pausa tras 2 min sin uso.
     reanudar(false);
@@ -225,24 +221,23 @@ export default function App() {
     document.addEventListener("pointerdown", alUsar);
     document.addEventListener("keydown", alUsar);
     document.addEventListener("scroll", alUsar, true);
-    fuente.onmessage = (evento) => {
-      let data;
-      try {
-        data = JSON.parse(evento.data);
-      } catch {
-        return;
-      }
-      if (data.tipo === "fila" && data.fila) {
-        setFilas((actuales) => aplicarFilaRecibida(actuales, data));
-        sonarActualizacion();
-        return;
-      }
-      if (data.tipo === "recarga") {
-        cargarTabla().then(sonarActualizacion).catch(() => setError("No se pudo actualizar la tabla."));
-      }
-    };
+    const cancelarEventos = suscribirEventos({
+      alAbrir: () => {
+        cargarTabla().catch(() => {});
+      },
+      alMensaje: (data) => {
+        if (data.tipo === "fila" && data.fila) {
+          setFilas((actuales) => aplicarFilaRecibida(actuales, data));
+          sonarActualizacion();
+          return;
+        }
+        if (data.tipo === "recarga") {
+          cargarTabla().then(sonarActualizacion).catch(() => setError("No se pudo actualizar la tabla."));
+        }
+      },
+    });
     return () => {
-      fuente.close();
+      cancelarEventos();
       detenerSondeo();
       clearTimeout(inactividad);
       document.removeEventListener("visibilitychange", alVolver);

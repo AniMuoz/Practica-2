@@ -1,7 +1,13 @@
 import { API_BUILD } from "./api-build.js";
 
+const METODOS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
+
 export default {
   async fetch(request, env) {
+    // Metodos que la API no usa (TRACE, CONNECT, etc.) se cortan aqui y no llegan a Render.
+    if (!METODOS.has(request.method)) {
+      return new Response("Metodo no permitido", { status: 405, headers: { Allow: [...METODOS].join(", ") } });
+    }
     const API = String(env?.API || API_BUILD || "").trim();
     if (!API) return new Response("Falta la variable API en Cloudflare", { status: 500 });
     const secreto = String(env?.SECRETO_PROXY || "").trim();

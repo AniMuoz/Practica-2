@@ -637,6 +637,8 @@ test("GET /api/imagenes/:nombre sirve la imagen de Supabase con su tipo", async 
   assert.equal(respuesta.status, 200);
   assert.equal(respuesta.headers.get("content-type"), "image/png");
   assert.equal(respuesta.cuerpo.toString(), "PNGDATA");
+  // Cache privada del navegador: ahorra requests al Worker en vistas repetidas.
+  assert.match(respuesta.headers.get("cache-control"), /^private, max-age=\d+/);
 });
 
 test("GET /api/imagenes/:nombre usa el archivo local si Supabase no lo tiene, y 404 si no existe en ningún lado", async () => {

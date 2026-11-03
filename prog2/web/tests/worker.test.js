@@ -85,3 +85,9 @@ test("el worker no modifica los encabezados originales de la solicitud", async (
   await conFetchFalso(solicitud);
   assert.equal(solicitud.headers.get("host"), "miapp.example.com");
 });
+
+test("el worker rechaza metodos que la API no usa sin llamarla", async () => {
+  const { llamadas, resultado } = await conFetchFalso(new Request("https://miapp.example.com/api/tabla", { method: "OPTIONS" }));
+  assert.equal(resultado.status, 405);
+  assert.equal(llamadas.length, 0);
+});

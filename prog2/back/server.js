@@ -42,6 +42,8 @@ app.get("/api/imagenes/:nombre", async (req, res) => {
     const remoto = await bajarImagen(nombre);
     if (remoto) {
       res.type(path.extname(nombre));
+      // Cache privada en el navegador: las vistas repetidas no vuelven a pasar por el Worker.
+      res.set("Cache-Control", "private, max-age=3600, must-revalidate");
       res.send(remoto);
       return;
     }
@@ -52,7 +54,7 @@ app.get("/api/imagenes/:nombre", async (req, res) => {
   }
   const local = path.join(carpetaImagenes, nombre);
   if (fs.existsSync(local)) {
-    res.sendFile(local);
+    res.sendFile(local, { headers: { "Cache-Control": "private, max-age=3600, must-revalidate" } });
     return;
   }
   res.status(404).end();

@@ -5,6 +5,8 @@ import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
 import { sonarActualizacion, useSonido } from "./sonido.js";
+import { useSondeo } from "./useSondeo.js";
+import { suscribirEventos } from "./eventos.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
   const { rol, usuario } = useSesion();
@@ -96,13 +98,14 @@ export default function Navbar({ buzonNovedades = 0 }) {
   // Polling + SSE de mensajes sin revisar (solo admin).
   // Cuando el admin está en /buzon, Buzon.jsx también hace su propio polling de novedades
   // y pasa el total via prop buzonNovedades — aquí solo rastreamos los mensajes pendientes.
+  const leerPendientes = useRef(() => Promise.resolve());
   useEffect(() => {
     if (rol !== "admin") return undefined;
     let activo = true;
     let pendienteSse = 0;
     function leer() {
-      if (document.visibilityState !== "visible") return;
-      fetch("/api/buzon/pendientes", { cache: "no-store" })
+      if (document.visibilityState !== "visible") return Promise.resolve();
+      return fetch("/api/buzon/pendientes", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => {
           if (!activo) return;
@@ -117,37 +120,31 @@ export default function Navbar({ buzonNovedades = 0 }) {
           }
           pendientesPrevios.current = nuevo;
           setPendientes(nuevo);
-        })
-        .catch(() => {});
+        });
     }
-    leer();
-    const intervalo = setInterval(leer, 60000);
-    document.addEventListener("visibilitychange", leer);
-    const fuente = new EventSource("/api/eventos");
-    fuente.onmessage = (evento) => {
-      let data;
-      try {
-        data = JSON.parse(evento.data);
-      } catch {
-        return;
-      }
-      if (data.tipo !== "buzon") return;
-      window.clearTimeout(pendienteSse);
-      pendienteSse = window.setTimeout(leer, 200);
-    };
+    leerPendientes.current = leer;
+    const cancelar = suscribirEventos({
+      alMensaje: (data) => {
+        if (data.tipo !== "buzon") return;
+        window.clearTimeout(pendienteSse);
+        pendienteSse = window.setTimeout(() => leer().catch(() => {}), 200);
+      },
+    });
     return () => {
       activo = false;
-      clearInterval(intervalo);
+      leerPendientes.current = () => Promise.resolve();
       window.clearTimeout(pendienteSse);
-      document.removeEventListener("visibilitychange", leer);
-      fuente.close();
+      cancelar();
     };
   }, [rol, pathname, usuario]);
+  // Declarado despues del efecto que asigna `leerPendientes`, para que la primera lectura use la funcion real.
+  useSondeo(() => leerPendientes.current(), 60000, rol === "admin");
 
   // Polling de novedades para operador (respuestas del admin en sus mensajes).
   // Solo corre cuando buzonNovedades no viene de prop (es decir, cuando NO estamos en /buzon).
   const [novedadesOperador, setNovedadesOperador] = useState(0);
   const prevNovedadesOp = useRef(0);
+  const leerNovedades = useRef(() => Promise.resolve());
   useEffect(() => {
     if (rol === "admin") return undefined;
     // Si ya estamos en /buzon Buzon.jsx gestiona todo, pero aun así mostramos el badge
@@ -155,8 +152,8 @@ export default function Navbar({ buzonNovedades = 0 }) {
     if (pathname === "/buzon") return undefined;
     let activo = true;
     function leer() {
-      if (document.visibilityState !== "visible") return;
-      fetch("/api/buzon/novedades", { cache: "no-store" })
+      if (document.visibilityState !== "visible") return Promise.resolve();
+      return fetch("/api/buzon/novedades", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(({ novedades }) => {
           if (!activo) return;
@@ -170,18 +167,15 @@ export default function Navbar({ buzonNovedades = 0 }) {
           if (total > prevNovedadesOp.current) sonarActualizacion();
           prevNovedadesOp.current = total;
           setNovedadesOperador(total);
-        })
-        .catch(() => {});
+        });
     }
-    leer();
-    const id = setInterval(leer, 15000);
-    document.addEventListener("visibilitychange", leer);
+    leerNovedades.current = leer;
     return () => {
       activo = false;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", leer);
+      leerNovedades.current = () => Promise.resolve();
     };
   }, [rol, pathname, usuario]);
+  useSondeo(() => leerNovedades.current(), 45000, rol !== "admin" && pathname !== "/buzon");
 
   function cerrarSesion() {
     fetch("/api/logout", { method: "POST" })
