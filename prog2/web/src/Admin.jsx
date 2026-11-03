@@ -215,7 +215,13 @@ export default function Admin() {
   const [avisoReserva, setAvisoReserva] = useState("");
   const [ordenReserva, setOrdenReserva] = useState("");
   const [buscarPorReserva, setBuscarPorReserva] = useState("reserva");
-  const [busquedaReserva, setBusquedaReserva] = useState({ columnas: [], filas: [], marcadosCodigo: [], total: 0 });
+  const [busquedaReserva, setBusquedaReserva] = useState({
+    columnas: [],
+    filas: [],
+    marcadosCodigo: [],
+    repeticiones: [],
+    total: 0,
+  });
   const [buscandoReserva, setBuscandoReserva] = useState(false);
   const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
   const [mostrarContratistas, setMostrarContratistas] = useState(false);
@@ -1770,7 +1776,7 @@ export default function Admin() {
               const etiqueta = buscarPorReserva === "orden" ? "orden" : "reserva";
               if (!numero) {
                 setAvisoBusquedaReserva(`Escribe un número de ${etiqueta}.`);
-                setBusquedaReserva({ columnas: [], filas: [], marcadosCodigo: [], total: 0 });
+                setBusquedaReserva({ columnas: [], filas: [], marcadosCodigo: [], repeticiones: [], total: 0 });
                 return;
               }
               setAvisoBusquedaReserva("");
@@ -1790,6 +1796,7 @@ export default function Admin() {
                     columnas: data.columnas || [],
                     filas: data.filas || [],
                     marcadosCodigo: data.marcadosCodigo || [],
+                    repeticiones: data.repeticiones || [],
                     total: data.total || 0,
                     consulta: numero,
                     por: buscarPorReserva,
@@ -1906,6 +1913,7 @@ export default function Admin() {
                       columnas: data.columnas || actual.columnas,
                       filas: actual.filas.concat(lote),
                       marcadosCodigo: (actual.marcadosCodigo || []).concat(data.marcadosCodigo || []),
+                      repeticiones: (actual.repeticiones || []).concat(data.repeticiones || []),
                     }));
                   })
                   .catch(() => {
@@ -1922,6 +1930,7 @@ export default function Admin() {
                     const esEstado = nombre === "Estado";
                     const esCodigoConflicto = nombre === "Código" && busquedaReserva.marcadosCodigo?.[indice];
                     const valor = fila[columna];
+                    const veces = busquedaReserva.repeticiones?.[indice] || 1;
                     return (
                       <td
                         key={columna}
@@ -1940,7 +1949,29 @@ export default function Admin() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {valor === "" || valor == null ? "" : String(valor)}
+                        {nombre === "N°" && veces > 1 ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            {valor === "" || valor == null ? "" : String(valor)}
+                            <span
+                              title={`Aparece ${veces} veces en la reserva`}
+                              style={{
+                                display: "inline-block",
+                                padding: "1px 6px",
+                                borderRadius: 4,
+                                background: colores ? "#f9e37c" : "var(--pista)",
+                                color: colores ? "#111" : "var(--texto)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                              }}
+                            >
+                              ×{veces}
+                            </span>
+                          </span>
+                        ) : valor === "" || valor == null ? (
+                          ""
+                        ) : (
+                          String(valor)
+                        )}
                       </td>
                     );
                   })}

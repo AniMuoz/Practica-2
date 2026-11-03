@@ -230,20 +230,29 @@ function firmaFilaRevision(fila) {
 }
 
 function deduplicarFilasRevision(filas) {
-  if (filas.length < 2) return filas;
-  const vistas = new Set();
-  const unicas = [];
+  if (filas.length === 0) return { filas: [], repeticiones: [] };
+  if (filas.length === 1) return { filas, repeticiones: [1] };
+  const conteo = new Map();
+  const orden = [];
   filas.forEach((fila) => {
     const firma = firmaFilaRevision(fila);
-    if (vistas.has(firma)) return;
-    vistas.add(firma);
-    unicas.push(fila);
+    const actual = conteo.get(firma);
+    if (actual) {
+      actual.veces += 1;
+      return;
+    }
+    const item = { fila, veces: 1 };
+    conteo.set(firma, item);
+    orden.push(item);
   });
-  return unicas.map((fila, indice) => {
-    const copia = fila.slice();
-    copia[0] = indice + 1;
-    return copia;
-  });
+  return {
+    filas: orden.map((item, indice) => {
+      const copia = item.fila.slice();
+      copia[0] = indice + 1;
+      return copia;
+    }),
+    repeticiones: orden.map((item) => item.veces),
+  };
 }
 
 function marcadosCodigoRevision(filas, indiceCodigo = 3) {
@@ -270,6 +279,8 @@ function revisionReservas(reserva, por = "reserva") {
   const vacio = {
     columnas: [],
     filas: [],
+    marcadosCodigo: [],
+    repeticiones: [],
     total: filas.length,
     fecha: "",
     solicitante: "",
@@ -333,7 +344,7 @@ function revisionReservas(reserva, por = "reserva") {
     "Reducido",
     "Diferencia",
   ];
-  const filasRevision = deduplicarFilasRevision(
+  const { filas: filasRevision, repeticiones } = deduplicarFilasRevision(
     coinciden.map((fila, posicion) => {
       const codigo = String(celdaReserva(fila, iMaterial)).trim();
       const material = materiales.get(codigo);
@@ -373,6 +384,7 @@ function revisionReservas(reserva, por = "reserva") {
     columnas: salida,
     filas: filasRevision,
     marcadosCodigo,
+    repeticiones,
     total: filas.length,
     fecha: celdaReserva(primera, iFecha),
     solicitante: celdaReserva(primera, iUsuario),
@@ -390,6 +402,7 @@ function buscarReservas(reserva, pagina = 0, tamano = 100, por = "reserva") {
     columnas: revision.columnas,
     filas: revision.filas.slice(inicio, inicio + limite),
     marcadosCodigo: (revision.marcadosCodigo || []).slice(inicio, inicio + limite),
+    repeticiones: (revision.repeticiones || []).slice(inicio, inicio + limite),
     total: revision.total,
     coincidencias: revision.filas.length,
     pagina: indice,
@@ -468,11 +481,13 @@ async function exportarRevisionPorReserva(reserva, colores = true, por = "reserv
   const columnaEstado = revision.columnas.indexOf("Estado");
   const columnaCodigo = revision.columnas.indexOf("Código");
   const marcadosCodigo = revision.marcadosCodigo || [];
+  const repeticiones = revision.repeticiones || [];
   revision.filas.forEach((fila, indice) => {
     const numero = indice + 4;
+    const veces = repeticiones[indice] || 1;
     fila.forEach((valor, columna) => {
       const celda = hoja.getCell(numero, columna + 3);
-      celda.value = valor ?? "";
+      celda.value = columna === 0 && veces > 1 ? `${valor} (×${veces})` : (valor ?? "");
       celda.border = borde;
       if (columna === columnaCodigo && marcadosCodigo[indice]) {
         pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9E37C" } }, colores);

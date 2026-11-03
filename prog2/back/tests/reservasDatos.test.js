@@ -328,6 +328,12 @@ test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posici
   assert.equal(revision.filas[0][0], 1);
   assert.equal(revision.filas[0][3], "60000390");
   assert.deepEqual(revision.marcadosCodigo, [false]);
+  assert.deepEqual(revision.repeticiones, [2]);
+});
+
+test("revisionReservas reporta 1 repetición cuando la fila no está duplicada", () => {
+  const revision = revisar("9001");
+  assert.deepEqual(revision.repeticiones, [1, 1]);
 });
 
 test("revisionReservas marca el código cuando el mismo material aparece con datos distintos", () => {
