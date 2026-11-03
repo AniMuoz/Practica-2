@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
-import { useBlocker, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSesion } from "./Acceso.jsx";
 import Navbar from "./Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
@@ -11,18 +11,22 @@ import VistaPrevia from "./admin/VistaPrevia.jsx";
 import "./admin.css";
 import Interruptor from "./admin/Interruptor.jsx";
 import PanelContratistas from "./admin/PanelContratistas.jsx";
+import PanelBodega from "./admin/PanelBodega.jsx";
+import PanelRegional from "./admin/PanelRegional.jsx";
+import PanelInventario from "./admin/PanelInventario.jsx";
 import { useEsMovil } from "./useEsMovil.js";
-import { suscribirEventos } from "./eventos.js";
 import { useCargaPlanilla } from "./admin/useCargaPlanilla.js";
+import { useDetallado } from "./admin/useDetallado.js";
 import { useContratistas } from "./admin/useContratistas.js";
+import { usePaneles } from "./admin/usePaneles.js";
+import { useRefrescoSse } from "./admin/useRefrescoSse.js";
+import { useSalidaSegura } from "./admin/useSalidaSegura.js";
 import { useUltimasCargas } from "./admin/useUltimasCargas.js";
 import { filtrarYOrdenarPorCodigo, textoUltimaCarga } from "./admin/utilidades.js";
 import { obtenerJson, enviarJson, enviarFormulario, descargarBlob, guardarBlob } from "./api.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
-  colorCantidad,
-  colorLibre,
   colorStockDetallado,
   filasInventarioVisibles,
   filtrarFilas,
@@ -73,20 +77,28 @@ export default function Admin() {
   const [columnaCarga, setColumnaCarga] = useState("");
   const [columnasDestino, setColumnasDestino] = useState([]);
   const [agrandarBotones, setAgrandarBotones] = useState(false);
-  const [mostrarCarga, setMostrarCarga] = useState(false);
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [mostrarBodega, setMostrarBodega] = useState(false);
+  const { abierto, fijar: fijarPanel, cerrarOtros: cerrarPaneles } = usePaneles();
+  const {
+    carga: mostrarCarga,
+    formulario: mostrarFormulario,
+    bodega: mostrarBodega,
+    regional: mostrarRegional,
+    inventario: mostrarInventario,
+    movimientos: mostrarMovimientos,
+    detallado: mostrarDetallado,
+    reserva: mostrarReserva,
+    contratistas: mostrarContratistas,
+    bitacora: mostrarBitacora,
+    ventas: mostrarVentas,
+  } = abierto;
   const { tabla: bodega, cargando: cargandoBodega, aviso: avisoBodega, recargar: recargarBodega } =
     useCargaPlanilla("/api/bodega", "No se pudo leer el stock.");
-  const [mostrarRegional, setMostrarRegional] = useState(false);
   const { tabla: regional, cargando: cargandoRegional, aviso: avisoRegional, recargar: recargarRegional } =
     useCargaPlanilla("/api/regional", "No se pudo leer el stock regional.");
-  const [mostrarInventario, setMostrarInventario] = useState(false);
   const { tabla: inventario, cargando: cargandoInventario, aviso: avisoInventario, recargar: recargarInventario } =
     useCargaPlanilla("/api/inventario", "No se pudo leer el inventario.");
   const [copiarExistencia, setCopiarExistencia] = useState(false);
   const [copiarInventario, setCopiarInventario] = useState(false);
-  const [mostrarMovimientos, setMostrarMovimientos] = useState(false);
   const { tabla: movimientos, cargando: cargandoMovimientos, aviso: avisoMovimientos, recargar: recargarMovimientos } =
     useCargaPlanilla("/api/movimientos", "No se pudieron leer los movimientos.");
   const [codigoMovimiento, setCodigoMovimiento] = useState("");
@@ -116,12 +128,8 @@ export default function Admin() {
     setCopiarExistencia(false);
     setCopiarInventario(true);
   }
-  const [mostrarDetallado, setMostrarDetallado] = useState(false);
   const { tabla: detallado, setTabla: setDetallado, cargando: cargandoDetallado, aviso: avisoDetallado, recargar: recargarDetallado } =
     useCargaPlanilla("/api/stock-detallado", "No se pudo leer el stock detallado.");
-  const [errorDetallado, setErrorDetallado] = useState("");
-  const suspenderRefrescoRef = useRef(0);
-  const pendienteRefrescoRef = useRef(0);
   const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
   const [filasMaestro, setFilasMaestro] = useState([]);
   const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarMovimientos || mostrarDetallado;
@@ -203,7 +211,6 @@ export default function Admin() {
         })
       : filasMovimientosVisibles
   );
-  const [mostrarReserva, setMostrarReserva] = useState(false);
   const [archivoReserva, setArchivoReserva] = useState(null);
   const [reserva, setReserva] = useState({ columnas: [], filas: [] });
   const [revisandoReserva, setRevisandoReserva] = useState(false);
@@ -219,7 +226,6 @@ export default function Admin() {
   });
   const [buscandoReserva, setBuscandoReserva] = useState(false);
   const [avisoBusquedaReserva, setAvisoBusquedaReserva] = useState("");
-  const [mostrarContratistas, setMostrarContratistas] = useState(false);
   const {
     contratistas,
     setContratistas,
@@ -237,18 +243,13 @@ export default function Admin() {
     hayCambios: contratistasCambiaron,
     descartar: descartarContratistas,
   } = useContratistas();
-  const [mostrarBitacora, setMostrarBitacora] = useState(false);
   const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
-  const [mostrarVentas, setMostrarVentas] = useState(false);
   const [ventaPendiente, setVentaPendiente] = useState(false);
-  const [salidaPendiente, setSalidaPendiente] = useState(null);
   const [ventaKey, setVentaKey] = useState(0);
   const [cargaKey, setCargaKey] = useState(0);
-  const permitirSalida = useRef(false);
   const paginaReserva = useRef(0);
   const cargandoPaginaReserva = useRef(false);
   const hayMasReservas = useRef(false);
-  const hayCambiosRef = useRef(false);
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -301,145 +302,6 @@ export default function Admin() {
     setValorCodigoEditando("");
   }
 
-  function actualizarCeldaDetallado(codigo, indiceColumna, valor) {
-    setDetallado((prev) => ({
-      ...prev,
-      filas: prev.filas.map((fila) => {
-        if (String(fila[1]) !== String(codigo)) return fila;
-        const copia = fila.slice();
-        copia[indiceColumna] = valor;
-        return copia;
-      }),
-    }));
-  }
-
-  function guardarCeldaDetallado(codigo, nombreColumna, indiceColumna, valor, valorOriginal) {
-    if (String(valor ?? "") === String(valorOriginal ?? "")) return;
-    setErrorDetallado("");
-    enviarJson(
-      "/api/stock-detallado",
-      { clave, codigo: String(codigo ?? "").trim(), datos: { [nombreColumna]: valor } },
-      "No se pudo guardar el campo.",
-      "PUT"
-    ).catch((err) => {
-      actualizarCeldaDetallado(codigo, indiceColumna, valorOriginal);
-      setErrorDetallado(err.message);
-    });
-  }
-
-  // Pega una columna copiada de Excel: reparte los valores hacia abajo desde la fila visible actual.
-  // Devuelve el primer valor aplicado (string) si manejó el pegado, o null si debe usarse el pegado normal.
-  function pegarColumnaDetallado(indiceFila, indiceColumna, nombreColumna, texto) {
-    const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
-    if (lineas[lineas.length - 1] === "") lineas.pop();
-    if (lineas.length < 2) return null;
-    if (lineas.length > 500) {
-      setErrorDetallado("Se pueden pegar hasta 500 filas a la vez.");
-      return false;
-    }
-
-    // Pares con índice original en detallado.filas para no pisar filas por código duplicado.
-    const paresVisibles = detallado.filas
-      .map((fila, indice) => ({ fila, indice }))
-      .filter(({ fila }) => codigosFiltrados.has(String(fila[1])))
-      .sort(
-        (a, b) =>
-          (ordenCodigos.get(String(a.fila[1])) ?? 0) - (ordenCodigos.get(String(b.fila[1])) ?? 0)
-      );
-
-    const actualizaciones = [];
-    for (let i = 0; i < lineas.length; i += 1) {
-      const par = paresVisibles[indiceFila + i];
-      if (!par) break;
-      actualizaciones.push({
-        indice: par.indice,
-        codigo: par.fila[1],
-        valor: lineas[i].split("\t")[0].trim(),
-        anterior: par.fila[indiceColumna] == null ? "" : String(par.fila[indiceColumna]),
-      });
-    }
-    if (actualizaciones.length === 0) return null;
-
-    const porIndice = new Map(actualizaciones.map((item) => [item.indice, item.valor]));
-    setDetallado((prev) => ({
-      ...prev,
-      filas: prev.filas.map((fila, indice) => {
-        if (!porIndice.has(indice)) return fila;
-        const copia = fila.slice();
-        copia[indiceColumna] = porIndice.get(indice);
-        return copia;
-      }),
-    }));
-
-    const pendientes = actualizaciones.filter((item) => String(item.valor) !== String(item.anterior));
-    if (pendientes.length === 0) return actualizaciones[0].valor;
-
-    setErrorDetallado("");
-    // Evita que el SSE recargue la planilla a mitad del pegado (celdas parpadeando).
-    suspenderRefrescoRef.current += 1;
-    window.clearTimeout(pendienteRefrescoRef.current);
-
-    // Guardado en serie: en paralelo la caché del backend se pisa entre requests.
-    (async () => {
-      const fallidos = [];
-      try {
-        for (const item of pendientes) {
-          try {
-            await enviarJson(
-              "/api/stock-detallado",
-              { clave, codigo: String(item.codigo ?? "").trim(), datos: { [nombreColumna]: item.valor } },
-              "No se pudo guardar el campo.",
-              "PUT"
-            );
-          } catch (err) {
-            fallidos.push({ ...item, error: err });
-          }
-        }
-        if (fallidos.length > 0) {
-          const revertir = new Map(fallidos.map((item) => [item.indice, item.anterior]));
-          setDetallado((prev) => ({
-            ...prev,
-            filas: prev.filas.map((fila, indice) => {
-              if (!revertir.has(indice)) return fila;
-              const copia = fila.slice();
-              copia[indiceColumna] = revertir.get(indice);
-              return copia;
-            }),
-          }));
-          setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
-        }
-      } finally {
-        window.setTimeout(() => {
-          suspenderRefrescoRef.current = Math.max(0, suspenderRefrescoRef.current - 1);
-        }, 400);
-      }
-    })();
-
-    return actualizaciones[0].valor;
-  }
-
-  function limpiarColumnaDetallado(nombreColumna, indiceColumna) {
-    if (!window.confirm(`¿Limpiar todos los datos de la columna "${nombreColumna}"?`)) return;
-    setErrorDetallado("");
-    enviarJson(
-      "/api/stock-detallado/columna",
-      { clave, columna: nombreColumna },
-      "No se pudo limpiar la columna.",
-      "DELETE"
-    )
-      .then(() => {
-        setDetallado((prev) => ({
-          ...prev,
-          filas: prev.filas.map((fila) => {
-            const copia = fila.slice();
-            copia[indiceColumna] = "";
-            return copia;
-          }),
-        }));
-      })
-      .catch((err) => setErrorDetallado(err.message));
-  }
-
   function guardarEdicionCodigo(codigoAnterior) {
     const nuevo = valorCodigoEditando.trim();
     if (!nuevo) {
@@ -465,21 +327,6 @@ export default function Admin() {
     guardarContratistasHook(clave);
   }
 
-  function cerrarPaneles(permitidos) {
-    const ok = new Set(permitidos);
-    if (!ok.has("carga")) setMostrarCarga(false);
-    if (!ok.has("formulario")) setMostrarFormulario(false);
-    if (!ok.has("bodega")) setMostrarBodega(false);
-    if (!ok.has("regional")) setMostrarRegional(false);
-    if (!ok.has("inventario")) setMostrarInventario(false);
-    if (!ok.has("movimientos")) setMostrarMovimientos(false);
-    if (!ok.has("detallado")) setMostrarDetallado(false);
-    if (!ok.has("reserva")) setMostrarReserva(false);
-    if (!ok.has("ventas")) setMostrarVentas(false);
-    if (!ok.has("contratistas")) setMostrarContratistas(false);
-    if (!ok.has("bitacora")) setMostrarBitacora(false);
-  }
-
   function refrescarVistas(silencioso = false) {
     obtenerJson("/api/tabla")
       .then(aplicarColumnas)
@@ -492,23 +339,15 @@ export default function Admin() {
     if (mostrarContratistas || mostrarVentas) refrescarContratistas(mostrarContratistas);
   }
 
-  const refrescarRef = useRef(() => {});
-  refrescarRef.current = () => refrescarVistas(true);
-
-  useEffect(() => {
-    const cancelar = suscribirEventos({
-      alMensaje: (data) => {
-        if (data.tipo !== "recarga" && data.tipo !== "fila") return;
-        if (suspenderRefrescoRef.current > 0) return;
-        window.clearTimeout(pendienteRefrescoRef.current);
-        pendienteRefrescoRef.current = window.setTimeout(() => refrescarRef.current(), 200);
-      },
-    });
-    return () => {
-      window.clearTimeout(pendienteRefrescoRef.current);
-      cancelar();
-    };
-  }, []);
+  const { suspender: suspenderRefresco, reanudar: reanudarRefresco } = useRefrescoSse(() => refrescarVistas(true));
+  const {
+    errorDetallado,
+    setErrorDetallado,
+    actualizarCeldaDetallado,
+    guardarCeldaDetallado,
+    pegarColumnaDetallado,
+    limpiarColumnaDetallado,
+  } = useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco });
 
   const formularioSinGuardar =
     mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
@@ -518,19 +357,6 @@ export default function Admin() {
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
   const hayCambiosSinGuardar =
     formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
-  hayCambiosRef.current = hayCambiosSinGuardar;
-  const importandoRef = useRef(false);
-  importandoRef.current = importando;
-
-  function intentarSalir(accion) {
-    if (importandoRef.current) return;
-    if (!hayCambiosRef.current) {
-      accion();
-      return;
-    }
-    setSalidaPendiente(() => accion);
-  }
-
   function descartarCambios() {
     if (formularioSinGuardar) {
       setDatos((actual) => {
@@ -552,22 +378,11 @@ export default function Admin() {
     }
   }
 
-  const bloqueo = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      !permitirSalida.current &&
-      (importandoRef.current || hayCambiosRef.current) &&
-      currentLocation.pathname !== nextLocation.pathname
-  );
-
-  useEffect(() => {
-    if (!hayCambiosSinGuardar && !importando) return undefined;
-    function avisarCierre(event) {
-      event.preventDefault();
-      event.returnValue = "";
-    }
-    window.addEventListener("beforeunload", avisarCierre);
-    return () => window.removeEventListener("beforeunload", avisarCierre);
-  }, [hayCambiosSinGuardar, importando]);
+  const { mostrarAviso, permitirSalida, intentarSalir, seguirAqui, salirSinGuardar } = useSalidaSegura({
+    importando,
+    hayCambios: hayCambiosSinGuardar,
+    descartar: descartarCambios,
+  });
 
   useEffect(() => {
     if (rol !== "admin") return;
@@ -771,13 +586,13 @@ export default function Admin() {
                     const abrir = !mostrarBitacora;
                     if (abrir) cerrarPaneles(["bitacora"]);
                     else setBitacoraSinGuardar(false);
-                    setMostrarBitacora(abrir);
+                    fijarPanel("bitacora", abrir);
                   }
                   if (nombre === "Añadir/cargar datos") {
                     const abrir = !(mostrarCarga && mostrarFormulario);
                     if (abrir) cerrarPaneles(["carga", "formulario"]);
-                    setMostrarCarga(abrir);
-                    setMostrarFormulario(abrir);
+                    fijarPanel("carga", abrir);
+                    fijarPanel("formulario", abrir);
                   }
                   if (nombre === "Stock en bodega") {
                     const abrir = !mostrarBodega;
@@ -785,7 +600,7 @@ export default function Admin() {
                       cerrarPaneles(["bodega"]);
                       recargarBodega();
                     }
-                    setMostrarBodega(abrir);
+                    fijarPanel("bodega", abrir);
                   }
                   if (nombre === "Stock regional") {
                     const abrir = !mostrarRegional;
@@ -793,7 +608,7 @@ export default function Admin() {
                       cerrarPaneles(["regional"]);
                       recargarRegional();
                     }
-                    setMostrarRegional(abrir);
+                    fijarPanel("regional", abrir);
                   }
                   if (nombre === "Planilla de inventario") {
                     const abrir = !mostrarInventario;
@@ -801,7 +616,7 @@ export default function Admin() {
                       cerrarPaneles(["inventario"]);
                       recargarInventario();
                     }
-                    setMostrarInventario(abrir);
+                    fijarPanel("inventario", abrir);
                   }
                   if (nombre === "Movimientos") {
                     const abrir = !mostrarMovimientos;
@@ -809,7 +624,7 @@ export default function Admin() {
                       cerrarPaneles(["movimientos"]);
                       recargarMovimientos();
                     }
-                    setMostrarMovimientos(abrir);
+                    fijarPanel("movimientos", abrir);
                   }
                   if (nombre === "Stock detallado") {
                     const abrir = !mostrarDetallado;
@@ -818,12 +633,12 @@ export default function Admin() {
                       setErrorDetallado("");
                       recargarDetallado();
                     }
-                    setMostrarDetallado(abrir);
+                    fijarPanel("detallado", abrir);
                   }
                   if (nombre === "Revisar stock de reserva") {
                     const abrir = !mostrarReserva;
                     if (abrir) cerrarPaneles(["reserva"]);
-                    setMostrarReserva(abrir);
+                    fijarPanel("reserva", abrir);
                   }
                   if (nombre === "Planilla de ventas") {
                     const abrir = !mostrarVentas;
@@ -831,7 +646,7 @@ export default function Admin() {
                       cerrarPaneles(["ventas"]);
                       cargarNombresContratistas().catch(() => {});
                     }
-                    setMostrarVentas(abrir);
+                    fijarPanel("ventas", abrir);
                   }
                   if (nombre === "Editar contratistas") {
                     const abrir = !mostrarContratistas;
@@ -839,7 +654,7 @@ export default function Admin() {
                       cerrarPaneles(["contratistas"]);
                       abrirContratistas();
                     }
-                    setMostrarContratistas(abrir);
+                    fijarPanel("contratistas", abrir);
                   }
                   };
                   intentarSalir(cambiar);
@@ -1065,241 +880,44 @@ export default function Admin() {
         <Bitacora clave={clave} colores={colores} alPendiente={setBitacoraSinGuardar} />
       )}
       {autorizado && mostrarBodega && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Bodega M501</h2>
-            <a
-              href={excelFiltrado("/api/bodega/excel")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Descargar planilla
-            </a>
-          </div>
-          {panelFiltros}
-          {cargandoBodega && <p style={{ margin: 0 }}>Cargando stock...</p>}
-          {avisoBodega && <p style={{ margin: 0 }}>{avisoBodega}</p>}
-          {!cargandoBodega && !avisoBodega && (
-            <VistaPrevia
-              filas={aplicarFiltrosStock(bodega.filas, 0).filas}
-              columnas={bodega.columnas.length}
-              className={clasePlanilla}
-              vacio="No hay stock de M501 cargado."
-              renderFila={(fila, indice) => {
-                const fondo = colorLibre(fila[2]);
-                return (
-                  <tr key={`${fila[0]}-${indice}`}>
-                    {fila.map((valor, columna) => (
-                      <td
-                        key={columna}
-                        className={colores && columna === 2 ? "celda-color" : undefined}
-                        style={{
-                          padding: "8px 10px",
-                          border: "1px solid var(--borde-suave)",
-                          background: colores && columna === 2 ? fondo : "var(--superficie)",
-                        }}
-                      >
-                        {valor === "" || valor == null ? "" : String(valor)}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              }}
-            >
-                <thead>
-                  <tr>
-                    {bodega.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-            </VistaPrevia>
-          )}
-        </section>
+        <PanelBodega
+          tabla={bodega}
+          filas={aplicarFiltrosStock(bodega.filas, 0).filas}
+          cargando={cargandoBodega}
+          aviso={avisoBodega}
+          hrefExcel={excelFiltrado("/api/bodega/excel")}
+          filtros={panelFiltros}
+          colores={colores}
+          clasePlanilla={clasePlanilla}
+        />
       )}
       {autorizado && mostrarRegional && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Stock por bodega</h2>
-            <a
-              href={excelFiltrado("/api/regional/excel")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Descargar planilla
-            </a>
-          </div>
-          {panelFiltros}
-          {cargandoRegional && <p style={{ margin: 0 }}>Cargando stock...</p>}
-          {avisoRegional && <p style={{ margin: 0 }}>{avisoRegional}</p>}
-          {!cargandoRegional && !avisoRegional && (
-            <VistaPrevia
-              filas={aplicarFiltrosStock(regional.filas, 0).filas}
-              columnas={regional.columnas.length}
-              className={clasePlanilla}
-              vacio="No hay stock regional cargado."
-              renderFila={(fila, indice) => (
-                <tr key={`${fila[0]}-${indice}`}>
-                  {fila.map((valor, columna) => {
-                    const fondo = columna < 2 ? "var(--superficie)" : colorCantidad(valor);
-                    return (
-                      <td
-                        key={columna}
-                        className={colores && columna >= 2 ? "celda-color" : undefined}
-                        style={{
-                          padding: "8px 10px",
-                          border: "1px solid var(--borde-suave)",
-                          background: colores ? fondo : "var(--superficie)",
-                          fontWeight: columna === fila.length - 1 ? 700 : 400,
-                        }}
-                      >
-                        {valor === "" || valor == null ? "" : String(valor)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              )}
-            >
-                <thead>
-                  <tr>
-                    {regional.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-            </VistaPrevia>
-          )}
-        </section>
+        <PanelRegional
+          tabla={regional}
+          filas={aplicarFiltrosStock(regional.filas, 0).filas}
+          cargando={cargandoRegional}
+          aviso={avisoRegional}
+          hrefExcel={excelFiltrado("/api/regional/excel")}
+          filtros={panelFiltros}
+          colores={colores}
+          clasePlanilla={clasePlanilla}
+        />
       )}
       {autorizado && mostrarInventario && (
-        <section
-          style={{
-            background: "var(--superficie)",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Inventario por lugar</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-              <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
-              <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
-            <a
-              href={excelInventario("/api/inventario/excel")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Descargar planilla
-            </a>
-            </div>
-          </div>
-          {panelFiltrosUbicacion}
-          {cargandoInventario && <p style={{ margin: 0 }}>Cargando inventario...</p>}
-          {avisoInventario && <p style={{ margin: 0 }}>{avisoInventario}</p>}
-          {!cargandoInventario && !avisoInventario && (
-            <VistaPrevia
-              filas={filasInventario}
-              columnas={inventario.columnas.length}
-              className={clasePlanilla}
-              vacio="No hay materiales para inventariar."
-              renderFila={(fila, indice) => (
-                <tr key={`${fila[0]}-${indice}`}>
-                  {fila.map((valor, columna) => (
-                    <td
-                      key={columna}
-                      className={colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "celda-color" : undefined}
-                      style={{
-                        padding: "8px 10px",
-                        border: "1px solid var(--borde-suave)",
-                        background:
-                          colores && (columna === 2 || columna === 3) && String(valor ?? "").trim() === "" ? "#f9e37c" : "var(--superficie)",
-                      }}
-                    >
-                      {valor === "" || valor == null ? "" : String(valor)}
-                    </td>
-                  ))}
-                </tr>
-              )}
-            >
-                <thead>
-                  <tr>
-                    {inventario.columnas.map((columna) => (
-                      <th
-                        key={columna}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          background: colores ? "#a9e5e5" : "var(--superficie)",
-                          border: "1px solid var(--borde)",
-                        }}
-                      >
-                        {columna}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-            </VistaPrevia>
-          )}
-        </section>
+        <PanelInventario
+          tabla={inventario}
+          filas={filasInventario}
+          cargando={cargandoInventario}
+          aviso={avisoInventario}
+          hrefExcel={excelInventario("/api/inventario/excel")}
+          filtros={panelFiltrosUbicacion}
+          colores={colores}
+          clasePlanilla={clasePlanilla}
+          copiarExistencia={copiarExistencia}
+          copiarInventario={copiarInventario}
+          alternarExistencia={alternarExistencia}
+          alternarInventario={alternarInventario}
+        />
       )}
       {autorizado && mostrarMovimientos && (
         <section
@@ -2157,7 +1775,7 @@ export default function Admin() {
           </div>
         </div>
       )}
-      {(bloqueo.state === "blocked" || salidaPendiente) && (
+      {mostrarAviso && (
         <div
           style={{
             position: "fixed",
@@ -2181,10 +1799,7 @@ export default function Admin() {
             <div style={{ display: "grid", gap: 8 }}>
               <button
                 type="button"
-                onClick={() => {
-                  if (bloqueo.state === "blocked") bloqueo.reset();
-                  setSalidaPendiente(null);
-                }}
+                onClick={seguirAqui}
                 style={{
                   width: "100%",
                   padding: "10px 14px",
@@ -2201,15 +1816,7 @@ export default function Admin() {
               {!importando && (
               <button
                 type="button"
-                onClick={() => {
-                  descartarCambios();
-                  if (salidaPendiente) {
-                    const seguir = salidaPendiente;
-                    setSalidaPendiente(null);
-                    seguir();
-                  }
-                  if (bloqueo.state === "blocked") bloqueo.proceed();
-                }}
+                onClick={salirSinGuardar}
                 style={{
                   width: "100%",
                   padding: "10px 14px",
