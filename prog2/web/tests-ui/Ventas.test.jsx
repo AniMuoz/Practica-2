@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Ventas, { nombreDescarga, nombreDescargaAnual } from "../src/Ventas.jsx";
+import Ventas, { nombreDescarga, nombreDescargaAnual } from "../src/paginas/Ventas.jsx";
 
 const HOY = new Date();
 const FILA = {

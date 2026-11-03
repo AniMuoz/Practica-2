@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import Navbar from "./Navbar.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import Navbar from "../componentes/Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 
 async function leer(url) {
   const res = await fetch(url);

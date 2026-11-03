@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useSesion } from "./Acceso.jsx";
-import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
-import Navbar from "./Navbar.jsx";
-import { crearQrPng, estadoQr, marcaRombo, sinQr, tieneRombo } from "./generarQr.js";
-import { filtrarFilas } from "./reglasPlanilla.js";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { useSesion } from "../componentes/Acceso.jsx";
+import FiltrosTabla, { FILTROS_INICIALES } from "../componentes/FiltrosTabla.jsx";
+import Navbar from "../componentes/Navbar.jsx";
+import { crearQrPng, estadoQr, marcaRombo, sinQr, tieneRombo } from "../lib/generarQr.js";
+import { filtrarFilas } from "../lib/reglasPlanilla.js";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 
 const boton = {
   padding: "8px 14px",

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import FiltrosTabla, { FILTROS_INICIALES } from "../../FiltrosTabla.jsx";
-import { obtenerJson } from "../../api.js";
+import FiltrosTabla, { FILTROS_INICIALES } from "../../../componentes/FiltrosTabla.jsx";
+import { obtenerJson } from "../../../lib/api.js";
 import {
   filasInventarioVisibles,
   filtrarFilas,
   numerarFilas,
   pasaFiltrosFilaMovimiento,
   POSICIONES_MOVIMIENTOS,
-} from "../../reglasPlanilla.js";
+} from "../../../lib/reglasPlanilla.js";
 import { filtrarYOrdenarPorCodigo } from "../utilidades.js";
 
 // Filtros comunes de los paneles de stock y las filas ya filtradas y ordenadas de cada uno.

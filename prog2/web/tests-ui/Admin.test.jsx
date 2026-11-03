@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Tests de caracterizacion de Admin: fijan el comportamiento actual antes de dividir el archivo.
 let oyenteSse;
-vi.mock("../src/eventos.js", () => ({
+vi.mock("../src/lib/eventos.js", () => ({
   suscribirEventos: (oyente) => {
     oyenteSse = oyente;
     return () => {
@@ -12,12 +12,12 @@ vi.mock("../src/eventos.js", () => ({
     };
   },
 }));
-vi.mock("../src/Acceso.jsx", () => ({ useSesion: () => ({ rol: "admin", usuario: "ana" }) }));
-vi.mock("../src/Navbar.jsx", () => ({ default: () => null }));
-vi.mock("../src/Recorrido.jsx", () => ({ iniciarRecorrido: () => {}, recorridoPendiente: () => false }));
+vi.mock("../src/componentes/Acceso.jsx", () => ({ useSesion: () => ({ rol: "admin", usuario: "ana" }) }));
+vi.mock("../src/componentes/Navbar.jsx", () => ({ default: () => null }));
+vi.mock("../src/componentes/Recorrido.jsx", () => ({ iniciarRecorrido: () => {}, recorridoPendiente: () => false }));
 
-import Admin from "../src/Admin.jsx";
-import { ColoresPlanillaProvider } from "../src/ColoresPlanilla.jsx";
+import Admin from "../src/paginas/Admin.jsx";
+import { ColoresPlanillaProvider } from "../src/componentes/ColoresPlanilla.jsx";
 
 const TABLA = { columnas: ["Codigo", "Descripcion"], filas: [] };
 let llamadas;

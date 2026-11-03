@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
-import Navbar from "./Navbar.jsx";
-import Planilla from "./Planilla.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
-import { sonarActualizacion } from "./sonido.js";
-import { suscribirEventos } from "./eventos.js";
+import { useColoresPlanilla } from "./componentes/ColoresPlanilla.jsx";
+import Navbar from "./componentes/Navbar.jsx";
+import Planilla from "./paginas/Planilla.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "./componentes/Recorrido.jsx";
+import { sonarActualizacion } from "./lib/sonido.js";
+import { suscribirEventos } from "./lib/eventos.js";
 import {
   aplicarFilaRecibida,
   bodegasDe,
@@ -15,7 +15,7 @@ import {
   filtrarFilas,
   rangoPagina,
   subUbicacionesDe,
-} from "./reglasPlanilla.js";
+} from "./lib/reglasPlanilla.js";
 
 function nombreInventarioPorDefecto(fecha = new Date()) {
   const dd = String(fecha.getDate()).padStart(2, "0");

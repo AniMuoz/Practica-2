@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { suscribirEventos } from "../src/eventos.js";
+import { suscribirEventos } from "../src/lib/eventos.js";
 
 let creadas;
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { obtenerJson, enviarJson, enviarFormulario, descargarBlob } from "../src/api.js";
+import { obtenerJson, enviarJson, enviarFormulario, descargarBlob } from "../src/lib/api.js";
 
 function simularFetch(respuesta) {
   const llamadas = [];

@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import PanelCarga from "../src/admin/paneles/PanelCarga.jsx";
-import PanelFormulario from "../src/admin/paneles/PanelFormulario.jsx";
-import { useCargaDatos } from "../src/admin/hooks/useCargaDatos.js";
-import { useCopiaExistencia } from "../src/admin/hooks/useCopiaExistencia.js";
+import PanelCarga from "../src/paginas/admin/paneles/PanelCarga.jsx";
+import PanelFormulario from "../src/paginas/admin/paneles/PanelFormulario.jsx";
+import { useCargaDatos } from "../src/paginas/admin/hooks/useCargaDatos.js";
+import { useCopiaExistencia } from "../src/paginas/admin/hooks/useCopiaExistencia.js";
 
 afterEach(() => {
   cleanup();

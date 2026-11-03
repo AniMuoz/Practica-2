@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { INACTIVIDAD_MS, useSondeo } from "../src/useSondeo.js";
+import { INACTIVIDAD_MS, useSondeo } from "../src/lib/useSondeo.js";
 
 beforeEach(() => {
   vi.useFakeTimers();

@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Gastos from "../src/Gastos.jsx";
+import Gastos from "../src/paginas/Gastos.jsx";
 
-vi.mock("../src/Navbar.jsx", () => ({ default: () => null }));
+vi.mock("../src/componentes/Navbar.jsx", () => ({ default: () => null }));
 
 beforeEach(() => {
   localStorage.clear();

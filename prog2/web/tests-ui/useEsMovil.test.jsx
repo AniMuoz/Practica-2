@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import { useEsMovil } from "../src/useEsMovil.js";
+import { useEsMovil } from "../src/lib/useEsMovil.js";
 
 function simularMatchMedia(inicial) {
   let oyente = null;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSesion } from "./Acceso.jsx";
-import Navbar from "./Navbar.jsx";
+import { useSesion } from "../componentes/Acceso.jsx";
+import Navbar from "../componentes/Navbar.jsx";
 
 const campo = {
   padding: "8px 10px",

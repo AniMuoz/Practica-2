@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
-import Navbar from "./Navbar.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
-import { useEsMovil } from "./useEsMovil.js";
-import { estadoInventario as estadoDeInventario, textoCampo } from "./reglasPlanilla.js";
+import Navbar from "../componentes/Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
+import { useEsMovil } from "../lib/useEsMovil.js";
+import { estadoInventario as estadoDeInventario, textoCampo } from "../lib/reglasPlanilla.js";
 
 export default function Detalle() {
   const { codigo } = useParams();

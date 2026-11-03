@@ -1,4 +1,4 @@
-import { colorLibre } from "../../reglasPlanilla.js";
+import { colorLibre } from "../../../lib/reglasPlanilla.js";
 import PanelPlanilla from "./PanelPlanilla.jsx";
 import VistaPrevia from "./VistaPrevia.jsx";
 

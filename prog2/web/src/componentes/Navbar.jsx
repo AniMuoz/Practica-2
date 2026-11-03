@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import logo from "../logo/logoberfre.png";
+import logo from "../../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
 import { iniciarRecorrido } from "./Recorrido.jsx";
-import { sonarActualizacion, useSonido } from "./sonido.js";
-import { useSondeo } from "./useSondeo.js";
-import { suscribirEventos } from "./eventos.js";
+import { sonarActualizacion, useSonido } from "../lib/sonido.js";
+import { useSondeo } from "../lib/useSondeo.js";
+import { suscribirEventos } from "../lib/eventos.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
   const { rol, usuario } = useSesion();

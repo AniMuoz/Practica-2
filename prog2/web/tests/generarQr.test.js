@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { estadoQr, marcaRombo, sinQr, urlQr, URL_BASE_QR } from "../src/generarQr.js";
+import { estadoQr, marcaRombo, sinQr, urlQr, URL_BASE_QR } from "../src/lib/generarQr.js";
 
 describe("generarQr", () => {
   it("urlQr concatena base y codigo", () => {

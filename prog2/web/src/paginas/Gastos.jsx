@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import Navbar from "./Navbar.jsx";
+import Navbar from "../componentes/Navbar.jsx";
 import Planilla from "./Planilla.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 
 const CLAVE_GUARDADO = "gastosPendientes";
 const VACIO = { topico: "", proveedor: "", nboleta: "", fecha: "", monto: "" };

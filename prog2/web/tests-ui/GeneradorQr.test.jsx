@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/Navbar.jsx", () => ({ default: () => null }));
+vi.mock("../src/componentes/Navbar.jsx", () => ({ default: () => null }));
 
 const respuesta = (status, cuerpo) => new Response(JSON.stringify(cuerpo), { status });
 let Acceso;
@@ -13,8 +13,8 @@ async function montar(rol) {
     String(url).includes("/api/sesion") ? respuesta(200, { usuario: "u", rol }) : respuesta(200, { columnas: [], filas: [] })
   );
   vi.resetModules();
-  Acceso = (await import("../src/Acceso.jsx")).default;
-  GeneradorQr = (await import("../src/GeneradorQr.jsx")).default;
+  Acceso = (await import("../src/componentes/Acceso.jsx")).default;
+  GeneradorQr = (await import("../src/paginas/GeneradorQr.jsx")).default;
   render(
     <Acceso>
       <MemoryRouter initialEntries={["/qr"]}>

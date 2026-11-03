@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 let oyente;
-vi.mock("../src/eventos.js", () => ({
+vi.mock("../src/lib/eventos.js", () => ({
   suscribirEventos: (o) => {
     oyente = o;
     return () => {
@@ -11,8 +11,8 @@ vi.mock("../src/eventos.js", () => ({
   },
 }));
 
-import { usePaneles } from "../src/admin/hooks/usePaneles.js";
-import { useRefrescoSse } from "../src/admin/hooks/useRefrescoSse.js";
+import { usePaneles } from "../src/paginas/admin/hooks/usePaneles.js";
+import { useRefrescoSse } from "../src/paginas/admin/hooks/useRefrescoSse.js";
 
 beforeEach(() => {
   vi.useFakeTimers();

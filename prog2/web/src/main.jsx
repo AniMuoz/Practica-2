@@ -1,18 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
-import Acceso from "./Acceso.jsx";
-import Admin from "./Admin.jsx";
-import Auditoria from "./Auditoria.jsx";
-import Buzon from "./Buzon.jsx";
-import GeneradorQr from "./GeneradorQr.jsx";
-import Gastos from "./Gastos.jsx";
-import Personal from "./Personal.jsx";
+import Acceso from "./componentes/Acceso.jsx";
+import Admin from "./paginas/Admin.jsx";
+import Auditoria from "./paginas/Auditoria.jsx";
+import Buzon from "./componentes/Buzon.jsx";
+import GeneradorQr from "./paginas/GeneradorQr.jsx";
+import Gastos from "./paginas/Gastos.jsx";
+import Personal from "./paginas/Personal.jsx";
 import App from "./App.jsx";
-import { ColoresPlanillaProvider } from "./ColoresPlanilla.jsx";
-import Detalle from "./Detalle.jsx";
-import { Recorrido } from "./Recorrido.jsx";
-import "./movil.css";
+import { ColoresPlanillaProvider } from "./componentes/ColoresPlanilla.jsx";
+import Detalle from "./paginas/Detalle.jsx";
+import { Recorrido } from "./componentes/Recorrido.jsx";
+import "./estilos/movil.css";
 
 if (localStorage.getItem("modoOscuro") === "1") {
   document.documentElement.classList.add("oscuro");

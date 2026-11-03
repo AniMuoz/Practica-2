@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import VistaPrevia from "./VistaPrevia.jsx";
-import { obtenerJson, enviarFormulario, descargarBlob, guardarBlob } from "../../api.js";
+import { obtenerJson, enviarFormulario, descargarBlob, guardarBlob } from "../../../lib/api.js";
 
 // Revision de stock de reserva: busqueda por numero y revision de un PDF.
 // Sigue montado aunque este oculto para conservar lo buscado al cerrar y abrir el panel.

@@ -1,4 +1,4 @@
-import { bodegasDe, subUbicacionesDe } from "./reglasPlanilla.js";
+import { bodegasDe, subUbicacionesDe } from "../lib/reglasPlanilla.js";
 
 const campo = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 };
 

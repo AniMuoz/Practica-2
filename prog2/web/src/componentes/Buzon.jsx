@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "./Navbar.jsx";
 import { useSesion } from "./Acceso.jsx";
-import { sonarActualizacion } from "./sonido.js";
-import { useSondeo } from "./useSondeo.js";
-import { suscribirEventos } from "./eventos.js";
-import "./buzon.css";
+import { sonarActualizacion } from "../lib/sonido.js";
+import { useSondeo } from "../lib/useSondeo.js";
+import { suscribirEventos } from "../lib/eventos.js";
+import "../estilos/buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };

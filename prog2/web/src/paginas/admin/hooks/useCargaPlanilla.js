@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { obtenerJson } from "../../api.js";
+import { obtenerJson } from "../../../lib/api.js";
 
 const VACIA = { columnas: [], filas: [] };
 

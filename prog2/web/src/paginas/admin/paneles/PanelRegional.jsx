@@ -1,4 +1,4 @@
-import { colorCantidad } from "../../reglasPlanilla.js";
+import { colorCantidad } from "../../../lib/reglasPlanilla.js";
 import PanelPlanilla from "./PanelPlanilla.jsx";
 import VistaPrevia from "./VistaPrevia.jsx";
 

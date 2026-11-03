@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
+import { useColoresPlanilla } from "../componentes/ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
-import { useSesion } from "./Acceso.jsx";
-import Navbar from "./Navbar.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
+import { useSesion } from "../componentes/Acceso.jsx";
+import Navbar from "../componentes/Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import Planilla from "./Planilla.jsx";
 import Bitacora from "./Bitacora.jsx";
 import Ventas from "./Ventas.jsx";
 import VistaPrevia from "./admin/paneles/VistaPrevia.jsx";
-import "./admin.css";
+import "../estilos/admin.css";
 import Interruptor from "./admin/paneles/Interruptor.jsx";
 import PanelContratistas from "./admin/paneles/PanelContratistas.jsx";
 import PanelBodega from "./admin/paneles/PanelBodega.jsx";
@@ -19,7 +19,7 @@ import PanelReserva from "./admin/paneles/PanelReserva.jsx";
 import PanelDetallado from "./admin/paneles/PanelDetallado.jsx";
 import PanelCarga from "./admin/paneles/PanelCarga.jsx";
 import PanelFormulario from "./admin/paneles/PanelFormulario.jsx";
-import { useEsMovil } from "./useEsMovil.js";
+import { useEsMovil } from "../lib/useEsMovil.js";
 import { useCargaPlanilla } from "./admin/hooks/useCargaPlanilla.js";
 import { useDetallado } from "./admin/hooks/useDetallado.js";
 import { useContratistas } from "./admin/hooks/useContratistas.js";
@@ -31,14 +31,14 @@ import { useCargaDatos } from "./admin/hooks/useCargaDatos.js";
 import { useFiltrosStock } from "./admin/hooks/useFiltrosStock.jsx";
 import { useCopiaExistencia } from "./admin/hooks/useCopiaExistencia.js";
 import { textoUltimaCarga } from "./admin/utilidades.js";
-import { obtenerJson, enviarJson } from "./api.js";
-import FiltrosTabla, { FILTROS_INICIALES } from "./FiltrosTabla.jsx";
+import { obtenerJson, enviarJson } from "../lib/api.js";
+import FiltrosTabla, { FILTROS_INICIALES } from "../componentes/FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
   rutaConFiltros,
   rutaExcel,
   rutaExcelInventario,
-} from "./reglasPlanilla.js";
+} from "../lib/reglasPlanilla.js";
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 

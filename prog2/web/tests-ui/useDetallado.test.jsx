@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
-import { useDetallado } from "../src/admin/hooks/useDetallado.js";
+import { useDetallado } from "../src/paginas/admin/hooks/useDetallado.js";
 
 function json(datos, status = 200) {
   return new Response(JSON.stringify(datos), { status });

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { suscribirEventos } from "../../eventos.js";
+import { suscribirEventos } from "../../../lib/eventos.js";
 
 export const ESPERA_REFRESCO_MS = 200;
 export const ESPERA_REANUDAR_MS = 400;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filtrarYOrdenarPorCodigo, nombresContratistas, textoUltimaCarga } from "../src/admin/utilidades.js";
+import { filtrarYOrdenarPorCodigo, nombresContratistas, textoUltimaCarga } from "../src/paginas/admin/utilidades.js";
 
 test("textoUltimaCarga avisa si no hay carga o la fecha es invalida", () => {
   const aviso = "Todavía no hay una carga registrada para esta opción.";

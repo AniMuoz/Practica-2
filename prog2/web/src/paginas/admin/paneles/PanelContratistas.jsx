@@ -1,5 +1,5 @@
 import Planilla from "../../Planilla.jsx";
-import { validarContratistas } from "../../reglasPlanilla.js";
+import { validarContratistas } from "../../../lib/reglasPlanilla.js";
 
 // Editor de la lista de contratistas. El estado vive en Admin; este componente solo dibuja y edita filas.
 export default function PanelContratistas({

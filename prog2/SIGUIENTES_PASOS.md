@@ -40,3 +40,11 @@ Ya se extrajeron los componentes puros `web/src/admin/VistaPrevia.jsx` e `Interr
 - Anadir tests de UI para `Navbar.jsx` (necesita envolver en `MemoryRouter` de `react-router-dom`).
 - Revisar los 4 avisos de ESLint y decidir si se endurece la regla (`no-unused-vars` a `error`).
 - `trust proxy`: sigue pendiente por decision del usuario (necesita saber cuantos proxies hay delante de la API).
+
+
+## Estructura de web/src (actual)
+- `paginas/`: pantallas (Admin, Ventas, Bitacora, Detalle, Gastos, Personal, Auditoria, Planilla, GeneradorQr). `paginas/admin/hooks` y `paginas/admin/paneles` contienen lo extraido de Admin (hooks `use*` y paneles `Panel*`), y `paginas/admin/utilidades.js` las funciones puras.
+- `componentes/`: Navbar, Buzon, Acceso, FiltrosTabla, ColoresPlanilla, Recorrido.
+- `lib/`: api, eventos, sondeo, reglas de planilla, QR, sonido y hooks genericos.
+- `estilos/`: hojas CSS. En la raiz solo `main.jsx` y `App.jsx`.
+- Las rutas antiguas citadas mas arriba (`web/src/admin/...`, `src/api.js`) ahora viven en estas carpetas.
