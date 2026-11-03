@@ -57,12 +57,12 @@ const codigos = (matriz) => matriz.slice(1).map((f) => f[0]);
 
 test.beforeEach(reiniciar);
 
-test("todas las importaciones exigen la clave antes de leer el archivo", () => {
+test("todas las importaciones exigen la clave antes de leer el archivo", async () => {
   const buffer = excel([["a", "b"]]);
   for (const importar of [importarPlanilla, importarSap, importarPrecios, importarUbicaciones]) {
-    assert.throws(() => importar("mala", buffer), { status: 403 });
+    await assert.rejects(() => importar("mala", buffer), { status: 403 });
   }
-  assert.throws(() => importarDosColumnas("mala", buffer, "Precio"), { status: 403 });
+  await assert.rejects(() => importarDosColumnas("mala", buffer, "Precio"), { status: 403 });
   assert.equal(guardado, null);
 });
 
@@ -71,14 +71,14 @@ test("todas las importaciones exigen la clave antes de leer el archivo", () => {
 const FORMATO = COLS.filter((columna) => columna !== "Marcado");
 const filaFormato = (datos) => FORMATO.map((columna) => datos[columna] ?? "");
 
-test("importarPlanilla actualiza, agrega y conserva imágenes y marcado cuando vienen vacíos", () => {
+test("importarPlanilla actualiza, agrega y conserva imágenes y marcado cuando vienen vacíos", async () => {
   const buffer = excel([
     FORMATO,
     filaFormato({ Codigo: "100", Descripcion: "Perno V2", Stock: 9, Inventario: "3" }),
     filaFormato({ Codigo: "300", Descripcion: "Nuevo", Rombo: "n.png" }),
     filaFormato({}),
   ]);
-  assert.deepEqual(importarPlanilla(CLAVE, buffer), { agregados: 1, actualizados: 1 });
+  assert.deepEqual(await importarPlanilla(CLAVE, buffer), { agregados: 1, actualizados: 1 });
   assert.deepEqual(codigos(guardado), ["100", "200", "300"]);
   assert.equal(celda(guardado, "100", "Descripcion"), "Perno V2");
   assert.equal(celda(guardado, "100", "Stock"), 9);
@@ -89,28 +89,27 @@ test("importarPlanilla actualiza, agrega y conserva imágenes y marcado cuando v
   assert.equal(celda(guardado, "200", "Descripcion"), "Tuerca");
 });
 
-test("importarPlanilla acepta un archivo que incluye la columna Marcado", () => {
-  const buffer = excel([COLS, fila({ Codigo: "100", Descripcion: "X", Marcado: "" })]);
-  importarPlanilla(CLAVE, buffer);
+test("importarPlanilla acepta un archivo que incluye la columna Marcado", async () => {
+  const buffer = excel([COLS, fila({ Codigo: "100", Descripcion: "X", Marcado: "" })]);  await importarPlanilla(CLAVE, buffer);
   assert.equal(celda(guardado, "100", "Marcado"), "");
 });
 
-test("importarPlanilla rechaza un formato distinto indicando qué falta y qué sobra", () => {
+test("importarPlanilla rechaza un formato distinto indicando qué falta y qué sobra", async () => {
   const sinStock = FORMATO.filter((columna) => columna !== "Stock");
-  assert.throws(
+  await assert.rejects(
     () => importarPlanilla(CLAVE, excel([[...sinStock, "Extra"], sinStock.map(() => "")])),
     (error) => error.status === 400 && /faltan: Stock/.test(error.message) && /no corresponden: Extra/.test(error.message)
   );
   assert.equal(guardado, null);
 });
 
-test("importarPlanilla rechaza filas sin código o con inventario no entero y no guarda nada", () => {
-  assert.throws(
+test("importarPlanilla rechaza filas sin código o con inventario no entero y no guarda nada", async () => {
+  await assert.rejects(
     () => importarPlanilla(CLAVE, excel([FORMATO, filaFormato({ Descripcion: "sin código" })])),
     { status: 400, message: /fila 2 no tiene código/ }
   );
   for (const malo of ["1.5", "abc", "1e3"]) {
-    assert.throws(
+    await assert.rejects(
       () => importarPlanilla(CLAVE, excel([
         FORMATO,
         filaFormato({ Codigo: "100" }),
@@ -122,8 +121,7 @@ test("importarPlanilla rechaza filas sin código o con inventario no entero y no
   assert.equal(guardado, null);
 });
 
-test("importarPlanilla acepta inventario negativo y vacío", () => {
-  importarPlanilla(CLAVE, excel([
+test("importarPlanilla acepta inventario negativo y vacío", async () => {  await importarPlanilla(CLAVE, excel([
     FORMATO,
     filaFormato({ Codigo: "100", Inventario: "-4" }),
     filaFormato({ Codigo: "200", Inventario: "" }),
@@ -136,7 +134,7 @@ test("importarPlanilla acepta inventario negativo y vacío", () => {
 
 const ENC_SAP = ["Material", "Texto breve de material", "Almacén", "Libre utilización"];
 
-test("importarSap actualiza M501 y bodegas, agrega nuevos, omite otras plantas y respeta el orden del archivo", () => {
+test("importarSap actualiza M501 y bodegas, agrega nuevos, omite otras plantas y respeta el orden del archivo", async () => {
   const buffer = excel([
     ["Reporte"],
     ENC_SAP,
@@ -146,7 +144,7 @@ test("importarSap actualiza M501 y bodegas, agrega nuevos, omite otras plantas y
     ["400", "Fuera", "M999", 1],
     ["", "", "", ""],
   ]);
-  assert.deepEqual(importarSap(CLAVE, buffer), { agregados: 1, actualizados: 2, omitidos: 1 });
+  assert.deepEqual(await importarSap(CLAVE, buffer), { agregados: 1, actualizados: 2, omitidos: 1 });
   assert.deepEqual(codigos(guardado), ["300", "100", "200"]);
   assert.equal(celda(guardado, "100", "Descripcion"), "Perno SAP");
   assert.equal(celda(guardado, "100", "Stock"), 10);
@@ -156,36 +154,35 @@ test("importarSap actualiza M501 y bodegas, agrega nuevos, omite otras plantas y
   assert.equal(celda(guardado, "100", "Rombo"), "r.png");
 });
 
-test("importarSap solo cambia la descripción desde las filas de M501", () => {
-  importarSap(CLAVE, excel([ENC_SAP, ["100", "No debe pasar", "M503", 8]]));
+test("importarSap solo cambia la descripción desde las filas de M501", async () => {  await importarSap(CLAVE, excel([ENC_SAP, ["100", "No debe pasar", "M503", 8]]));
   assert.equal(celda(guardado, "100", "Descripcion"), "Perno");
   assert.equal(celda(guardado, "100", "M503"), 8);
 });
 
-test("importarSap rechaza una fila de bodega válida sin código y archivos sin encabezados", () => {
-  assert.throws(() => importarSap(CLAVE, excel([ENC_SAP, ["", "x", "M501", 1]])), { status: 400, message: /fila 2 no tiene código/ });
-  assert.throws(() => importarSap(CLAVE, excel([["foo", "bar"], ["1", "2"]])), { status: 400, message: /encabezados esperados/ });
+test("importarSap rechaza una fila de bodega válida sin código y archivos sin encabezados", async () => {
+  await assert.rejects(() => importarSap(CLAVE, excel([ENC_SAP, ["", "x", "M501", 1]])), { status: 400, message: /fila 2 no tiene código/ });
+  await assert.rejects(() => importarSap(CLAVE, excel([["foo", "bar"], ["1", "2"]])), { status: 400, message: /encabezados esperados/ });
   assert.equal(guardado, null);
 });
 
 // ---------- importarPrecios ----------
 
-test("importarPrecios actualiza descripción y precio y agrega códigos nuevos", () => {
+test("importarPrecios actualiza descripción y precio y agrega códigos nuevos", async () => {
   const buffer = excel([
     ["Material", "Texto breve de material", "Nuevos precios"],
     ["100", "Perno caro", 1500],
     ["500", "Nuevo", 20],
     ["", "", ""],
   ]);
-  assert.deepEqual(importarPrecios(CLAVE, buffer), { agregados: 1, actualizados: 1 });
+  assert.deepEqual(await importarPrecios(CLAVE, buffer), { agregados: 1, actualizados: 1 });
   assert.equal(celda(guardado, "100", "Precio"), 1500);
   assert.equal(celda(guardado, "100", "Descripcion"), "Perno caro");
   assert.equal(celda(guardado, "500", "Precio"), 20);
   assert.equal(celda(guardado, "200", "Precio"), "");
 });
 
-test("importarPrecios rechaza filas sin código", () => {
-  assert.throws(
+test("importarPrecios rechaza filas sin código", async () => {
+  await assert.rejects(
     () => importarPrecios(CLAVE, excel([["Material", "Descripcion", "Precio"], ["", "algo", 5]])),
     { status: 400, message: /fila 2 no tiene código/ }
   );
@@ -194,22 +191,22 @@ test("importarPrecios rechaza filas sin código", () => {
 
 // ---------- importarUbicaciones ----------
 
-test("importarUbicaciones solo toma M501 y deriva la sub-ubicación de los 4 primeros caracteres", () => {
+test("importarUbicaciones solo toma M501 y deriva la sub-ubicación de los 4 primeros caracteres", async () => {
   const buffer = excel([
     ["matnr", "lgort", "lgpbe"],
     ["100", "M501", "0102-A"],
     ["200", "M502", "9999-Z"],
     ["900", "M501", "0507-B"],
   ]);
-  assert.deepEqual(importarUbicaciones(CLAVE, buffer), { agregados: 1, actualizados: 1, omitidos: 1 });
+  assert.deepEqual(await importarUbicaciones(CLAVE, buffer), { agregados: 1, actualizados: 1, omitidos: 1 });
   assert.equal(celda(guardado, "100", "Ubicación"), "0102-A");
   assert.equal(celda(guardado, "100", "Sub-ubicación"), "0102");
   assert.equal(celda(guardado, "200", "Ubicación"), "");
   assert.equal(celda(guardado, "900", "Sub-ubicación"), "0507");
 });
 
-test("importarUbicaciones rechaza una fila de M501 sin código", () => {
-  assert.throws(
+test("importarUbicaciones rechaza una fila de M501 sin código", async () => {
+  await assert.rejects(
     () => importarUbicaciones(CLAVE, excel([["matnr", "lgort", "lgpbe"], ["", "M501", "01"]])),
     { status: 400, message: /fila 2 no tiene código/ }
   );
@@ -217,30 +214,30 @@ test("importarUbicaciones rechaza una fila de M501 sin código", () => {
 
 // ---------- importarDosColumnas ----------
 
-test("importarDosColumnas rechaza columnas destino no permitidas o inexistentes", () => {
+test("importarDosColumnas rechaza columnas destino no permitidas o inexistentes", async () => {
   const buffer = excel([["Codigo", "Valor"], ["100", "x"]]);
   for (const destino of ["", "  ", undefined, "Codigo", "Inventario", "Comentario"]) {
-    assert.throws(() => importarDosColumnas(CLAVE, buffer, destino), { status: 400, message: /columna válida/ });
+    await assert.rejects(() => importarDosColumnas(CLAVE, buffer, destino), { status: 400, message: /columna válida/ });
   }
-  assert.throws(() => importarDosColumnas(CLAVE, buffer, "Inexistente"), { status: 400, message: /columna elegida/ });
+  await assert.rejects(() => importarDosColumnas(CLAVE, buffer, "Inexistente"), { status: 400, message: /columna elegida/ });
   assert.equal(guardado, null);
 });
 
-test("importarDosColumnas exige exactamente 2 columnas con encabezado", () => {
-  assert.throws(() => importarDosColumnas(CLAVE, excel([["Codigo"], ["100"]]), "Precio"), { status: 400, message: /exactamente 2/ });
-  assert.throws(() => importarDosColumnas(CLAVE, excel([["a", "b", "c"], [1, 2, 3]]), "Precio"), { status: 400, message: /exactamente 2/ });
+test("importarDosColumnas exige exactamente 2 columnas con encabezado", async () => {
+  await assert.rejects(() => importarDosColumnas(CLAVE, excel([["Codigo"], ["100"]]), "Precio"), { status: 400, message: /exactamente 2/ });
+  await assert.rejects(() => importarDosColumnas(CLAVE, excel([["a", "b", "c"], [1, 2, 3]]), "Precio"), { status: 400, message: /exactamente 2/ });
 });
 
-test("importarDosColumnas actualiza la columna elegida y agrega códigos nuevos", () => {
+test("importarDosColumnas actualiza la columna elegida y agrega códigos nuevos", async () => {
   const buffer = excel([["Codigo", "Precio"], ["100", 777], ["999", 5], ["", ""]]);
-  assert.deepEqual(importarDosColumnas(CLAVE, buffer, " Precio "), { agregados: 1, actualizados: 1 });
+  assert.deepEqual(await importarDosColumnas(CLAVE, buffer, " Precio "), { agregados: 1, actualizados: 1 });
   assert.equal(celda(guardado, "100", "Precio"), 777);
   assert.equal(celda(guardado, "100", "Descripcion"), "Perno");
   assert.equal(celda(guardado, "999", "Precio"), 5);
 });
 
-test("importarDosColumnas rechaza una fila con valor pero sin código", () => {
-  assert.throws(
+test("importarDosColumnas rechaza una fila con valor pero sin código", async () => {
+  await assert.rejects(
     () => importarDosColumnas(CLAVE, excel([["Codigo", "Precio"], ["", 5]]), "Precio"),
     { status: 400, message: /fila 2 no tiene código/ }
   );

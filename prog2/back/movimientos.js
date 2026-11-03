@@ -16,14 +16,25 @@ function errorPeticion(mensaje) {
   return error;
 }
 
-function leerCodigosMovimientos() {
+function codigosEnCache() {
   if (cacheCodigos) return cacheCodigos;
-  const filas = ejecutar("leer", { tabla: "movimientos" }) || [];
+  const error = new Error("Los datos aún se están cargando.");
+  error.status = 503;
+  throw error;
+}
+
+async function cargarCodigosMovimientos() {
+  if (cacheCodigos) return cacheCodigos;
+  const filas = (await ejecutar("leer", { tabla: "movimientos" })) || [];
   cacheCodigos = [...filas].sort((a, b) => a.pos - b.pos).map((fila) => String(fila.codigo));
   return cacheCodigos;
 }
 
-function importarMovimientos(clave, buffer) {
+function leerCodigosMovimientos() {
+  return codigosEnCache();
+}
+
+async function importarMovimientos(clave, buffer) {
   exigirClave(clave);
   const libro = XLSX.read(buffer, { type: "buffer" });
   const hoja = libro.Sheets[libro.SheetNames[0]];
@@ -33,7 +44,7 @@ function importarMovimientos(clave, buffer) {
   const leidos = matriz.slice(1).map((fila) => String(fila[0] ?? "").trim()).filter(Boolean);
   const codigos = [...new Set(leidos)];
   if (codigos.length === 0) throw errorPeticion("La planilla no tiene códigos de material.");
-  ejecutar("reemplazar", {
+  await ejecutar("reemplazar", {
     tabla: "movimientos",
     columna: "codigo",
     filas: codigos.map((codigo, pos) => ({ codigo, pos })),
@@ -42,14 +53,14 @@ function importarMovimientos(clave, buffer) {
   return { agregados: codigos.length, actualizados: 0, omitidos: leidos.length - codigos.length };
 }
 
-function agregarCodigoMovimiento(clave, codigoCrudo) {
+async function agregarCodigoMovimiento(clave, codigoCrudo) {
   exigirClave(clave);
   const codigo = String(codigoCrudo ?? "").trim();
   if (!codigo) throw errorPeticion("Escribe un código.");
-  const actuales = leerCodigosMovimientos();
+  const actuales = await cargarCodigosMovimientos();
   if (actuales.includes(codigo)) throw errorPeticion("Ese código ya está en la planilla.");
   const codigos = [...actuales, codigo];
-  ejecutar("reemplazar", {
+  await ejecutar("reemplazar", {
     tabla: "movimientos",
     columna: "codigo",
     filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
@@ -114,15 +125,15 @@ async function exportarMovimientos(colores = true, origenExistencia = "", filtro
   return libro.xlsx.writeBuffer();
 }
 
-function eliminarCodigoMovimiento(clave, codigoCrudo) {
+async function eliminarCodigoMovimiento(clave, codigoCrudo) {
   exigirClave(clave);
   const codigo = String(codigoCrudo ?? "").trim();
   if (!codigo) throw errorPeticion("Escribe un código.");
-  const actuales = leerCodigosMovimientos();
+  const actuales = await cargarCodigosMovimientos();
   const indice = actuales.indexOf(codigo);
   if (indice === -1) throw errorPeticion("Ese código no está en la planilla.");
   const codigos = actuales.filter((c) => c !== codigo);
-  ejecutar("reemplazar", {
+  await ejecutar("reemplazar", {
     tabla: "movimientos",
     columna: "codigo",
     filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
@@ -131,13 +142,13 @@ function eliminarCodigoMovimiento(clave, codigoCrudo) {
   return { codigo };
 }
 
-function editarCodigoMovimiento(clave, codigoAnteriorCrudo, codigoNuevoCrudo) {
+async function editarCodigoMovimiento(clave, codigoAnteriorCrudo, codigoNuevoCrudo) {
   exigirClave(clave);
   const anterior = String(codigoAnteriorCrudo ?? "").trim();
   const nuevo = String(codigoNuevoCrudo ?? "").trim();
   if (!anterior) throw errorPeticion("Código actual no válido.");
   if (!nuevo) throw errorPeticion("Escribe el nuevo código.");
-  const actuales = leerCodigosMovimientos();
+  const actuales = await cargarCodigosMovimientos();
   const indice = actuales.indexOf(anterior);
   if (indice === -1) throw errorPeticion("El código original no está en la planilla.");
   if (anterior !== nuevo && actuales.includes(nuevo)) {
@@ -145,7 +156,7 @@ function editarCodigoMovimiento(clave, codigoAnteriorCrudo, codigoNuevoCrudo) {
   }
   const codigos = [...actuales];
   codigos[indice] = nuevo;
-  ejecutar("reemplazar", {
+  await ejecutar("reemplazar", {
     tabla: "movimientos",
     columna: "codigo",
     filas: codigos.map((cod, pos) => ({ codigo: cod, pos })),
@@ -160,6 +171,7 @@ module.exports = {
   eliminarCodigoMovimiento,
   editarCodigoMovimiento,
   leerCodigosMovimientos,
+  cargarCodigosMovimientos,
   planillaMovimientos,
   exportarMovimientos,
 };

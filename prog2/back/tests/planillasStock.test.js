@@ -31,7 +31,7 @@ const MATERIALES = [
   { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "", "Stock critico": "" },
 ];
 let TABLA = { columnas: [], filas: [] };
-nucleo.cargarMateriales = () => ({ filasBodega: MATERIALES });
+nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
 nucleo.leerTabla = () => TABLA;
 
 const stock = require("../planillasStock");

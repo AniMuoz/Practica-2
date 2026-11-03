@@ -1,7 +1,7 @@
 const ExcelJS = require("exceljs");
 const {
   CAMPOS_IMAGEN,
-  cargarMateriales,
+  materialesEnCache,
   leerTabla,
   textoBusqueda,
 } = require("./nucleoDatos");
@@ -133,7 +133,7 @@ function valorStock(valor) {
 }
 
 function filasConBodegas() {
-  return cargarMateriales().filasBodega;
+  return materialesEnCache().filasBodega;
 }
 
 function stockRegional() {

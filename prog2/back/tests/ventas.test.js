@@ -20,9 +20,14 @@ const MATERIALES = [
   { Codigo: "300", Descripcion: "Pegamento", Stock: "2", "Ubicación": "          " },
 ];
 const nucleo = require("../nucleoDatos");
-nucleo.cargarMateriales = () => ({ filasBodega: MATERIALES });
+nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
+const contratistas = require("../contratistas");
 
 const { armarReserva, columnaPorTitulo, añadirVenta } = require("../ventas");
+
+test.before(async () => {
+  await contratistas.cargarContratistas();
+});
 
 const COLUMNAS_RESERVA = ["N°", "N° Orden", "Código", "Descripción", "Reserva", "Stock", "Ubicación", "Estado"];
 const SIN_UBICACION = "No se encontro ubicación";

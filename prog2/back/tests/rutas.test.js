@@ -40,6 +40,8 @@ let errorConexion = null;
 supabase.from = () => ({ select: () => ({ limit: async () => ({ error: errorConexion }) }) });
 
 const { app } = require("../server");
+// supabase.js puede haber cargado SECRETO_PROXY desde .env; en tests se llama al API en directo.
+delete process.env.SECRETO_PROXY;
 
 test.mock.method(console, "error", () => {});
 
@@ -462,6 +464,27 @@ test("POST /api/tabla/excel devuelve el error de la importación y no registra l
   const interno = await pedir("POST", "/api/tabla/excel", { form: formulario({ modo: "sap" }, archivo) });
   assert.deepEqual([interno.status, interno.json.error], [500, "falló algo"]);
   assert.equal(llamadasA("registrarCarga").length, 0);
+});
+
+test("POST /api/tabla/excel rechaza una segunda carga mientras hay otra en curso", async () => {
+  let liberar;
+  const espera = new Promise((resolve) => {
+    liberar = resolve;
+  });
+  responder({
+    importarSap: async () => {
+      await espera;
+      return { agregados: 1 };
+    },
+    registrarCarga: {},
+  });
+  const archivo = { archivo: { contenido: "x", archivo: "a.xlsx" } };
+  const primero = pedir("POST", "/api/tabla/excel", { form: formulario({ modo: "sap" }, archivo) });
+  await new Promise((resolve) => setImmediate(resolve));
+  const segundo = await pedir("POST", "/api/tabla/excel", { form: formulario({ modo: "sap" }, archivo) });
+  assert.deepEqual([segundo.status, segundo.json.error], [409, "Ya hay una carga en curso. Espera a que termine e inténtalo de nuevo."]);
+  liberar();
+  assert.equal((await primero).status, 200);
 });
 
 // ---------- materiales ----------

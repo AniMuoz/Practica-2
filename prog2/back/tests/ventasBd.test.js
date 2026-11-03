@@ -18,7 +18,8 @@ const MATERIALES = [
   { Codigo: "200", Descripcion: "Cañería PVC", Stock: "0", M502: "0", M503: "0", M504: "0", M505: "50", "Ubicación": "          ", Peso: "2", Precio: "" },
 ];
 const nucleo = require("../nucleoDatos");
-nucleo.cargarMateriales = () => ({ filasBodega: MATERIALES });
+nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
+const contratistas = require("../contratistas");
 
 // ---------- Supabase falso: tablas en memoria ----------
 const { supabase } = require("../supabase");
@@ -79,6 +80,9 @@ supabase.from = (tabla) => {
 
 const ventasBd = require("../ventasBd");
 
+test.before(async () => {
+  await contratistas.cargarContratistas();
+});
 test.beforeEach(reiniciar);
 
 const ITEMS = [{ codigo: "100", cantidad: 4 }, { codigo: "200", cantidad: 12 }, { codigo: "999", cantidad: 1 }];

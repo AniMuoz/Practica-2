@@ -28,7 +28,7 @@ const MATERIALES = [
   { Codigo: "100", Descripcion: "Perno", Stock: "10", M502: "3", "Ubicación": "0102-A", "Sub-ubicación": "0102" },
   { Codigo: "200", Descripcion: "Tuerca", Stock: "2", "Ubicación": "          " },
 ];
-nucleo.cargarMateriales = () => {
+nucleo.materialesEnCache = () => {
   lecturasMateriales += 1;
   return { filasBodega: MATERIALES };
 };
@@ -52,6 +52,18 @@ function cargar(inicial = {}) {
   errorUpsert = null;
   delete require.cache[require.resolve("../reservasDatos")];
   return require("../reservasDatos");
+}
+
+async function conReservas(inicial = {}) {
+  const modulo = cargar(inicial);
+  await modulo.cargarReservas();
+  return modulo;
+}
+
+async function conCargas(inicial = {}) {
+  const modulo = cargar(inicial);
+  await modulo.cargarUltimasCargas();
+  return modulo;
 }
 
 function registro(datos) {
@@ -119,15 +131,15 @@ test("indiceEncabezado y celdaReserva manejan columnas ausentes", () => {
 
 // ---------- lectura ----------
 
-test("leerReservas sin datos devuelve los encabezados y ninguna fila", () => {
-  const { leerReservas } = cargar();
+test("leerReservas sin datos devuelve los encabezados y ninguna fila", async () => {
+  const { leerReservas } = await conReservas();
   const datos = leerReservas();
   assert.deepEqual(datos.columnas, TITULOS);
   assert.deepEqual(datos.filas, []);
 });
 
-test("leerReservas lee de la base, descarta filas vacías y guarda el resultado", () => {
-  const { leerReservas } = cargar({ reservas: [...RESERVAS, registro({})] });
+test("leerReservas lee de la base, descarta filas vacías y guarda el resultado", async () => {
+  const { leerReservas } = await conReservas({ reservas: [...RESERVAS, registro({})] });
   const datos = leerReservas();
   assert.equal(datos.filas.length, 3);
   const consultas = operaciones.length;
@@ -135,9 +147,9 @@ test("leerReservas lee de la base, descarta filas vacías y guarda el resultado"
   assert.equal(operaciones.length, consultas);
 });
 
-test("leerReservas migra la planilla antigua si la tabla está vacía", () => {
+test("leerReservas migra la planilla antigua si la tabla está vacía", async () => {
   const matriz = [TITULOS, TITULOS.map((titulo) => (titulo === "Orden" ? "7000" : titulo === "Nº reserva" ? "1" : ""))];
-  const { leerReservas } = cargar({ planillas: [{ nombre: "reservas", matriz }] });
+  const { leerReservas } = await conReservas({ planillas: [{ nombre: "reservas", matriz }] });
   assert.equal(leerReservas().filas.length, 1);
   const reemplazo = operaciones.find((operacion) => operacion.operacion === "reemplazar");
   assert.equal(reemplazo.tabla, "reservas");
@@ -147,53 +159,49 @@ test("leerReservas migra la planilla antigua si la tabla está vacía", () => {
 
 // ---------- importación ----------
 
-test("importarReservas exige la clave", () => {
+test("importarReservas exige la clave", async () => {
   const { importarReservas } = cargar();
-  assert.throws(() => importarReservas("mala", excel(RESERVAS)), { status: 403 });
+  await assert.rejects(() => importarReservas("mala", excel(RESERVAS)), { status: 403 });
   assert.equal(operaciones.length, 0);
 });
 
-test("importarReservas rechaza archivos sin encabezados", () => {
+test("importarReservas rechaza archivos sin encabezados", async () => {
   const { importarReservas } = cargar();
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet([["", ""], ["a", "b"]]), "Hoja1");
   const buffer = XLSX.write(libro, { type: "buffer", bookType: "xlsx" });
-  assert.throws(() => importarReservas(CLAVE, buffer), { status: 400, message: /encabezados/ });
+  await assert.rejects(() => importarReservas(CLAVE, buffer), { status: 400, message: /encabezados/ });
 });
 
-test("importarReservas agrega, omite repetidas sin cambios y actualiza las modificadas", () => {
+test("importarReservas agrega, omite repetidas sin cambios y actualiza las modificadas", async () => {
   const { importarReservas } = cargar();
-  assert.deepEqual(importarReservas(CLAVE, excel(RESERVAS)), { agregados: 3, actualizados: 0, omitidos: 0 });
+  assert.deepEqual(await importarReservas(CLAVE, excel(RESERVAS)), { agregados: 3, actualizados: 0, omitidos: 0 });
   assert.equal(bd.reservas.length, 3);
 
-  const { importarReservas: otra } = (() => {
-    const guardado = bd.reservas;
-    const modulo = cargar({ reservas: guardado });
-    return { importarReservas: modulo.importarReservas };
-  })();
-  assert.deepEqual(otra(CLAVE, excel(RESERVAS)), { agregados: 0, actualizados: 0, omitidos: 3 });
+  const otra = cargar({ reservas: bd.reservas }).importarReservas;
+  assert.deepEqual(await otra(CLAVE, excel(RESERVAS)), { agregados: 0, actualizados: 0, omitidos: 3 });
 
   const modificada = [{ ...RESERVAS[0], cantidad_necesaria: "99" }, RESERVAS[1], registro({ orden: "6003", n_reserva: "9003", material: "100" })];
   const final = cargar({ reservas: bd.reservas });
-  assert.deepEqual(final.importarReservas(CLAVE, excel(modificada)), { agregados: 1, actualizados: 1, omitidos: 1 });
+  assert.deepEqual(await final.importarReservas(CLAVE, excel(modificada)), { agregados: 1, actualizados: 1, omitidos: 1 });
   assert.equal(bd.reservas.length, 4);
   assert.equal(bd.reservas.find((fila) => fila.orden === "6001" && fila.material === "100").cantidad_necesaria, "99");
 });
 
-test("importarReservas identifica la reserva por orden, número, posición y material sin importar mayúsculas", () => {
+test("importarReservas identifica la reserva por orden, número, posición y material sin importar mayúsculas", async () => {
   const base = registro({ orden: "A1", n_reserva: "5", n_pos_reserva_traslado: "1", material: "x" });
   const { importarReservas } = cargar({ reservas: [base] });
   const mismaClave = registro({ orden: "a1", n_reserva: "5", n_pos_reserva_traslado: "1", material: "X", centro: "nuevo" });
   const otraPosicion = registro({ orden: "A1", n_reserva: "5", n_pos_reserva_traslado: "2", material: "x" });
-  assert.deepEqual(importarReservas(CLAVE, excel([mismaClave, otraPosicion])), { agregados: 1, actualizados: 1, omitidos: 0 });
+  assert.deepEqual(await importarReservas(CLAVE, excel([mismaClave, otraPosicion])), { agregados: 1, actualizados: 1, omitidos: 0 });
 });
 
-test("importarReservas convierte las fechas de Excel y acepta encabezados con otro formato", () => {
+test("importarReservas convierte las fechas de Excel y acepta encabezados con otro formato", async () => {
   const { importarReservas } = cargar();
   const titulos = ["ORDEN", "n reserva", "MATERIAL", "fecha de necesidad"];
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet([titulos, ["6001", "9001", "100", 46300]]), "Hoja1");
-  importarReservas(CLAVE, XLSX.write(libro, { type: "buffer", bookType: "xlsx" }));
+  await importarReservas(CLAVE, XLSX.write(libro, { type: "buffer", bookType: "xlsx" }));
   assert.equal(bd.reservas[0].fecha_de_necesidad, "05/10/2026");
   assert.equal(bd.reservas[0].orden, "6001");
   assert.equal(bd.reservas[0].n_reserva, "9001");
@@ -201,10 +209,13 @@ test("importarReservas convierte las fechas de Excel y acepta encabezados con ot
 
 // ---------- revisión y búsqueda ----------
 
-const revisar = (reserva) => cargar({ reservas: RESERVAS }).revisionReservas(reserva);
+async function revisar(reserva) {
+  const modulo = await conReservas({ reservas: RESERVAS });
+  return modulo.revisionReservas(reserva);
+}
 
-test("revisionReservas cruza cada línea con el stock y arma el estado", () => {
-  const revision = revisar("9001");
+test("revisionReservas cruza cada línea con el stock y arma el estado", async () => {
+  const revision = await revisar("9001");
   assert.equal(revision.columnas.length, 20);
   assert.equal(revision.total, 3);
   assert.equal(revision.filas.length, 2);
@@ -220,25 +231,25 @@ test("revisionReservas cruza cada línea con el stock y arma el estado", () => {
   assert.equal(revision.movimiento, "201");
 });
 
-test("revisionReservas usa el texto de la reserva si el material no está en el inventario", () => {
-  const fila = revisar("9002").filas[0];
+test("revisionReservas usa el texto de la reserva si el material no está en el inventario", async () => {
+  const fila = (await revisar("9002")).filas[0];
   assert.equal(fila[4], "Desconocido");
   assert.equal(fila[7], 0);
   assert.equal(fila[8], 1.5);
   assert.equal(fila[13], "No disponible");
 });
 
-test("revisionReservas busca por coincidencia parcial, sin importar mayúsculas, y sin término no devuelve filas", () => {
-  assert.equal(revisar("900").filas.length, 3);
-  assert.equal(revisar(" 9002 ").filas.length, 1);
-  assert.equal(revisar("77777").filas.length, 0);
-  const vacio = revisar("");
+test("revisionReservas busca por coincidencia parcial, sin importar mayúsculas, y sin término no devuelve filas", async () => {
+  assert.equal((await revisar("900")).filas.length, 3);
+  assert.equal((await revisar(" 9002 ")).filas.length, 1);
+  assert.equal((await revisar("77777")).filas.length, 0);
+  const vacio = await revisar("");
   assert.deepEqual([vacio.columnas, vacio.filas, vacio.total], [[], [], 3]);
-  assert.equal(revisar(undefined).filas.length, 0);
+  assert.equal((await revisar(undefined)).filas.length, 0);
 });
 
-test("revisionReservas puede buscar por número de orden", () => {
-  const { revisionReservas } = cargar({ reservas: RESERVAS });
+test("revisionReservas puede buscar por número de orden", async () => {
+  const { revisionReservas } = await conReservas({ reservas: RESERVAS });
   assert.equal(revisionReservas("6001", "orden").filas.length, 2);
   assert.equal(revisionReservas("6002", "orden").filas.length, 1);
   assert.equal(revisionReservas("600", "orden").filas.length, 3);
@@ -246,7 +257,7 @@ test("revisionReservas puede buscar por número de orden", () => {
   assert.equal(revisionReservas("6001", "reserva").filas.length, 0);
 });
 
-test("revisionReservas omite la copia incompleta cuando hay otra completa de la misma reserva", () => {
+test("revisionReservas omite la copia incompleta cuando hay otra completa de la misma reserva", async () => {
   const incompleta = registro({
     n_reserva: "9001",
     n_pos_reserva_traslado: "1",
@@ -276,7 +287,7 @@ test("revisionReservas omite la copia incompleta cuando hay otra completa de la 
     centro: "C1",
     almacen: "M501",
   });
-  const { revisionReservas } = cargar({ reservas: [incompleta, completa, otraLinea] });
+  const { revisionReservas } = await conReservas({ reservas: [incompleta, completa, otraLinea] });
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 2);
   assert.deepEqual(
@@ -289,7 +300,7 @@ test("revisionReservas omite la copia incompleta cuando hay otra completa de la 
   assert.deepEqual(revision.marcadosCodigo, [false, false]);
 });
 
-test("revisionReservas deja una sola fila cuando hay copias exactamente iguales", () => {
+test("revisionReservas deja una sola fila cuando hay copias exactamente iguales", async () => {
   const linea = registro({
     orden: "6001",
     n_reserva: "9001",
@@ -300,14 +311,14 @@ test("revisionReservas deja una sola fila cuando hay copias exactamente iguales"
     centro: "C1",
     almacen: "M501",
   });
-  const { revisionReservas } = cargar({ reservas: [linea, { ...linea }, linea] });
+  const { revisionReservas } = await conReservas({ reservas: [linea, { ...linea }, linea] });
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 1);
   assert.equal(revision.filas[0][3], "100");
   assert.deepEqual(revision.marcadosCodigo, [false]);
 });
 
-test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posición de origen", () => {
+test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posición de origen", async () => {
   const base = {
     orden: "",
     n_reserva: "1573425",
@@ -317,7 +328,7 @@ test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posici
     unidad_medida_base: "UN",
     fecha_de_necesidad: "23/09/2026",
   };
-  const { revisionReservas } = cargar({
+  const { revisionReservas } = await conReservas({
     reservas: [
       registro({ ...base, n_pos_reserva_traslado: "1" }),
       registro({ ...base, n_pos_reserva_traslado: "11" }),
@@ -331,12 +342,12 @@ test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posici
   assert.deepEqual(revision.repeticiones, [2]);
 });
 
-test("revisionReservas reporta 1 repetición cuando la fila no está duplicada", () => {
-  const revision = revisar("9001");
+test("revisionReservas reporta 1 repetición cuando la fila no está duplicada", async () => {
+  const revision = await revisar("9001");
   assert.deepEqual(revision.repeticiones, [1, 1]);
 });
 
-test("revisionReservas marca el código cuando el mismo material aparece con datos distintos", () => {
+test("revisionReservas marca el código cuando el mismo material aparece con datos distintos", async () => {
   const base = {
     orden: "6001",
     n_reserva: "9001",
@@ -345,7 +356,7 @@ test("revisionReservas marca el código cuando el mismo material aparece con dat
     centro: "C1",
     almacen: "M501",
   };
-  const { revisionReservas } = cargar({
+  const { revisionReservas } = await conReservas({
     reservas: [
       registro({ ...base, n_pos_reserva_traslado: "1", cantidad_necesaria: "5" }),
       registro({ ...base, n_pos_reserva_traslado: "2", cantidad_necesaria: "8" }),
@@ -374,7 +385,7 @@ test("revisionReservas marca el código cuando el mismo material aparece con dat
   );
 });
 
-test("revisionReservas prioriza la completa y no marca conflicto si la incompleta se descarta", () => {
+test("revisionReservas prioriza la completa y no marca conflicto si la incompleta se descarta", async () => {
   const incompleta = registro({
     n_reserva: "9001",
     n_pos_reserva_traslado: "1",
@@ -390,16 +401,16 @@ test("revisionReservas prioriza la completa y no marca conflicto si la incomplet
     centro: "C1",
     almacen: "M501",
   });
-  const { revisionReservas } = cargar({ reservas: [incompleta, completa] });
+  const { revisionReservas } = await conReservas({ reservas: [incompleta, completa] });
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 1);
   assert.deepEqual(revision.marcadosCodigo, [false]);
   assert.equal(revision.filas[0][1], "6001");
 });
 
-test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", () => {
+test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", async () => {
   const muchas = Array.from({ length: 600 }, (_, i) => registro({ orden: String(i), n_reserva: "7", material: "100", cantidad_necesaria: "1" }));
-  const { buscarReservas } = cargar({ reservas: muchas });
+  const { buscarReservas } = await conReservas({ reservas: muchas });
   const pagina1 = buscarReservas("7", 1, 2);
   assert.equal(pagina1.filas.length, 2);
   assert.equal(pagina1.filas[0][0], 3);
@@ -419,18 +430,18 @@ test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", ()
 // ---------- exportación ----------
 
 test("exportarRevisionPorReserva valida el número y que existan reservas", async () => {
-  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("  "), { status: 400, message: /número de reserva/ });
-  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("  ", true, "orden"), { status: 400, message: /número de orden/ });
-  await assert.rejects(cargar().exportarRevisionPorReserva("9001"), { status: 400, message: /Todavía no hay reservas/ });
-  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("55555"), { status: 404 });
-  await assert.rejects(cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("55555", true, "orden"), {
+  await assert.rejects((await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("  "), { status: 400, message: /número de reserva/ });
+  await assert.rejects((await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("  ", true, "orden"), { status: 400, message: /número de orden/ });
+  await assert.rejects((await conReservas()).exportarRevisionPorReserva("9001"), { status: 400, message: /Todavía no hay reservas/ });
+  await assert.rejects((await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("55555"), { status: 404 });
+  await assert.rejects((await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("55555", true, "orden"), {
     status: 404,
     message: /número de orden/,
   });
 });
 
 test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados con color", async () => {
-  const buffer = await cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("9001", true);
+  const buffer = await (await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("9001", true);
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
@@ -449,7 +460,7 @@ test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados 
   assert.equal(hoja.getCell(6, 3).value, null);
 
   const sinColores = new ExcelJS.Workbook();
-  await sinColores.xlsx.load(await cargar({ reservas: RESERVAS }).exportarRevisionPorReserva("9001", false));
+  await sinColores.xlsx.load(await (await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("9001", false));
   assert.equal(sinColores.worksheets[0].getCell(4, 16).fill?.fgColor, undefined);
 });
 
@@ -461,12 +472,12 @@ test("exportarRevisionPorReserva pinta de amarillo el código con variantes", as
     centro: "C1",
     almacen: "M501",
   };
-  const buffer = await cargar({
+  const buffer = await (await conReservas({
     reservas: [
       registro({ ...base, n_pos_reserva_traslado: "1", cantidad_necesaria: "5" }),
       registro({ ...base, n_pos_reserva_traslado: "2", cantidad_necesaria: "9" }),
     ],
-  }).exportarRevisionPorReserva("9001", true);
+  })).exportarRevisionPorReserva("9001", true);
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
@@ -477,8 +488,8 @@ test("exportarRevisionPorReserva pinta de amarillo el código con variantes", as
 
 // ---------- últimas cargas ----------
 
-test("leerUltimasCargas arma un objeto clave→fecha y lo guarda", () => {
-  const { leerUltimasCargas } = cargar({ ultimas_cargas: [{ clave: "sap", fecha: "2026-10-01" }, { clave: "completa", fecha: "2026-10-02" }] });
+test("leerUltimasCargas arma un objeto clave→fecha y lo guarda", async () => {
+  const { leerUltimasCargas } = await conCargas({ ultimas_cargas: [{ clave: "sap", fecha: "2026-10-01" }, { clave: "completa", fecha: "2026-10-02" }] });
   const cargas = leerUltimasCargas();
   assert.deepEqual(cargas, { sap: "2026-10-01", completa: "2026-10-02" });
   const consultas = operaciones.length;
@@ -487,7 +498,7 @@ test("leerUltimasCargas arma un objeto clave→fecha y lo guarda", () => {
 });
 
 test("registrarCarga guarda la fecha en Supabase y actualiza el resumen", async () => {
-  const { registrarCarga, leerUltimasCargas } = cargar({ ultimas_cargas: [{ clave: "sap", fecha: "antes" }] });
+  const { registrarCarga, leerUltimasCargas } = await conCargas({ ultimas_cargas: [{ clave: "sap", fecha: "antes" }] });
   const antes = Date.now();
   const resultado = await registrarCarga("dos-columnas", " Precio ");
   assert.equal(resultado.clave, "dos-columnas:Precio");
@@ -500,7 +511,7 @@ test("registrarCarga guarda la fecha en Supabase y actualiza el resumen", async 
 });
 
 test("registrarCarga informa un fallo de Supabase como 502 y no cambia el resumen", async () => {
-  const { registrarCarga, leerUltimasCargas } = cargar();
+  const { registrarCarga, leerUltimasCargas } = await conCargas();
   errorUpsert = { message: "sin conexión" };
   await assert.rejects(registrarCarga("sap"), { status: 502, message: "Supabase no respondió." });
   assert.deepEqual(leerUltimasCargas(), {});
@@ -508,11 +519,11 @@ test("registrarCarga informa un fallo de Supabase como 502 y no cambia el resume
 
 // ---------- precarga ----------
 
-test("precargarDatos carga materiales, contratistas y reservas", () => {
+test("precargarDatos carga materiales, contratistas y reservas", async () => {
   const { precargarDatos } = cargar({ reservas: RESERVAS });
-  const antes = lecturasMateriales;
-  precargarDatos();
-  assert.equal(lecturasMateriales, antes + 1);
+  await precargarDatos();
   const tablasLeidas = operaciones.filter((operacion) => operacion.operacion === "leer").map((operacion) => operacion.tabla);
   assert.ok(tablasLeidas.includes("reservas"));
+  assert.ok(tablasLeidas.includes("materiales"));
+  assert.ok(tablasLeidas.includes("contratistas"));
 });

@@ -7,6 +7,7 @@ const crypto = require("node:crypto");
 const test = require("node:test");
 const express = require("express");
 const { supabase } = require("../supabase");
+delete process.env.SECRETO_PROXY;
 const { protegerApi, rutasAuth, guardarUsuario, contarUsuarios } = require("../auth");
 
 // Los rechazos esperados imprimen su traza con console.error; se silencian aquí.

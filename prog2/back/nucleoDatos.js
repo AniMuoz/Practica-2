@@ -147,8 +147,8 @@ function matrizReserva(filas) {
   ];
 }
 
-function matrizGuardada(nombre) {
-  const planillas = ejecutar("leer", { tabla: "planillas" });
+async function matrizGuardada(nombre) {
+  const planillas = await ejecutar("leer", { tabla: "planillas" });
   const guardada = (planillas || []).find((fila) => fila.nombre === nombre);
   return Array.isArray(guardada?.matriz) ? guardada.matriz : null;
 }
@@ -301,14 +301,21 @@ function recordarMateriales(matriz, nombreHoja) {
   return cacheMateriales;
 }
 
-function cargarMateriales() {
+function materialesEnCache() {
   if (cacheMateriales) return cacheMateriales;
-  let filas = ejecutar("leer", { tabla: "materiales" }) || [];
+  const error = new Error("Los datos aún se están cargando.");
+  error.status = 503;
+  throw error;
+}
+
+async function cargarMateriales() {
+  if (cacheMateriales) return cacheMateriales;
+  let filas = (await ejecutar("leer", { tabla: "materiales" })) || [];
   if (filas.length === 0) {
-    const previa = matrizGuardada("materiales");
+    const previa = await matrizGuardada("materiales");
     const registros = previa ? registrosMaterial(previa) : [];
     if (registros.length > 0) {
-      ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registros });
+      await ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registros });
       filas = registros;
     }
   }
@@ -318,7 +325,7 @@ function cargarMateriales() {
 }
 
 function editarMateriales() {
-  const actual = cargarMateriales();
+  const actual = materialesEnCache();
   return {
     matriz: actual.matriz.map((fila) => (Array.isArray(fila) ? fila.slice() : [])),
     porCodigo: new Map(actual.porCodigo),
@@ -342,10 +349,10 @@ async function quitarRegistro(codigo) {
   if (error) falloSupabase(error);
 }
 
-function guardarMateriales(matriz) {
+async function guardarMateriales(matriz) {
   const nombreHoja = cacheMateriales?.nombreHoja || "Hoja1";
   const limpia = sinFilasVacias(matriz);
-  ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registrosMaterial(limpia) });
+  await ejecutar("reemplazar", { tabla: "materiales", columna: "codigo", filas: registrosMaterial(limpia) });
   return recordarMateriales(limpia, nombreHoja);
 }
 
@@ -383,7 +390,7 @@ async function guardarFila(matriz, indiceFila) {
 }
 
 function leerTabla() {
-  return cargarMateriales().tabla;
+  return materialesEnCache().tabla;
 }
 
 async function marcarMaterial(codigo, marcado) {
@@ -404,7 +411,7 @@ async function marcarMaterial(codigo, marcado) {
 }
 
 function stockPorBodega(codigo) {
-  const fila = cargarMateriales().porFilaBodega.get(String(codigo));
+  const fila = materialesEnCache().porFilaBodega.get(String(codigo));
   if (!fila) return [];
   const bodegas = [["M501", "Stock"], ...BODEGAS_EXTRA.map((nombre) => [nombre, nombre])];
   return bodegas
@@ -413,7 +420,7 @@ function stockPorBodega(codigo) {
 }
 
 function buscarMaterial(codigo) {
-  const { tabla, porFila } = cargarMateriales();
+  const { tabla, porFila } = materialesEnCache();
   const buscado = String(codigo);
   const fila = porFila.get(buscado) || null;
   const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== "M501");
@@ -827,6 +834,7 @@ module.exports = {
   tablaDesdeMatriz,
   filasBodegaDesdeMatriz,
   recordarMateriales,
+  materialesEnCache,
   cargarMateriales,
   editarMateriales,
   falloSupabase,

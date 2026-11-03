@@ -7,6 +7,9 @@ const { exigirAdmin } = require("../auth");
 const { CLAVE_DATOS } = require("../nucleoDatos");
 
 module.exports = function rutasMateriales(app) {
+  // Una sola importación masiva a la vez: evita que dos cargas se pisen en Supabase.
+  let importacionEnCurso = false;
+
   app.get("/api/tabla/ultimas-cargas", (_req, res) => {
     try {
       res.json({ cargas: leerUltimasCargas() });
@@ -44,16 +47,21 @@ module.exports = function rutasMateriales(app) {
         res.status(400).json({ error: "Falta el archivo .xlsx." });
         return;
       }
+      if (importacionEnCurso) {
+        res.status(409).json({ error: "Ya hay una carga en curso. Espera a que termine e inténtalo de nuevo." });
+        return;
+      }
+      importacionEnCurso = true;
       try {
         const modo = req.body.modo || "completa";
         let resultado;
-        if (modo === "completa") resultado = importarPlanilla(req.body.clave, req.file.buffer);
-        else if (modo === "sap") resultado = importarSap(req.body.clave, req.file.buffer);
-        else if (modo === "precios") resultado = importarPrecios(req.body.clave, req.file.buffer);
-        else if (modo === "ubicaciones") resultado = importarUbicaciones(req.body.clave, req.file.buffer);
-        else if (modo === "dos-columnas") resultado = importarDosColumnas(req.body.clave, req.file.buffer, req.body.columna);
-        else if (modo === "reservas") resultado = importarReservas(req.body.clave, req.file.buffer);
-        else if (modo === "movimientos") resultado = importarMovimientos(req.body.clave, req.file.buffer);
+        if (modo === "completa") resultado = await importarPlanilla(req.body.clave, req.file.buffer);
+        else if (modo === "sap") resultado = await importarSap(req.body.clave, req.file.buffer);
+        else if (modo === "precios") resultado = await importarPrecios(req.body.clave, req.file.buffer);
+        else if (modo === "ubicaciones") resultado = await importarUbicaciones(req.body.clave, req.file.buffer);
+        else if (modo === "dos-columnas") resultado = await importarDosColumnas(req.body.clave, req.file.buffer, req.body.columna);
+        else if (modo === "reservas") resultado = await importarReservas(req.body.clave, req.file.buffer);
+        else if (modo === "movimientos") resultado = await importarMovimientos(req.body.clave, req.file.buffer);
         else {
           res.status(400).json({ error: "Ese formato de planilla todavía no está definido." });
           return;
@@ -64,6 +72,8 @@ module.exports = function rutasMateriales(app) {
       } catch (error) {
         console.error(error);
         res.status(error.status || 500).json({ error: error.message || "No se pudo importar la planilla." });
+      } finally {
+        importacionEnCurso = false;
       }
     });
   });

@@ -120,27 +120,27 @@ module.exports = function rutasPlanillas(app) {
     }
   });
 
-  app.post("/api/movimientos/codigo", (req, res) => {
+  app.post("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.status(201).json(agregarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+      res.status(201).json(await agregarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo añadir el código." });
     }
   });
 
-  app.delete("/api/movimientos/codigo", (req, res) => {
+  app.delete("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.json(eliminarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+      res.json(await eliminarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo eliminar el código." });
     }
   });
 
-  app.put("/api/movimientos/codigo", (req, res) => {
+  app.put("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.json(editarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigoAnterior, req.body && req.body.codigoNuevo));
+      res.json(await editarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigoAnterior, req.body && req.body.codigoNuevo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo editar el código." });

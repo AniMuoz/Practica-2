@@ -62,13 +62,15 @@ const SEMILLA = [
   { codigo: "300", descripcion: "Válvula", stock: "7", inventario: "7", comentario: "" },
 ];
 
-function cargar(materiales = SEMILLA, planillas = []) {
+async function cargar(materiales = SEMILLA, planillas = []) {
   bd = { materiales: materiales.map((fila) => ({ ...fila })), planillas };
   llamadas = [];
   quitadas = [];
   errorSupabase = null;
   delete require.cache[require.resolve("../nucleoDatos")];
-  return require("../nucleoDatos");
+  const nucleo = require("../nucleoDatos");
+  await nucleo.cargarMateriales();
+  return nucleo;
 }
 
 const filaDe = (nucleo, codigo) => nucleo.buscarMaterial(codigo).fila;
@@ -76,8 +78,8 @@ const upserts = () => llamadas.filter((llamada) => llamada.tipo === "upsert");
 
 // ---------- lectura ----------
 
-test("leerTabla muestra solo las columnas visibles y conserva el marcado en cada fila", () => {
-  const nucleo = cargar();
+test("leerTabla muestra solo las columnas visibles y conserva el marcado en cada fila", async () => {
+  const nucleo = await cargar();
   const { columnas, filas } = nucleo.leerTabla();
   assert.deepEqual(columnas, [
     "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio", "Caracteristica",
@@ -89,21 +91,21 @@ test("leerTabla muestra solo las columnas visibles y conserva el marcado en cada
   assert.equal(filas[0].M502, undefined);
 });
 
-test("sin materiales la tabla queda con los encabezados y sin filas", () => {
-  const nucleo = cargar([]);
+test("sin materiales la tabla queda con los encabezados y sin filas", async () => {
+  const nucleo = await cargar([]);
   assert.equal(nucleo.leerTabla().filas.length, 0);
   assert.ok(nucleo.leerTabla().columnas.includes("Codigo"));
 });
 
-test("si la tabla está vacía migra los materiales de la planilla guardada", () => {
+test("si la tabla está vacía migra los materiales de la planilla guardada", async () => {
   const encabezado = ["Codigo", "Descripcion", "Stock"];
-  const nucleo = cargar([], [{ nombre: "materiales", matriz: [encabezado, ["9", "Migrado", "4"]] }]);
+  const nucleo = await cargar([], [{ nombre: "materiales", matriz: [encabezado, ["9", "Migrado", "4"]] }]);
   assert.equal(nucleo.leerTabla().filas[0].Codigo, "9");
   assert.equal(bd.materiales[0].codigo, "9");
 });
 
-test("buscarMaterial devuelve la fila y las bodegas con stock (sin M501), o fila nula", () => {
-  const nucleo = cargar();
+test("buscarMaterial devuelve la fila y las bodegas con stock (sin M501), o fila nula", async () => {
+  const nucleo = await cargar();
   const encontrado = nucleo.buscarMaterial(100);
   assert.equal(encontrado.fila.Descripcion, "Perno");
   assert.deepEqual(encontrado.bodegas, [{ bodega: "M502", stock: "3" }]);
@@ -112,14 +114,14 @@ test("buscarMaterial devuelve la fila y las bodegas con stock (sin M501), o fila
   assert.ok(nucleo.buscarMaterial("999").columnas.length > 0);
 });
 
-test("stockPorBodega incluye M501 y solo las bodegas con valor", () => {
-  const nucleo = cargar();
+test("stockPorBodega incluye M501 y solo las bodegas con valor", async () => {
+  const nucleo = await cargar();
   assert.deepEqual(nucleo.stockPorBodega("100"), [{ bodega: "M501", stock: "10" }, { bodega: "M502", stock: "3" }]);
   assert.deepEqual(nucleo.stockPorBodega("nada"), []);
 });
 
-test("buscarMateriales exige 2 letras, ignora acentos y pone primero el código exacto", () => {
-  const nucleo = cargar([
+test("buscarMateriales exige 2 letras, ignora acentos y pone primero el código exacto", async () => {
+  const nucleo = await cargar([
     { codigo: "10", descripcion: "Codo" },
     { codigo: "100", descripcion: "Perno 10" },
     { codigo: "2", descripcion: "Válvula de 10" },
@@ -132,8 +134,8 @@ test("buscarMateriales exige 2 letras, ignora acentos y pone primero el código 
   assert.deepEqual(nucleo.buscarMateriales("zzz"), []);
 });
 
-test("editarMateriales entrega copias: cambiarlas no altera la tabla cargada", () => {
-  const nucleo = cargar();
+test("editarMateriales entrega copias: cambiarlas no altera la tabla cargada", async () => {
+  const nucleo = await cargar();
   const { matriz, porCodigo } = nucleo.editarMateriales();
   matriz[porCodigo.get("100")][1] = "ALTERADO";
   porCodigo.clear();
@@ -141,12 +143,12 @@ test("editarMateriales entrega copias: cambiarlas no altera la tabla cargada", (
   assert.equal(nucleo.editarMateriales().porCodigo.size, 3);
 });
 
-test("guardarMateriales reemplaza la tabla, descarta filas vacías y refresca la lectura", () => {
-  const nucleo = cargar();
+test("guardarMateriales reemplaza la tabla, descarta filas vacías y refresca la lectura", async () => {
+  const nucleo = await cargar();
   const { matriz } = nucleo.editarMateriales();
   matriz.push(matriz[0].map(() => ""));
   matriz[1][1] = "Perno nuevo";
-  nucleo.guardarMateriales(matriz);
+  await nucleo.guardarMateriales(matriz);
   assert.equal(bd.materiales.length, 3);
   assert.equal(bd.materiales[0].descripcion, "Perno nuevo");
   assert.equal(filaDe(nucleo, "100").Descripcion, "Perno nuevo");
@@ -155,7 +157,7 @@ test("guardarMateriales reemplaza la tabla, descarta filas vacías y refresca la
 // ---------- inventario, comentario y marcado ----------
 
 test("actualizarMaterial valida comentario e inventario antes de tocar nada", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await assert.rejects(nucleo.actualizarMaterial("100", { inventario: "1", comentario: "x".repeat(51) }), { status: 400, message: /50 caracteres/ });
   for (const inventario of ["1.5", "abc", "1e3", "--2"]) {
     await assert.rejects(nucleo.actualizarMaterial("100", { inventario, comentario: "" }), { status: 400, message: /número entero/ });
@@ -166,13 +168,13 @@ test("actualizarMaterial valida comentario e inventario antes de tocar nada", as
 });
 
 test("actualizarMaterial devuelve null si el código no existe y no guarda", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   assert.equal(await nucleo.actualizarMaterial("999", { inventario: "1", comentario: "" }), null);
   assert.equal(llamadas.length, 0);
 });
 
 test("actualizarMaterial guarda inventario numérico y comentario, y los persiste en Supabase", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarMaterial("100", { inventario: " 8 ", comentario: "revisar" });
   assert.equal(resultado.fila.Inventario, 8);
   assert.equal(resultado.fila.Comentario, "revisar");
@@ -185,21 +187,21 @@ test("actualizarMaterial guarda inventario numérico y comentario, y los persist
 });
 
 test("actualizarMaterial con un inventario vacío conserva el valor anterior y cambia el comentario", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarMaterial("200", { inventario: "", comentario: "nuevo" });
   assert.equal(String(resultado.fila.Inventario), "5");
   assert.equal(resultado.fila.Comentario, "nuevo");
 });
 
 test("un fallo de Supabase al guardar se informa como 502 y no cambia la tabla", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   errorSupabase = { message: "sin conexión" };
   await assert.rejects(nucleo.actualizarMaterial("100", { inventario: "9", comentario: "" }), { status: 502, message: "Supabase no respondió." });
   assert.notEqual(String(filaDe(nucleo, "100").Inventario), "9");
 });
 
 test("marcarMaterial activa y quita la marca, o devuelve null si no existe", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   assert.equal((await nucleo.marcarMaterial("100", true)).fila.Marcado, "1");
   assert.equal(upserts()[0].registro.marcado, "1");
   assert.equal((await nucleo.marcarMaterial("100", false)).fila.Marcado, "");
@@ -207,7 +209,7 @@ test("marcarMaterial activa y quita la marca, o devuelve null si no existe", asy
 });
 
 test("limpiarInventarioComentarios exige la clave y vacía ambas columnas en todas las filas", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await assert.rejects(nucleo.limpiarInventarioComentarios("mala"), { status: 403 });
   assert.equal(llamadas.length, 0);
   const tabla = await nucleo.limpiarInventarioComentarios(nucleo.CLAVE_DATOS);
@@ -216,7 +218,7 @@ test("limpiarInventarioComentarios exige la clave y vacía ambas columnas en tod
 });
 
 test("limpiarInventarioComentarios informa un fallo de Supabase y no vacía la tabla", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   errorSupabase = { message: "caído" };
   await assert.rejects(nucleo.limpiarInventarioComentarios(nucleo.CLAVE_DATOS), { status: 502 });
   assert.equal(String(filaDe(nucleo, "200").Inventario), "5");
@@ -225,7 +227,7 @@ test("limpiarInventarioComentarios informa un fallo de Supabase y no vacía la t
 // ---------- actualizarDatos ----------
 
 test("actualizarDatos valida clave y datos", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const CLAVE = nucleo.CLAVE_DATOS;
   await assert.rejects(nucleo.actualizarDatos("100", "mala", { Descripcion: "x" }), { status: 403 });
   for (const datos of [undefined, null, "texto"]) {
@@ -236,7 +238,7 @@ test("actualizarDatos valida clave y datos", async () => {
 });
 
 test("actualizarDatos cambia los campos permitidos e ignora inventario, comentario, imágenes y marcado", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, {
     Descripcion: "Perno largo", Stock: 55, Inventario: "999", Comentario: "no", Rombo: "otra.png", Marcado: "1", Inexistente: "x",
   });
@@ -251,13 +253,13 @@ test("actualizarDatos cambia los campos permitidos e ignora inventario, comentar
 });
 
 test("actualizarDatos permite borrar un campo con null", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Descripcion: null });
   assert.equal(resultado.fila.Descripcion, "");
 });
 
 test("actualizarDatos completa Sub-ubicación al guardar Ubicación", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, {
     "Ubicación": "0102-A",
     "Sub-ubicación": "",
@@ -267,7 +269,7 @@ test("actualizarDatos completa Sub-ubicación al guardar Ubicación", async () =
 });
 
 test("cambiar el código borra el registro anterior y guarda el nuevo", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Codigo: " 150 ", Descripcion: "Nuevo" });
   assert.equal(resultado.fila.Codigo, "150");
   assert.deepEqual(llamadas[0], { tipo: "delete", tabla: "materiales", campo: "codigo", valor: "100" });
@@ -277,13 +279,13 @@ test("cambiar el código borra el registro anterior y guarda el nuevo", async ()
 });
 
 test("un código vacío se rechaza", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await assert.rejects(nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Codigo: "  " }), { status: 400, message: /vacío/ });
   assert.equal(filaDe(nucleo, "100").Codigo, "100");
 });
 
 test("un código repetido da 409 salvo que se pida reemplazar, y entonces queda una sola fila", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await assert.rejects(nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Codigo: "200" }), { status: 409 });
   assert.equal(llamadas.length, 0);
   assert.equal(nucleo.leerTabla().filas.length, 3);
@@ -297,7 +299,7 @@ test("un código repetido da 409 salvo que se pida reemplazar, y entonces queda 
 // ---------- imágenes ----------
 
 test("guardarImagen valida clave, tipo de imagen y existencia del material", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const CLAVE = nucleo.CLAVE_DATOS;
   await assert.rejects(nucleo.guardarImagen("100", "Rombo", "a.png", "mala"), { status: 403 });
   await assert.rejects(nucleo.guardarImagen("100", "Descripcion", "a.png", CLAVE), { status: 400, message: /Rombo, QR o Foto/ });
@@ -306,7 +308,7 @@ test("guardarImagen valida clave, tipo de imagen y existencia del material", asy
 });
 
 test("guardarImagen asigna el nombre del archivo y persiste el material", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.guardarImagen("200", "QR", "200-qr.png", nucleo.CLAVE_DATOS);
   assert.equal(resultado.fila.QR, "200-qr.png");
   assert.equal(upserts()[0].registro.qr, "200-qr.png");
@@ -314,7 +316,7 @@ test("guardarImagen asigna el nombre del archivo y persiste el material", async 
 });
 
 test("quitar una imagen borra el archivo local y el de Supabase", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   fs.writeFileSync(rutaImagen, "x");
   const resultado = await nucleo.guardarImagen("100", "Rombo", "", nucleo.CLAVE_DATOS);
   assert.equal(resultado.fila.Rombo, "");
@@ -323,13 +325,13 @@ test("quitar una imagen borra el archivo local y el de Supabase", async () => {
 });
 
 test("quitar una imagen que no es un archivo de imagen no borra nada", async () => {
-  const nucleo = cargar([{ codigo: "1", descripcion: "x", rombo: "texto-sin-extension" }]);
+  const nucleo = await cargar([{ codigo: "1", descripcion: "x", rombo: "texto-sin-extension" }]);
   await nucleo.guardarImagen("1", "Rombo", "", nucleo.CLAVE_DATOS);
   assert.deepEqual(quitadas, []);
 });
 
 test("reemplazar una imagen por otra borra la anterior local y de Supabase", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   fs.writeFileSync(rutaImagen, "x");
   const resultado = await nucleo.guardarImagen("100", "Rombo", "100-rombo-nuevo.png", nucleo.CLAVE_DATOS);
   assert.equal(resultado.fila.Rombo, "100-rombo-nuevo.png");
@@ -338,7 +340,7 @@ test("reemplazar una imagen por otra borra la anterior local y de Supabase", asy
 });
 
 test("reemplazar una imagen por una con el mismo nombre no la borra", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   fs.writeFileSync(rutaImagen, "x");
   await nucleo.guardarImagen("100", "Rombo", IMAGEN_PRUEBA, nucleo.CLAVE_DATOS);
   assert.equal(fs.existsSync(rutaImagen), true);
@@ -346,7 +348,7 @@ test("reemplazar una imagen por una con el mismo nombre no la borra", async () =
 });
 
 test("reemplazar un .png por un .jpg del mismo material borra el .png anterior", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   fs.writeFileSync(rutaImagen, "x");
   const resultado = await nucleo.guardarImagen("100", "Rombo", "100-rombo.jpg", nucleo.CLAVE_DATOS);
   assert.equal(resultado.fila.Rombo, "100-rombo.jpg");
@@ -354,7 +356,7 @@ test("reemplazar un .png por un .jpg del mismo material borra el .png anterior",
 });
 
 test("si falla el borrado de la imagen anterior, la nueva igual se guarda", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const original = console.error;
   console.error = () => {};
   try {
@@ -370,7 +372,7 @@ test("si falla el borrado de la imagen anterior, la nueva igual se guarda", asyn
 // ---------- eliminar y agregar ----------
 
 test("eliminarMaterial exige clave, devuelve null si no existe y si existe borra fila, registro e imágenes", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await assert.rejects(nucleo.eliminarMaterial("100", "mala"), { status: 403 });
   assert.equal(await nucleo.eliminarMaterial("999", nucleo.CLAVE_DATOS), null);
   assert.equal(llamadas.length, 0);
@@ -385,7 +387,7 @@ test("eliminarMaterial exige clave, devuelve null si no existe y si existe borra
 });
 
 test("agregarMaterial valida clave, datos, código e inventario", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const CLAVE = nucleo.CLAVE_DATOS;
   await assert.rejects(nucleo.agregarMaterial("mala", { Codigo: "1" }), { status: 403 });
   await assert.rejects(nucleo.agregarMaterial(CLAVE, null), { status: 400, message: /No hay datos/ });
@@ -395,7 +397,7 @@ test("agregarMaterial valida clave, datos, código e inventario", async () => {
 });
 
 test("agregarMaterial crea un material nuevo con inventario numérico", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.agregarMaterial(nucleo.CLAVE_DATOS, { Codigo: " 400 ", Descripcion: "Codo", Stock: "12", Inventario: "3", Marcado: "1", Rombo: "no.png" });
   assert.equal(resultado.fila.Codigo, "400");
   assert.equal(resultado.fila.Descripcion, "Codo");
@@ -407,7 +409,7 @@ test("agregarMaterial crea un material nuevo con inventario numérico", async ()
 });
 
 test("agregarMaterial completa Sub-ubicación al guardar Ubicación", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   const resultado = await nucleo.agregarMaterial(nucleo.CLAVE_DATOS, {
     Codigo: "500",
     "Ubicación": "01-A",
@@ -417,7 +419,7 @@ test("agregarMaterial completa Sub-ubicación al guardar Ubicación", async () =
 });
 
 test("agregarMaterial sobre un código existente actualiza sus datos y conserva imágenes y marcado", async () => {
-  const nucleo = cargar();
+  const nucleo = await cargar();
   await nucleo.marcarMaterial("100", true);
   const resultado = await nucleo.agregarMaterial(nucleo.CLAVE_DATOS, { Codigo: "100", Descripcion: "Perno V2" });
   assert.equal(resultado.fila.Descripcion, "Perno V2");

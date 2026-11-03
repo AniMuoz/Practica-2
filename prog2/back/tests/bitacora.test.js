@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ExcelJS = require("exceljs");
 const { app } = require("../server");
+delete process.env.SECRETO_PROXY;
 const CLAVE = require("../nucleoDatos").CLAVE_DATOS;
 const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("../bitacora");
 

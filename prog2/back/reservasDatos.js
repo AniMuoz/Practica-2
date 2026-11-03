@@ -13,8 +13,6 @@ const {
   registrosReserva,
 } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas, pintar } = require("./planillasStock");
-const { leerContratistas } = require("./contratistas");
-
 function textoFecha(valor) {
   if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
     const dia = String(valor.getUTCDate()).padStart(2, "0");
@@ -48,30 +46,45 @@ function normalizarFechas(columnas, filas) {
 
 let cacheReservas = null;
 
-function leerReservas() {
-  if (cacheReservas) return cacheReservas.datos;
-  let filasDb = ejecutar("leer", { tabla: "reservas" }) || [];
-  if (filasDb.length === 0) {
-    const previa = matrizGuardada("reservas");
-    const registros = previa ? registrosReserva(previa) : [];
-    if (registros.length > 0) {
-      ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registros });
-      filasDb = registros;
-    }
-  }
-  const matriz = matrizReserva(filasDb);
-  if (matriz.length === 0) return { columnas: [], filas: [] };
-  const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
-  const filas = normalizarFechas(
-    columnas,
-    matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
-  );
+function recordarReservas(columnas, filas) {
   const datos = { columnas, filas };
   cacheReservas = { datos };
   return datos;
 }
 
-function importarReservas(clave, buffer) {
+function reservasEnCache() {
+  if (cacheReservas) return cacheReservas.datos;
+  const error = new Error("Los datos aún se están cargando.");
+  error.status = 503;
+  throw error;
+}
+
+async function cargarReservas() {
+  if (cacheReservas) return cacheReservas.datos;
+  let filasDb = (await ejecutar("leer", { tabla: "reservas" })) || [];
+  if (filasDb.length === 0) {
+    const previa = await matrizGuardada("reservas");
+    const registros = previa ? registrosReserva(previa) : [];
+    if (registros.length > 0) {
+      await ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registros });
+      filasDb = registros;
+    }
+  }
+  const matriz = matrizReserva(filasDb);
+  if (matriz.length === 0) return recordarReservas([], []);
+  const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
+  const filas = normalizarFechas(
+    columnas,
+    matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
+  );
+  return recordarReservas(columnas, filas);
+}
+
+function leerReservas() {
+  return reservasEnCache();
+}
+
+async function importarReservas(clave, buffer) {
   exigirClave(clave);
   const libroEntrada = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
@@ -97,7 +110,7 @@ function importarReservas(clave, buffer) {
         return indice < 0 ? "" : fila[indice] ?? "";
       }))
   );
-  const actual = leerReservas();
+  const actual = await cargarReservas();
   const indiceOrden = columnas.findIndex((columna) => /^orden$/i.test(String(columna).trim()));
   const indiceReserva = columnas.findIndex((columna) => /^n[ºo°.]?\s*reserva$/i.test(String(columna).trim()));
   const indicePosicion = columnas.findIndex((columna) => /pos\.?reserva/i.test(String(columna).trim()));
@@ -135,8 +148,8 @@ function importarReservas(clave, buffer) {
     actualizados += 1;
   });
   const matriz = [columnas, ...guardadas];
-  ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registrosReserva(matriz) });
-  cacheReservas = null;
+  await ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registrosReserva(matriz) });
+  recordarReservas(columnas, guardadas);
   return { agregados, actualizados, omitidos };
 }
 
@@ -150,9 +163,9 @@ function claveCarga(modo, columna) {
 
 let cacheCargas = null;
 
-function leerUltimasCargas() {
+async function cargarUltimasCargas() {
   if (cacheCargas) return cacheCargas;
-  const filas = ejecutar("leer", { tabla: "ultimas_cargas" }) || [];
+  const filas = (await ejecutar("leer", { tabla: "ultimas_cargas" })) || [];
   const datos = {};
   filas.forEach((fila) => {
     datos[fila.clave] = fila.fecha;
@@ -161,8 +174,15 @@ function leerUltimasCargas() {
   return datos;
 }
 
+function leerUltimasCargas() {
+  if (cacheCargas) return cacheCargas;
+  const error = new Error("Los datos aún se están cargando.");
+  error.status = 503;
+  throw error;
+}
+
 async function registrarCarga(modo, columna) {
-  const cargas = { ...leerUltimasCargas() };
+  const cargas = { ...(await cargarUltimasCargas()) };
   const clave = claveCarga(modo, columna);
   cargas[clave] = new Date().toISOString();
   const { error } = await supabase.from("ultimas_cargas").upsert({ clave, fecha: cargas[clave] });
@@ -412,10 +432,14 @@ function buscarReservas(reserva, pagina = 0, tamano = 100, por = "reserva") {
   };
 }
 
-function precargarDatos() {
-  cargarMateriales();
-  leerContratistas();
-  leerReservas();
+async function precargarDatos() {
+  const { cargarContratistas } = require("./contratistas");
+  const { cargarCodigosMovimientos } = require("./movimientos");
+  await cargarMateriales();
+  await cargarContratistas();
+  await cargarReservas();
+  await cargarCodigosMovimientos();
+  await cargarUltimasCargas();
 }
 
 async function exportarRevisionPorReserva(reserva, colores = true, por = "reserva") {
@@ -514,9 +538,11 @@ module.exports = {
   textoFecha,
   normalizarFechas,
   leerReservas,
+  cargarReservas,
   importarReservas,
   claveCarga,
   leerUltimasCargas,
+  cargarUltimasCargas,
   registrarCarga,
   indiceEncabezado,
   celdaReserva,

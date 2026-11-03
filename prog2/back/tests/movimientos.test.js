@@ -27,7 +27,7 @@ const MATERIALES = [
   { Codigo: "200", Descripcion: "Tuerca", Stock: "0", "Ubicación": "", "Sub-ubicación": "" },
   { Codigo: "300", Descripcion: "Clavo", Stock: "4", "Ubicación": "02-B", "Sub-ubicación": "02-B" },
 ];
-nucleo.cargarMateriales = () => ({ filasBodega: MATERIALES });
+nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
 const CLAVE = nucleo.CLAVE_DATOS;
 
 function cargar(inicial = {}) {
@@ -35,6 +35,12 @@ function cargar(inicial = {}) {
   operaciones.length = 0;
   delete require.cache[require.resolve("../movimientos")];
   return require("../movimientos");
+}
+
+async function conCodigos(inicial = {}) {
+  const modulo = cargar(inicial);
+  await modulo.cargarCodigosMovimientos();
+  return modulo;
 }
 
 function excel(matriz) {
@@ -49,22 +55,22 @@ async function leerLibro(buffer) {
   return libro.worksheets[0];
 }
 
-test("importarMovimientos exige la clave", () => {
+test("importarMovimientos exige la clave", async () => {
   const { importarMovimientos } = cargar();
-  assert.throws(() => importarMovimientos("mala", excel([["Codigo"], ["100"]])), { status: 403 });
+  await assert.rejects(() => importarMovimientos("mala", excel([["Codigo"], ["100"]])), { status: 403 });
   assert.equal(operaciones.length, 0);
 });
 
-test("importarMovimientos rechaza archivos sin encabezado o sin códigos", () => {
+test("importarMovimientos rechaza archivos sin encabezado o sin códigos", async () => {
   const { importarMovimientos } = cargar();
-  assert.throws(() => importarMovimientos(CLAVE, excel([["", ""], ["100"]])), { status: 400, message: /encabezado/ });
-  assert.throws(() => importarMovimientos(CLAVE, excel([["Codigo"], [""]])), { status: 400, message: /códigos/ });
+  await assert.rejects(() => importarMovimientos(CLAVE, excel([["", ""], ["100"]])), { status: 400, message: /encabezado/ });
+  await assert.rejects(() => importarMovimientos(CLAVE, excel([["Codigo"], [""]])), { status: 400, message: /códigos/ });
   assert.equal(operaciones.length, 0);
 });
 
-test("importarMovimientos reemplaza la carga anterior, conserva el orden y descarta repetidos", () => {
+test("importarMovimientos reemplaza la carga anterior, conserva el orden y descarta repetidos", async () => {
   const { importarMovimientos, leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "viejo", pos: 0 }] });
-  const resultado = importarMovimientos(CLAVE, excel([["Codigo"], [300], ["100"], [" 300 "], [""], ["999"]]));
+  const resultado = await importarMovimientos(CLAVE, excel([["Codigo"], [300], ["100"], [" 300 "], [""], ["999"]]));
   assert.deepEqual(resultado, { agregados: 3, actualizados: 0, omitidos: 1 });
   assert.deepEqual(bd.movimientos, [{ codigo: "300", pos: 0 }, { codigo: "100", pos: 1 }, { codigo: "999", pos: 2 }]);
   const reemplazo = operaciones.find((operacion) => operacion.operacion === "reemplazar");
@@ -72,8 +78,8 @@ test("importarMovimientos reemplaza la carga anterior, conserva el orden y desca
   assert.deepEqual(leerCodigosMovimientos(), ["300", "100", "999"]);
 });
 
-test("leerCodigosMovimientos ordena por posición y guarda el resultado", () => {
-  const { leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "b", pos: 1 }, { codigo: "a", pos: 0 }] });
+test("leerCodigosMovimientos ordena por posición y guarda el resultado", async () => {
+  const { leerCodigosMovimientos } = await conCodigos({ movimientos: [{ codigo: "b", pos: 1 }, { codigo: "a", pos: 0 }] });
   const codigos = leerCodigosMovimientos();
   assert.deepEqual(codigos, ["a", "b"]);
   const consultas = operaciones.length;
@@ -81,8 +87,8 @@ test("leerCodigosMovimientos ordena por posición y guarda el resultado", () => 
   assert.equal(operaciones.length, consultas);
 });
 
-test("planillaMovimientos rescata los datos por código, numera y marca códigos desconocidos", () => {
-  const { planillaMovimientos } = cargar({ movimientos: [{ codigo: "300", pos: 0 }, { codigo: "999", pos: 1 }, { codigo: "100", pos: 2 }, { codigo: "200", pos: 3 }] });
+test("planillaMovimientos rescata los datos por código, numera y marca códigos desconocidos", async () => {
+  const { planillaMovimientos } = await conCodigos({ movimientos: [{ codigo: "300", pos: 0 }, { codigo: "999", pos: 1 }, { codigo: "100", pos: 2 }, { codigo: "200", pos: 3 }] });
   const { columnas, filas } = planillaMovimientos();
   assert.deepEqual(columnas, ["N°", "Código", "Descripción", "Ubicación", "Sub-Ubicación", "M501", "Físico"]);
   assert.deepEqual(filas, [
@@ -94,7 +100,7 @@ test("planillaMovimientos rescata los datos por código, numera y marca códigos
 });
 
 test("exportarMovimientos escribe encabezados y rellena Físico según el origen", async () => {
-  const { exportarMovimientos } = cargar({ movimientos: [{ codigo: "100", pos: 0 }] });
+  const { exportarMovimientos } = await conCodigos({ movimientos: [{ codigo: "100", pos: 0 }] });
   const normal = await leerLibro(await exportarMovimientos(true, ""));
   assert.equal(normal.name, "Movimientos");
   assert.deepEqual([1, 2, 3, 6, 7].map((c) => normal.getCell(1, c).value), ["N°", "Código", "Descripción", "M501", "Físico"]);
@@ -108,22 +114,22 @@ test("exportarMovimientos escribe encabezados y rellena Físico según el origen
   assert.equal(inventario.getCell(1, 1).fill?.fgColor?.argb, undefined);
 });
 
-test("eliminarCodigoMovimiento elimina el código y actualiza la lista", () => {
-  const { eliminarCodigoMovimiento, leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
-  assert.throws(() => eliminarCodigoMovimiento("mala", "100"), { status: 403 });
-  assert.throws(() => eliminarCodigoMovimiento(CLAVE, "999"), { status: 400, message: /no está/ });
-  const resultado = eliminarCodigoMovimiento(CLAVE, "100");
+test("eliminarCodigoMovimiento elimina el código y actualiza la lista", async () => {
+  const { eliminarCodigoMovimiento, leerCodigosMovimientos } = await conCodigos({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
+  await assert.rejects(() => eliminarCodigoMovimiento("mala", "100"), { status: 403 });
+  await assert.rejects(() => eliminarCodigoMovimiento(CLAVE, "999"), { status: 400, message: /no está/ });
+  const resultado = await eliminarCodigoMovimiento(CLAVE, "100");
   assert.deepEqual(resultado, { codigo: "100" });
   assert.deepEqual(leerCodigosMovimientos(), ["200"]);
   assert.deepEqual(bd.movimientos, [{ codigo: "200", pos: 0 }]);
 });
 
-test("editarCodigoMovimiento actualiza el código conservando la posición", () => {
-  const { editarCodigoMovimiento, leerCodigosMovimientos } = cargar({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
-  assert.throws(() => editarCodigoMovimiento("mala", "100", "300"), { status: 403 });
-  assert.throws(() => editarCodigoMovimiento(CLAVE, "999", "300"), { status: 400, message: /no está/ });
-  assert.throws(() => editarCodigoMovimiento(CLAVE, "100", "200"), { status: 400, message: /ya está/ });
-  const resultado = editarCodigoMovimiento(CLAVE, "100", "300");
+test("editarCodigoMovimiento actualiza el código conservando la posición", async () => {
+  const { editarCodigoMovimiento, leerCodigosMovimientos } = await conCodigos({ movimientos: [{ codigo: "100", pos: 0 }, { codigo: "200", pos: 1 }] });
+  await assert.rejects(() => editarCodigoMovimiento("mala", "100", "300"), { status: 403 });
+  await assert.rejects(() => editarCodigoMovimiento(CLAVE, "999", "300"), { status: 400, message: /no está/ });
+  await assert.rejects(() => editarCodigoMovimiento(CLAVE, "100", "200"), { status: 400, message: /ya está/ });
+  const resultado = await editarCodigoMovimiento(CLAVE, "100", "300");
   assert.deepEqual(resultado, { anterior: "100", nuevo: "300" });
   assert.deepEqual(leerCodigosMovimientos(), ["300", "200"]);
   assert.deepEqual(bd.movimientos, [{ codigo: "300", pos: 0 }, { codigo: "200", pos: 1 }]);

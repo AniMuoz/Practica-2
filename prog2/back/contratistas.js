@@ -3,21 +3,14 @@ const { exigirClave, matrizGuardada } = require("./nucleoDatos");
 
 let cacheContratistas = null;
 
-function leerContratistas() {
+function contratistasEnCache() {
   if (cacheContratistas) return cacheContratistas.datos;
-  let filasDb = ejecutar("leer", { tabla: "contratistas" }) || [];
-  if (filasDb.length === 0) {
-    const previa = matrizGuardada("contratistas");
-    if (previa && previa.length > 1) {
-      filasDb = previa.slice(1).map((fila) => ({
-        id: Number(fila[0]),
-        nombre: String(fila[1] ?? ""),
-      })).filter((fila) => Number.isInteger(fila.id) && fila.nombre);
-      if (filasDb.length > 0) {
-        ejecutar("reemplazar", { tabla: "contratistas", columna: "id", filas: filasDb });
-      }
-    }
-  }
+  const error = new Error("Los datos aún se están cargando.");
+  error.status = 503;
+  throw error;
+}
+
+function armarContratistas(filasDb) {
   const matriz = [["id", "Nombre"], ...filasDb.map((fila) => [fila.id, fila.nombre])];
   const columnas = (matriz[0] || ["id", "Nombre"]).map((nombre) => String(nombre));
   const filas = matriz.slice(1)
@@ -31,7 +24,29 @@ function leerContratistas() {
   return datos;
 }
 
-function guardarContratistas(clave, filas) {
+async function cargarContratistas() {
+  if (cacheContratistas) return cacheContratistas.datos;
+  let filasDb = (await ejecutar("leer", { tabla: "contratistas" })) || [];
+  if (filasDb.length === 0) {
+    const previa = await matrizGuardada("contratistas");
+    if (previa && previa.length > 1) {
+      filasDb = previa.slice(1).map((fila) => ({
+        id: Number(fila[0]),
+        nombre: String(fila[1] ?? ""),
+      })).filter((fila) => Number.isInteger(fila.id) && fila.nombre);
+      if (filasDb.length > 0) {
+        await ejecutar("reemplazar", { tabla: "contratistas", columna: "id", filas: filasDb });
+      }
+    }
+  }
+  return armarContratistas(filasDb);
+}
+
+function leerContratistas() {
+  return contratistasEnCache();
+}
+
+async function guardarContratistas(clave, filas) {
   exigirClave(clave);
   if (!Array.isArray(filas)) {
     const error = new Error("No hay contratistas para guardar.");
@@ -64,16 +79,17 @@ function guardarContratistas(clave, filas) {
     matriz.push([Number(id), nombre]);
   });
 
-  ejecutar("reemplazar", {
+  const filasDb = matriz.slice(1).map((fila) => ({ id: Number(fila[0]), nombre: String(fila[1] ?? "") }));
+  await ejecutar("reemplazar", {
     tabla: "contratistas",
     columna: "id",
-    filas: matriz.slice(1).map((fila) => ({ id: Number(fila[0]), nombre: String(fila[1] ?? "") })),
+    filas: filasDb,
   });
-  cacheContratistas = null;
-  return leerContratistas();
+  return armarContratistas(filasDb);
 }
 
 module.exports = {
   leerContratistas,
+  cargarContratistas,
   guardarContratistas,
 };

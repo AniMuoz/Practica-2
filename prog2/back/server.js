@@ -142,7 +142,11 @@ if (require.main === module) {
       console.error(error.message);
     })
     .finally(async () => {
-      precargar();
+      try {
+        await precargar();
+      } catch (error) {
+        console.error("No se pudieron precargar los datos:", error.message);
+      }
       try {
         if ((await contarUsuarios()) === 0) {
           console.warn("No hay usuarios: nadie podrá iniciar sesión. Crea uno con: node crearUsuario.js <usuario> <contraseña>");

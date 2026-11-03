@@ -11,7 +11,7 @@ const {
   ubicarColumnas,
 } = require("./nucleoDatos");
 
-function importarPlanilla(clave, buffer) {
+async function importarPlanilla(clave, buffer) {
   exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
@@ -92,11 +92,11 @@ function importarPlanilla(clave, buffer) {
     }
   });
 
-  guardarMateriales(matriz);
+  await guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 
-function importarSap(clave, buffer) {
+async function importarSap(clave, buffer) {
   exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
@@ -186,11 +186,11 @@ function importarSap(clave, buffer) {
   const ordenadas = ordenSap.map((codigoFila) => filasSap.get(codigoFila)).filter(Boolean);
   matriz.splice(0, matriz.length, encabezado, ...ordenadas, ...fueraDelExport);
 
-  guardarMateriales(matriz);
+  await guardarMateriales(matriz);
   return { agregados, actualizados, omitidos };
 }
 
-function importarPrecios(clave, buffer) {
+async function importarPrecios(clave, buffer) {
   exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
@@ -255,11 +255,11 @@ function importarPrecios(clave, buffer) {
     agregados += 1;
   });
 
-  guardarMateriales(matriz);
+  await guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 
-function importarUbicaciones(clave, buffer) {
+async function importarUbicaciones(clave, buffer) {
   exigirClave(clave);
 
   const libroEntrada = XLSX.read(buffer, { type: "buffer" });
@@ -330,11 +330,11 @@ function importarUbicaciones(clave, buffer) {
     agregados += 1;
   });
 
-  guardarMateriales(matriz);
+  await guardarMateriales(matriz);
   return { agregados, actualizados, omitidos };
 }
 
-function importarDosColumnas(clave, buffer, columnaDestino) {
+async function importarDosColumnas(clave, buffer, columnaDestino) {
   exigirClave(clave);
   const destino = String(columnaDestino ?? "").trim();
   if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino)) {
@@ -402,7 +402,7 @@ function importarDosColumnas(clave, buffer, columnaDestino) {
     agregados += 1;
   });
 
-  guardarMateriales(matriz);
+  await guardarMateriales(matriz);
   return { agregados, actualizados };
 }
 

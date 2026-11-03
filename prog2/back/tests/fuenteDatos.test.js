@@ -227,10 +227,10 @@ test("validaciones rechazan datos antes de abrir la planilla", async () => {
   await assert.rejects(() => actualizarMaterial("1", { inventario: "1", comentario: "x".repeat(51) }), (error) => error.status === 400);
   await assert.rejects(() => agregarMaterial("no", { Codigo: "1" }), (error) => error.status === 403);
   await assert.rejects(() => agregarMaterial(CLAVE, { Codigo: "  " }), (error) => error.status === 400);
-  assert.equal(estado(() => guardarContratistas("no", [])), 403);
-  assert.equal(estado(() => importarPlanilla("no", Buffer.from("x"))), 403);
-  assert.equal(estado(() => importarDosColumnas(CLAVE, Buffer.from("x"), "Codigo")), 400);
-  assert.equal(estado(() => importarReservas("no", Buffer.from("x"))), 403);
+  await assert.rejects(() => guardarContratistas("no", []), (error) => error.status === 403);
+  await assert.rejects(() => importarPlanilla("no", Buffer.from("x")), (error) => error.status === 403);
+  await assert.rejects(() => importarDosColumnas(CLAVE, Buffer.from("x"), "Codigo"), (error) => error.status === 400);
+  await assert.rejects(() => importarReservas("no", Buffer.from("x")), (error) => error.status === 403);
 });
 
 test("buscarMateriales no lee la planilla si la consulta es corta", () => {
