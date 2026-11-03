@@ -357,9 +357,10 @@ async function guardarFila(matriz, indiceFila) {
   // Fusiona solo la fila tocada sobre la caché actual para no pisar edits concurrentes
   // (editarMateriales() copia la matriz; si dos requests terminan en paralelo, la última
   // no debe reescribir la caché completa con una copia vieja).
+  // Si cambió el número de filas (alta/baja, p. ej. reemplazo de código), usar la matriz completa.
   const base = cacheMateriales?.matriz;
   const indiceCodigo = columnas.indexOf("Codigo");
-  if (base && indiceCodigo >= 0) {
+  if (base && indiceCodigo >= 0 && base.length === matriz.length) {
     const codigo = String(matriz[indiceFila]?.[indiceCodigo] ?? "").trim();
     const colsBase = (base[0] || []).map((nombre) => String(nombre));
     const idxCodBase = colsBase.indexOf("Codigo");
