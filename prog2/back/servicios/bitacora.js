@@ -1,11 +1,11 @@
 const path = require("path");
 const crypto = require("crypto");
 const ExcelJS = require("exceljs");
-const { supabase } = require("./supabase");
+const { supabase } = require("../supabase/supabase");
 const { claveCorrecta } = require("./fuenteDatos");
-const { subirImagen, bajarImagen, quitarImagen } = require("./imagenesSupabase");
+const { subirImagen, bajarImagen, quitarImagen } = require("../supabase/imagenesSupabase");
 
-const LOGO = path.join(__dirname, "assets", "logo-bitacora.png");
+const LOGO = path.join(__dirname, "..", "assets", "logo-bitacora.png");
 const LARGO_MAXIMO = 200;
 const PREFIJO_IMAGEN = "img:";
 const TAMANO_MAXIMO_FIRMA = 100 * 1024;

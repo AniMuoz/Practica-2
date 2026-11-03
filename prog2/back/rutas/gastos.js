@@ -1,6 +1,6 @@
-const { uploadXlsx, enviarPlanilla, nombreConFecha } = require("../compartido");
-const gastos = require("../gastos");
-const { exigirAdmin } = require("../auth");
+const { uploadXlsx, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
+const gastos = require("../servicios/gastos");
+const { exigirAdmin } = require("../seguridad/auth");
 
 function nombreMes(mes) {
   const periodo = /^\d{4}-(\d{2})$/.exec(mes);

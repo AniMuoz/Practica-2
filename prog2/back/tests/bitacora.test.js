@@ -9,15 +9,15 @@ const path = require("node:path");
 const ExcelJS = require("exceljs");
 const { app } = require("../server");
 delete process.env.SECRETO_PROXY;
-const CLAVE = require("../nucleoDatos").CLAVE_DATOS;
-const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("../bitacora");
+const CLAVE = require("../servicios/nucleoDatos").CLAVE_DATOS;
+const { calcularRecorrido, limpiarFila, enteroPositivo, armarExcel, dimensionesPng, nombreFirma, estadoFirma, hashTexto, resumenFirma, rutNormalizado } = require("../servicios/bitacora");
 
 // Los rechazos esperados (403, 400) imprimen su traza con console.error; se silencian aquí.
 test.mock.method(console, "error", () => {});
 
 function pedir(metodo, ruta, cuerpo) {
   // Los tests mandan muchas claves malas desde la misma IP: se reinicia el limite de intentos.
-  require("../limiteClave").reiniciar();
+  require("../seguridad/limiteClave").reiniciar();
   return new Promise((resolve, reject) => {
     const servidor = app.listen(0, "127.0.0.1", async () => {
       const { port } = servidor.address();

@@ -1,5 +1,5 @@
 const ExcelJS = require("exceljs");
-const { supabase } = require("./supabase");
+const { supabase } = require("../supabase/supabase");
 const { BODEGAS_EXPORT } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");

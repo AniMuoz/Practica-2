@@ -1,6 +1,6 @@
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
-const { ejecutar } = require("./supabaseTablas");
+const { ejecutar } = require("../supabase/supabaseTablas");
 const { exigirClave } = require("./nucleoDatos");
 const { aplicarExistencia, compactarPlanilla, filasConBodegas, filtrarPorCodigos, pintar, valorStock } = require("./planillasStock");
 

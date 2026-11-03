@@ -8,7 +8,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 // nucleoDatos.js toma estas dependencias al cargarse: se reemplazan antes por versiones en memoria.
-const tablas = require("../supabaseTablas");
+const tablas = require("../supabase/supabaseTablas");
 let bd;
 tablas.ejecutar = (operacion, carga) => {
   if (operacion === "leer") return bd[carga.tabla] ?? [];
@@ -19,7 +19,7 @@ tablas.ejecutar = (operacion, carga) => {
   throw new Error(`operación inesperada: ${operacion}`);
 };
 
-const imagenes = require("../imagenesSupabase");
+const imagenes = require("../supabase/imagenesSupabase");
 let quitadas = [];
 let quitarFalla = false;
 imagenes.quitarImagen = async (nombre) => {
@@ -27,7 +27,7 @@ imagenes.quitarImagen = async (nombre) => {
   quitadas.push(nombre);
 };
 
-const { supabase } = require("../supabase");
+const { supabase } = require("../supabase/supabase");
 let llamadas = [];
 let errorSupabase = null;
 supabase.from = (tabla) => ({
@@ -67,8 +67,8 @@ async function cargar(materiales = SEMILLA, planillas = []) {
   llamadas = [];
   quitadas = [];
   errorSupabase = null;
-  delete require.cache[require.resolve("../nucleoDatos")];
-  const nucleo = require("../nucleoDatos");
+  delete require.cache[require.resolve("../servicios/nucleoDatos")];
+  const nucleo = require("../servicios/nucleoDatos");
   await nucleo.cargarMateriales();
   return nucleo;
 }

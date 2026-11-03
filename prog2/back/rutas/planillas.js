@@ -1,5 +1,5 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../fuenteDatos");
-const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../compartido");
+const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
+const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../utils/compartido");
 
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
 function filtrosDeConsulta(q) {

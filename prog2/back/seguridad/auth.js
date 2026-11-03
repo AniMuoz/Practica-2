@@ -1,10 +1,10 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { supabase } = require("./supabase");
+const { supabase } = require("../supabase/supabase");
 const { ipDe: clienteDe } = require("./seguridad");
 
-const ARCHIVO_SECRETO = path.join(__dirname, ".sesion-secreto");
+const ARCHIVO_SECRETO = path.join(__dirname, "..", ".sesion-secreto");
 const NOMBRE_COOKIE = "sesion";
 const DURACION_MS = 7 * 24 * 60 * 60 * 1000;
 const RENOVAR_BAJO_MS = 6 * 24 * 60 * 60 * 1000;

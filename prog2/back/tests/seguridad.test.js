@@ -3,7 +3,7 @@ process.env.ALLOWED_ORIGINS = "https://app.test/, https://otra.test";
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, MAX_EVENTOS } = require("../seguridad");
+const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, MAX_EVENTOS } = require("../seguridad/seguridad");
 
 function resFalsa() {
   const res = { headers: {}, quitados: [], codigo: 200, cuerpo: null };

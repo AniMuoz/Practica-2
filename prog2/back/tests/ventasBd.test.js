@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const ExcelJS = require("exceljs");
 
-const tablasRemotas = require("../supabaseTablas");
+const tablasRemotas = require("../supabase/supabaseTablas");
 tablasRemotas.ejecutar = (operacion, carga) => {
   if (operacion === "leer" && carga.tabla === "contratistas") return [{ id: 1, nombre: "Ana" }, { id: 2, nombre: "Luis" }];
   if (operacion === "leer") return [];
@@ -17,12 +17,12 @@ const MATERIALES = [
   { Codigo: "100", Descripcion: "Perno", Stock: "10", M502: "1", M503: "0", M504: "0", M505: "0", "Ubicación": "0102-A", Peso: "0,5", Precio: "100" },
   { Codigo: "200", Descripcion: "Cañería PVC", Stock: "0", M502: "0", M503: "0", M504: "0", M505: "50", "Ubicación": "          ", Peso: "2", Precio: "" },
 ];
-const nucleo = require("../nucleoDatos");
+const nucleo = require("../servicios/nucleoDatos");
 nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
-const contratistas = require("../contratistas");
+const contratistas = require("../servicios/contratistas");
 
 // ---------- Supabase falso: tablas en memoria ----------
-const { supabase } = require("../supabase");
+const { supabase } = require("../supabase/supabase");
 let tablas;
 let ids;
 
@@ -78,7 +78,7 @@ supabase.from = (tabla) => {
   return b;
 };
 
-const ventasBd = require("../ventasBd");
+const ventasBd = require("../servicios/ventasBd");
 
 test.before(async () => {
   await contratistas.cargarContratistas();

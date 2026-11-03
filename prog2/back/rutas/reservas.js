@@ -1,5 +1,5 @@
-const { revisarReserva, exportarRevisionReserva, buscarReservas, exportarRevisionPorReserva } = require("../fuenteDatos");
-const { uploadPdf, conColores, enviarPlanilla } = require("../compartido");
+const { revisarReserva, exportarRevisionReserva, buscarReservas, exportarRevisionPorReserva } = require("../servicios/fuenteDatos");
+const { uploadPdf, conColores, enviarPlanilla } = require("../utils/compartido");
 
 module.exports = function rutasReservas(app) {
   function recibirReserva(req, res, siguiente) {

@@ -7,7 +7,7 @@ const test = require("node:test");
 const ExcelJS = require("exceljs");
 
 // Los módulos toman estas funciones al cargarse: se reemplazan antes por datos en memoria.
-const tablas = require("../supabaseTablas");
+const tablas = require("../supabase/supabaseTablas");
 tablas.ejecutar = (operacion, carga) => {
   if (operacion === "leer" && carga.tabla === "contratistas") return [{ id: 1, nombre: "Ana" }, { id: 2, nombre: "Luis" }];
   if (operacion === "leer") return [];
@@ -19,11 +19,11 @@ const MATERIALES = [
   { Codigo: "200", Descripcion: "Cañería PVC", Stock: "0", M502: "0", M503: "0", M504: "0", M505: "50", "Ubicación": "          ", Peso: "2", Precio: "" },
   { Codigo: "300", Descripcion: "Pegamento", Stock: "2", "Ubicación": "          " },
 ];
-const nucleo = require("../nucleoDatos");
+const nucleo = require("../servicios/nucleoDatos");
 nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
-const contratistas = require("../contratistas");
+const contratistas = require("../servicios/contratistas");
 
-const { armarReserva, columnaPorTitulo, añadirVenta } = require("../ventas");
+const { armarReserva, columnaPorTitulo, añadirVenta } = require("../servicios/ventas");
 
 test.before(async () => {
   await contratistas.cargarContratistas();

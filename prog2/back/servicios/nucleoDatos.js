@@ -2,10 +2,10 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
-const { ejecutar } = require("./supabaseTablas");
-const { supabase } = require("./supabase");
-const { quitarImagen } = require("./imagenesSupabase");
-const { controlarIntento } = require("./limiteClave");
+const { ejecutar } = require("../supabase/supabaseTablas");
+const { supabase } = require("../supabase/supabase");
+const { quitarImagen } = require("../supabase/imagenesSupabase");
+const { controlarIntento } = require("../seguridad/limiteClave");
 
 const CAMPOS_MATERIAL = [
   ["Codigo", "codigo"],
@@ -168,7 +168,7 @@ const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS
 const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
 const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";
-const ARCHIVO_MARCADOS = path.join(__dirname, "marcados.json");
+const ARCHIVO_MARCADOS = path.join(__dirname, "..", "marcados.json");
 
 function conStockCritico(matriz) {
   if (matriz.length === 0) return matriz;
@@ -701,7 +701,7 @@ async function guardarImagen(codigo, campo, nombreArchivo, clave) {
 
   // Borra la imagen anterior (si es otro archivo) para ahorrar espacio.
   if (/\.(png|jpe?g|webp|gif)$/i.test(anterior) && path.basename(anterior) !== nombreArchivo) {
-    const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
+    const ruta = path.join(__dirname, "..", "imagenes", path.basename(anterior));
     try {
       await fs.promises.rm(ruta, { force: true });
       await quitarImagen(path.basename(anterior));
@@ -732,7 +732,7 @@ async function eliminarMaterial(codigo, clave) {
     if (indiceCampo < 0) continue;
     const anterior = String(matriz[indiceFila][indiceCampo] ?? "");
     if (/\.(png|jpe?g|webp|gif)$/i.test(anterior)) {
-      const ruta = path.join(__dirname, "imagenes", path.basename(anterior));
+      const ruta = path.join(__dirname, "..", "imagenes", path.basename(anterior));
       await fs.promises.rm(ruta, { force: true });
       await quitarImagen(path.basename(anterior));
     }

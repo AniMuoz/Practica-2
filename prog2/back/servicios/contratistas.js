@@ -1,4 +1,4 @@
-const { ejecutar } = require("./supabaseTablas");
+const { ejecutar } = require("../supabase/supabaseTablas");
 const { exigirClave, matrizGuardada } = require("./nucleoDatos");
 
 let cacheContratistas = null;

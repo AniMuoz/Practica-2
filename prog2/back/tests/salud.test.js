@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { comprobarBase, reiniciarSalud } = require("../salud");
+const { comprobarBase, reiniciarSalud } = require("../utils/salud");
 
 function clienteCon(error) {
   const llamadas = [];

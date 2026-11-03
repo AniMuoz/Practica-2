@@ -1,7 +1,7 @@
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
-const { ejecutar } = require("./supabaseTablas");
-const { supabase } = require("./supabase");
+const { ejecutar } = require("../supabase/supabaseTablas");
+const { supabase } = require("../supabase/supabase");
 const {
   CAMPOS_RESERVA,
   cargarMateriales,

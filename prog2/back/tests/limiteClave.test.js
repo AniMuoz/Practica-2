@@ -3,8 +3,8 @@ process.env.NODE_ENV = "test";
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const limite = require("../limiteClave");
-const { claveCorrecta, CLAVE_DATOS } = require("../nucleoDatos");
+const limite = require("../seguridad/limiteClave");
+const { claveCorrecta, CLAVE_DATOS } = require("../servicios/nucleoDatos");
 
 function enPeticion(ip, fn) {
   return limite.contexto.run({ ip }, fn);

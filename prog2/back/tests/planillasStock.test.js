@@ -7,7 +7,7 @@ const test = require("node:test");
 const ExcelJS = require("exceljs");
 
 // planillasStock.js toma estas funciones al cargarse: se reemplazan por datos en memoria.
-const nucleo = require("../nucleoDatos");
+const nucleo = require("../servicios/nucleoDatos");
 
 const MATERIALES = [
   {
@@ -34,7 +34,7 @@ let TABLA = { columnas: [], filas: [] };
 nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
 nucleo.leerTabla = () => TABLA;
 
-const stock = require("../planillasStock");
+const stock = require("../servicios/planillasStock");
 
 const INVENTARIO = [
   { Codigo: "1", Descripcion: "Perno", Stock: "5", "Ubicación": "02-A", "Sub-ubicación": "02-A", Inventario: "5" },

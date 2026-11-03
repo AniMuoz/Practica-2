@@ -21,7 +21,7 @@ const {
   indicePorCodigo,
   claveCorrecta,
   exigirClave,
-} = require("../nucleoDatos");
+} = require("../servicios/nucleoDatos");
 
 test("claveColumna ignora acentos, mayúsculas, espacios y símbolos", () => {
   assert.equal(claveColumna("Ubicación"), "ubicacion");

@@ -4,12 +4,12 @@
  *
  * Rombo, QR y Foto guardan el nombre del archivo de imagen, igual que el Excel.
  *
- * Uso: node crearBase.js
+ * Uso: node scripts/crearBase.js
  */
 const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
 
-const ARCHIVO_DB = path.join(__dirname, "berfre.sqlite");
+const ARCHIVO_DB = path.join(__dirname, "..", "berfre.sqlite");
 
 const SQL = `
 DROP TABLE IF EXISTS materiales;

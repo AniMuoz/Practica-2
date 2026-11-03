@@ -102,11 +102,11 @@ function consulta(tabla) {
   return b;
 }
 
-const { supabase } = require("../supabase");
+const { supabase } = require("../supabase/supabase");
 supabase.from = (tabla) => consulta(tabla);
 
 // Almacenamiento de imágenes falso.
-const imagenes = require("../imagenesSupabase");
+const imagenes = require("../supabase/imagenesSupabase");
 let subidas;
 let quitadas;
 let almacen;
@@ -124,8 +124,8 @@ imagenes.bajarImagen = async (nombre) => {
   return almacen.get(nombre) ?? null;
 };
 
-const bitacora = require("../bitacora");
-const CLAVE = require("../nucleoDatos").CLAVE_DATOS;
+const bitacora = require("../servicios/bitacora");
+const CLAVE = require("../servicios/nucleoDatos").CLAVE_DATOS;
 
 test.mock.method(console, "error", () => {});
 test.beforeEach(() => {

@@ -1,5 +1,5 @@
-const { supabase } = require("../supabase");
-const { exigirAdmin, hashClave, validarClaveNueva, errorHttp, falloBd, responderError, cacheUsuarios } = require("../auth");
+const { supabase } = require("../supabase/supabase");
+const { exigirAdmin, hashClave, validarClaveNueva, errorHttp, falloBd, responderError, cacheUsuarios } = require("../seguridad/auth");
 
 // Los contadores de intentos y la cache de usuarios viven en memoria: asumen una sola instancia del servidor.
 // Cada alta, cambio de rol o de clave debe llamar a cacheUsuarios.delete para que surta efecto al instante.

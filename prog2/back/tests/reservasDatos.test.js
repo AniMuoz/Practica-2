@@ -8,7 +8,7 @@ const ExcelJS = require("exceljs");
 const XLSX = require("xlsx");
 
 // Los módulos toman estas funciones al cargarse: se reemplazan antes por datos en memoria.
-const tablas = require("../supabaseTablas");
+const tablas = require("../supabase/supabaseTablas");
 let bd;
 const operaciones = [];
 tablas.ejecutar = (operacion, carga) => {
@@ -21,7 +21,7 @@ tablas.ejecutar = (operacion, carga) => {
   throw new Error(`operación inesperada: ${operacion}`);
 };
 
-const nucleo = require("../nucleoDatos");
+const nucleo = require("../servicios/nucleoDatos");
 const CLAVE = nucleo.CLAVE_DATOS;
 let lecturasMateriales = 0;
 const MATERIALES = [
@@ -33,7 +33,7 @@ nucleo.materialesEnCache = () => {
   return { filasBodega: MATERIALES };
 };
 
-const { supabase } = require("../supabase");
+const { supabase } = require("../supabase/supabase");
 let errorUpsert = null;
 const upserts = [];
 supabase.from = (tabla) => ({
@@ -50,8 +50,8 @@ function cargar(inicial = {}) {
   operaciones.length = 0;
   upserts.length = 0;
   errorUpsert = null;
-  delete require.cache[require.resolve("../reservasDatos")];
-  return require("../reservasDatos");
+  delete require.cache[require.resolve("../servicios/reservasDatos")];
+  return require("../servicios/reservasDatos");
 }
 
 async function conReservas(inicial = {}) {

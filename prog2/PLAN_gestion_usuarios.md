@@ -1,4 +1,4 @@
-# Plan: roles y gestión de personal
+﻿# Plan: roles y gestión de personal
 
 Instrucciones para implementar más adelante. No cambia el login: el admin entra una vez con su contraseña y, con la sesión abierta, crea y elimina al resto de usuarios sin volver a escribirla.
 
@@ -6,7 +6,7 @@ Estado actual que hay que respetar:
 
 - Tabla `usuarios` en `prog2/back/esquema.sql`: `usuario`, `clave_hash`, `creado_en`. Sin roles.
 - Sesión en `prog2/back/auth.js`: cookie `HttpOnly` firmada. `protegerApi` pone `req.usuario`. `GET /api/sesion` devuelve solo `{ usuario }`.
-- Altas hoy: `node crearUsuario.js <usuario> <contraseña>`, que hace `upsert` (pisa la clave si el nombre ya existe).
+- Altas hoy: `node scripts/crearUsuario.js <usuario> <contraseña>`, que hace `upsert` (pisa la clave si el nombre ya existe).
 - Web: `prog2/web/src/main.jsx` (rutas), `Acceso.jsx` (login y `/api/sesion`), `Navbar.jsx`. `/admin` es la planilla de administración de stock, no de personas.
 
 ## 1. Datos

@@ -1,10 +1,10 @@
 const crypto = require("crypto");
 const fs = require("fs");
-const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../fuenteDatos");
-const { uploadXlsx, upload, emitir, esImagenReal } = require("../compartido");
-const { subirImagen } = require("../imagenesSupabase");
-const { exigirAdmin } = require("../auth");
-const { CLAVE_DATOS } = require("../nucleoDatos");
+const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../servicios/fuenteDatos");
+const { uploadXlsx, upload, emitir, esImagenReal } = require("../utils/compartido");
+const { subirImagen } = require("../supabase/imagenesSupabase");
+const { exigirAdmin } = require("../seguridad/auth");
+const { CLAVE_DATOS } = require("../servicios/nucleoDatos");
 
 module.exports = function rutasMateriales(app) {
   // Una sola importación masiva a la vez: evita que dos cargas se pisen en Supabase.

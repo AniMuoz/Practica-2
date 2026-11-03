@@ -1,14 +1,14 @@
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-const { precargarDatos: precargar } = require("./fuenteDatos");
-const { supabase } = require("./supabase");
-const { protegerApi, rutasAuth, contarUsuarios } = require("./auth");
-const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./imagenesSupabase");
-const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad");
-const { conIpDeClave } = require("./limiteClave");
-const { comprobarBase } = require("./salud");
-const { carpetaImagenes, clientesEventos, conColores } = require("./compartido");
+const { precargarDatos: precargar } = require("./servicios/fuenteDatos");
+const { supabase } = require("./supabase/supabase");
+const { protegerApi, rutasAuth, contarUsuarios } = require("./seguridad/auth");
+const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./supabase/imagenesSupabase");
+const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
+const { conIpDeClave } = require("./seguridad/limiteClave");
+const { comprobarBase } = require("./utils/salud");
+const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -149,7 +149,7 @@ if (require.main === module) {
       }
       try {
         if ((await contarUsuarios()) === 0) {
-          console.warn("No hay usuarios: nadie podrá iniciar sesión. Crea uno con: node crearUsuario.js <usuario> <contraseña>");
+          console.warn("No hay usuarios: nadie podrá iniciar sesión. Crea uno con: node scripts/crearUsuario.js <usuario> <contraseña>");
         }
       } catch (error) {
         console.warn(error.message);

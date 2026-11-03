@@ -3,7 +3,7 @@ const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
 
 function cargarEnv() {
-  const archivo = path.join(__dirname, ".env");
+  const archivo = path.join(__dirname, "..", ".env");
   if (!fs.existsSync(archivo)) return;
   for (const linea of fs.readFileSync(archivo, "utf8").split(/\r?\n/)) {
     const texto = linea.trim();

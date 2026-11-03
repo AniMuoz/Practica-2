@@ -1,9 +1,9 @@
-const { guardarUsuario } = require("./auth");
+const { guardarUsuario } = require("../seguridad/auth");
 
 const [nombre, clave, rol] = process.argv.slice(2);
 
 if (!nombre || !clave || (rol && rol !== "admin" && rol !== "operador")) {
-  console.error("Uso: node crearUsuario.js <usuario> <contraseña> [admin|operador]");
+  console.error("Uso: node scripts/crearUsuario.js <usuario> <contraseña> [admin|operador]");
   process.exit(1);
 }
 

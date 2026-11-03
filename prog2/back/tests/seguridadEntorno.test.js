@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { ipDe, verificarEntorno } = require("../seguridad");
+const { ipDe, verificarEntorno } = require("../seguridad/seguridad");
 
 function conEntorno(valores, fn) {
   const anteriores = {};

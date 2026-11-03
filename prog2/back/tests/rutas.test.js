@@ -9,7 +9,7 @@ const test = require("node:test");
 
 // server.js toma las funciones de datos al cargarse: se reemplazan antes por dobles que registran
 // cada llamada y devuelven lo que cada prueba indique.
-const fuente = require("../fuenteDatos");
+const fuente = require("../servicios/fuenteDatos");
 let llamadas = [];
 let respuestas = {};
 for (const nombre of Object.keys(fuente)) {
@@ -21,7 +21,7 @@ for (const nombre of Object.keys(fuente)) {
   };
 }
 
-const imagenes = require("../imagenesSupabase");
+const imagenes = require("../supabase/imagenesSupabase");
 let remotas = new Map();
 let erroresBajada = null;
 const subidas = [];
@@ -35,7 +35,7 @@ imagenes.bajarImagen = async (nombre) => {
 imagenes.quitarImagen = async () => {};
 imagenes.asegurarCubo = async () => {};
 
-const { supabase } = require("../supabase");
+const { supabase } = require("../supabase/supabase");
 let errorConexion = null;
 supabase.from = () => ({ select: () => ({ limit: async () => ({ error: errorConexion }) }) });
 
@@ -301,7 +301,7 @@ test("los errores al procesar la reserva responden 500 con un mensaje claro", as
 
 // ---------- ventas ----------
 
-const ventasBd = require("../ventasBd");
+const ventasBd = require("../servicios/ventasBd");
 let respuestasVentas = {};
 let llamadasVentas = [];
 for (const nombre of ["anadirVenta", "obtenerPlanilla", "listarMeses", "exportarPlanilla", "editarFila", "quitarFila", "quitarOrden", "exportarAnual"]) {

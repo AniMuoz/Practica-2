@@ -5,7 +5,7 @@ process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const ExcelJS = require("exceljs");
-const { TOPICOS, validarGasto, armarDetalle, guardarDatos, recuperarDatos } = require("../gastos");
+const { TOPICOS, validarGasto, armarDetalle, guardarDatos, recuperarDatos } = require("../servicios/gastos");
 
 const GASTOS = [
   { topico: "COMBUSTIBLE", proveedor: "Copec", nboleta: "123", fecha: "2024-12-01", monto: "15000" },

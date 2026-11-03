@@ -1,7 +1,7 @@
 ﻿const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const compartido = require("../compartido");
+const compartido = require("../utils/compartido");
 
 const { conColores, nombreConFecha, enviarPlanilla, emitir, clientesEventos } = compartido;
 

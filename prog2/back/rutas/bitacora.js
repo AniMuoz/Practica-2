@@ -1,6 +1,6 @@
-const { uploadFirma, enviarPlanilla } = require("../compartido");
-const bitacora = require("../bitacora");
-const { exigirAdmin } = require("../auth");
+const { uploadFirma, enviarPlanilla } = require("../utils/compartido");
+const bitacora = require("../servicios/bitacora");
+const { exigirAdmin } = require("../seguridad/auth");
 
 module.exports = function rutasBitacora(app) {
   function responderBitacora(res, error, mensaje) {

@@ -1,6 +1,6 @@
-const { supabase } = require("../supabase");
-const { exigirAdmin, buscarUsuario } = require("../auth");
-const { emitir } = require("../compartido");
+const { supabase } = require("../supabase/supabase");
+const { exigirAdmin, buscarUsuario } = require("../seguridad/auth");
+const { emitir } = require("../utils/compartido");
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];

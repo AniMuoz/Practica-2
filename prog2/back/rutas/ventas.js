@@ -1,8 +1,8 @@
-const { leerContratistas, guardarContratistas } = require("../fuenteDatos");
-const { uploadXlsx, conColores, enviarPlanilla } = require("../compartido");
-const ventasBd = require("../ventasBd");
-const { hojasDeLibro } = require("../ventas");
-const { exigirAdmin } = require("../auth");
+const { leerContratistas, guardarContratistas } = require("../servicios/fuenteDatos");
+const { uploadXlsx, conColores, enviarPlanilla } = require("../utils/compartido");
+const ventasBd = require("../servicios/ventasBd");
+const { hojasDeLibro } = require("../servicios/ventas");
+const { exigirAdmin } = require("../seguridad/auth");
 
 module.exports = function rutasVentas(app) {
   function responder(res, error, mensaje) {

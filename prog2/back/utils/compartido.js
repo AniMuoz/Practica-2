@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 
-const carpetaImagenes = path.join(__dirname, "imagenes");
+const carpetaImagenes = path.join(__dirname, "..", "imagenes");
 fs.mkdirSync(carpetaImagenes, { recursive: true });
 
 // Extensiones ejecutables o de script que no pueden aparecer en ninguna parte del nombre (doble extension).
