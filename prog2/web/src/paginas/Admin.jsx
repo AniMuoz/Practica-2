@@ -17,6 +17,8 @@ import PanelInventario from "./admin/paneles/PanelInventario.jsx";
 import PanelMovimientos from "./admin/paneles/PanelMovimientos.jsx";
 import PanelReserva from "./admin/paneles/PanelReserva.jsx";
 import PanelDetallado from "./admin/paneles/PanelDetallado.jsx";
+import FormularioClave from "../componentes/FormularioClave.jsx";
+import DialogoConfirmacion from "../componentes/DialogoConfirmacion.jsx";
 import PanelCarga from "./admin/paneles/PanelCarga.jsx";
 import PanelFormulario from "./admin/paneles/PanelFormulario.jsx";
 import { useEsMovil } from "../lib/useEsMovil.js";
@@ -68,7 +70,6 @@ export default function Admin() {
   const { rol } = useSesion();
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
-  const [verClave, setVerClave] = useState(false);
   const [columnas, setColumnas] = useState([]);
   const [datos, setDatos] = useState({});
   const [aviso, setAviso] = useState("");
@@ -310,6 +311,14 @@ export default function Admin() {
     }
   }
 
+  function entrar(event) {
+    event.preventDefault();
+    setAviso("");
+    enviarJson("/api/acceso", { clave }, "Contraseña incorrecta.")
+      .then(() => setAutorizado(true))
+      .catch((err) => setAviso(err.message));
+  }
+
   return (
     <main
       className="admin-pagina"
@@ -364,76 +373,7 @@ export default function Admin() {
           </label>
         )}
       </div>
-      {!autorizado && (
-        <form
-          data-tour="admin-clave"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setAviso("");
-            enviarJson("/api/acceso", { clave }, "Contraseña incorrecta.")
-              .then(() => setAutorizado(true))
-              .catch((err) => setAviso(err.message));
-          }}
-          style={{ display: "flex", gap: 8, alignItems: "center" }}
-        >
-          <div style={{ position: "relative" }}>
-            <input
-              type={verClave ? "text" : "password"}
-              value={clave}
-              autoFocus
-              placeholder="Contraseña"
-              onChange={(event) => setClave(event.target.value)}
-              style={{ padding: "8px 36px 8px 12px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-            />
-            <button
-              type="button"
-              aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
-              onClick={() => setVerClave((visible) => !visible)}
-              style={{
-                position: "absolute",
-                right: 4,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: 0,
-                background: "transparent",
-                padding: 4,
-                cursor: "pointer",
-                color: "var(--texto)",
-                display: "flex",
-              }}
-            >
-              {verClave ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M3 3l18 18" />
-                  <path d="M10.6 10.6A2 2 0 0 0 13.4 13.4" />
-                  <path d="M9.9 5.1A10.8 10.8 0 0 1 12 5c5.5 0 9.5 4.5 10.5 7-.4 1-1.2 2.4-2.4 3.6" />
-                  <path d="M6.1 6.1C4.2 7.4 2.8 9.2 1.5 12c1 2.5 5 7 10.5 7 1.6 0 3-.4 4.3-1" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
-          <button
-            type="submit"
-            style={{
-              padding: "8px 14px",
-              border: 0,
-              borderRadius: 6,
-              background: "var(--acento)",
-              color: "var(--sobre)",
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            Entrar
-          </button>
-          {aviso && <p style={{ margin: 0 }}>{aviso}</p>}
-        </form>
-      )}
+      {!autorizado && <FormularioClave clave={clave} setClave={setClave} aviso={aviso} alEnviar={entrar} />}
       {autorizado && esMovilCarga && (
         <button
           type="button"
@@ -643,93 +583,29 @@ export default function Admin() {
         />
       )}
       {confirmarContratistas && (
-        <div
-          role="dialog"
-          aria-label="Confirmar cambios en contratistas"
-          style={{ position: "fixed", inset: 0, background: "rgba(17, 24, 39, 0.55)", display: "grid", placeItems: "center", padding: 24, zIndex: 80 }}
-        >
-          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>¿Guardar los cambios en contratistas?</p>
-            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
-              Se reemplazará la lista de contratistas que se puede elegir al cargar ventas. ¿Estás seguro de realizar el cambio?
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
-              <button
-                type="button"
-                onClick={guardarContratistasConfirmado}
-                style={{ width: "100%", padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
-              >
-                Sí, guardar cambios
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmarContratistas(false)}
-                style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", fontSize: 14, cursor: "pointer" }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+        <DialogoConfirmacion
+          etiqueta="Confirmar cambios en contratistas"
+          titulo="¿Guardar los cambios en contratistas?"
+          texto="Se reemplazará la lista de contratistas que se puede elegir al cargar ventas. ¿Estás seguro de realizar el cambio?"
+          acciones={[
+            { texto: "Sí, guardar cambios", alClick: guardarContratistasConfirmado, principal: true },
+            { texto: "Cancelar", alClick: () => setConfirmarContratistas(false) },
+          ]}
+        />
       )}
       {mostrarAviso && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(17, 24, 39, 0.55)",
-            display: "grid",
-            placeItems: "center",
-            padding: 24,
-            zIndex: 80,
-          }}
-        >
-          <div style={{ background: "var(--superficie)", borderRadius: 8, padding: 20, maxWidth: 420 }}>
-            <p style={{ margin: "0 0 8px", fontWeight: 700 }}>
-              {importando ? "Importación en curso" : "Hay cambios sin guardar"}
-            </p>
-            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
-              {importando
-                ? "Espera a que termine la carga. Si sales ahora se interrumpe la importación."
-                : "Si sales de esta página se pierden los datos que todavía no guardaste."}
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
-              <button
-                type="button"
-                onClick={seguirAqui}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  border: 0,
-                  borderRadius: 6,
-                  background: "var(--acento)",
-                  color: "var(--sobre)",
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Seguir en esta página
-              </button>
-              {!importando && (
-              <button
-                type="button"
-                onClick={salirSinGuardar}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  border: "1px solid var(--borde)",
-                  borderRadius: 6,
-                  background: "var(--superficie)",
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Salir sin guardar
-              </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <DialogoConfirmacion
+          titulo={importando ? "Importación en curso" : "Hay cambios sin guardar"}
+          texto={
+            importando
+              ? "Espera a que termine la carga. Si sales ahora se interrumpe la importación."
+              : "Si sales de esta página se pierden los datos que todavía no guardaste."
+          }
+          acciones={[
+            { texto: "Seguir en esta página", alClick: seguirAqui, principal: true },
+            ...(importando ? [] : [{ texto: "Salir sin guardar", alClick: salirSinGuardar }]),
+          ]}
+        />
       )}
       <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>

@@ -30,6 +30,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!prog2/web/src/lib/
 lib64/
 parts/
 sdist/
