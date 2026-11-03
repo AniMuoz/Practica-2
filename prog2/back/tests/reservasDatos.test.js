@@ -307,6 +307,29 @@ test("revisionReservas deja una sola fila cuando hay copias exactamente iguales"
   assert.deepEqual(revision.marcadosCodigo, [false]);
 });
 
+test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posición de origen", () => {
+  const base = {
+    orden: "",
+    n_reserva: "1573425",
+    material: "60000390",
+    cantidad_necesaria: "2",
+    texto_breve_de_material: "PROTECTOR",
+    unidad_medida_base: "UN",
+    fecha_de_necesidad: "23/09/2026",
+  };
+  const { revisionReservas } = cargar({
+    reservas: [
+      registro({ ...base, n_pos_reserva_traslado: "1" }),
+      registro({ ...base, n_pos_reserva_traslado: "11" }),
+    ],
+  });
+  const revision = revisionReservas("1573425");
+  assert.equal(revision.filas.length, 1);
+  assert.equal(revision.filas[0][0], 1);
+  assert.equal(revision.filas[0][3], "60000390");
+  assert.deepEqual(revision.marcadosCodigo, [false]);
+});
+
 test("revisionReservas marca el código cuando el mismo material aparece con datos distintos", () => {
   const base = {
     orden: "6001",

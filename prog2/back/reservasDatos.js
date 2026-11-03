@@ -221,40 +221,46 @@ function preferirReservasCompletas(filas, iOrden, indiceReserva, iPosicion, iMat
   return elegidas.sort((a, b) => a.origen - b.origen).map((item) => item.fila);
 }
 
-function firmaFilaReserva(fila) {
-  return (fila || []).map((celda) => String(celda ?? "").trim().toLowerCase()).join("\0");
+// Firma de lo que se ve en la revisión (sin N°). Campos solo de origen (p. ej. posición) no cuentan.
+function firmaFilaRevision(fila) {
+  return (fila || [])
+    .slice(1)
+    .map((celda) => String(celda ?? "").trim().toLowerCase())
+    .join("\0");
 }
 
-// Tras preferirReservasCompletas: deja una sola copia de filas idénticas.
-function deduplicarFilasExactas(filas) {
+function deduplicarFilasRevision(filas) {
   if (filas.length < 2) return filas;
   const vistas = new Set();
   const unicas = [];
   filas.forEach((fila) => {
-    const firma = firmaFilaReserva(fila);
+    const firma = firmaFilaRevision(fila);
     if (vistas.has(firma)) return;
     vistas.add(firma);
     unicas.push(fila);
   });
-  return unicas;
+  return unicas.map((fila, indice) => {
+    const copia = fila.slice();
+    copia[0] = indice + 1;
+    return copia;
+  });
 }
 
-function codigosConVariantes(filas, iMaterial) {
-  if (iMaterial < 0 || filas.length < 2) return new Set();
+function marcadosCodigoRevision(filas, indiceCodigo = 3) {
+  if (filas.length < 2) return filas.map(() => false);
   const porCodigo = new Map();
   filas.forEach((fila) => {
-    const codigo = String(fila[iMaterial] ?? "").trim().toLowerCase();
+    const codigo = String(fila[indiceCodigo] ?? "").trim().toLowerCase();
     if (!codigo) return;
-    const firma = firmaFilaReserva(fila);
+    const firma = firmaFilaRevision(fila);
     const firmas = porCodigo.get(codigo);
     if (firmas) firmas.add(firma);
     else porCodigo.set(codigo, new Set([firma]));
   });
-  const conflicto = new Set();
-  porCodigo.forEach((firmas, codigo) => {
-    if (firmas.size > 1) conflicto.add(codigo);
+  return filas.map((fila) => {
+    const codigo = String(fila[indiceCodigo] ?? "").trim().toLowerCase();
+    return Boolean(codigo && (porCodigo.get(codigo)?.size || 0) > 1);
   });
-  return conflicto;
 }
 
 function revisionReservas(reserva, por = "reserva") {
@@ -283,18 +289,15 @@ function revisionReservas(reserva, por = "reserva") {
   const iTexto = indice(/texto breve/i);
   const iCentro = indice(/^centro$/i);
   const iAlmacen = indice(/^almac[eé]n$/i);
-  const coinciden = deduplicarFilasExactas(
-    preferirReservasCompletas(
-      coincidenCrudas,
-      iOrden,
-      indiceReserva,
-      iPosicion,
-      iMaterial,
-      iCentro,
-      iAlmacen
-    )
+  const coinciden = preferirReservasCompletas(
+    coincidenCrudas,
+    iOrden,
+    indiceReserva,
+    iPosicion,
+    iMaterial,
+    iCentro,
+    iAlmacen
   );
-  const codigosConflicto = codigosConVariantes(coinciden, iMaterial);
   const iNecesaria = indice(/cantidad necesaria/i);
   const iUnidad = indice(/unidad medida base/i);
   const iFecha = indice(/fecha de necesidad/i);
@@ -330,40 +333,41 @@ function revisionReservas(reserva, por = "reserva") {
     "Reducido",
     "Diferencia",
   ];
-  const marcadosCodigo = [];
-  const filasRevision = coinciden.map((fila, posicion) => {
-    const codigo = String(celdaReserva(fila, iMaterial)).trim();
-    marcadosCodigo.push(codigosConflicto.has(codigo.toLowerCase()));
-    const material = materiales.get(codigo);
-    const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
-    const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? material["Ubicación"] : "No se encontro ubicación";
-    const stock = material ? numeroReserva(material.Stock) : 0;
-    const cantidad = numeroReserva(celdaReserva(fila, iNecesaria));
-    const descripcionInventario = material ? String(material.Descripcion ?? "").trim() : "";
-    const descripcion = descripcionInventario || String(celdaReserva(fila, iTexto)).trim() || "Sin descripción";
-    return [
-      posicion + 1,
-      celdaReserva(fila, iOrden),
-      celdaReserva(fila, indiceReserva),
-      codigo,
-      descripcion,
-      celdaReserva(fila, iCentro),
-      celdaReserva(fila, iAlmacen),
-      stock,
-      cantidad,
-      celdaReserva(fila, iUnidad),
-      lugar,
-      material ? material["Sub-ubicación"] ?? "" : "",
-      celdaReserva(fila, iFecha),
-      cantidad <= stock ? "Disponible" : "No disponible",
-      material ? numeroReserva(material.M502) : 0,
-      material ? numeroReserva(material.M503) : 0,
-      material ? numeroReserva(material.M504) : 0,
-      material ? numeroReserva(material.M505) : 0,
-      numeroReserva(celdaReserva(fila, iReducida)),
-      numeroReserva(celdaReserva(fila, iDiferencia)),
-    ];
-  });
+  const filasRevision = deduplicarFilasRevision(
+    coinciden.map((fila, posicion) => {
+      const codigo = String(celdaReserva(fila, iMaterial)).trim();
+      const material = materiales.get(codigo);
+      const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
+      const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? material["Ubicación"] : "No se encontro ubicación";
+      const stock = material ? numeroReserva(material.Stock) : 0;
+      const cantidad = numeroReserva(celdaReserva(fila, iNecesaria));
+      const descripcionInventario = material ? String(material.Descripcion ?? "").trim() : "";
+      const descripcion = descripcionInventario || String(celdaReserva(fila, iTexto)).trim() || "Sin descripción";
+      return [
+        posicion + 1,
+        celdaReserva(fila, iOrden),
+        celdaReserva(fila, indiceReserva),
+        codigo,
+        descripcion,
+        celdaReserva(fila, iCentro),
+        celdaReserva(fila, iAlmacen),
+        stock,
+        cantidad,
+        celdaReserva(fila, iUnidad),
+        lugar,
+        material ? material["Sub-ubicación"] ?? "" : "",
+        celdaReserva(fila, iFecha),
+        cantidad <= stock ? "Disponible" : "No disponible",
+        material ? numeroReserva(material.M502) : 0,
+        material ? numeroReserva(material.M503) : 0,
+        material ? numeroReserva(material.M504) : 0,
+        material ? numeroReserva(material.M505) : 0,
+        numeroReserva(celdaReserva(fila, iReducida)),
+        numeroReserva(celdaReserva(fila, iDiferencia)),
+      ];
+    })
+  );
+  const marcadosCodigo = marcadosCodigoRevision(filasRevision);
   const primera = coinciden[0] || [];
   return {
     columnas: salida,
