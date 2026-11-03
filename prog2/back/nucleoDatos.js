@@ -353,7 +353,32 @@ async function guardarFila(matriz, indiceFila) {
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const registro = registrosMaterial([columnas, matriz[indiceFila]])[0];
   if (registro) await persistirRegistro(registro);
-  return recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
+  const nombreHoja = cacheMateriales?.nombreHoja || "Hoja1";
+  // Fusiona solo la fila tocada sobre la caché actual para no pisar edits concurrentes
+  // (editarMateriales() copia la matriz; si dos requests terminan en paralelo, la última
+  // no debe reescribir la caché completa con una copia vieja).
+  const base = cacheMateriales?.matriz;
+  const indiceCodigo = columnas.indexOf("Codigo");
+  if (base && indiceCodigo >= 0) {
+    const codigo = String(matriz[indiceFila]?.[indiceCodigo] ?? "").trim();
+    const colsBase = (base[0] || []).map((nombre) => String(nombre));
+    const idxCodBase = colsBase.indexOf("Codigo");
+    if (idxCodBase >= 0 && codigo) {
+      const fusion = base.map((fila) => (Array.isArray(fila) ? fila.slice() : []));
+      const destino = fusion.findIndex(
+        (fila, indice) => indice > 0 && String(fila[idxCodBase] ?? "").trim() === codigo
+      );
+      if (destino > 0) {
+        const filaNueva = matriz[indiceFila] || [];
+        columnas.forEach((nombre, origen) => {
+          const destinoCol = colsBase.indexOf(nombre);
+          if (destinoCol >= 0) fusion[destino][destinoCol] = filaNueva[origen] ?? "";
+        });
+        return recordarMateriales(fusion, nombreHoja);
+      }
+    }
+  }
+  return recordarMateriales(matriz, nombreHoja);
 }
 
 function leerTabla() {

@@ -120,6 +120,8 @@ export default function Admin() {
   const [cargandoDetallado, setCargandoDetallado] = useState(false);
   const [avisoDetallado, setAvisoDetallado] = useState("");
   const [errorDetallado, setErrorDetallado] = useState("");
+  const suspenderRefrescoRef = useRef(0);
+  const pendienteRefrescoRef = useRef(0);
   const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
   const [filasMaestro, setFilasMaestro] = useState([]);
   const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarMovimientos || mostrarDetallado;
@@ -331,27 +333,35 @@ export default function Admin() {
       return false;
     }
 
-    const visibles = detalladoFiltrado.filas;
+    // Pares con índice original en detallado.filas para no pisar filas por código duplicado.
+    const paresVisibles = detallado.filas
+      .map((fila, indice) => ({ fila, indice }))
+      .filter(({ fila }) => codigosFiltrados.has(String(fila[1])))
+      .sort(
+        (a, b) =>
+          (ordenCodigos.get(String(a.fila[1])) ?? 0) - (ordenCodigos.get(String(b.fila[1])) ?? 0)
+      );
+
     const actualizaciones = [];
     for (let i = 0; i < lineas.length; i += 1) {
-      const fila = visibles[indiceFila + i];
-      if (!fila) break;
+      const par = paresVisibles[indiceFila + i];
+      if (!par) break;
       actualizaciones.push({
-        codigo: fila[1],
+        indice: par.indice,
+        codigo: par.fila[1],
         valor: lineas[i].split("\t")[0].trim(),
-        anterior: fila[indiceColumna] == null ? "" : String(fila[indiceColumna]),
+        anterior: par.fila[indiceColumna] == null ? "" : String(par.fila[indiceColumna]),
       });
     }
     if (actualizaciones.length === 0) return null;
 
-    const porCodigo = new Map(actualizaciones.map((item) => [String(item.codigo), item.valor]));
+    const porIndice = new Map(actualizaciones.map((item) => [item.indice, item.valor]));
     setDetallado((prev) => ({
       ...prev,
-      filas: prev.filas.map((fila) => {
-        const nuevo = porCodigo.get(String(fila[1]));
-        if (nuevo === undefined) return fila;
+      filas: prev.filas.map((fila, indice) => {
+        if (!porIndice.has(indice)) return fila;
         const copia = fila.slice();
-        copia[indiceColumna] = nuevo;
+        copia[indiceColumna] = porIndice.get(indice);
         return copia;
       }),
     }));
@@ -360,34 +370,45 @@ export default function Admin() {
     if (pendientes.length === 0) return actualizaciones[0].valor;
 
     setErrorDetallado("");
-    Promise.all(
-      pendientes.map((item) =>
-        enviarJson(
-          "/api/stock-detallado",
-          { clave, codigo: String(item.codigo ?? "").trim(), datos: { [nombreColumna]: item.valor } },
-          "No se pudo guardar el campo.",
-          "PUT"
-        ).then(
-          () => ({ ok: true, ...item }),
-          (err) => ({ ok: false, error: err, ...item })
-        )
-      )
-    ).then((resultados) => {
-      const fallidos = resultados.filter((item) => !item.ok);
-      if (fallidos.length === 0) return;
-      const revertir = new Map(fallidos.map((item) => [String(item.codigo), item.anterior]));
-      setDetallado((prev) => ({
-        ...prev,
-        filas: prev.filas.map((fila) => {
-          const anterior = revertir.get(String(fila[1]));
-          if (anterior === undefined) return fila;
-          const copia = fila.slice();
-          copia[indiceColumna] = anterior;
-          return copia;
-        }),
-      }));
-      setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
-    });
+    // Evita que el SSE recargue la planilla a mitad del pegado (celdas parpadeando).
+    suspenderRefrescoRef.current += 1;
+    window.clearTimeout(pendienteRefrescoRef.current);
+
+    // Guardado en serie: en paralelo la caché del backend se pisa entre requests.
+    (async () => {
+      const fallidos = [];
+      try {
+        for (const item of pendientes) {
+          try {
+            await enviarJson(
+              "/api/stock-detallado",
+              { clave, codigo: String(item.codigo ?? "").trim(), datos: { [nombreColumna]: item.valor } },
+              "No se pudo guardar el campo.",
+              "PUT"
+            );
+          } catch (err) {
+            fallidos.push({ ...item, error: err });
+          }
+        }
+        if (fallidos.length > 0) {
+          const revertir = new Map(fallidos.map((item) => [item.indice, item.anterior]));
+          setDetallado((prev) => ({
+            ...prev,
+            filas: prev.filas.map((fila, indice) => {
+              if (!revertir.has(indice)) return fila;
+              const copia = fila.slice();
+              copia[indiceColumna] = revertir.get(indice);
+              return copia;
+            }),
+          }));
+          setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
+        }
+      } finally {
+        window.setTimeout(() => {
+          suspenderRefrescoRef.current = Math.max(0, suspenderRefrescoRef.current - 1);
+        }, 400);
+      }
+    })();
 
     return actualizaciones[0].valor;
   }
@@ -532,7 +553,6 @@ export default function Admin() {
 
   useEffect(() => {
     const fuente = new EventSource("/api/eventos");
-    let pendiente = 0;
     fuente.onmessage = (evento) => {
       let data;
       try {
@@ -541,11 +561,12 @@ export default function Admin() {
         return;
       }
       if (data.tipo !== "recarga" && data.tipo !== "fila") return;
-      window.clearTimeout(pendiente);
-      pendiente = window.setTimeout(() => refrescarRef.current(), 200);
+      if (suspenderRefrescoRef.current > 0) return;
+      window.clearTimeout(pendienteRefrescoRef.current);
+      pendienteRefrescoRef.current = window.setTimeout(() => refrescarRef.current(), 200);
     };
     return () => {
-      window.clearTimeout(pendiente);
+      window.clearTimeout(pendienteRefrescoRef.current);
       fuente.close();
     };
   }, []);
