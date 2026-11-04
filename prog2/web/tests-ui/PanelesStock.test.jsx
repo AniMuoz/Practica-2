@@ -24,17 +24,29 @@ function propsBase(extra = {}) {
   };
 }
 
-test("PanelPlanilla muestra titulo, descarga y filtros, y oculta el contenido mientras carga", () => {
+test("PanelPlanilla muestra titulo y filtros, y oculta descarga y contenido mientras carga", () => {
   render(
     <PanelPlanilla titulo="Titulo" hrefExcel="/x" filtros={<span>f</span>} cargando textoCargando="Cargando..." aviso="">
       <p>contenido</p>
     </PanelPlanilla>
   );
   expect(screen.getByText("Titulo")).toBeTruthy();
-  expect(screen.getByText("Descargar planilla").getAttribute("href")).toBe("/x");
+  expect(screen.queryByText("Descargar planilla")).toBeNull();
   expect(screen.getByText("f")).toBeTruthy();
   expect(screen.getByText("Cargando...")).toBeTruthy();
   expect(screen.queryByText("contenido")).toBeNull();
+});
+
+test("PanelPlanilla pone la descarga encima del contenido cuando ya hay datos", () => {
+  render(
+    <PanelPlanilla titulo="Titulo" hrefExcel="/x" filtros={<span>f</span>} cargando={false} textoCargando="..." aviso="">
+      <p>contenido</p>
+    </PanelPlanilla>
+  );
+  const descarga = screen.getByText("Descargar planilla");
+  const contenido = screen.getByText("contenido");
+  expect(descarga.getAttribute("href")).toBe("/x");
+  expect(descarga.compareDocumentPosition(contenido) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 test("PanelPlanilla muestra el aviso de error en lugar del contenido", () => {

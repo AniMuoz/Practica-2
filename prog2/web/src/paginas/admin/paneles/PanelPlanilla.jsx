@@ -7,9 +7,9 @@ const ESTILO_DESCARGA = {
   textDecoration: "none",
 };
 
-// Marco comun de los paneles de planilla de solo lectura: titulo, boton de descarga, filtros,
-// aviso de carga o error y, cuando hay datos, el contenido (`children`).
-// `acciones` (opcional) son controles extra que van junto al boton de descarga.
+// Marco comun de los paneles de planilla de solo lectura: titulo, filtros,
+// aviso de carga o error y, cuando hay datos, la barra de acciones y el contenido (`children`).
+// La descarga (y `acciones`, si las hay) queda alineada a la derecha, justo encima de la tabla.
 export default function PanelPlanilla({ titulo, hrefExcel, filtros, cargando, textoCargando, aviso, acciones, children }) {
   const descarga = (
     <a href={hrefExcel} style={ESTILO_DESCARGA}>
@@ -25,30 +25,28 @@ export default function PanelPlanilla({ titulo, hrefExcel, filtros, cargando, te
         marginBottom: 16,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 12,
-          ...(acciones ? { flexWrap: "wrap" } : {}),
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 18 }}>{titulo}</h2>
-        {acciones ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            {acciones}
-            {descarga}
-          </div>
-        ) : (
-          descarga
-        )}
-      </div>
+      <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>{titulo}</h2>
       {filtros}
       {cargando && <p style={{ margin: 0 }}>{textoCargando}</p>}
       {aviso && <p style={{ margin: 0 }}>{aviso}</p>}
-      {!cargando && !aviso && children}
+      {!cargando && !aviso && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 16,
+              flexWrap: "wrap",
+              marginBottom: 10,
+            }}
+          >
+            {acciones}
+            {descarga}
+          </div>
+          {children}
+        </>
+      )}
     </section>
   );
 }
