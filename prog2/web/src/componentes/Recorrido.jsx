@@ -170,18 +170,38 @@ const PASOS = {
       id: "personal-crear",
       titulo: "Crear usuario",
       texto:
-        "Escribe el nombre de usuario, la contraseña inicial y repítela. Elige el rol: Operador o Admin. Luego presiona Crear usuario.",
+        "Escribe el nombre de usuario, la contraseña inicial y repítela. Elige el rol Operador o Admin y presiona Crear usuario.",
     },
     {
       id: "personal-tabla",
       titulo: "Lista de personal",
-      texto: "Muestra todos los usuarios con su rol y la fecha de alta.",
+      texto: "Muestra cada usuario con su rol y la fecha de alta.",
     },
     {
       id: "personal-acciones",
       titulo: "Acciones",
       texto:
-        "En cada usuario puedes cambiar su contraseña escribiéndola dos veces, o eliminarlo. Sobre tu propio usuario no hay acciones.",
+        "En cada usuario puedes cambiar el rol (Operador, Admin o Desactivado), actualizar la contraseña escribiéndola dos veces, o eliminarlo. Estas acciones no aparecen en tu propio usuario.",
+    },
+  ],
+  buzon: [
+    {
+      id: "buzon-formulario",
+      titulo: "Nuevo mensaje",
+      texto:
+        "Escribe un título y una descripción, elige el nivel de urgencia (leve, media, alta o urgente) y presiona Enviar. El mensaje queda registrado para que el administrador lo revise.",
+    },
+    {
+      id: "buzon-pestanas",
+      titulo: "Estados",
+      texto:
+        "Los mensajes se dividen en tres estados: sin revisar, revisando y cerrado. Presiona una pestaña para ver solo los de ese estado. El número indica cuántos hay. Un punto rojo avisa que hay una respuesta nueva en ese estado.",
+    },
+    {
+      id: "buzon-lista",
+      titulo: "Mensajes",
+      texto:
+        "Aquí aparecen los mensajes. Cada tarjeta muestra el título, la descripción, quién lo envió, la urgencia y la fecha. Abre Conversación para leer las respuestas y escribir una. El administrador puede cambiar el estado y eliminar un mensaje que esté cerrado.",
     },
   ],
   qr: [

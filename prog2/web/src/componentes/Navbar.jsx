@@ -275,7 +275,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
         type="button"
         className="barra-ayuda"
         aria-label="Ayuda"
-        onClick={() => iniciarRecorrido(({ "/admin": "admin", "/personal": "personal", "/qr": "qr", "/auditoria": "auditoria", "/": "principal" })[pathname] || "material")}
+        onClick={() => iniciarRecorrido(({ "/admin": "admin", "/personal": "personal", "/buzon": "buzon", "/qr": "qr", "/auditoria": "auditoria", "/": "principal" })[pathname] || "material")}
         style={{
           width: 28,
           height: 28,

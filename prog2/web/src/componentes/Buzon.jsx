@@ -4,6 +4,7 @@ import { useSesion } from "./Acceso.jsx";
 import { sonarActualizacion } from "../lib/sonido.js";
 import { useSondeo } from "../lib/useSondeo.js";
 import { suscribirEventos } from "../lib/eventos.js";
+import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import "../estilos/buzon.css";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
@@ -345,7 +346,7 @@ function Formulario({ alEnviar }) {
   }
 
   return (
-    <form onSubmit={enviar} className="buzon-form">
+    <form data-tour="buzon-formulario" onSubmit={enviar} className="buzon-form">
       <h3>Nueva emergencia o necesidad</h3>
       <label>
         Título
@@ -410,6 +411,13 @@ export default function Buzon() {
   // Carga inicial + sondeo periódico (respaldo si el SSE queda en búfer).
   useSondeo(cargar, INTERVALO_NOVEDADES);
 
+  useEffect(() => {
+    const espera = setTimeout(() => {
+      if (recorridoPendiente("buzon")) iniciarRecorrido("buzon");
+    }, 0);
+    return () => clearTimeout(espera);
+  }, []);
+
   // Actualización inmediata vía SSE cuando alguien crea/cambia un mensaje.
   useEffect(() => {
     let pendiente = 0;
@@ -453,7 +461,7 @@ export default function Buzon() {
         <h2>Buzón de emergencia y necesidad</h2>
         {!admin && <Formulario alEnviar={cargar} />}
         {admin && (
-          <div className="buzon-tabs">
+          <div className="buzon-tabs" data-tour="buzon-pestanas">
             {ESTADOS.map((e) => (
               <button
                 key={e}
@@ -476,27 +484,29 @@ export default function Buzon() {
             ))}
           </div>
         )}
-        {!admin && novedadTotal > 0 && (
-          <p className="buzon-aviso-novedad">
-            🔔 Tienes {novedadTotal} respuesta{novedadTotal > 1 ? "s" : ""} nueva{novedadTotal > 1 ? "s" : ""} del administrador
-          </p>
-        )}
-        {!admin && <h3>Mis mensajes enviados</h3>}
-        {error && <p className="buzon-error">{error}</p>}
-        {visibles.length === 0 && <p className="buzon-vacio">No hay mensajes.</p>}
-        {visibles.map((m) => (
-          <Mensaje
-            key={m.id}
-            m={m}
-            admin={admin}
-            usuario={usuario}
-            onEstado={cambiarEstado}
-            onEliminar={eliminar}
-            tieneNovedad={novedadesPorMensaje.has(String(m.id))}
-            marcarVisto={marcarVisto}
-            pulso={pulso}
-          />
-        ))}
+        <div data-tour="buzon-lista" style={{ display: "grid", gap: 16 }}>
+          {!admin && novedadTotal > 0 && (
+            <p className="buzon-aviso-novedad">
+              🔔 Tienes {novedadTotal} respuesta{novedadTotal > 1 ? "s" : ""} nueva{novedadTotal > 1 ? "s" : ""} del administrador
+            </p>
+          )}
+          {!admin && <h3>Mis mensajes enviados</h3>}
+          {error && <p className="buzon-error">{error}</p>}
+          {visibles.length === 0 && <p className="buzon-vacio">No hay mensajes.</p>}
+          {visibles.map((m) => (
+            <Mensaje
+              key={m.id}
+              m={m}
+              admin={admin}
+              usuario={usuario}
+              onEstado={cambiarEstado}
+              onEliminar={eliminar}
+              tieneNovedad={novedadesPorMensaje.has(String(m.id))}
+              marcarVisto={marcarVisto}
+              pulso={pulso}
+            />
+          ))}
+        </div>
       </div>
       <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>

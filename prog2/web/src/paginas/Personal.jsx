@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSesion } from "../componentes/Acceso.jsx";
 import Navbar from "../componentes/Navbar.jsx";
+import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 
 const campo = {
   padding: "8px 10px",
@@ -178,6 +179,13 @@ export default function Personal() {
     cargar();
   }, [cargar]);
 
+  useEffect(() => {
+    const espera = setTimeout(() => {
+      if (recorridoPendiente("personal")) iniciarRecorrido("personal");
+    }, 0);
+    return () => clearTimeout(espera);
+  }, []);
+
   async function crear(event) {
     event.preventDefault();
     setError("");
@@ -222,7 +230,7 @@ export default function Personal() {
           <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
         ) : (
           <>
-            <form onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
+            <form data-tour="personal-crear" onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
               <input value={nombre} disabled={ocupado} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
               <input type="password" value={clave} disabled={ocupado} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
               <input type="password" value={repetir} disabled={ocupado} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
@@ -236,14 +244,14 @@ export default function Personal() {
             </form>
             {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
             {aviso && <p>{aviso}</p>}
-            <div style={{ overflowX: "auto" }}>
+            <div data-tour="personal-tabla" style={{ overflowX: "auto" }}>
               <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
                 <thead>
                   <tr>
                     <th>Usuario</th>
                     <th>Rol</th>
                     <th>Alta</th>
-                    <th>Acciones</th>
+                    <th data-tour="personal-acciones">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
