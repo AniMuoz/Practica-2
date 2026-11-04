@@ -10,7 +10,7 @@ Conjunto de programas hechos durante la prÃ¡ctica 2 (UNAB) para digitalizar el
 | `programa_4` | BitÃ¡cora de camiÃ³n | Python, Flask, Excel |
 | `programa_5` | Generador de cÃ³digos QR por material | Python, tkinter, qrcode |
 
-Otros archivos de la raÃ­z: `docker-compose.yml` (levanta back y web), `.github/workflows/tests.yml` (CI), `Estructura_migracion.MD`, `manual de uso/` (manual para usuarios), `tutoriales.txt`.
+Otros archivos de la raÃ­z: `docker-compose.yml` (levanta back y web), `.github/workflows/tests.yml` (CI), `Estructura_migracion.MD`, `manual de uso/` (manual para usuarios).
 
 ---
 
@@ -186,7 +186,7 @@ AplicaciÃ³n de escritorio (tkinter) que genera planillas de gastos mensuales b
 - Se elige el mes; `procesar_datos` y `armar_detalle` generan el Excel con formato (`borde_fila`, `combinar_etiqueta`, `celda_monto`).
 - `guardar_data` / `recuperar_data` exportan y reimportan datos sin procesar.
 - Su funcionalidad ya estÃ¡ integrada en `prog2` (ruta `/gastos`); esta versiÃ³n de escritorio se conserva como respaldo offline.
-- Versiones: `Planilla_gastos_final.py` (principal), `Planilla_gastos_test.py` (pruebas), `Planilla gastos.py` (antigua).
+- VersiÃ³n: `Planilla_gastos_test.py` (Flask; fuente del port a `prog2`).
 - Ejecutable: `pyinstaller --onefile --windowed --add-data "icono;icono" --icon "./icono/logo.ico" Planilla_gastos_test.py` (ver `para buildear.txt`).
 
 ## 4. programa_4 (bitÃ¡cora de camiÃ³n)
@@ -202,8 +202,7 @@ App Flask (`app.py`, plantilla `templates/index.html`) para llenar la bitÃ¡cor
 
 Genera un QR por material con stock de la bodega M501, para pegar en la bodega. Cada QR apunta a `<direcciÃ³n web>/<cÃ³digo del material>` (ruta `/:codigo` de prog2).
 - `frontend_qr.py`: ventana para elegir Excel, carpeta destino, bodega y direcciÃ³n web, con barra de progreso.
-- `frontend_qr_nuevos.py`: variante del frontend.
-- `generarQR.py`: versiÃ³n simple por script (usa `openpyxl`, `qrcode`, tkinter).
+- `frontend_qr_nuevos.py`: variante que omite materiales que ya tienen QR.
 - Salida en `QRmateriales/` (no versionada). Ejecutable: ver `build.txt`.
 
 ---
