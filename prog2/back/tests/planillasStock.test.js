@@ -143,14 +143,6 @@ test("stockEnBodega omite NULO y deja vacío el stock vacío", () => {
   assert.deepEqual(filas, [["1", "Perno", 5], ["3", "Tuerca", ""], ["4", "Clavo", 0], ["5", "Arandela", 3]]);
 });
 
-test("stockRegional suma las bodegas numéricas, omite NULO y conserva texto", () => {
-  const { columnas, filas } = stock.stockRegional();
-  assert.equal(columnas.length, 8);
-  assert.deepEqual(filas[0], ["1", "Perno", 5, 2, "", "x", 1, 8]);
-  assert.equal(filas.length, 2);
-  assert.deepEqual(filas[1], ["3", "Tuerca", 0, 0, "", "", "", 0]);
-});
-
 test("stockDetallado arma 15 columnas, precio con signo o 'Sin precio' y la lista de marcados", () => {
   const { columnas, filas, marcados } = stock.stockDetallado();
   assert.equal(columnas.length, 15);
@@ -223,18 +215,6 @@ test("exportarStockBodega con colores=false no pinta nada", async () => {
   const hoja = await leerLibro(await stock.exportarStockBodega(false));
   assert.equal(relleno(hoja, 4, 3), undefined);
   assert.equal(relleno(hoja, 3, 1), undefined);
-});
-
-test("exportarStockRegional escribe el total y pinta ceros y vacíos", async () => {
-  const hoja = await leerLibro(await stock.exportarStockRegional(true));
-  assert.equal(hoja.name, "Stock regional");
-  assert.equal(valor(hoja, 3, 8), "Total");
-  assert.equal(valor(hoja, 4, 8), 8);
-  assert.equal(hoja.getCell(4, 8).font.bold, true);
-  assert.equal(relleno(hoja, 4, 3), "FF73C883");
-  assert.equal(relleno(hoja, 4, 5), "FFF9E37C");
-  assert.equal(relleno(hoja, 5, 3), "FFD3D3D3");
-  assert.equal(relleno(hoja, 4, 1), undefined);
 });
 
 test("exportarStockDetallado pinta de verde fuerte las columnas de un material marcado", async () => {

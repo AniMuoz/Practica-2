@@ -22,7 +22,7 @@ Marcar y revisar inventario de forma compartida y sin papel. Todos los usuarios 
 Funciones:
 - Ver, buscar y filtrar inventario por bodega, sub-ubicaciÃ³n, stock, precio y marcados.
 - Editar materiales, marcarlos, subir fotos, QR y rombo.
-- Importar Excel (SAP, precios, ubicaciones, reservas) y exportar planillas (stock, bodega, regional, inventario, stock detallado, reservas).
+- Importar Excel (SAP, precios, ubicaciones, reservas) y exportar planillas (stock, bodega, inventario, stock detallado, reservas).
 - Revisar reservas desde un PDF, registrar ventas, administrar contratistas.
 - BitÃ¡cora de camiÃ³n con folios, filas y firmas (con historial de firmas quitadas).
 - GestiÃ³n de usuarios y roles (`admin`, `operador`, `desactivado`) y auditorÃ­a.
@@ -33,7 +33,7 @@ Funciones:
 Navegador â”€â”€> Cloudflare (Pages + Worker) â”€â”€/apiâ”€â”€> Servidor Express (Render) â”€â”€> Supabase (BD + imÃ¡genes)
 ```
 
-- **`prog2/web`**: interfaz React 19 + Vite + react-router. El Worker (`worker.js`, `functions/api/[[path]].js`) reenvÃ­a lo que empieza con `/api` al servidor.
+- **`prog2/web`**: interfaz React 19 + Vite + react-router. El Worker (`worker.js`) reenvÃ­a lo que empieza con `/api` al servidor.
 - **`prog2/back`**: API Express que valida sesiÃ³n, procesa datos, genera Excel (`exceljs`, `xlsx`), lee PDF (`pdf-parse`) y consulta Supabase.
 - **Supabase**: tablas y bucket de imÃ¡genes.
 - **`prog2/cloudflared/config.yml`**: configuraciÃ³n de tÃºnel Cloudflare.
@@ -47,7 +47,7 @@ Navegador â”€â”€> Cloudflare (Pages + Worker) â”€â”€/apiâ�
 | `seguridad.js` | CORS, cabeceras seguras, lÃ­mite de peticiones por minuto, mÃ¡ximo de conexiones SSE. |
 | `compartido.js` | Estado compartido: carpeta de imÃ¡genes, clientes SSE, colores. |
 | `fuenteDatos.js`, `nucleoDatos.js` | Carga/precarga de datos, cachÃ© y lÃ³gica base de la tabla de materiales. |
-| `planillasStock.js` | ConstrucciÃ³n de planillas de stock, bodega, regional e inventario. |
+| `planillasStock.js` | ConstrucciÃ³n de planillas de stock, bodega e inventario. |
 | `reservasDatos.js` | Lectura y cruce de reservas (PDF/Excel). |
 | `ventas.js`, `ventasBd.js`, `contratistas.js` | Lectura de Ã³rdenes/traspasos, planilla de ventas mensual en Supabase (`ventas_planillas`, `ventas_filas`, `ventas_log`) y contratistas. |
 | `bitacora.js` | Folios, filas y firmas de la bitÃ¡cora. |
@@ -79,7 +79,7 @@ Navegador â”€â”€> Cloudflare (Pages + Worker) â”€â”€/apiâ�
 - `GET|POST /acceso` (clave para acciones delicadas)
 
 **Planillas** (`rutas/planillas.js`) â€” cada una con variante `/excel`
-- `GET /tabla/excel`, `/bodega`, `/regional`, `/inventario`, `/movimientos`, `/stock-detallado`
+- `GET /tabla/excel`, `/bodega`, `/inventario`, `/movimientos`, `/stock-detallado`
 
 **Reservas y ventas** (`rutas/reservas.js`, `rutas/ventas.js`)
 - `GET /reservas`, `GET /reservas/excel`, `POST /reserva`, `POST /reserva/excel`
@@ -156,10 +156,9 @@ npm test         # node --test + vitest
 docker compose up --build   # back en :3001, web en :5173 (API_PROXY=http://back:3001)
 ```
 
-### 1.6 Diagramas y planes
+### 1.6 Diagramas
 - `prog2/Diagrama programa 2/Diagrama programa 2.drawio`
 - `prog2/back/Diagrama programa back/diagrama.md` y `prog2/web/Diagrama programa web/diagrama.md` (Mermaid)
-- `prog2/PLAN_gestion_usuarios.md`, `prog2/SIGUIENTES_PASOS.md` (pendientes: dividir `Admin.jsx`, avisos ESLint, `trust proxy`), `prog2/por hacer.txt`, `prog2/crear usuarios.txt`.
 
 ### 1.7 Pruebas y CI
 Back: 20 archivos en `tests/`. Web: `tests/` (node: `generarQr`, `worker`, `reglasPlanilla`, `filtrosPlanilla`) y `tests-ui/` (vitest + testing-library: `Acceso`, `Gastos`, `GeneradorQr`, `Ventas`). GitHub Actions ejecuta lint, pruebas, cobertura y `npm audit`.
@@ -210,7 +209,7 @@ Genera un QR por material con stock de la bodega M501, para pegar en la bodega. 
 ---
 
 ## Oportunidades de mejora detectadas
-- Dividir `prog2/web/src/Admin.jsx` (~1900 lÃ­neas, mÃ¡s de 100 estados); plan en `prog2/SIGUIENTES_PASOS.md` (hooks por secciÃ³n y paneles `admin/Panel*.jsx`). Igual con `Detalle.jsx` y `App.jsx`.
+- Dividir `prog2/web/src/paginas/Admin.jsx` (hooks por secciÃ³n y paneles `paginas/admin/Panel*.jsx`). Igual con `Detalle.jsx` y `App.jsx`.
 - Resolver los avisos de ESLint (variables sin usar) y endurecer `no-unused-vars`.
 - Configurar `trust proxy` en Express (hoy los lÃ­mites por IP dependen de ello detrÃ¡s de Cloudflare/Render).
 - AÃ±adir tests de UI para `Navbar.jsx`, `Admin.jsx`, `Bitacora.jsx` y `App.jsx`.

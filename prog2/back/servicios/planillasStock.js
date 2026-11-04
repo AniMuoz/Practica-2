@@ -136,72 +136,6 @@ function filasConBodegas() {
   return materialesEnCache().filasBodega;
 }
 
-function stockRegional() {
-  const filas = filasConBodegas();
-  const columnas = ["Código", "Descripción", "M501", "M502", "M503", "M504", "M505", "Total"];
-  const resultado = filas
-    .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
-    .map((fila) => {
-      const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
-      const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
-      return [fila.Codigo ?? "", fila.Descripcion ?? "", ...cantidades, total];
-    });
-  return { columnas, filas: resultado };
-}
-
-async function exportarStockRegional(colores = true, filtros = null) {
-  const { columnas, filas: todas } = stockRegional();
-  const { filas } = filtrarPorCodigos(todas, 0, filtros);
-  const libro = new ExcelJS.Workbook();
-  const hoja = libro.addWorksheet("Stock regional");
-
-  const borde = {
-    bottom: { style: "medium", color: { argb: "FF000000" } },
-    left: { style: "thin" },
-    right: { style: "thin" },
-    top: { style: "thin" },
-  };
-  const encabezado = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFA9E5E5" },
-  };
-
-  const titulo = hoja.getCell("A1");
-  titulo.value = "Stock por bodega";
-  titulo.font = { bold: true };
-  pintar(titulo, encabezado, colores);
-  titulo.border = borde;
-
-  columnas.forEach((nombre, indice) => {
-    const celda = hoja.getCell(3, indice + 1);
-    celda.value = nombre;
-    celda.font = { bold: true };
-    pintar(celda, encabezado, colores);
-    celda.border = borde;
-  });
-
-  filas.forEach((fila, indice) => {
-    const numero = indice + 4;
-    fila.forEach((valor, columna) => {
-      const celda = hoja.getCell(numero, columna + 1);
-      celda.value = valor ?? "";
-      celda.border = borde;
-      if (columna < 2) return;
-      if (columna === 7) celda.font = { bold: true };
-      let color = "FF73C883";
-      if (valor == null || valor === "" || valor === "          ") color = "FFF9E37C";
-      else if (valor === 0 || valor === "0") color = "FFD3D3D3";
-      pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: color } }, colores);
-    });
-  });
-
-  const ultima = Math.max(filas.length + 3, 3);
-  hoja.autoFilter = `A3:H${ultima}`;
-  compactarPlanilla(hoja);
-  return libro.xlsx.writeBuffer();
-}
-
 function claveUbicacion(ubicacion) {
   const ub = String(ubicacion ?? "").trim();
   if (!ub) return [1, 0];
@@ -635,8 +569,6 @@ module.exports = {
   exportarStockBodega,
   valorStock,
   filasConBodegas,
-  stockRegional,
-  exportarStockRegional,
   claveUbicacion,
   planillaInventario,
   armarPlanillaInventario,

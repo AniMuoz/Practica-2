@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, stockRegional, exportarStockRegional, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
 const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../utils/compartido");
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
 function filtrosDeConsulta(q) {
@@ -70,25 +70,6 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
-    }
-  });
-
-  app.get("/api/regional", (_req, res) => {
-    try {
-      res.json(stockRegional());
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "No se pudo leer el stock regional." });
-    }
-  });
-
-  app.get("/api/regional/excel", async (req, res) => {
-    try {
-      const buffer = await exportarStockRegional(conColores(req.query.colores), filtrosDeConsulta(req.query));
-      enviarPlanilla(res, buffer, nombreConFecha("PLANILLA STOCK REGIONAL"));
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "No se pudo generar la planilla regional." });
     }
   });
 

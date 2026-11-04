@@ -117,7 +117,6 @@ const LECTURAS = [
   ["/api/tabla", "leerTabla", "No se pudo leer la tabla."],
   ["/api/tabla/ultimas-cargas", "leerUltimasCargas", "No se pudieron leer las últimas cargas."],
   ["/api/bodega", "stockEnBodega", "No se pudo leer el stock de bodega."],
-  ["/api/regional", "stockRegional", "No se pudo leer el stock regional."],
   ["/api/inventario", "planillaInventario", "No se pudo leer la planilla de inventario."],
   ["/api/movimientos", "planillaMovimientos", "No se pudo leer la planilla de movimientos."],
   ["/api/stock-detallado", "stockDetallado", "No se pudo leer el stock detallado."],
@@ -192,7 +191,6 @@ test("GET /api/tabla/excel responde 500 si falla la generación", async () => {
 
 const DESCARGAS = [
   ["/api/bodega/excel", "exportarStockBodega", /^attachment; filename=PLANILLA%20M501%20/],
-  ["/api/regional/excel", "exportarStockRegional", /^attachment; filename=PLANILLA%20STOCK%20REGIONAL%20/],
   ["/api/inventario/excel", "exportarPlanillaInventario", /^attachment; filename=PLANILLA%20DE%20INVENTARIO%20M501%20/],
   ["/api/movimientos/excel", "exportarMovimientos", /^attachment; filename=PLANILLA%20DE%20MOVIMIENTOS%20/],
   ["/api/stock-detallado/excel", "exportarStockDetallado", /^attachment; filename=Prueba_de_stock_detallado%20/],

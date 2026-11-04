@@ -47,8 +47,6 @@ module.exports = {
   importarDosColumnas: importaciones.importarDosColumnas,
   stockEnBodega: stock.stockEnBodega,
   exportarStockBodega: stock.exportarStockBodega,
-  stockRegional: stock.stockRegional,
-  exportarStockRegional: stock.exportarStockRegional,
   planillaInventario: stock.planillaInventario,
   exportarPlanillaInventario: stock.exportarPlanillaInventario,
   planillaMovimientos: movimientos.planillaMovimientos,
