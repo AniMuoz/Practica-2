@@ -4,6 +4,7 @@ import PanelCarga from "../src/paginas/admin/paneles/PanelCarga.jsx";
 import PanelFormulario from "../src/paginas/admin/paneles/PanelFormulario.jsx";
 import { useCargaDatos } from "../src/paginas/admin/hooks/useCargaDatos.js";
 import { useCopiaExistencia } from "../src/paginas/admin/hooks/useCopiaExistencia.js";
+import { maestroConDetallado } from "../src/paginas/admin/hooks/useFiltrosStock.jsx";
 
 afterEach(() => {
   cleanup();
@@ -97,4 +98,23 @@ test("useCopiaExistencia pide confirmacion y los dos interruptores son excluyent
   confirmar.mockReturnValue(false);
   act(() => result.current.alternarExistencia());
   expect(result.current.copiarExistencia).toBe(false);
+});
+
+test("maestroConDetallado actualiza Caracteristica y Stock critico sin recargar el maestro", () => {
+  const maestro = [
+    { Codigo: "10", Caracteristica: "Eléctrico", "Stock critico": "1" },
+    { Codigo: "20", Caracteristica: "Mecánico", "Stock critico": "" },
+  ];
+  const detallado = {
+    columnas: ["Ubicación", "Código", "Descripción", "M501", "Precio x Unidad", "Caracteristica", "M502", "M503", "M504", "M505", "Total", "Cons.Prom.Mensual", "Stock critico", "Stock Max", "INDICADOR"],
+    filas: [
+      ["", "10", "Perno", 1, "$1", "Hidráulico", 0, 0, 0, 0, 1, "", "5", "", ""],
+      ["", "20", "Tuerca", 1, "$1", "Mecánico", 0, 0, 0, 0, 1, "", "", "", ""],
+    ],
+  };
+  const actualizado = maestroConDetallado(maestro, detallado);
+  expect(actualizado[0].Caracteristica).toBe("Hidráulico");
+  expect(actualizado[0]["Stock critico"]).toBe("5");
+  expect(actualizado[1]).toBe(maestro[1]);
+  expect(maestroConDetallado(maestro, { columnas: [], filas: [] })).toBe(maestro);
 });
