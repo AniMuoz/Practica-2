@@ -1,8 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Gastos from "../src/paginas/Gastos.jsx";
-
-vi.mock("../src/componentes/Navbar.jsx", () => ({ default: () => null }));
+import { CuerpoGastos } from "../src/paginas/Gastos.jsx";
 
 beforeEach(() => {
   localStorage.clear();
@@ -21,7 +19,7 @@ function llenar(monto) {
 
 describe("Gastos", () => {
   it("agrega una boleta a la tabla", async () => {
-    render(<Gastos />);
+    render(<CuerpoGastos />);
     await screen.findByText("OTROS");
     llenar("15000");
     expect(await screen.findByText("Copec")).toBeTruthy();
@@ -29,13 +27,13 @@ describe("Gastos", () => {
     expect(screen.getByText("Guardar Datos sin procesar")).toBeTruthy();
   });
   it("rechaza un monto no entero", async () => {
-    render(<Gastos />);
+    render(<CuerpoGastos />);
     await screen.findByText("OTROS");
     llenar("12,5");
     expect((await screen.findByRole("alert")).textContent).toMatch(/entero/);
   });
   it("exige todos los campos", async () => {
-    render(<Gastos />);
+    render(<CuerpoGastos />);
     fireEvent.click(screen.getByText("Agregar"));
     expect((await screen.findByRole("alert")).textContent).toMatch(/completar/);
   });

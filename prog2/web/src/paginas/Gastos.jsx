@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Navbar from "../componentes/Navbar.jsx";
 import Planilla from "./Planilla.jsx";
-import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 
 const CLAVE_GUARDADO = "gastosPendientes";
 const VACIO = { topico: "", proveedor: "", nboleta: "", fecha: "", monto: "" };
@@ -61,7 +59,7 @@ function nombreDeCabecera(res, respaldo) {
   return m ? decodeURIComponent(m[1]) : respaldo;
 }
 
-// Cuerpo reutilizable (formulario, acciones y tabla): lo usan la pagina /gastos y el panel de Admin.
+// Cuerpo de la planilla de gastos (panel de Admin).
 export function CuerpoGastos({ Titulo = "h1" }) {
   const [topicos, setTopicos] = useState([]);
   const [gastos, setGastos] = useState(leerGuardados);
@@ -241,31 +239,5 @@ export function CuerpoGastos({ Titulo = "h1" }) {
         </div>
       </div>
     </>
-  );
-}
-
-export default function Gastos() {
-  useEffect(() => {
-    if (recorridoPendiente("gastos")) iniciarRecorrido("gastos");
-  }, []);
-
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        boxSizing: "border-box",
-        margin: 0,
-        padding: 16,
-        fontFamily: "Segoe UI, sans-serif",
-        background: "var(--fondo)",
-        color: "var(--texto)",
-      }}
-    >
-      <Navbar />
-      <CuerpoGastos />
-      <div className="footer">
-        <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
-      </div>
-    </main>
   );
 }

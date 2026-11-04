@@ -1,12 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
 import Acceso from "./componentes/Acceso.jsx";
 import Admin from "./paginas/Admin.jsx";
 import Auditoria from "./paginas/Auditoria.jsx";
 import Buzon from "./componentes/Buzon.jsx";
 import GeneradorQr from "./paginas/GeneradorQr.jsx";
-import Gastos from "./paginas/Gastos.jsx";
 import Personal from "./paginas/Personal.jsx";
 import App from "./App.jsx";
 import { ColoresPlanillaProvider } from "./componentes/ColoresPlanilla.jsx";
@@ -38,7 +37,7 @@ const router = createBrowserRouter([
       { path: "/personal", element: <Personal /> },
       { path: "/auditoria", element: <Auditoria /> },
       { path: "/qr", element: <GeneradorQr /> },
-      { path: "/gastos", element: <Gastos /> },
+      { path: "/gastos", element: <Navigate to="/admin" replace /> },
       { path: "/buzon", element: <Buzon /> },
       { path: "/:codigo", element: <Detalle /> },
     ],
