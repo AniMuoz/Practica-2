@@ -77,18 +77,18 @@ describe("Admin", () => {
     montar();
     fireEvent.click(await screen.findByText("Stock en bodega"));
     await waitFor(() => expect(cuantas("/api/bodega")).toBe(1));
-    expect(cuantas("/api/regional")).toBe(0);
+    expect(cuantas("/api/inventario")).toBe(0);
   });
 
   it("al abrir otro panel el anterior se cierra y deja de refrescarse por SSE", async () => {
     montar();
     fireEvent.click(await screen.findByText("Stock en bodega"));
     await waitFor(() => expect(cuantas("/api/bodega")).toBe(1));
-    fireEvent.click(screen.getByText("Stock regional"));
-    await waitFor(() => expect(cuantas("/api/regional")).toBe(1));
+    fireEvent.click(screen.getByText("Planilla de inventario"));
+    await waitFor(() => expect(cuantas("/api/inventario")).toBe(1));
 
     oyenteSse.alMensaje({ tipo: "recarga" });
-    await waitFor(() => expect(cuantas("/api/regional")).toBe(2));
+    await waitFor(() => expect(cuantas("/api/inventario")).toBe(2));
     expect(cuantas("/api/bodega")).toBe(1);
   });
 

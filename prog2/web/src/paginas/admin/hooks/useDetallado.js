@@ -1,36 +1,79 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { enviarJson } from "../../../lib/api.js";
 
 function clavePendiente(codigo, indiceColumna) {
   return `${String(codigo)}\t${indiceColumna}`;
 }
 
+function aplicarOriginales(filas, items) {
+  return filas.map((fila) => {
+    let copia = null;
+    for (const item of items) {
+      if (String(fila[1]) !== String(item.codigo)) continue;
+      if (!copia) copia = fila.slice();
+      copia[item.indiceColumna] = item.original;
+    }
+    return copia || fila;
+  });
+}
+
+function agruparPorCodigo(items) {
+  const grupos = new Map();
+  for (const item of items) {
+    const lista = grupos.get(item.codigo) || [];
+    lista.push(item);
+    grupos.set(item.codigo, lista);
+  }
+  return grupos;
+}
+
 // Edicion del stock detallado: cambios locales pendientes hasta "Guardar",
 // pegado masivo desde Excel y limpieza de columnas.
 // Recibe la tabla y su setter (de useCargaPlanilla), los codigos visibles segun los filtros y las
-// funciones de useRefrescoSse para que el SSE no recargue la planilla a mitad de un guardado.
+// funciones de useRefrescoSse para que el SSE no recargue mientras hay ediciones sin guardar.
 export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco }) {
   const [errorDetallado, setErrorDetallado] = useState("");
   const [pendientes, setPendientes] = useState(() => new Map());
   const [guardandoDetallado, setGuardandoDetallado] = useState(false);
+  const guardandoRef = useRef(false);
+  const suspendidoPorEdicion = useRef(false);
 
-  function registrarCambio(codigo, indiceColumna, nombreColumna, valorNuevo, valorAntes) {
+  // Mientras haya pendientes o se esté guardando, el SSE no debe pisar la grilla local.
+  useEffect(() => {
+    const bloquear = pendientes.size > 0 || guardandoDetallado;
+    if (bloquear) {
+      if (!suspendidoPorEdicion.current) {
+        suspendidoPorEdicion.current = true;
+        suspenderRefresco();
+      }
+      return;
+    }
+    if (suspendidoPorEdicion.current) {
+      suspendidoPorEdicion.current = false;
+      reanudarRefresco();
+    }
+  }, [pendientes, guardandoDetallado, suspenderRefresco, reanudarRefresco]);
+
+  function registrarCambios(entradas) {
+    if (!entradas.length) return;
     setPendientes((prev) => {
-      const key = clavePendiente(codigo, indiceColumna);
       const next = new Map(prev);
-      const original = next.has(key)
-        ? next.get(key).original
-        : (valorAntes == null ? "" : String(valorAntes));
-      if (String(valorNuevo ?? "") === original) {
-        next.delete(key);
-      } else {
-        next.set(key, {
-          codigo: String(codigo ?? "").trim(),
-          indiceColumna,
-          nombreColumna,
-          valor: valorNuevo,
-          original,
-        });
+      for (const { codigo, indiceColumna, nombreColumna, valorNuevo, valorAntes } of entradas) {
+        const key = clavePendiente(codigo, indiceColumna);
+        const original = next.has(key)
+          ? next.get(key).original
+          : (valorAntes == null ? "" : String(valorAntes));
+        if (String(valorNuevo ?? "") === original) {
+          next.delete(key);
+        } else {
+          next.set(key, {
+            codigo: String(codigo ?? "").trim(),
+            indiceColumna,
+            nombreColumna,
+            valor: valorNuevo,
+            original,
+          });
+        }
       }
       return next;
     });
@@ -48,7 +91,7 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
         return copia;
       }),
     }));
-    registrarCambio(codigo, indiceColumna, nombreColumna, valor, antes);
+    registrarCambios([{ codigo, indiceColumna, nombreColumna, valorNuevo: valor, valorAntes: antes }]);
   }
 
   // Pega una columna copiada de Excel: reparte los valores hacia abajo desde la fila visible actual.
@@ -95,62 +138,61 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
       }),
     }));
 
-    for (const item of actualizaciones) {
-      registrarCambio(item.codigo, indiceColumna, nombreColumna, item.valor, item.anterior);
-    }
+    registrarCambios(
+      actualizaciones.map((item) => ({
+        codigo: item.codigo,
+        indiceColumna,
+        nombreColumna,
+        valorNuevo: item.valor,
+        valorAntes: item.anterior,
+      }))
+    );
 
     return actualizaciones[0].valor;
   }
 
   async function guardarCambiosDetallado() {
-    if (pendientes.size === 0 || guardandoDetallado) return;
+    if (pendientes.size === 0 || guardandoRef.current) return;
+    guardandoRef.current = true;
     setErrorDetallado("");
     setGuardandoDetallado(true);
-    suspenderRefresco();
     const lista = [...pendientes.values()];
     const fallidos = [];
     try {
-      for (const item of lista) {
+      for (const [codigo, items] of agruparPorCodigo(lista)) {
+        const datos = {};
+        for (const item of items) datos[item.nombreColumna] = item.valor;
         try {
           await enviarJson(
             "/api/stock-detallado",
-            { clave, codigo: item.codigo, datos: { [item.nombreColumna]: item.valor } },
+            { clave, codigo, datos },
             "No se pudo guardar el campo.",
             "PUT"
           );
           setPendientes((prev) => {
             const next = new Map(prev);
-            next.delete(clavePendiente(item.codigo, item.indiceColumna));
+            for (const item of items) next.delete(clavePendiente(item.codigo, item.indiceColumna));
             return next;
           });
         } catch (err) {
-          fallidos.push({ ...item, error: err });
+          for (const item of items) fallidos.push({ ...item, error: err });
         }
       }
       if (fallidos.length > 0) {
-        const revertir = new Map(fallidos.map((item) => [clavePendiente(item.codigo, item.indiceColumna), item]));
         setDetallado((prev) => ({
           ...prev,
-          filas: prev.filas.map((fila) => {
-            let copia = null;
-            for (const item of fallidos) {
-              if (String(fila[1]) !== String(item.codigo)) continue;
-              if (!copia) copia = fila.slice();
-              copia[item.indiceColumna] = item.original;
-            }
-            return copia || fila;
-          }),
+          filas: aplicarOriginales(prev.filas, fallidos),
         }));
         setPendientes((prev) => {
           const next = new Map(prev);
-          for (const key of revertir.keys()) next.delete(key);
+          for (const item of fallidos) next.delete(clavePendiente(item.codigo, item.indiceColumna));
           return next;
         });
         setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
       }
     } finally {
+      guardandoRef.current = false;
       setGuardandoDetallado(false);
-      reanudarRefresco();
     }
   }
 
@@ -159,15 +201,7 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
     const lista = [...pendientes.values()];
     setDetallado((prev) => ({
       ...prev,
-      filas: prev.filas.map((fila) => {
-        let copia = null;
-        for (const item of lista) {
-          if (String(fila[1]) !== String(item.codigo)) continue;
-          if (!copia) copia = fila.slice();
-          copia[item.indiceColumna] = item.original;
-        }
-        return copia || fila;
-      }),
+      filas: aplicarOriginales(prev.filas, lista),
     }));
     setPendientes(new Map());
     setErrorDetallado("");
@@ -194,7 +228,9 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
         setPendientes((prev) => {
           const next = new Map(prev);
           for (const [key, item] of next) {
-            if (item.indiceColumna === indiceColumna) next.delete(key);
+            if (item.nombreColumna === nombreColumna || item.indiceColumna === indiceColumna) {
+              next.delete(key);
+            }
           }
           return next;
         });

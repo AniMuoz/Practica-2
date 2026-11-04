@@ -12,7 +12,7 @@ import "../estilos/admin.css";
 import Interruptor from "./admin/paneles/Interruptor.jsx";
 import PanelContratistas from "./admin/paneles/PanelContratistas.jsx";
 import PanelBodega from "./admin/paneles/PanelBodega.jsx";
-import PanelRegional from "./admin/paneles/PanelRegional.jsx";
+import { CuerpoGastos } from "./Gastos.jsx";
 import PanelInventario from "./admin/paneles/PanelInventario.jsx";
 import PanelMovimientos from "./admin/paneles/PanelMovimientos.jsx";
 import PanelReserva from "./admin/paneles/PanelReserva.jsx";
@@ -49,9 +49,9 @@ const PANELES_BOTON = {
   "Añadir/cargar datos": ["carga", "formulario"],
   "Bitacora camion": ["bitacora"],
   "Stock en bodega": ["bodega"],
-  "Stock regional": ["regional"],
   "Planilla de inventario": ["inventario"],
   Movimientos: ["movimientos"],
+  Gastos: ["gastos"],
   "Stock detallado": ["detallado"],
   "Revisar stock de reserva": ["reserva"],
   "Editar contratistas": ["contratistas"],
@@ -97,7 +97,7 @@ export default function Admin() {
     carga: mostrarCarga,
     formulario: mostrarFormulario,
     bodega: mostrarBodega,
-    regional: mostrarRegional,
+    gastos: mostrarGastos,
     inventario: mostrarInventario,
     movimientos: mostrarMovimientos,
     detallado: mostrarDetallado,
@@ -108,8 +108,6 @@ export default function Admin() {
   } = abierto;
   const { tabla: bodega, cargando: cargandoBodega, aviso: avisoBodega, recargar: recargarBodega } =
     useCargaPlanilla("/api/bodega", "No se pudo leer el stock.");
-  const { tabla: regional, cargando: cargandoRegional, aviso: avisoRegional, recargar: recargarRegional } =
-    useCargaPlanilla("/api/regional", "No se pudo leer el stock regional.");
   const { tabla: inventario, cargando: cargandoInventario, aviso: avisoInventario, recargar: recargarInventario } =
     useCargaPlanilla("/api/inventario", "No se pudo leer el inventario.");
   const { copiarExistencia, copiarInventario, alternarExistencia, alternarInventario } = useCopiaExistencia();
@@ -119,7 +117,7 @@ export default function Admin() {
     rutaConFiltros(rutaExcelInventario(ruta, colores, copiarInventario, copiarExistencia), filtrosStock);
   const { tabla: detallado, setTabla: setDetallado, cargando: cargandoDetallado, aviso: avisoDetallado, recargar: recargarDetallado } =
     useCargaPlanilla("/api/stock-detallado", "No se pudo leer el stock detallado.");
-  const hayPanelStock = mostrarBodega || mostrarRegional || mostrarInventario || mostrarMovimientos || mostrarDetallado;
+  const hayPanelStock = mostrarBodega || mostrarInventario || mostrarMovimientos || mostrarDetallado;
   const {
     filtrosStock,
     panelFiltros,
@@ -184,7 +182,6 @@ export default function Admin() {
       .then(aplicarColumnas)
       .catch(() => setAviso("No se pudo cargar la tabla."));
     if (mostrarBodega) recargarBodega(silencioso);
-    if (mostrarRegional) recargarRegional(silencioso);
     if (mostrarInventario) recargarInventario(silencioso);
     if (mostrarMovimientos) recargarMovimientos(silencioso);
     if (mostrarDetallado) recargarDetallado(silencioso);
@@ -296,8 +293,8 @@ export default function Admin() {
       }
       case "Stock en bodega":
         return alternarPanel("bodega", () => recargarBodega());
-      case "Stock regional":
-        return alternarPanel("regional", () => recargarRegional());
+      case "Gastos":
+        return alternarPanel("gastos");
       case "Planilla de inventario":
         return alternarPanel("inventario", () => recargarInventario());
       case "Movimientos":
@@ -412,10 +409,10 @@ export default function Admin() {
             "Añadir/cargar datos",
             "Revisar stock de reserva",
             "Stock en bodega",
-            "Stock regional",
             "Stock detallado",
             "Planilla de inventario",
             "Movimientos",
+            "Gastos",
             "Bitacora camion",
             "Planilla de ventas",
             "Editar contratistas",
@@ -496,17 +493,10 @@ export default function Admin() {
           clasePlanilla={clasePlanilla}
         />
       )}
-      {autorizado && mostrarRegional && (
-        <PanelRegional
-          tabla={regional}
-          filas={aplicarFiltrosStock(regional.filas, 0).filas}
-          cargando={cargandoRegional}
-          aviso={avisoRegional}
-          hrefExcel={excelFiltrado("/api/regional/excel")}
-          filtros={panelFiltros}
-          colores={colores}
-          clasePlanilla={clasePlanilla}
-        />
+      {autorizado && mostrarGastos && (
+        <section style={{ color: "var(--texto)" }}>
+          <CuerpoGastos Titulo="h2" />
+        </section>
       )}
       {autorizado && mostrarInventario && (
         <PanelInventario

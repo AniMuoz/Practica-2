@@ -5,8 +5,6 @@ import PanelMovimientos from "../src/paginas/admin/paneles/PanelMovimientos.jsx"
 import PanelInventario from "../src/paginas/admin/paneles/PanelInventario.jsx";
 import PanelBodega from "../src/paginas/admin/paneles/PanelBodega.jsx";
 import PanelPlanilla from "../src/paginas/admin/paneles/PanelPlanilla.jsx";
-import PanelRegional from "../src/paginas/admin/paneles/PanelRegional.jsx";
-
 afterEach(() => cleanup());
 
 const TABLA = { columnas: ["Codigo", "Descripcion", "Libre"], filas: [] };
@@ -60,15 +58,6 @@ test("PanelBodega muestra las filas, los filtros y el enlace de descarga", () =>
 test("PanelBodega sin filas explica que no hay stock", () => {
   render(<PanelBodega {...propsBase({ filas: [] })} />);
   expect(screen.getByText("No hay stock de M501 cargado.")).toBeTruthy();
-});
-
-test("PanelRegional muestra el titulo y el mensaje de vacio propios", () => {
-  const { unmount } = render(<PanelRegional {...propsBase()} />);
-  expect(screen.getByText("Stock por bodega")).toBeTruthy();
-  expect(screen.getByText("Perno")).toBeTruthy();
-  unmount();
-  render(<PanelRegional {...propsBase({ filas: [] })} />);
-  expect(screen.getByText("No hay stock regional cargado.")).toBeTruthy();
 });
 
 test("PanelInventario avisa al usar los interruptores y resalta las celdas vacias", () => {

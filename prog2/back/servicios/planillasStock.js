@@ -403,6 +403,9 @@ async function exportarStockDetallado(colores = true, filtros = null) {
     celda.border = borde;
   });
 
+  const indiceTotal = columnas.indexOf("Total");
+  const indiceCritico = columnas.indexOf("Stock critico");
+  const indiceIndicador = columnas.indexOf("INDICADOR");
   filas.forEach((fila, indice) => {
     const numero = indice + 4;
     const enCritico = stockDetalladoEnCritico(fila);
@@ -410,8 +413,8 @@ async function exportarStockDetallado(colores = true, filtros = null) {
       const celda = hoja.getCell(numero, columna + 1);
       celda.value = valor ?? "";
       celda.border = borde;
-      if (columna === 10) celda.font = { bold: true };
-      if (columna === 12 && enCritico) {
+      if (columna === indiceTotal) celda.font = { bold: true };
+      if (columna === indiceCritico && enCritico) {
         pintar(celda, { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } }, colores);
         return;
       }
@@ -422,11 +425,14 @@ async function exportarStockDetallado(colores = true, filtros = null) {
   });
 
   const ultima = Math.max(filas.length + 3, 3);
-  hoja.autoFilter = `A3:O${ultima}`;
+  const ultimaColumna = columnaExcel(columnas.length - 1);
+  hoja.autoFilter = `A3:${ultimaColumna}${ultima}`;
   compactarPlanilla(hoja);
   // INDICADOR aprovecha el ancho que dejaba "Cambio de ubicación".
-  const colIndicador = hoja.getColumn(15);
-  colIndicador.width = Math.max(Number(colIndicador.width) || 0, 28);
+  if (indiceIndicador >= 0) {
+    const colIndicador = hoja.getColumn(indiceIndicador + 1);
+    colIndicador.width = Math.max(Number(colIndicador.width) || 0, 28);
+  }
   return libro.xlsx.writeBuffer();
 }
 

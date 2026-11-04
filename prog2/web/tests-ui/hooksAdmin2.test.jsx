@@ -33,7 +33,7 @@ test("usePaneles abre varios y cerrarOtros deja solo los permitidos", () => {
   expect(result.current.abierto).toMatchObject({ carga: true, formulario: true, bodega: true });
   act(() => result.current.cerrarOtros(["carga", "formulario"]));
   expect(result.current.abierto).toMatchObject({ carga: true, formulario: true, bodega: false });
-  act(() => result.current.cerrarOtros(["regional"]));
+  act(() => result.current.cerrarOtros(["gastos"]));
   expect(Object.values(result.current.abierto).some(Boolean)).toBe(false);
 });
 

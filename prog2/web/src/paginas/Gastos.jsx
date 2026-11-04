@@ -61,7 +61,8 @@ function nombreDeCabecera(res, respaldo) {
   return m ? decodeURIComponent(m[1]) : respaldo;
 }
 
-export default function Gastos() {
+// Cuerpo reutilizable (formulario, acciones y tabla): lo usan la pagina /gastos y el panel de Admin.
+export function CuerpoGastos({ Titulo = "h1" }) {
   const [topicos, setTopicos] = useState([]);
   const [gastos, setGastos] = useState(leerGuardados);
   const [form, setForm] = useState(VACIO);
@@ -75,10 +76,6 @@ export default function Gastos() {
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => setTopicos(data.topicos || []))
       .catch(() => setError("No se pudieron cargar los tópicos."));
-  }, []);
-
-  useEffect(() => {
-    if (recorridoPendiente("gastos")) iniciarRecorrido("gastos");
   }, []);
 
   useEffect(() => {
@@ -170,20 +167,9 @@ export default function Gastos() {
   const columnas = ["Tópico", "Proveedor", "N° Boleta", "Fecha Boleta", "Monto", ""];
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        boxSizing: "border-box",
-        margin: 0,
-        padding: 16,
-        fontFamily: "Segoe UI, sans-serif",
-        background: "var(--fondo)",
-        color: "var(--texto)",
-      }}
-    >
-      <Navbar />
+    <>
       <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
-        <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</h1>
+        <Titulo style={{ margin: "0 0 16px", fontSize: 22 }}>Planilla de gastos</Titulo>
         <form data-tour="gastos-formulario" onSubmit={agregar} style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
           <select aria-label="Tópico" value={form.topico} onChange={cambiar("topico")} style={campoFila}>
             <option value="">Tópico</option>
@@ -254,9 +240,32 @@ export default function Gastos() {
           </Planilla>
         </div>
       </div>
+    </>
+  );
+}
+
+export default function Gastos() {
+  useEffect(() => {
+    if (recorridoPendiente("gastos")) iniciarRecorrido("gastos");
+  }, []);
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        boxSizing: "border-box",
+        margin: 0,
+        padding: 16,
+        fontFamily: "Segoe UI, sans-serif",
+        background: "var(--fondo)",
+        color: "var(--texto)",
+      }}
+    >
+      <Navbar />
+      <CuerpoGastos />
       <div className="footer">
         <p>© 2026 Berfre - Práctica 2 - Transformación digital - React - Anibal Alexis Muñoz Reyes - UNAB</p>
-    </div>
+      </div>
     </main>
   );
 }

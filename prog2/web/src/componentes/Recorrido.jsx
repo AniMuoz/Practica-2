@@ -90,11 +90,6 @@ const PASOS = {
       texto: "Genera una planilla con el stock de la bodega M501.",
     },
     {
-      id: "Stock regional",
-      titulo: "Stock de varias bodegas",
-      texto: "Genera una planilla con el stock de las bodegas M501, M502, M503, M504 y M505.",
-    },
-    {
       id: "Stock detallado",
       titulo: "Stock detallado",
       texto: "Genera una planilla detallada del stock, con casillas para revisar y comparar con datos de fuera del sistema. En las columnas editables puedes pegar una columna copiada de Excel: los valores se reparten hacia abajo desde la celda donde pegas.",
@@ -108,6 +103,12 @@ const PASOS = {
       id: "Movimientos",
       titulo: "Movimientos",
       texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
+    },
+    {
+      id: "Gastos",
+      titulo: "Planilla de gastos",
+      texto:
+        "Registra las boletas de gastos, guárdalas o recupéralas desde un Excel y procesa el mes para descargar el detalle de gastos.",
     },
     {
       id: "Bitacora camion",

@@ -2,10 +2,14 @@ import { useState } from "react";
 import VistaPrevia from "./VistaPrevia.jsx";
 import { colorStockDetallado } from "../../../lib/reglasPlanilla.js";
 
-// Columnas de Stock detallado que se pueden editar a mano.
-// 5 Caracteristica, 11 Cons.Prom.Mensual, 12 Stock critico, 13 Stock Max, 14 INDICADOR
-const COLUMNAS_EDITABLES_DETALLADO = new Set([5, 11, 12, 13, 14]);
-const COLUMNA_INDICADOR = 14;
+// Nombres canónicos (mismo criterio que COLUMNAS_DETALLADO en el backend).
+const COLUMNAS_EDITABLES_DETALLADO = new Set([
+  "Caracteristica",
+  "Cons.Prom.Mensual",
+  "Stock critico",
+  "Stock Max",
+  "INDICADOR",
+]);
 
 // Stock detallado: planilla editable. La logica de edicion vive en useDetallado.
 export default function PanelDetallado({
@@ -27,6 +31,9 @@ export default function PanelDetallado({
   onGuardar,
 }) {
   const [limpiarVisible, setLimpiarVisible] = useState(false);
+  const editables = (tabla.columnas || [])
+    .map((nombre, indice) => ({ nombre, indice }))
+    .filter(({ nombre }) => COLUMNAS_EDITABLES_DETALLADO.has(nombre));
 
   return (
       <section
@@ -88,29 +95,25 @@ export default function PanelDetallado({
               }}
             >
               {limpiarVisible &&
-                [...COLUMNAS_EDITABLES_DETALLADO].sort((a, b) => a - b).map((indiceColumna) => {
-                  const columna = tabla.columnas[indiceColumna];
-                  if (!columna) return null;
-                  return (
-                    <button
-                      key={columna}
-                      type="button"
-                      onClick={() => limpiarColumna(columna, indiceColumna)}
-                      style={{
-                        padding: "6px 12px",
-                        border: 0,
-                        borderRadius: 4,
-                        background: "#c62828",
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      limpiar {columna}
-                    </button>
-                  );
-                })}
+                editables.map(({ nombre, indice }) => (
+                  <button
+                    key={nombre}
+                    type="button"
+                    onClick={() => limpiarColumna(nombre, indice)}
+                    style={{
+                      padding: "6px 12px",
+                      border: 0,
+                      borderRadius: 4,
+                      background: "#c62828",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    limpiar {nombre}
+                  </button>
+                ))}
               <button
                 type="button"
                 aria-label={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
@@ -157,11 +160,11 @@ export default function PanelDetallado({
               renderFila={(fila, indice) => (
                 <tr key={`${fila[1]}-${indice}`}>
                   {fila.map((valor, columna) => {
-                    const editable = COLUMNAS_EDITABLES_DETALLADO.has(columna);
+                    const nombreColumna = tabla.columnas[columna];
+                    const editable = COLUMNAS_EDITABLES_DETALLADO.has(nombreColumna);
                     const fondo = colorStockDetallado(columna, valor, filtrado.marcados?.[indice], oscuro, fila);
                     // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
                     const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");
-                    const nombreColumna = tabla.columnas[columna];
                     return (
                       <td
                         key={columna}
@@ -170,7 +173,7 @@ export default function PanelDetallado({
                           padding: editable ? "4px 6px" : "8px 10px",
                           border: "1px solid var(--borde-suave)",
                           background: colores ? fondo : "var(--superficie)",
-                          fontWeight: columna === 10 ? 700 : 400,
+                          fontWeight: nombreColumna === "Total" ? 700 : 400,
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -193,7 +196,7 @@ export default function PanelDetallado({
                             }}
                             style={{
                               width: "100%",
-                              minWidth: columna === COLUMNA_INDICADOR ? 180 : 72,
+                              minWidth: nombreColumna === "INDICADOR" ? 180 : 72,
                               boxSizing: "border-box",
                               padding: "4px 6px",
                               border: "1px solid var(--borde)",
@@ -214,7 +217,7 @@ export default function PanelDetallado({
             >
                 <thead>
                   <tr>
-                    {tabla.columnas.map((columna, indice) => (
+                    {tabla.columnas.map((columna) => (
                       <th
                         key={columna}
                         style={{
@@ -225,7 +228,7 @@ export default function PanelDetallado({
                           background: colores ? "#a9e5e5" : "var(--superficie)",
                           border: "1px solid var(--borde)",
                           whiteSpace: "nowrap",
-                          minWidth: indice === COLUMNA_INDICADOR ? 180 : undefined,
+                          minWidth: columna === "INDICADOR" ? 180 : undefined,
                         }}
                       >
                         {columna}
