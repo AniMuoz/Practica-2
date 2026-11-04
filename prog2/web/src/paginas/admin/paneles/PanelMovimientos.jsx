@@ -90,48 +90,72 @@ export default function PanelMovimientos({
           marginBottom: 16,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Movimientos</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
-            <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
-            <a
-              href={hrefExcel}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                background: "var(--boton)",
-                color: "var(--sobre)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Descargar planilla
-            </a>
-          </div>
-        </div>
-        <form onSubmit={agregarCodigoMovimientoForm} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-          <input
-            type="text"
-            value={codigoMovimiento}
-            onChange={(e) => setCodigoMovimiento(e.target.value)}
-            placeholder="Añadir código"
-            aria-label="Añadir código"
-            style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--borde)", fontSize: 14 }}
-          />
-          <button
-            type="submit"
-            style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
-          >
-            Añadir código
-          </button>
-          {errorCodigoMovimiento && <span style={{ fontSize: 14, color: "var(--peligro, #d32f2f)" }}>{errorCodigoMovimiento}</span>}
-        </form>
+        <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Movimientos</h2>
         {panelFiltrosUbicacion}
         {cargandoMovimientos && <p style={{ margin: 0 }}>Cargando movimientos...</p>}
         {avisoMovimientos && <p style={{ margin: 0 }}>{avisoMovimientos}</p>}
         {!cargandoMovimientos && !avisoMovimientos && (
-          <VistaPrevia
+          <>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <form
+                onSubmit={agregarCodigoMovimientoForm}
+                style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: "1 1 280px", minWidth: 0 }}
+              >
+                <input
+                  type="text"
+                  value={codigoMovimiento}
+                  onChange={(e) => setCodigoMovimiento(e.target.value)}
+                  placeholder="Añadir código"
+                  aria-label="Añadir código"
+                  style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--borde)", fontSize: 14 }}
+                />
+                <button
+                  type="submit"
+                  style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, cursor: "pointer" }}
+                >
+                  Añadir código
+                </button>
+                {errorCodigoMovimiento && (
+                  <span style={{ fontSize: 14, color: "var(--peligro, #d32f2f)" }}>{errorCodigoMovimiento}</span>
+                )}
+              </form>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  flexWrap: "wrap",
+                  flex: "0 0 auto",
+                }}
+              >
+                <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
+                <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
+                <a
+                  href={hrefExcel}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 6,
+                    background: "var(--boton)",
+                    color: "var(--sobre)",
+                    fontSize: 14,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Descargar planilla
+                </a>
+              </div>
+            </div>
+            <VistaPrevia
             filas={filasMovimientos}
             columnas={movimientos.columnas.length + 1}
             className={clasePlanilla}
@@ -293,6 +317,7 @@ export default function PanelMovimientos({
                 </tr>
               </thead>
           </VistaPrevia>
+          </>
         )}
       </section>
   );
