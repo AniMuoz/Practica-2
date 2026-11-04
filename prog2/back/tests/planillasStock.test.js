@@ -26,7 +26,6 @@ const MATERIALES = [
     "Cons.Prom.Mensual": "2.5",
     "Stock Max": "20",
     INDICADOR: "A",
-    "Cambio de ubicación": "01-B",
   },
   { Codigo: "2", Descripcion: "NULO", Stock: "1" },
   { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "", Caracteristica: "", "Stock critico": "" },
@@ -152,13 +151,14 @@ test("stockRegional suma las bodegas numéricas, omite NULO y conserva texto", (
   assert.deepEqual(filas[1], ["3", "Tuerca", 0, 0, "", "", "", 0]);
 });
 
-test("stockDetallado arma 16 columnas, precio con signo o 'Sin precio' y la lista de marcados", () => {
+test("stockDetallado arma 15 columnas, precio con signo o 'Sin precio' y la lista de marcados", () => {
   const { columnas, filas, marcados } = stock.stockDetallado();
-  assert.equal(columnas.length, 16);
+  assert.equal(columnas.length, 15);
   assert.equal(columnas[5], "Caracteristica");
   assert.equal(columnas[12], "Stock critico");
+  assert.equal(columnas[14], "INDICADOR");
   assert.deepEqual(marcados, [true, false]);
-  assert.equal(filas[0].length, 16);
+  assert.equal(filas[0].length, 15);
   assert.equal(filas[0][0], "01-A");
   assert.equal(filas[0][1], "1");
   assert.equal(filas[0][3], 5);
@@ -253,7 +253,7 @@ test("exportarStockDetallado pinta de verde fuerte las columnas de un material m
 test("stockDetallado incluye los campos locales editables", () => {
   const { filas } = stock.stockDetallado();
   const perno = filas.find((fila) => String(fila[1]) === "1");
-  assert.deepEqual(perno.slice(11), ["2.5", "6", "20", "A", "01-B"]);
+  assert.deepEqual(perno.slice(11), ["2.5", "6", "20", "A"]);
 });
 
 test("exportarStockDetallado pinta Stock critico en amarillo cuando el stock está crítico", async () => {
@@ -262,7 +262,8 @@ test("exportarStockDetallado pinta Stock critico en amarillo cuando el stock est
   assert.equal(valor(hoja, 4, 13), "6");
   assert.equal(valor(hoja, 4, 14), "20");
   assert.equal(valor(hoja, 4, 15), "A");
-  assert.equal(valor(hoja, 4, 16), "01-B");
+  assert.equal(valor(hoja, 4, 16), null);
+  assert.ok((hoja.getColumn(15).width || 0) >= 28);
   assert.equal(relleno(hoja, 4, 13), "FFFFFF00");
   assert.equal(relleno(hoja, 5, 13), undefined);
   assert.equal(stock.stockDetalladoEnCritico(["", "", "", 5, "", "", "", "", "", "", "", "", "6"]), true);

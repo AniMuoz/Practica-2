@@ -3,8 +3,9 @@ import VistaPrevia from "./VistaPrevia.jsx";
 import { colorStockDetallado } from "../../../lib/reglasPlanilla.js";
 
 // Columnas de Stock detallado que se pueden editar a mano.
-// 5 Caracteristica, 11 Cons.Prom.Mensual, 12 Stock critico, 13 Stock Max, 14 INDICADOR, 15 Cambio de ubicación
-const COLUMNAS_EDITABLES_DETALLADO = new Set([5, 11, 12, 13, 14, 15]);
+// 5 Caracteristica, 11 Cons.Prom.Mensual, 12 Stock critico, 13 Stock Max, 14 INDICADOR
+const COLUMNAS_EDITABLES_DETALLADO = new Set([5, 11, 12, 13, 14]);
+const COLUMNA_INDICADOR = 14;
 
 // Stock detallado: planilla editable. La logica de edicion vive en useDetallado.
 export default function PanelDetallado({
@@ -192,7 +193,7 @@ export default function PanelDetallado({
                             }}
                             style={{
                               width: "100%",
-                              minWidth: 72,
+                              minWidth: columna === COLUMNA_INDICADOR ? 180 : 72,
                               boxSizing: "border-box",
                               padding: "4px 6px",
                               border: "1px solid var(--borde)",
@@ -213,7 +214,7 @@ export default function PanelDetallado({
             >
                 <thead>
                   <tr>
-                    {tabla.columnas.map((columna) => (
+                    {tabla.columnas.map((columna, indice) => (
                       <th
                         key={columna}
                         style={{
@@ -224,6 +225,7 @@ export default function PanelDetallado({
                           background: colores ? "#a9e5e5" : "var(--superficie)",
                           border: "1px solid var(--borde)",
                           whiteSpace: "nowrap",
+                          minWidth: indice === COLUMNA_INDICADOR ? 180 : undefined,
                         }}
                       >
                         {columna}

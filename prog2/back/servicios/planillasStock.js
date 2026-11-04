@@ -321,7 +321,6 @@ function stockDetallado() {
     "Stock critico",
     "Stock Max",
     "INDICADOR",
-    "Cambio de ubicación",
   ];
   const resultado = [];
   const marcados = [];
@@ -349,7 +348,6 @@ function stockDetallado() {
         fila["Stock critico"] ?? "",
         fila["Stock Max"] ?? "",
         fila.INDICADOR ?? "",
-        fila["Cambio de ubicación"] ?? "",
       ]);
       marcados.push(String(fila.Marcado) === "1");
     });
@@ -424,8 +422,11 @@ async function exportarStockDetallado(colores = true, filtros = null) {
   });
 
   const ultima = Math.max(filas.length + 3, 3);
-  hoja.autoFilter = `A3:P${ultima}`;
+  hoja.autoFilter = `A3:O${ultima}`;
   compactarPlanilla(hoja);
+  // INDICADOR aprovecha el ancho que dejaba "Cambio de ubicación".
+  const colIndicador = hoja.getColumn(15);
+  colIndicador.width = Math.max(Number(colIndicador.width) || 0, 28);
   return libro.xlsx.writeBuffer();
 }
 

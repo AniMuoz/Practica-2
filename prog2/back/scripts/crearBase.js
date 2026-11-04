@@ -39,8 +39,7 @@ CREATE TABLE materiales (
   m505 TEXT NOT NULL DEFAULT '',
   cons_prom_mensual TEXT NOT NULL DEFAULT '',
   stock_max TEXT NOT NULL DEFAULT '',
-  indicador TEXT NOT NULL DEFAULT '',
-  cambio_de_ubicacion TEXT NOT NULL DEFAULT ''
+  indicador TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE contratistas (
