@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../servicios/fuenteDatos");
-const { uploadXlsx, upload, emitir, esImagenReal } = require("../utils/compartido");
+const { uploadXlsx, upload, emitir, esImagenReal, esHeicReal, convertirHeicAJpeg } = require("../utils/compartido");
 const { subirImagen } = require("../supabase/imagenesSupabase");
 const { exigirAdmin } = require("../seguridad/auth");
 const { CLAVE_DATOS } = require("../servicios/nucleoDatos");
@@ -244,13 +244,25 @@ module.exports = function rutasMateriales(app) {
       }
       try {
         if (req.body.campo === "QR") await exigirAdmin(req);
-        const contenido = await fs.promises.readFile(req.file.path);
+        let contenido = await fs.promises.readFile(req.file.path);
+        let mimetype = req.file.mimetype;
+        if (esHeicReal(contenido)) {
+          try {
+            contenido = await convertirHeicAJpeg(contenido);
+          } catch {
+            await fs.promises.unlink(req.file.path).catch(() => {});
+            res.status(400).json({ error: "No se pudo convertir la imagen HEIC." });
+            return;
+          }
+          await fs.promises.writeFile(req.file.path, contenido);
+          mimetype = "image/jpeg";
+        }
         if (!esImagenReal(contenido)) {
           await fs.promises.unlink(req.file.path).catch(() => {});
           res.status(400).json({ error: "El archivo no es una imagen válida." });
           return;
         }
-        await subirImagen(req.file.filename, contenido, req.file.mimetype);
+        await subirImagen(req.file.filename, contenido, mimetype);
         const resultado = await guardarImagen(req.params.codigo, req.body.campo, req.file.filename, req.body.clave);
         if (!resultado) {
           res.status(404).json({ error: "Material no encontrado." });

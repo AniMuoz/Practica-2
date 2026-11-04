@@ -80,6 +80,21 @@ function esImagenReal(buffer) {
   );
 }
 
+// HEIC/HEIF: algunos navegadores mandan application/octet-stream, así que también se mira la extensión.
+function esTipoHeic(file) {
+  return /^image\/hei[cf]$/i.test(file.mimetype) || /\.hei[cf]$/i.test(file.originalname || "");
+}
+
+function esHeicReal(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  return buffer.toString("ascii", 4, 8) === "ftyp" && ["heic", "heix", "mif1", "heif", "hevc", "msf1"].includes(buffer.toString("ascii", 8, 12));
+}
+
+async function convertirHeicAJpeg(buffer) {
+  const convertir = require("heic-convert");
+  return Buffer.from(await convertir({ buffer, format: "JPEG", quality: 0.9 }));
+}
+
 const esPngOJpeg = (buffer) =>
   Buffer.isBuffer(buffer) &&
   buffer.length >= 12 &&
@@ -94,7 +109,7 @@ const upload = multer({
       const nombres = { QR: "qr", Foto: "foto", Rombo: "rombo" };
       const campo = nombres[req.body.campo] || "rombo";
       const codigo = String(req.params.codigo).replace(/[^\w.-]/g, "_");
-      const extension = EXTENSION_POR_TIPO[file.mimetype] || ".png";
+      const extension = esTipoHeic(file) ? ".jpg" : EXTENSION_POR_TIPO[file.mimetype] || ".png";
       // El rombo lleva marca de tiempo para que cambiarlo cambie siempre su nombre.
       // El QR lleva la marca del rombo que incrusta (rombo_usado) para detectar QR desactualizados.
       let sufijo = "";
@@ -107,8 +122,8 @@ const upload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (/^image\/(png|jpeg|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error("Solo se aceptan imágenes PNG, JPG, WEBP o GIF."));
+    if (/^image\/(png|jpeg|webp|gif)$/.test(file.mimetype) || esTipoHeic(file)) cb(null, true);
+    else cb(new Error("Solo se aceptan imágenes PNG, JPG, WEBP, GIF o HEIC."));
   },
 });
 
@@ -150,6 +165,8 @@ module.exports = {
   uploadFirma,
   upload,
   esImagenReal,
+  esHeicReal,
+  convertirHeicAJpeg,
   conColores,
   nombreConFecha,
   enviarPlanilla,

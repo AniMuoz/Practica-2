@@ -614,7 +614,7 @@ test("POST /api/material/:codigo/imagen valida el archivo, lo sube y lo asocia a
   const sinArchivo = await pedir("POST", "/api/material/1/imagen", { form: formulario({ campo: "QR" }) });
   assert.deepEqual([sinArchivo.status, sinArchivo.json.error], [400, "Falta la imagen."]);
   const noImagen = await pedir("POST", "/api/material/1/imagen", { form: formulario({ campo: "QR" }, { archivo: { contenido: "x", archivo: "a.txt", tipo: "text/plain" } }) });
-  assert.deepEqual([noImagen.status, noImagen.json.error], [400, "Solo se aceptan imágenes PNG, JPG, WEBP o GIF."]);
+  assert.deepEqual([noImagen.status, noImagen.json.error], [400, "Solo se aceptan imágenes PNG, JPG, WEBP, GIF o HEIC."]);
 
   const nombre = `zz${process.pid}-foto.png`;
   const local = path.join(__dirname, "..", "imagenes", nombre);
@@ -633,6 +633,21 @@ test("POST /api/material/:codigo/imagen valida el archivo, lo sube y lo asocia a
     assert.equal(subidas.length, 1);
     assert.deepEqual(llamadasA("guardarImagen")[0].args, [`zz${process.pid}`, "Foto", nombre, "k"]);
     assert.equal(fs.existsSync(local), false);
+  } finally {
+    fs.rmSync(local, { force: true });
+  }
+});
+
+test("POST /api/material/:codigo/imagen rechaza un HEIC falso y guarda con .jpg el tipo heic", async () => {
+  const nombre = `zh${process.pid}-foto.jpg`;
+  const local = path.join(__dirname, "..", "imagenes", nombre);
+  try {
+    responder({ guardarImagen: { fila: { Codigo: `zh${process.pid}` } } });
+    const falso = await pedir("POST", `/api/material/zh${process.pid}/imagen`, {
+      form: formulario({ campo: "Foto", clave: "k" }, { archivo: { contenido: "no soy heic ni nada", archivo: "f.heic", tipo: "image/heic" } }),
+    });
+    assert.deepEqual([falso.status, falso.json.error], [400, "El archivo no es una imagen válida."]);
+    assert.equal(subidas.length, 0);
   } finally {
     fs.rmSync(local, { force: true });
   }
