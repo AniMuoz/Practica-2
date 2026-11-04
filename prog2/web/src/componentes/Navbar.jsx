@@ -475,6 +475,8 @@ export default function Navbar({ buzonNovedades = 0 }) {
               borderRadius: 6,
               maxHeight: 280,
               overflowY: "auto",
+              overflowX: "hidden",
+              whiteSpace: "normal",
               zIndex: 20,
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
             }}
@@ -498,6 +500,8 @@ export default function Navbar({ buzonNovedades = 0 }) {
                     color: "var(--texto)",
                     cursor: "pointer",
                     fontSize: 14,
+                    whiteSpace: "normal",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   <strong>{item.codigo}</strong>
