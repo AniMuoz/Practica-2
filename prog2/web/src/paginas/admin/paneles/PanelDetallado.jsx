@@ -53,107 +53,131 @@ export default function PanelDetallado({
         {error && <p style={{ margin: "0 0 8px", color: "var(--peligro, #b00020)" }}>{error}</p>}
         {!cargando && !aviso && (
           <>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                marginBottom: 10,
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                {limpiarVisible &&
-                  editables.map(({ nombre, indice }) => (
-                    <button
-                      key={nombre}
-                      type="button"
-                      onClick={() => limpiarColumna(nombre, indice)}
-                      style={{
-                        padding: "6px 12px",
-                        border: 0,
-                        borderRadius: 4,
-                        background: "#c62828",
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      limpiar {nombre}
-                    </button>
-                  ))}
-                <button
-                  type="button"
-                  aria-label={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
-                  title={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
-                  aria-expanded={limpiarVisible}
-                  onClick={() => setLimpiarVisible((v) => !v)}
+            <div style={{ marginBottom: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div
                   style={{
-                    padding: "6px 10px",
-                    border: 0,
-                    borderRadius: 6,
-                    background: "var(--boton)",
-                    color: "var(--sobre)",
-                    cursor: "pointer",
-                    lineHeight: 0,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                    flex: "1 1 280px",
+                    minWidth: 0,
                   }}
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+                  {limpiarVisible &&
+                    editables.map(({ nombre, indice }) => (
+                      <button
+                        key={nombre}
+                        type="button"
+                        onClick={() => limpiarColumna(nombre, indice)}
+                        style={{
+                          padding: "6px 12px",
+                          border: 0,
+                          borderRadius: 4,
+                          background: "#c62828",
+                          color: "#fff",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          flex: "0 0 auto",
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        limpiar {nombre}
+                      </button>
+                    ))}
+                  <button
+                    type="button"
+                    aria-label={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
+                    title={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
+                    aria-expanded={limpiarVisible}
+                    onClick={() => setLimpiarVisible((v) => !v)}
                     style={{
-                      transform: limpiarVisible ? "rotate(-90deg)" : "rotate(90deg)",
-                      transition: "transform 0.2s ease",
+                      padding: "6px 10px",
+                      border: 0,
+                      borderRadius: 6,
+                      background: "var(--boton)",
+                      color: "var(--sobre)",
+                      cursor: "pointer",
+                      lineHeight: 0,
+                      flex: "0 0 auto",
                     }}
                   >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-                <span style={{ fontSize: 13, color: "var(--texto-suave, #666)" }}>
-                  Los cambios se guardan solo al pulsar Guardar. En una celda editable puedes pegar una columna de Excel.
-                </span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-                <button
-                  type="button"
-                  onClick={onGuardar}
-                  disabled={!pendientes || guardando}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      style={{
+                        transform: limpiarVisible ? "rotate(-90deg)" : "rotate(90deg)",
+                        transition: "transform 0.2s ease",
+                      }}
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
+                <div
                   style={{
-                    padding: "8px 14px",
-                    border: 0,
-                    borderRadius: 6,
-                    background: pendientes && !guardando ? "#2e7d32" : "var(--borde-suave, #ccc)",
-                    color: pendientes && !guardando ? "#fff" : "var(--texto-suave, #666)",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: pendientes && !guardando ? "pointer" : "default",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                    flex: "0 0 auto",
                   }}
                 >
-                  {guardando ? "Guardando..." : pendientes ? `Guardar cambios (${pendientes})` : "Guardar cambios"}
-                </button>
-                <a
-                  href={hrefExcel}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: 6,
-                    background: "var(--boton)",
-                    color: "var(--sobre)",
-                    fontSize: 14,
-                    textDecoration: "none",
-                  }}
-                >
-                  Descargar planilla
-                </a>
+                  <button
+                    type="button"
+                    onClick={onGuardar}
+                    disabled={!pendientes || guardando}
+                    style={{
+                      padding: "8px 14px",
+                      border: 0,
+                      borderRadius: 6,
+                      background: pendientes && !guardando ? "#2e7d32" : "var(--borde-suave, #ccc)",
+                      color: pendientes && !guardando ? "#fff" : "var(--texto-suave, #666)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: pendientes && !guardando ? "pointer" : "default",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {guardando ? "Guardando..." : pendientes ? `Guardar cambios (${pendientes})` : "Guardar cambios"}
+                  </button>
+                  <a
+                    href={hrefExcel}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 6,
+                      background: "var(--boton)",
+                      color: "var(--sobre)",
+                      fontSize: 14,
+                      textDecoration: "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Descargar planilla
+                  </a>
+                </div>
               </div>
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--texto-suave, #666)" }}>
+                Los cambios se guardan solo al pulsar Guardar. En una celda editable puedes pegar una columna de Excel.
+              </p>
             </div>
             <VistaPrevia
               filas={filtrado.filas}
