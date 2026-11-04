@@ -20,6 +20,7 @@ const MATERIALES = [
     M505: "1",
     "Ubicación": "01-A",
     Precio: "100",
+    Caracteristica: "Eléctrico",
     "Stock critico": "6",
     Marcado: "1",
     "Cons.Prom.Mensual": "2.5",
@@ -28,7 +29,7 @@ const MATERIALES = [
     "Cambio de ubicación": "01-B",
   },
   { Codigo: "2", Descripcion: "NULO", Stock: "1" },
-  { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "", "Stock critico": "" },
+  { Codigo: "3", Descripcion: "Tuerca", Stock: "0", M502: "0", "Ubicación": "          ", Precio: "", Marcado: "", Caracteristica: "", "Stock critico": "" },
 ];
 let TABLA = { columnas: [], filas: [] };
 nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
@@ -154,12 +155,15 @@ test("stockRegional suma las bodegas numéricas, omite NULO y conserva texto", (
 test("stockDetallado arma 16 columnas, precio con signo o 'Sin precio' y la lista de marcados", () => {
   const { columnas, filas, marcados } = stock.stockDetallado();
   assert.equal(columnas.length, 16);
+  assert.equal(columnas[5], "Caracteristica");
+  assert.equal(columnas[12], "Stock critico");
   assert.deepEqual(marcados, [true, false]);
   assert.equal(filas[0].length, 16);
   assert.equal(filas[0][0], "01-A");
   assert.equal(filas[0][1], "1");
   assert.equal(filas[0][3], 5);
   assert.equal(filas[0][4], "$100");
+  assert.equal(filas[0][5], "Eléctrico");
   assert.equal(filas[0][10], 8);
   assert.equal(filas[0][12], "6");
   assert.equal(filas[1][0], "");
@@ -252,7 +256,7 @@ test("stockDetallado incluye los campos locales editables", () => {
   assert.deepEqual(perno.slice(11), ["2.5", "6", "20", "A", "01-B"]);
 });
 
-test("exportarStockDetallado pinta STOCK CRITICO en amarillo cuando el stock está crítico", async () => {
+test("exportarStockDetallado pinta Stock critico en amarillo cuando el stock está crítico", async () => {
   const hoja = await leerLibro(await stock.exportarStockDetallado(true));
   assert.equal(valor(hoja, 4, 12), "2.5");
   assert.equal(valor(hoja, 4, 13), "6");

@@ -1,37 +1,54 @@
 import { useState } from "react";
 import { enviarJson } from "../../../lib/api.js";
 
-// Edicion del stock detallado: celdas con guardado optimista (se revierten si el servidor falla),
+function clavePendiente(codigo, indiceColumna) {
+  return `${String(codigo)}\t${indiceColumna}`;
+}
+
+// Edicion del stock detallado: cambios locales pendientes hasta "Guardar",
 // pegado masivo desde Excel y limpieza de columnas.
 // Recibe la tabla y su setter (de useCargaPlanilla), los codigos visibles segun los filtros y las
-// funciones de useRefrescoSse para que el SSE no recargue la planilla a mitad de un pegado.
+// funciones de useRefrescoSse para que el SSE no recargue la planilla a mitad de un guardado.
 export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco }) {
   const [errorDetallado, setErrorDetallado] = useState("");
+  const [pendientes, setPendientes] = useState(() => new Map());
+  const [guardandoDetallado, setGuardandoDetallado] = useState(false);
 
-  function actualizarCeldaDetallado(codigo, indiceColumna, valor) {
+  function registrarCambio(codigo, indiceColumna, nombreColumna, valorNuevo, valorAntes) {
+    setPendientes((prev) => {
+      const key = clavePendiente(codigo, indiceColumna);
+      const next = new Map(prev);
+      const original = next.has(key)
+        ? next.get(key).original
+        : (valorAntes == null ? "" : String(valorAntes));
+      if (String(valorNuevo ?? "") === original) {
+        next.delete(key);
+      } else {
+        next.set(key, {
+          codigo: String(codigo ?? "").trim(),
+          indiceColumna,
+          nombreColumna,
+          valor: valorNuevo,
+          original,
+        });
+      }
+      return next;
+    });
+  }
+
+  function actualizarCeldaDetallado(codigo, indiceColumna, nombreColumna, valor) {
+    const fila = detallado.filas.find((f) => String(f[1]) === String(codigo));
+    const antes = fila?.[indiceColumna] == null ? "" : String(fila[indiceColumna]);
     setDetallado((prev) => ({
       ...prev,
-      filas: prev.filas.map((fila) => {
-        if (String(fila[1]) !== String(codigo)) return fila;
-        const copia = fila.slice();
+      filas: prev.filas.map((filaActual) => {
+        if (String(filaActual[1]) !== String(codigo)) return filaActual;
+        const copia = filaActual.slice();
         copia[indiceColumna] = valor;
         return copia;
       }),
     }));
-  }
-
-  function guardarCeldaDetallado(codigo, nombreColumna, indiceColumna, valor, valorOriginal) {
-    if (String(valor ?? "") === String(valorOriginal ?? "")) return;
-    setErrorDetallado("");
-    enviarJson(
-      "/api/stock-detallado",
-      { clave, codigo: String(codigo ?? "").trim(), datos: { [nombreColumna]: valor } },
-      "No se pudo guardar el campo.",
-      "PUT"
-    ).catch((err) => {
-      actualizarCeldaDetallado(codigo, indiceColumna, valorOriginal);
-      setErrorDetallado(err.message);
-    });
+    registrarCambio(codigo, indiceColumna, nombreColumna, valor, antes);
   }
 
   // Pega una columna copiada de Excel: reparte los valores hacia abajo desde la fila visible actual.
@@ -78,48 +95,82 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
       }),
     }));
 
-    const pendientes = actualizaciones.filter((item) => String(item.valor) !== String(item.anterior));
-    if (pendientes.length === 0) return actualizaciones[0].valor;
-
-    setErrorDetallado("");
-    // Evita que el SSE recargue la planilla a mitad del pegado (celdas parpadeando).
-    suspenderRefresco();
-
-    // Guardado en serie: en paralelo la caché del backend se pisa entre requests.
-    (async () => {
-      const fallidos = [];
-      try {
-        for (const item of pendientes) {
-          try {
-            await enviarJson(
-              "/api/stock-detallado",
-              { clave, codigo: String(item.codigo ?? "").trim(), datos: { [nombreColumna]: item.valor } },
-              "No se pudo guardar el campo.",
-              "PUT"
-            );
-          } catch (err) {
-            fallidos.push({ ...item, error: err });
-          }
-        }
-        if (fallidos.length > 0) {
-          const revertir = new Map(fallidos.map((item) => [item.indice, item.anterior]));
-          setDetallado((prev) => ({
-            ...prev,
-            filas: prev.filas.map((fila, indice) => {
-              if (!revertir.has(indice)) return fila;
-              const copia = fila.slice();
-              copia[indiceColumna] = revertir.get(indice);
-              return copia;
-            }),
-          }));
-          setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
-        }
-      } finally {
-        reanudarRefresco();
-      }
-    })();
+    for (const item of actualizaciones) {
+      registrarCambio(item.codigo, indiceColumna, nombreColumna, item.valor, item.anterior);
+    }
 
     return actualizaciones[0].valor;
+  }
+
+  async function guardarCambiosDetallado() {
+    if (pendientes.size === 0 || guardandoDetallado) return;
+    setErrorDetallado("");
+    setGuardandoDetallado(true);
+    suspenderRefresco();
+    const lista = [...pendientes.values()];
+    const fallidos = [];
+    try {
+      for (const item of lista) {
+        try {
+          await enviarJson(
+            "/api/stock-detallado",
+            { clave, codigo: item.codigo, datos: { [item.nombreColumna]: item.valor } },
+            "No se pudo guardar el campo.",
+            "PUT"
+          );
+          setPendientes((prev) => {
+            const next = new Map(prev);
+            next.delete(clavePendiente(item.codigo, item.indiceColumna));
+            return next;
+          });
+        } catch (err) {
+          fallidos.push({ ...item, error: err });
+        }
+      }
+      if (fallidos.length > 0) {
+        const revertir = new Map(fallidos.map((item) => [clavePendiente(item.codigo, item.indiceColumna), item]));
+        setDetallado((prev) => ({
+          ...prev,
+          filas: prev.filas.map((fila) => {
+            let copia = null;
+            for (const item of fallidos) {
+              if (String(fila[1]) !== String(item.codigo)) continue;
+              if (!copia) copia = fila.slice();
+              copia[item.indiceColumna] = item.original;
+            }
+            return copia || fila;
+          }),
+        }));
+        setPendientes((prev) => {
+          const next = new Map(prev);
+          for (const key of revertir.keys()) next.delete(key);
+          return next;
+        });
+        setErrorDetallado(fallidos[0].error?.message || "No se pudo guardar el campo.");
+      }
+    } finally {
+      setGuardandoDetallado(false);
+      reanudarRefresco();
+    }
+  }
+
+  function descartarCambiosDetallado() {
+    if (pendientes.size === 0) return;
+    const lista = [...pendientes.values()];
+    setDetallado((prev) => ({
+      ...prev,
+      filas: prev.filas.map((fila) => {
+        let copia = null;
+        for (const item of lista) {
+          if (String(fila[1]) !== String(item.codigo)) continue;
+          if (!copia) copia = fila.slice();
+          copia[item.indiceColumna] = item.original;
+        }
+        return copia || fila;
+      }),
+    }));
+    setPendientes(new Map());
+    setErrorDetallado("");
   }
 
   function limpiarColumnaDetallado(nombreColumna, indiceColumna) {
@@ -140,6 +191,13 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
             return copia;
           }),
         }));
+        setPendientes((prev) => {
+          const next = new Map(prev);
+          for (const [key, item] of next) {
+            if (item.indiceColumna === indiceColumna) next.delete(key);
+          }
+          return next;
+        });
       })
       .catch((err) => setErrorDetallado(err.message));
   }
@@ -147,9 +205,12 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
   return {
     errorDetallado,
     setErrorDetallado,
+    pendientesDetallado: pendientes.size,
+    guardandoDetallado,
     actualizarCeldaDetallado,
-    guardarCeldaDetallado,
     pegarColumnaDetallado,
+    guardarCambiosDetallado,
+    descartarCambiosDetallado,
     limpiarColumnaDetallado,
   };
 }

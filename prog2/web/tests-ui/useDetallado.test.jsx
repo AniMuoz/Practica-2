@@ -42,29 +42,43 @@ beforeEach(() => {
   window.fetch = vi.fn(async () => json({ ok: true }));
 });
 
-test("actualizarCeldaDetallado cambia solo la fila del codigo", () => {
+test("actualizarCeldaDetallado cambia solo la fila del codigo y deja el cambio pendiente", () => {
   const { result } = montar();
-  act(() => result.current.actualizarCeldaDetallado("A2", 11, "nuevo"));
+  act(() => result.current.actualizarCeldaDetallado("A2", 11, "Col", "nuevo"));
   expect(result.current.detallado.filas.map((f) => f[11])).toEqual(["viejo1", "nuevo", "viejo3"]);
-});
-
-test("guardarCeldaDetallado no envia nada si el valor no cambio", () => {
-  const { result } = montar();
-  act(() => result.current.guardarCeldaDetallado("A1", "Col", 11, "x", "x"));
+  expect(result.current.pendientesDetallado).toBe(1);
   expect(window.fetch).not.toHaveBeenCalled();
 });
 
-test("guardarCeldaDetallado envia el PUT y, si el servidor falla, revierte y deja el error", async () => {
+test("volver al valor original quita el pendiente", () => {
+  const { result } = montar();
+  act(() => result.current.actualizarCeldaDetallado("A1", 11, "Col", "editado"));
+  act(() => result.current.actualizarCeldaDetallado("A1", 11, "Col", "viejo1"));
+  expect(result.current.pendientesDetallado).toBe(0);
+});
+
+test("guardarCambiosDetallado no envia nada si no hay pendientes", async () => {
+  const { result } = montar();
+  await act(async () => {
+    await result.current.guardarCambiosDetallado();
+  });
+  expect(window.fetch).not.toHaveBeenCalled();
+});
+
+test("guardarCambiosDetallado envia el PUT y, si el servidor falla, revierte y deja el error", async () => {
   window.fetch.mockImplementation(async () => json({ error: "sin permiso" }, 403));
   const { result } = montar();
-  act(() => result.current.actualizarCeldaDetallado("A1", 11, "editado"));
-  act(() => result.current.guardarCeldaDetallado("A1", "Col", 11, "editado", "viejo1"));
+  act(() => result.current.actualizarCeldaDetallado("A1", 11, "Col", "editado"));
+  await act(async () => {
+    await result.current.guardarCambiosDetallado();
+  });
   const [url, opciones] = window.fetch.mock.calls[0];
   expect(url).toBe("/api/stock-detallado");
   expect(opciones.method).toBe("PUT");
   expect(JSON.parse(opciones.body)).toEqual({ clave: "k", codigo: "A1", datos: { Col: "editado" } });
   await waitFor(() => expect(result.current.errorDetallado).toBe("sin permiso"));
   expect(result.current.detallado.filas[0][11]).toBe("viejo1");
+  expect(result.current.pendientesDetallado).toBe(0);
 });
 
 test("pegarColumnaDetallado deja el pegado normal si es una sola linea", () => {
@@ -87,7 +101,7 @@ test("pegarColumnaDetallado rechaza mas de 500 filas", () => {
   expect(result.current.errorDetallado).toBe("Se pueden pegar hasta 500 filas a la vez.");
 });
 
-test("pegarColumnaDetallado reparte hacia abajo, guarda en serie y suspende el refresco", async () => {
+test("pegarColumnaDetallado reparte hacia abajo sin guardar hasta pulsar Guardar", async () => {
   const { result } = montar();
   let r;
   act(() => {
@@ -96,13 +110,21 @@ test("pegarColumnaDetallado reparte hacia abajo, guarda en serie y suspende el r
   // Desde la segunda fila visible solo caben dos valores.
   expect(r).toBe("uno");
   expect(result.current.detallado.filas.map((f) => f[11])).toEqual(["viejo1", "uno", "dos"]);
+  expect(result.current.pendientesDetallado).toBe(2);
+  expect(window.fetch).not.toHaveBeenCalled();
+  expect(suspender).not.toHaveBeenCalled();
+
+  await act(async () => {
+    await result.current.guardarCambiosDetallado();
+  });
   expect(suspender).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(2));
   expect(window.fetch.mock.calls.map(([, o]) => JSON.parse(o.body).codigo)).toEqual(["A2", "A3"]);
   await waitFor(() => expect(reanudar).toHaveBeenCalledTimes(1));
+  expect(result.current.pendientesDetallado).toBe(0);
 });
 
-test("pegarColumnaDetallado revierte las filas que fallan al guardar", async () => {
+test("guardarCambiosDetallado revierte las filas que fallan al guardar", async () => {
   window.fetch.mockImplementation(async (_url, o) =>
     JSON.parse(o.body).codigo === "A3" ? json({ error: "fallo A3" }, 500) : json({ ok: true })
   );
@@ -110,18 +132,29 @@ test("pegarColumnaDetallado revierte las filas que fallan al guardar", async () 
   act(() => {
     result.current.pegarColumnaDetallado(1, 11, "Col", "uno\ndos");
   });
+  await act(async () => {
+    await result.current.guardarCambiosDetallado();
+  });
   await waitFor(() => expect(result.current.errorDetallado).toBe("fallo A3"));
   expect(result.current.detallado.filas.map((f) => f[11])).toEqual(["viejo1", "uno", "viejo3"]);
   expect(reanudar).toHaveBeenCalledTimes(1);
 });
 
-test("pegar valores iguales a los actuales no envia nada", () => {
+test("pegar valores iguales a los actuales no deja pendientes", () => {
   const { result } = montar();
   act(() => {
     result.current.pegarColumnaDetallado(0, 11, "Col", "viejo1\nviejo2");
   });
+  expect(result.current.pendientesDetallado).toBe(0);
   expect(window.fetch).not.toHaveBeenCalled();
-  expect(suspender).not.toHaveBeenCalled();
+});
+
+test("descartarCambiosDetallado restaura los valores originales", () => {
+  const { result } = montar();
+  act(() => result.current.actualizarCeldaDetallado("A1", 11, "Col", "editado"));
+  act(() => result.current.descartarCambiosDetallado());
+  expect(result.current.detallado.filas[0][11]).toBe("viejo1");
+  expect(result.current.pendientesDetallado).toBe(0);
 });
 
 test("limpiarColumnaDetallado pide confirmacion, vacia la columna y no hace nada si se cancela", async () => {

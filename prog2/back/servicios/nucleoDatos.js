@@ -163,8 +163,11 @@ const ENCABEZADO_MATERIALES = [
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
 const BODEGAS_EXPORT = ["M501", ...BODEGAS_EXTRA];
 const COLUMNA_MARCADO = "Marcado";
-const COLUMNAS_DETALLADO = ["Cons.Prom.Mensual", "Stock Max", "INDICADOR", "Cambio de ubicación"];
-const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_DETALLADO]);
+// Campos editables/limpiables desde Stock detallado. Caracteristica y Stock critico
+// también salen en la planilla principal; el resto se oculta ahí.
+const COLUMNAS_LOCALES_DETALLADO = ["Cons.Prom.Mensual", "Stock Max", "INDICADOR", "Cambio de ubicación"];
+const COLUMNAS_DETALLADO = ["Caracteristica", "Stock critico", ...COLUMNAS_LOCALES_DETALLADO];
+const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_LOCALES_DETALLADO]);
 const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
 const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";

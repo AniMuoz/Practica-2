@@ -195,9 +195,12 @@ export default function Admin() {
   const {
     errorDetallado,
     setErrorDetallado,
+    pendientesDetallado,
+    guardandoDetallado,
     actualizarCeldaDetallado,
-    guardarCeldaDetallado,
     pegarColumnaDetallado,
+    guardarCambiosDetallado,
+    descartarCambiosDetallado,
     limpiarColumnaDetallado,
   } = useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco });
 
@@ -207,8 +210,9 @@ export default function Admin() {
     mostrarContratistas && contratistasCambiaron();
   const ventaSinGuardar = mostrarVentas && ventaPendiente;
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
+  const detalladoSinGuardar = mostrarDetallado && pendientesDetallado > 0;
   const hayCambiosSinGuardar =
-    formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
+    formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || detalladoSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
   function descartarCambios() {
     if (formularioSinGuardar) {
       setDatos((actual) => {
@@ -227,6 +231,7 @@ export default function Admin() {
       setVentaPendiente(false);
       setVentaKey((actual) => actual + 1);
     }
+    if (detalladoSinGuardar) descartarCambiosDetallado();
   }
 
   const { mostrarAviso, permitirSalida, intentarSalir, seguirAqui, salirSinGuardar } = useSalidaSegura({
@@ -551,8 +556,10 @@ export default function Admin() {
           clasePlanilla={clasePlanilla}
           limpiarColumna={limpiarColumnaDetallado}
           actualizarCelda={actualizarCeldaDetallado}
-          guardarCelda={guardarCeldaDetallado}
           pegarColumna={pegarColumnaDetallado}
+          pendientes={pendientesDetallado}
+          guardando={guardandoDetallado}
+          onGuardar={guardarCambiosDetallado}
         />
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
