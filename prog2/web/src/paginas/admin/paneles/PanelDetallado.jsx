@@ -29,11 +29,12 @@ export default function PanelDetallado({
   pendientes = 0,
   guardando = false,
   onGuardar,
+  soloLectura = false,
 }) {
   const [limpiarVisible, setLimpiarVisible] = useState(false);
   const editables = (tabla.columnas || [])
     .map((nombre, indice) => ({ nombre, indice }))
-    .filter(({ nombre }) => COLUMNAS_EDITABLES_DETALLADO.has(nombre));
+    .filter(({ nombre }) => !soloLectura && COLUMNAS_EDITABLES_DETALLADO.has(nombre));
 
   return (
       <section
@@ -96,7 +97,7 @@ export default function PanelDetallado({
                         limpiar {nombre}
                       </button>
                     ))}
-                  <button
+                  {!soloLectura && <button
                     type="button"
                     aria-label={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
                     title={limpiarVisible ? "Ocultar botones de limpiar" : "Mostrar botones de limpiar"}
@@ -130,7 +131,7 @@ export default function PanelDetallado({
                     >
                       <path d="M6 9l6 6 6-6" />
                     </svg>
-                  </button>
+                  </button>}
                 </div>
                 <div
                   style={{
@@ -141,7 +142,7 @@ export default function PanelDetallado({
                     flex: "0 0 auto",
                   }}
                 >
-                  <button
+                  {!soloLectura && <button
                     type="button"
                     onClick={onGuardar}
                     disabled={!pendientes || guardando}
@@ -158,7 +159,7 @@ export default function PanelDetallado({
                     }}
                   >
                     {guardando ? "Guardando..." : pendientes ? `Guardar cambios (${pendientes})` : "Guardar cambios"}
-                  </button>
+                  </button>}
                   <a
                     href={hrefExcel}
                     style={{
@@ -176,7 +177,9 @@ export default function PanelDetallado({
                 </div>
               </div>
               <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--texto-suave, #666)" }}>
-                Los cambios se guardan solo al pulsar Guardar. En una celda editable puedes pegar una columna de Excel.
+                {soloLectura
+                  ? "Solo un administrador puede modificar el stock detallado."
+                  : "Los cambios se guardan solo al pulsar Guardar. En una celda editable puedes pegar una columna de Excel."}
               </p>
             </div>
             <VistaPrevia
@@ -188,7 +191,7 @@ export default function PanelDetallado({
                 <tr key={`${fila[1]}-${indice}`}>
                   {fila.map((valor, columna) => {
                     const nombreColumna = tabla.columnas[columna];
-                    const editable = COLUMNAS_EDITABLES_DETALLADO.has(nombreColumna);
+                    const editable = !soloLectura && COLUMNAS_EDITABLES_DETALLADO.has(nombreColumna);
                     const fondo = colorStockDetallado(columna, valor, filtrado.marcados?.[indice], oscuro, fila);
                     // celda-color en oscuro fuerza texto #111; solo aplica si el fondo no es la superficie oscura.
                     const usaColorCelda = Boolean(colores && fondo && fondo !== "var(--superficie)");

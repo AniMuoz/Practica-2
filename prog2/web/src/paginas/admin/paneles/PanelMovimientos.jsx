@@ -19,6 +19,7 @@ export default function PanelMovimientos({
   copiarInventario,
   alternarExistencia,
   alternarInventario,
+  soloLectura = false,
 }) {
   const [codigoMovimiento, setCodigoMovimiento] = useState("");
   const [errorCodigoMovimiento, setErrorCodigoMovimiento] = useState("");
@@ -106,7 +107,7 @@ export default function PanelMovimientos({
                 marginBottom: 10,
               }}
             >
-              <form
+              {soloLectura ? <div style={{ flex: "1 1 280px" }} /> : <form
                 onSubmit={agregarCodigoMovimientoForm}
                 style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: "1 1 280px", minWidth: 0 }}
               >
@@ -127,7 +128,7 @@ export default function PanelMovimientos({
                 {errorCodigoMovimiento && (
                   <span style={{ fontSize: 14, color: "var(--peligro, #d32f2f)" }}>{errorCodigoMovimiento}</span>
                 )}
-              </form>
+              </form>}
               <div
                 style={{
                   display: "flex",
@@ -243,7 +244,7 @@ export default function PanelMovimientos({
                           Cancelar
                         </button>
                       </div>
-                    ) : (
+                    ) : soloLectura ? null : (
                       <div style={{ display: "inline-flex", gap: 6 }}>
                         <button
                           type="button"

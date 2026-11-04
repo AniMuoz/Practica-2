@@ -12,6 +12,7 @@ export default function PanelContratistas({
   alPedirConfirmacion,
   colores,
   clasePlanilla,
+  soloLectura = false,
 }) {
   return (
     <section
@@ -65,6 +66,7 @@ export default function PanelContratistas({
                 <tr key={indice}>
                   <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                     <input
+                      disabled={soloLectura}
                       value={fila.id}
                       inputMode="numeric"
                       onChange={(event) => {
@@ -77,6 +79,7 @@ export default function PanelContratistas({
                   </td>
                   <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                     <input
+                      disabled={soloLectura}
                       value={fila.nombre}
                       onChange={(event) => {
                         const valor = event.target.value;
@@ -88,6 +91,7 @@ export default function PanelContratistas({
                   <td style={{ padding: 6, border: "1px solid var(--borde-suave)" }}>
                     <button
                       type="button"
+                      disabled={soloLectura}
                       onClick={() => setContratistas((actual) => actual.filter((_, i) => i !== indice))}
                       style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--peligro)", color: "var(--sobre)", cursor: "pointer" }}
                     >
@@ -98,7 +102,7 @@ export default function PanelContratistas({
               ))}
             </tbody>
           </Planilla>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
+          {!soloLectura && <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
             <button
               type="button"
               onClick={() => {
@@ -116,7 +120,7 @@ export default function PanelContratistas({
             >
               {guardando ? "Guardando..." : "Guardar"}
             </button>
-          </div>
+          </div>}
         </form>
       )}
     </section>

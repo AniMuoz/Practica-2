@@ -42,6 +42,9 @@ import {
   rutaExcelInventario,
 } from "../lib/reglasPlanilla.js";
 
+// Funciones que solo escriben datos: los operadores no las ven.
+const BOTONES_SOLO_ADMIN = new Set(["Añadir/cargar datos", "Bitacora camion", "Planilla de ventas"]);
+
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
 // Paneles que enciende cada boton de la barra (para marcarlo como activo).
@@ -416,7 +419,9 @@ export default function Admin() {
             "Bitacora camion",
             "Planilla de ventas",
             "Editar contratistas",
-          ].map((nombre, indice, lista) => {
+          ]
+            .filter((nombre) => rol === "admin" || !BOTONES_SOLO_ADMIN.has(nombre))
+            .map((nombre, indice, lista) => {
             const activo = esBotonActivo(nombre);
             if (esMovilCarga && botonesMinimizados) {
               const filaActiva = lista.findIndex(esBotonActivo);
@@ -522,6 +527,7 @@ export default function Admin() {
           cargando={cargandoMovimientos}
           aviso={avisoMovimientos}
           recargar={recargarMovimientos}
+          soloLectura={rol !== "admin"}
           hrefExcel={excelInventario("/api/movimientos/excel")}
           filtros={panelFiltrosUbicacion}
           colores={colores}
@@ -550,6 +556,7 @@ export default function Admin() {
           pendientes={pendientesDetallado}
           guardando={guardandoDetallado}
           onGuardar={guardarCambiosDetallado}
+          soloLectura={rol !== "admin"}
         />
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
@@ -565,6 +572,7 @@ export default function Admin() {
           aviso={avisoContratistas}
           setAviso={setAvisoContratistas}
           alPedirConfirmacion={() => setConfirmarContratistas(true)}
+          soloLectura={rol !== "admin"}
           colores={colores}
           clasePlanilla={clasePlanilla}
         />

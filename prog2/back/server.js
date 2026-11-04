@@ -3,7 +3,8 @@ const path = require("path");
 const express = require("express");
 const { precargarDatos: precargar } = require("./servicios/fuenteDatos");
 const { supabase } = require("./supabase/supabase");
-const { protegerApi, rutasAuth, contarUsuarios } = require("./seguridad/auth");
+const { protegerApi, rutasAuth, contarUsuarios, exigirAdmin, responderError } = require("./seguridad/auth");
+const { soloAdminEnEscrituras } = require("./seguridad/soloAdmin");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./supabase/imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
@@ -39,6 +40,7 @@ app.use("/api", conIpDeClave);
 if (require.main === module) {
   app.use("/api", limitarPeticiones);
   app.use("/api", protegerApi);
+  app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
 }
 rutasAuth(app);
 app.use("/api", (_req, res, next) => {

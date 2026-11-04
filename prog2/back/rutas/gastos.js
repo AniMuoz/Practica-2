@@ -1,7 +1,5 @@
 const { uploadXlsx, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const gastos = require("../servicios/gastos");
-const { exigirAdmin } = require("../seguridad/auth");
-
 function nombreMes(mes) {
   const periodo = /^\d{4}-(\d{2})$/.exec(mes);
   return periodo ? gastos.MESES[Number(periodo[1]) - 1] || mes : mes.toUpperCase();
@@ -19,7 +17,6 @@ module.exports = function rutasGastos(app) {
 
   app.post("/api/gastos/procesar", async (req, res) => {
     try {
-      await exigirAdmin(req);
       const mes = String((req.body && req.body.mes) || "").trim();
       const buffer = await gastos.armarDetalle(req.body && req.body.gastos, mes, req.body && Number(req.body.anio));
       enviarPlanilla(res, buffer, nombreConFecha(`DETALLE GASTOS BERFRE ${nombreMes(mes)}`));
@@ -30,7 +27,6 @@ module.exports = function rutasGastos(app) {
 
   app.post("/api/gastos/guardar", async (req, res) => {
     try {
-      await exigirAdmin(req);
       const buffer = await gastos.guardarDatos(req.body && req.body.gastos);
       enviarPlanilla(res, buffer, nombreConFecha("DATOS GASTOS SIN PROCESAR"));
     } catch (error) {
@@ -49,7 +45,6 @@ module.exports = function rutasGastos(app) {
         return;
       }
       try {
-        await exigirAdmin(req);
         res.json({ gastos: await gastos.recuperarDatos(req.file.buffer) });
       } catch (error) {
         responder(res, error, "No se pudo recuperar el archivo.");
