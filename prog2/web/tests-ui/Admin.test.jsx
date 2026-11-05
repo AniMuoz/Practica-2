@@ -40,6 +40,7 @@ function montar() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   llamadas = [];
   oyenteSse = null;
   window.confirm = vi.fn(() => true);

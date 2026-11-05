@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEstadoPersistente } from "../../../lib/persistencia.js";
 
 export const PANELES = [
   "carga",
@@ -18,7 +18,7 @@ const TODOS_CERRADOS = Object.fromEntries(PANELES.map((nombre) => [nombre, false
 
 // Que paneles de Admin estan abiertos. Puede haber varios a la vez (carga y formulario van juntos).
 export function usePaneles() {
-  const [abierto, setAbierto] = useState(TODOS_CERRADOS);
+  const [abierto, setAbierto] = useEstadoPersistente("admin:paneles", TODOS_CERRADOS);
 
   // Abre o cierra un panel.
   function fijar(nombre, valor) {

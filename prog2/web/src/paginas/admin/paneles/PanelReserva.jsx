@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useEstadoPersistente } from "../../../lib/persistencia.js";
 import VistaPrevia from "./VistaPrevia.jsx";
 import { obtenerJson, enviarFormulario, descargarBlob, guardarBlob } from "../../../lib/api.js";
 
@@ -9,8 +10,9 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
   const [reserva, setReserva] = useState({ columnas: [], filas: [] });
   const [revisandoReserva, setRevisandoReserva] = useState(false);
   const [avisoReserva, setAvisoReserva] = useState("");
-  const [ordenReserva, setOrdenReserva] = useState("");
-  const [buscarPorReserva, setBuscarPorReserva] = useState("reserva");
+  const [ordenReserva, setOrdenReserva] = useEstadoPersistente("admin:reserva:numero", "");
+  const [buscarPorReserva, setBuscarPorReserva] = useEstadoPersistente("admin:reserva:por", "reserva");
+  const [consultaGuardada, setConsultaGuardada] = useEstadoPersistente("admin:reserva:consulta", null);
   const [busquedaReserva, setBusquedaReserva] = useState({
     columnas: [],
     filas: [],
@@ -23,6 +25,39 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
   const paginaReserva = useRef(0);
   const cargandoPaginaReserva = useRef(false);
   const hayMasReservas = useRef(false);
+
+  function buscar(numero, por) {
+    const etiqueta = por === "orden" ? "orden" : "reserva";
+    setAvisoBusquedaReserva("");
+    setBuscandoReserva(true);
+    paginaReserva.current = 0;
+    hayMasReservas.current = false;
+    const params = new URLSearchParams({ reserva: numero, por, pagina: "0", tamano: "100" });
+    obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
+      .then((data) => {
+        const coincidencias = data.coincidencias ?? (data.filas || []).length;
+        setBusquedaReserva({
+          columnas: data.columnas || [],
+          filas: data.filas || [],
+          marcadosCodigo: data.marcadosCodigo || [],
+          repeticiones: data.repeticiones || [],
+          total: data.total || 0,
+          consulta: numero,
+          por,
+        });
+        hayMasReservas.current = (data.filas || []).length < coincidencias;
+        if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
+        else if (coincidencias === 0) setAvisoBusquedaReserva(`No hay reservas con ese número de ${etiqueta}.`);
+      })
+      .catch((err) => setAvisoBusquedaReserva(err.message))
+      .finally(() => setBuscandoReserva(false));
+  }
+
+  // Al volver a la pagina, repite la ultima busqueda para recuperar los resultados.
+  useEffect(() => {
+    if (consultaGuardada?.numero) buscar(consultaGuardada.numero, consultaGuardada.por);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!visible) return null;
 
@@ -45,36 +80,11 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
             if (!numero) {
               setAvisoBusquedaReserva(`Escribe un número de ${etiqueta}.`);
               setBusquedaReserva({ columnas: [], filas: [], marcadosCodigo: [], repeticiones: [], total: 0 });
+              setConsultaGuardada(null);
               return;
             }
-            setAvisoBusquedaReserva("");
-            setBuscandoReserva(true);
-            paginaReserva.current = 0;
-            hayMasReservas.current = false;
-            const params = new URLSearchParams({
-              reserva: numero,
-              por: buscarPorReserva,
-              pagina: "0",
-              tamano: "100",
-            });
-            obtenerJson(`/api/reservas?${params.toString()}`, "No se pudo buscar la reserva.")
-              .then((data) => {
-                const coincidencias = data.coincidencias ?? (data.filas || []).length;
-                setBusquedaReserva({
-                  columnas: data.columnas || [],
-                  filas: data.filas || [],
-                  marcadosCodigo: data.marcadosCodigo || [],
-                  repeticiones: data.repeticiones || [],
-                  total: data.total || 0,
-                  consulta: numero,
-                  por: buscarPorReserva,
-                });
-                hayMasReservas.current = (data.filas || []).length < coincidencias;
-                if ((data.total || 0) === 0) setAvisoBusquedaReserva("Todavía no hay reservas cargadas.");
-                else if (coincidencias === 0) setAvisoBusquedaReserva(`No hay reservas con ese número de ${etiqueta}.`);
-              })
-              .catch((err) => setAvisoBusquedaReserva(err.message))
-              .finally(() => setBuscandoReserva(false));
+            setConsultaGuardada({ numero, por: buscarPorReserva });
+            buscar(numero, buscarPorReserva);
           }}
           style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}
         >
