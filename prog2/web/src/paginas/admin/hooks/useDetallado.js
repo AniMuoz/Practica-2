@@ -92,7 +92,6 @@ export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados,
         return next;
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detallado.filas]);
   const guardandoRef = useRef(false);
   const suspendidoPorEdicion = useRef(false);

@@ -60,7 +60,6 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
     if (!visible || restaurada.current) return;
     restaurada.current = true;
     if (consultaGuardada?.numero) buscar(consultaGuardada.numero, consultaGuardada.por);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   if (!visible) return null;

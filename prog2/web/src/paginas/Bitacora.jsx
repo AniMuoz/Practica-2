@@ -91,7 +91,7 @@ export default function Bitacora({ clave, colores }) {
   // Lo ultimo confirmado por el servidor por fila; se conserva junto al folio para detectar ediciones sin guardar.
   const guardadas = useRef(null);
   if (guardadas.current === null) {
-    let previo = null;
+    let previo;
     try {
       previo = JSON.parse(sessionStorage.getItem("admin:bitacora:guardadas") || "null");
     } catch {
