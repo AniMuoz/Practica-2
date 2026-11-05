@@ -2,6 +2,7 @@ const path = require("path");
 const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 const { supabase } = require("../supabase/supabase");
+const { leerTodo, generarExcelLog, detalleTexto } = require("./logsAuditoria");
 const { claveCorrecta } = require("./fuenteDatos");
 const { subirImagen, bajarImagen, quitarImagen } = require("../supabase/imagenesSupabase");
 
@@ -203,16 +204,49 @@ async function registrarLog(usuario, evento) {
 
 const LIMITE_LOG = 25;
 
-async function listarLog(filtros = {}) {
-  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+function consultaLog(filtros, opciones) {
   let q = supabase
     .from("bitacora_log")
-    .select("id, creado_en, usuario, accion, folio, n_fila, campo, valor_anterior, valor_nuevo, detalle", { count: "exact" });
+    .select("id, creado_en, usuario, accion, folio, n_fila, campo, valor_anterior, valor_nuevo, detalle", opciones);
   if (filtros.folio) q = q.eq("folio", enteroPositivo(filtros.folio, "Folio"));
   if (filtros.usuario) q = q.eq("usuario", String(filtros.usuario));
   if (filtros.accion) q = q.eq("accion", String(filtros.accion));
   if (filtros.desde && typeof q.gte === "function") q = q.gte("creado_en", `${filtros.desde}T00:00:00`);
   if (filtros.hasta && typeof q.lte === "function") q = q.lte("creado_en", `${filtros.hasta}T23:59:59.999`);
+  return q;
+}
+
+const ETIQUETAS_LOG = {
+  crear_folio: "Generó el folio",
+  anadir_fila: "Añadió una fila",
+  editar_celda: "Editó una celda",
+  subir_firma: "Subió una firma",
+  quitar_firma: "Quitó una firma",
+  quitar_fila: "Quitó una fila",
+  eliminar_folio: "Eliminó el folio",
+  descargar_excel: "Descargó la planilla",
+};
+
+// Excel con todo el log que cumple los filtros (sin paginar).
+async function exportarLog(filtros = {}) {
+  const filas = await leerTodo(() => consultaLog(filtros).order("creado_en", { ascending: false }).order("id", { ascending: false }), falloBd);
+  const buffer = await generarExcelLog("Log de bitácora", [
+    { titulo: "Fecha y hora", clave: "creado_en", ancho: 22 },
+    { titulo: "Usuario", clave: "usuario" },
+    { titulo: "Acción", clave: "accion", ancho: 22, formato: (v) => ETIQUETAS_LOG[v] || v },
+    { titulo: "Folio", clave: "folio", ancho: 10 },
+    { titulo: "Fila", clave: "n_fila", ancho: 8 },
+    { titulo: "Campo", clave: "campo" },
+    { titulo: "Valor anterior", clave: "valor_anterior", ancho: 28 },
+    { titulo: "Valor nuevo", clave: "valor_nuevo", ancho: 28 },
+    { titulo: "Detalle", clave: "detalle", ancho: 40, formato: detalleTexto },
+  ], filas);
+  return { buffer, nombre: "LOG BITACORA" };
+}
+
+async function listarLog(filtros = {}) {
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  const q = consultaLog(filtros, { count: "exact" });
   const desde = (pagina - 1) * LIMITE_LOG;
   const { data, count, error } = await q.order("creado_en", { ascending: false }).range(desde, desde + LIMITE_LOG - 1);
   if (error) falloBd(error);
@@ -616,6 +650,7 @@ module.exports = {
   listarAuditoria,
   leerAuditoria,
   listarLog,
+  exportarLog,
   registrarLog,
   guardarFila,
   subirFirma,

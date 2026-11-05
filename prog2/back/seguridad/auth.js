@@ -217,6 +217,21 @@ function responderError(res, error, mensaje) {
   res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
 }
 
+async function registrarCambioUsuario(actor, evento) {
+  try {
+    const { error } = await supabase.from("usuarios_log").insert({
+      actor: String(actor || ""),
+      objetivo: evento.objetivo,
+      accion: evento.accion,
+      rol_anterior: evento.rol_anterior ?? null,
+      rol_nuevo: evento.rol_nuevo ?? null,
+    });
+    if (error) console.error("No se pudo registrar el cambio de usuario:", error);
+  } catch (error) {
+    console.error("No se pudo registrar el cambio de usuario:", error);
+  }
+}
+
 async function protegerApi(req, res, next) {
   if (RUTAS_PUBLICAS.has(req.path)) {
     next();
@@ -301,6 +316,7 @@ function rutasAuth(app) {
       intentos.delete(llave);
       intentos.delete(llaveUsuario);
       await guardarUsuario(usuario, claveNueva);
+      await registrarCambioUsuario(usuario, { objetivo: usuario, accion: "cambiar_clave" });
       const actualizado = await buscarUsuario(usuario);
       ponerCookie(req, res, crearToken(actualizado), DURACION_MS);
       res.json({ ok: true, usuario });
@@ -344,6 +360,7 @@ module.exports = {
   buscarUsuario,
   hashClave,
   validarClaveNueva,
+  registrarCambioUsuario,
   errorHttp,
   falloBd,
   responderError,

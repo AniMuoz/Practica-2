@@ -1,5 +1,16 @@
 const { supabase } = require("../supabase/supabase");
-const { exigirAdmin, hashClave, validarClaveNueva, errorHttp, falloBd, responderError, cacheUsuarios } = require("../seguridad/auth");
+const { leerTodo, generarExcelLog } = require("../servicios/logsAuditoria");
+const { enviarPlanilla, nombreConFecha } = require("../utils/compartido");
+const {
+  exigirAdmin,
+  hashClave,
+  validarClaveNueva,
+  registrarCambioUsuario,
+  errorHttp,
+  falloBd,
+  responderError,
+  cacheUsuarios,
+} = require("../seguridad/auth");
 
 // Los contadores de intentos y la cache de usuarios viven en memoria: asumen una sola instancia del servidor.
 // Cada alta, cambio de rol o de clave debe llamar a cacheUsuarios.delete para que surta efecto al instante.
@@ -19,31 +30,42 @@ async function leerUsuario(nombre) {
 
 const LIMITE_LOG = 25;
 
-async function registrarCambio(actor, evento) {
-  try {
-    const { error } = await supabase.from("usuarios_log").insert({
-      actor: String(actor || ""),
-      objetivo: evento.objetivo,
-      accion: evento.accion,
-      rol_anterior: evento.rol_anterior ?? null,
-      rol_nuevo: evento.rol_nuevo ?? null,
-    });
-    if (error) console.error("No se pudo registrar el cambio de usuario:", error);
-  } catch (error) {
-    console.error("No se pudo registrar el cambio de usuario:", error);
-  }
-}
-
-async function listarCambios(filtros = {}) {
-  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+function consultaCambios(filtros, opciones) {
   let q = supabase
     .from("usuarios_log")
-    .select("id, creado_en, actor, objetivo, accion, rol_anterior, rol_nuevo", { count: "exact" });
+    .select("id, creado_en, actor, objetivo, accion, rol_anterior, rol_nuevo", opciones);
   if (filtros.actor) q = q.eq("actor", String(filtros.actor));
   if (filtros.objetivo) q = q.eq("objetivo", String(filtros.objetivo));
   if (filtros.accion) q = q.eq("accion", String(filtros.accion));
   if (filtros.desde && typeof q.gte === "function") q = q.gte("creado_en", `${filtros.desde}T00:00:00`);
   if (filtros.hasta && typeof q.lte === "function") q = q.lte("creado_en", `${filtros.hasta}T23:59:59.999`);
+  return q;
+}
+
+const ETIQUETAS_ACCION = {
+  crear_usuario: "Creó un usuario",
+  eliminar_usuario: "Eliminó un usuario",
+  cambiar_clave: "Cambió la contraseña",
+  cambiar_rol: "Cambió el rol",
+};
+
+// Excel con todos los cambios que cumplen los filtros (sin paginar).
+async function exportarCambios(filtros = {}) {
+  const filas = await leerTodo(() => consultaCambios(filtros).order("creado_en", { ascending: false }).order("id", { ascending: false }), falloBd);
+  const buffer = await generarExcelLog("Log de usuarios", [
+    { titulo: "Fecha y hora", clave: "creado_en", ancho: 22 },
+    { titulo: "Quién lo hizo", clave: "actor" },
+    { titulo: "Usuario afectado", clave: "objetivo" },
+    { titulo: "Acción", clave: "accion", ancho: 24, formato: (v) => ETIQUETAS_ACCION[v] || v },
+    { titulo: "Rol anterior", clave: "rol_anterior" },
+    { titulo: "Rol nuevo", clave: "rol_nuevo" },
+  ], filas);
+  return { buffer, nombre: "LOG USUARIOS" };
+}
+
+async function listarCambios(filtros = {}) {
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  const q = consultaCambios(filtros, { count: "exact" });
   const desde = (pagina - 1) * LIMITE_LOG;
   const { data, count, error } = await q.order("creado_en", { ascending: false }).range(desde, desde + LIMITE_LOG - 1);
   if (error) falloBd(error);
@@ -51,6 +73,16 @@ async function listarCambios(filtros = {}) {
 }
 
 module.exports = function rutasUsuarios(app) {
+  app.get("/api/usuarios/auditoria/descargar", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const { buffer, nombre } = await exportarCambios(req.query || {});
+      enviarPlanilla(res, buffer, nombreConFecha(nombre));
+    } catch (error) {
+      responderError(res, error, "No se pudo descargar el log de usuarios.");
+    }
+  });
+
   app.get("/api/usuarios/auditoria", async (req, res) => {
     try {
       await exigirAdmin(req);
@@ -87,7 +119,7 @@ module.exports = function rutasUsuarios(app) {
         falloBd(error);
       }
       cacheUsuarios.delete(usuario);
-      await registrarCambio(req.usuario, { objetivo: usuario, accion: "crear_usuario", rol_nuevo: rol });
+      await registrarCambioUsuario(req.usuario, { objetivo: usuario, accion: "crear_usuario", rol_nuevo: rol });
       res.status(201).json({ usuario, rol });
     } catch (error) {
       responderError(res, error, "No se pudo crear el usuario.");
@@ -107,7 +139,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").update({ rol }).eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
-      await registrarCambio(req.usuario, { objetivo: usuario, accion: "cambiar_rol", rol_anterior: objetivo.rol, rol_nuevo: rol });
+      await registrarCambioUsuario(req.usuario, { objetivo: usuario, accion: "cambiar_rol", rol_anterior: objetivo.rol, rol_nuevo: rol });
       res.json({ ok: true, usuario, rol });
     } catch (error) {
       responderError(res, error, "No se pudo cambiar el rol.");
@@ -125,7 +157,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").update({ clave_hash: await hashClave(req.body.clave) }).eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
-      await registrarCambio(req.usuario, { objetivo: usuario, accion: "cambiar_clave" });
+      await registrarCambioUsuario(req.usuario, { objetivo: usuario, accion: "cambiar_clave" });
       res.json({ ok: true, usuario });
     } catch (error) {
       responderError(res, error, "No se pudo cambiar la contraseña.");
@@ -148,7 +180,7 @@ module.exports = function rutasUsuarios(app) {
       const { error } = await supabase.from("usuarios").delete().eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);
-      await registrarCambio(req.usuario, { objetivo: usuario, accion: "eliminar_usuario", rol_anterior: objetivo.rol });
+      await registrarCambioUsuario(req.usuario, { objetivo: usuario, accion: "eliminar_usuario", rol_anterior: objetivo.rol });
       res.json({ ok: true, usuario });
     } catch (error) {
       responderError(res, error, "No se pudo eliminar el usuario.");

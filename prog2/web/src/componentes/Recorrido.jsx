@@ -229,6 +229,18 @@ const PASOS = {
   ],
   auditoria: [
     {
+      id: "auditoria-retencion",
+      titulo: "Limpieza automática de logs",
+      texto:
+        "Para cuidar el espacio de la base de datos, el sistema borra solo los registros viejos. Los logs de la planilla de ventas y de la actividad de bitácora se conservan 90 días; los cambios de usuarios y el historial de firmas se conservan 180 días. Si necesitas guardar un registro por más tiempo, descárgalo antes en Excel.",
+    },
+    {
+      id: "auditoria-descargar",
+      titulo: "Descargar el log en Excel",
+      texto:
+        "Cada log (usuarios, planilla de ventas y actividad de bitácora) tiene un botón «Descargar Excel». Baja todo el log que cumpla los filtros escritos arriba (usuario, acción, fechas), no solo la página que ves. Si no pones filtros, baja todo lo que haya guardado.",
+    },
+    {
       id: "auditoria-actividad",
       titulo: "Actividad",
       texto:
@@ -249,13 +261,13 @@ const PASOS = {
       id: "auditoria-firmas",
       titulo: "Historial de firmas",
       texto:
-        "Muestra las firmas que fueron quitadas, con la fecha en que se firmaron y se quitaron, el motivo y una huella de la firma.",
+        "Muestra las firmas que fueron quitadas, con la fecha en que se firmaron y se quitaron, el motivo y una huella de la firma. Estos registros se borran solos a los 180 días de haberse quitado la firma.",
     },
     {
       id: "auditoria-log",
       titulo: "Historial de cambios del folio",
       texto:
-        "Lista todo lo que se hizo en este folio, del más reciente al más antiguo, con el usuario que hizo cada cambio. Los cambios de un folio eliminado también se conservan.",
+        "Lista todo lo que se hizo en este folio, del más reciente al más antiguo, con el usuario que hizo cada cambio. Los cambios de un folio eliminado también se conservan, hasta que se cumplan los 90 días de limpieza automática.",
     },
     {
       id: "auditoria-ventas",
@@ -267,7 +279,7 @@ const PASOS = {
       id: "auditoria-usuarios",
       titulo: "Cambios de usuarios",
       texto:
-        "Muestra altas, bajas, cambios de contraseña y cambios de rol (de qué rol a cuál), con quién hizo el cambio y a qué usuario. Se puede filtrar por persona, usuario afectado, acción y fechas. La contraseña nueva no se guarda.",
+        "Muestra altas, bajas, cambios de contraseña y cambios de rol (de qué rol a cuál), con quién hizo el cambio y a qué usuario. Se puede filtrar por persona, usuario afectado, acción y fechas. La contraseña nueva no se guarda. Estos cambios se conservan 180 días.",
     },
   ],
 };

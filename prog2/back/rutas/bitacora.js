@@ -1,4 +1,4 @@
-const { uploadFirma, enviarPlanilla } = require("../utils/compartido");
+const { uploadFirma, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const bitacora = require("../servicios/bitacora");
 const { exigirAdmin } = require("../seguridad/auth");
 
@@ -14,6 +14,17 @@ module.exports = function rutasBitacora(app) {
     } catch (error) {
       console.error(error);
       responderBitacora(res, error, "No se pudo leer la auditoría.");
+    }
+  });
+
+  app.get("/api/bitacora/auditoria/log/descargar", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const { buffer, nombre } = await bitacora.exportarLog(req.query || {});
+      enviarPlanilla(res, buffer, nombreConFecha(nombre));
+    } catch (error) {
+      console.error(error);
+      responderBitacora(res, error, "No se pudo descargar el log.");
     }
   });
 

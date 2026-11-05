@@ -13,14 +13,44 @@ const { protegerApi, rutasAuth, guardarUsuario, contarUsuarios } = require("../s
 // Los rechazos esperados imprimen su traza con console.error; se silencian aquí.
 test.mock.method(console, "error", () => {});
 
-// Base de datos falsa: reemplaza supabase.from("usuarios") con un Map en memoria.
+// Base de datos falsa: reemplaza supabase.from("usuarios"|"usuarios_log") con Maps en memoria.
 const usuarios = new Map();
+const usuariosLog = [];
 let errorBd = null;
 
 const roles = new Map();
 
 supabase.from = (tabla) => {
-  assert.equal(tabla, "usuarios");
+  assert.ok(tabla === "usuarios" || tabla === "usuarios_log");
+  if (tabla === "usuarios_log") {
+    const e = { op: "select", filtros: {}, valores: null, desde: null, hasta: null, rango: null };
+    const b = {
+      select() { return b; },
+      insert(valores) { e.op = "insert"; e.valores = valores; return b; },
+      eq(campo, valor) { e.filtros[campo] = valor; return b; },
+      gte(campo, valor) { if (campo === "creado_en") e.desde = valor; return b; },
+      lte(campo, valor) { if (campo === "creado_en") e.hasta = valor; return b; },
+      order() { return b; },
+      range(a, z) { e.rango = [a, z]; return b; },
+      then(resolver, rechazar) {
+        return Promise.resolve((() => {
+          if (e.op === "insert") {
+            const fila = { id: usuariosLog.length + 1, creado_en: new Date().toISOString(), ...e.valores };
+            usuariosLog.push(fila);
+            return { error: null };
+          }
+          let filas = [...usuariosLog].reverse();
+          for (const [k, v] of Object.entries(e.filtros)) filas = filas.filter((f) => f[k] === v);
+          if (e.desde) filas = filas.filter((f) => f.creado_en >= e.desde);
+          if (e.hasta) filas = filas.filter((f) => f.creado_en <= e.hasta);
+          const total = filas.length;
+          if (e.rango) filas = filas.slice(e.rango[0], e.rango[1] + 1);
+          return { data: filas, count: total, error: null };
+        })()).then(resolver, rechazar);
+      },
+    };
+    return b;
+  }
   const e = { op: "select", filtros: [], valores: null, head: false, unico: false, orden: false };
   const fila = (nombre) => ({ usuario: nombre, clave_hash: usuarios.get(nombre), rol: roles.get(nombre) || "operador", creado_en: "2026-01-01T00:00:00Z" });
   const b = {
@@ -334,6 +364,7 @@ test("cambiar la clave invalida las sesiones antiguas y abre una nueva", async (
   });
   assert.equal(cambio.status, 200);
   assert.deepEqual(cambio.json, { ok: true, usuario: "rota" });
+  assert.ok(usuariosLog.some((e) => e.accion === "cambiar_clave" && e.actor === "rota" && e.objetivo === "rota"));
 
   assert.equal((await pedir("GET", "/api/privado", { cookie: antes.cookie })).status, 401);
   assert.equal((await pedir("GET", "/api/privado", { cookie: cambio.cookie })).status, 200);
@@ -450,6 +481,7 @@ test("el admin resetea la clave de otro y la cookie anterior queda inválida", a
   assert.equal((await pedir("POST", "/api/usuarios/jefe5/clave", { cookie, cuerpo: { clave: "clave-nueva-1" } })).status, 400);
   const r = await pedir("POST", "/api/usuarios/olvidadizo/clave", { cookie, cuerpo: { clave: "clave-nueva-1" } });
   assert.deepEqual(r.json, { ok: true, usuario: "olvidadizo" });
+  assert.ok(usuariosLog.some((e) => e.accion === "cambiar_clave" && e.actor === "jefe5" && e.objetivo === "olvidadizo"));
   assert.equal((await pedir("POST", "/api/login", { cuerpo: { usuario: "olvidadizo", clave: "clave-vieja-1" } })).status, 401);
   await entrar("olvidadizo", "clave-nueva-1");
   assert.equal((await pedir("GET", "/api/privado", { cookie: cookieVieja })).status, 401);

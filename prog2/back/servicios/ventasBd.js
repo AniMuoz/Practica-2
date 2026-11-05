@@ -1,5 +1,6 @@
 const ExcelJS = require("exceljs");
 const { supabase } = require("../supabase/supabase");
+const { leerTodo, generarExcelLog, detalleTexto } = require("./logsAuditoria");
 const { BODEGAS_EXPORT } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");
@@ -494,16 +495,47 @@ async function exportarAnual(valorAnio, usuario, colores = true, tipo = "complet
   return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescargaAnual(anio) };
 }
 
-async function listarLog(filtros = {}) {
-  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+function consultaLog(filtros, opciones) {
   let q = supabase
     .from("ventas_log")
-    .select("id, creado_en, usuario, accion, planilla_id, fila_id, campo, valor_anterior, valor_nuevo, detalle", { count: "exact" });
+    .select("id, creado_en, usuario, accion, planilla_id, fila_id, campo, valor_anterior, valor_nuevo, detalle", opciones);
   if (filtros.planilla) q = q.eq("planilla_id", enteroId(filtros.planilla, "Planilla"));
   if (filtros.usuario) q = q.eq("usuario", String(filtros.usuario));
   if (filtros.accion) q = q.eq("accion", String(filtros.accion));
   if (filtros.desde && typeof q.gte === "function") q = q.gte("creado_en", `${filtros.desde}T00:00:00`);
   if (filtros.hasta && typeof q.lte === "function") q = q.lte("creado_en", `${filtros.hasta}T23:59:59.999`);
+  return q;
+}
+
+const ETIQUETAS_LOG = {
+  crear_planilla: "Abrió la planilla del mes",
+  anadir_venta: "Añadió productos",
+  editar_celda: "Editó una celda",
+  quitar_fila: "Quitó una fila",
+  quitar_orden: "Quitó una orden completa",
+  descargar_excel: "Descargó la planilla",
+};
+
+// Excel con todo el log que cumple los filtros (sin paginar).
+async function exportarLog(filtros = {}) {
+  const filas = await leerTodo(() => consultaLog(filtros).order("creado_en", { ascending: false }).order("id", { ascending: false }), falloBd);
+  const buffer = await generarExcelLog("Log de ventas", [
+    { titulo: "Fecha y hora", clave: "creado_en", ancho: 22 },
+    { titulo: "Usuario", clave: "usuario" },
+    { titulo: "Acción", clave: "accion", ancho: 24, formato: (v) => ETIQUETAS_LOG[v] || v },
+    { titulo: "Planilla", clave: "planilla_id", ancho: 10 },
+    { titulo: "Fila", clave: "fila_id", ancho: 10 },
+    { titulo: "Campo", clave: "campo" },
+    { titulo: "Valor anterior", clave: "valor_anterior", ancho: 28 },
+    { titulo: "Valor nuevo", clave: "valor_nuevo", ancho: 28 },
+    { titulo: "Detalle", clave: "detalle", ancho: 40, formato: detalleTexto },
+  ], filas);
+  return { buffer, nombre: "LOG VENTAS" };
+}
+
+async function listarLog(filtros = {}) {
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  const q = consultaLog(filtros, { count: "exact" });
   const desde = (pagina - 1) * LIMITE_LOG;
   const { data, count, error } = await q.order("creado_en", { ascending: false }).range(desde, desde + LIMITE_LOG - 1);
   if (error) falloBd(error);
@@ -536,6 +568,7 @@ module.exports = {
   nombreDescargaAnual,
   registrarLog,
   listarLog,
+  exportarLog,
   listarPlanillasAuditoria: listarMeses,
   leerAuditoria,
 };

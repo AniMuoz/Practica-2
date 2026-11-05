@@ -9,6 +9,45 @@ async function leer(url) {
   return data;
 }
 
+// Descarga el log (con los filtros escritos) como Excel.
+function BotonDescargar({ url, filtros, marca }) {
+  const [estado, setEstado] = useState({ ocupado: false, error: "" });
+
+  async function descargar() {
+    setEstado({ ocupado: true, error: "" });
+    try {
+      const q = new URLSearchParams();
+      Object.entries(filtros).forEach(([k, v]) => v.trim() && q.set(k, v.trim()));
+      const res = await fetch(`${url}?${q}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo descargar el log.");
+      }
+      const disposicion = res.headers.get("Content-Disposition") || "";
+      const coincidencia = /filename=([^;]+)/i.exec(disposicion);
+      const nombre = coincidencia ? decodeURIComponent(coincidencia[1].replace(/"/g, "")) : "log.xlsx";
+      const enlace = document.createElement("a");
+      const direccion = URL.createObjectURL(await res.blob());
+      enlace.href = direccion;
+      enlace.download = nombre;
+      enlace.click();
+      URL.revokeObjectURL(direccion);
+      setEstado({ ocupado: false, error: "" });
+    } catch (e) {
+      setEstado({ ocupado: false, error: e.message });
+    }
+  }
+
+  return (
+    <>
+      <button type="button" data-tour={marca ? "auditoria-descargar" : undefined} style={BOTON} disabled={estado.ocupado} onClick={descargar}>
+        {estado.ocupado ? "Descargando…" : "Descargar Excel"}
+      </button>
+      {estado.error && <span style={{ color: "var(--peligro)", fontSize: 13 }}>{estado.error}</span>}
+    </>
+  );
+}
+
 const fecha = (valor) => (valor ? new Date(valor).toLocaleString("es-CL") : "");
 
 const ACCIONES = {
@@ -116,6 +155,7 @@ function Actividad({ alListo }) {
         <label style={{ fontSize: 13 }}>Desde <input type="date" value={filtros.desde} onChange={cambiar("desde")} style={CAMPO} /></label>
         <label style={{ fontSize: 13 }}>Hasta <input type="date" value={filtros.hasta} onChange={cambiar("hasta")} style={CAMPO} /></label>
         <button type="submit" style={{ ...BOTON, background: "var(--boton)", color: "var(--sobre)", border: 0 }}>Filtrar</button>
+        <BotonDescargar url="/api/bitacora/auditoria/log/descargar" filtros={filtros} />
       </form>
       {error ? <p style={{ color: "var(--peligro)" }}>{error}</p> : <TablaLog eventos={datos.eventos} />}
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, fontSize: 14 }}>
@@ -353,6 +393,7 @@ function Ventas() {
         <label style={{ fontSize: 13 }}>Desde <input type="date" value={filtros.desde} onChange={cambiar("desde")} style={CAMPO} /></label>
         <label style={{ fontSize: 13 }}>Hasta <input type="date" value={filtros.hasta} onChange={cambiar("hasta")} style={CAMPO} /></label>
         <button type="submit" style={{ ...BOTON, background: "var(--boton)", color: "var(--sobre)", border: 0 }}>Filtrar</button>
+        <BotonDescargar url="/api/ventas/auditoria/log/descargar" filtros={filtros} />
       </form>
       {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
       <TablaLogVentas eventos={datos.eventos} />
@@ -430,6 +471,7 @@ function descripcionUsuario(e) {
   if (e.accion === "cambiar_rol") return `${base} de ${e.objetivo}: ${rolLegible(e.rol_anterior)} → ${rolLegible(e.rol_nuevo)}`;
   if (e.accion === "crear_usuario") return `${base}: ${e.objetivo} (${rolLegible(e.rol_nuevo)})`;
   if (e.accion === "eliminar_usuario") return `${base}: ${e.objetivo} (era ${rolLegible(e.rol_anterior)})`;
+  if (e.accion === "cambiar_clave" && e.actor && e.actor === e.objetivo) return "Cambió su propia contraseña";
   return `${base} de ${e.objetivo}`;
 }
 
@@ -478,6 +520,7 @@ function Usuarios() {
         <label style={{ fontSize: 13 }}>Desde <input type="date" value={filtros.desde} onChange={cambiar("desde")} style={CAMPO} /></label>
         <label style={{ fontSize: 13 }}>Hasta <input type="date" value={filtros.hasta} onChange={cambiar("hasta")} style={CAMPO} /></label>
         <button type="submit" style={{ ...BOTON, background: "var(--boton)", color: "var(--sobre)", border: 0 }}>Filtrar</button>
+        <BotonDescargar url="/api/usuarios/auditoria/descargar" filtros={filtros} marca />
       </form>
       {error ? <p style={{ color: "var(--peligro)" }}>{error}</p> : null}
       {datos.eventos.length === 0 && !error ? <p>Sin cambios de usuarios registrados.</p> : null}
@@ -548,6 +591,9 @@ export default function Auditoria() {
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
       <Navbar />
       <h1 style={{ margin: "0 0 16px", fontSize: 22 }}>Auditoría de usuarios, ventas y bitácoras</h1>
+      <p data-tour="auditoria-retencion" style={{ margin: "0 0 16px", fontSize: 14 }}>
+        Los logs se borran solos: ventas y bitácora a los 90 días; usuarios y firmas a los 180 días. Descárgalos en Excel si necesitas conservarlos.
+      </p>
       <Seccion titulo="Usuarios" abiertaInicial>
         <Usuarios />
       </Seccion>

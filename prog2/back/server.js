@@ -9,6 +9,7 @@ const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./su
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
 const { comprobarBase } = require("./utils/salud");
+const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
 
 const app = express();
@@ -161,6 +162,8 @@ if (require.main === module) {
         console.log(`API en http://localhost:${PORT}`);
         // Se hace en segundo plano y solo con lo que aun no esta en Supabase: no retrasa el arranque.
         subirImagenesLocales().catch((error) => console.error(error.message));
+        // Borra los logs de auditoria vencidos: 90 dias (ventas, bitacora) y 180 (usuarios, firmas).
+        programarLimpieza();
       });
       // Render envia SIGTERM al redesplegar: se cierran las conexiones SSE y se termina limpio.
       let cerrando = false;

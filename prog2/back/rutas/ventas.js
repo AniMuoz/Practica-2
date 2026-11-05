@@ -1,5 +1,5 @@
 const { leerContratistas, guardarContratistas } = require("../servicios/fuenteDatos");
-const { uploadXlsx, conColores, enviarPlanilla } = require("../utils/compartido");
+const { uploadXlsx, conColores, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const ventasBd = require("../servicios/ventasBd");
 const { hojasDeLibro } = require("../servicios/ventas");
 const { exigirAdmin } = require("../seguridad/auth");
@@ -105,6 +105,16 @@ module.exports = function rutasVentas(app) {
       res.json({ planillas: await ventasBd.listarPlanillasAuditoria() });
     } catch (error) {
       responder(res, error, "No se pudo leer la auditoría de ventas.");
+    }
+  });
+
+  app.get("/api/ventas/auditoria/log/descargar", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const { buffer, nombre } = await ventasBd.exportarLog(req.query || {});
+      enviarPlanilla(res, buffer, nombreConFecha(nombre));
+    } catch (error) {
+      responder(res, error, "No se pudo descargar el log de ventas.");
     }
   });
 
