@@ -38,6 +38,7 @@ function montar() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   window.confirm = vi.fn(() => true);
   window.fetch = vi.fn(async () => json({ ok: true }));
 });

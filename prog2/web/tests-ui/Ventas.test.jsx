@@ -95,12 +95,15 @@ describe("Ventas", () => {
     await waitFor(() => expect(llamadas.some((l) => l.metodo === "DELETE" && l.url === "/api/ventas/ordenes/1/111")).toBe(true));
   });
 
-  it("avisa de cambios sin guardar en el formulario", async () => {
-    const aviso = vi.fn();
-    render(<Ventas listaContratistas={[]} onSinGuardar={aviso} />);
+  it("conserva el codigo de venta escrito al volver a montar", async () => {
+    sessionStorage.clear();
+    const primero = render(<Ventas listaContratistas={[]} />);
     await screen.findByText("Perno");
     fireEvent.change(screen.getByPlaceholderText("Ej: 12345"), { target: { value: "99" } });
-    await waitFor(() => expect(aviso).toHaveBeenLastCalledWith(true));
+    primero.unmount();
+    render(<Ventas listaContratistas={[]} />);
+    expect((await screen.findByPlaceholderText("Ej: 12345")).value).toBe("99");
+    sessionStorage.clear();
   });
 
   it("copia solo el rango de celdas seleccionado, sin la columna Quitar ni la cabecera de orden", async () => {

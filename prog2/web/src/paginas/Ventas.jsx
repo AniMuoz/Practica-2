@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
+import { useEstadoPersistente } from "../lib/persistencia.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
@@ -426,14 +427,15 @@ function Preview({ colores, recarga }) {
   );
 }
 
-export default function Ventas({ colores = true, listaContratistas = [], onSinGuardar }) {
+export default function Ventas({ colores = true, listaContratistas = [] }) {
   const [orden, setOrden] = useState(null);
-  const [contratista, setContratista] = useState("1");
-  const [movimiento, setMovimiento] = useState("1");
-  const [modo, setModo] = useState("orden");
-  const [productos, setProductos] = useState([{ codigo: "", cantidad: "" }]);
-  const [codVenta, setCodVenta] = useState("");
-  const [almacen, setAlmacen] = useState("M501");
+  // El borrador (menos el archivo de orden) se conserva en sessionStorage.
+  const [contratista, setContratista] = useEstadoPersistente("admin:ventas:contratista", "1");
+  const [movimiento, setMovimiento] = useEstadoPersistente("admin:ventas:movimiento", "1");
+  const [modo, setModo] = useEstadoPersistente("admin:ventas:modo", "orden");
+  const [productos, setProductos] = useEstadoPersistente("admin:ventas:productos", [{ codigo: "", cantidad: "" }]);
+  const [codVenta, setCodVenta] = useEstadoPersistente("admin:ventas:codVenta", "");
+  const [almacen, setAlmacen] = useEstadoPersistente("admin:ventas:almacen", "M501");
   const [procesando, setProcesando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
@@ -487,19 +489,6 @@ export default function Ventas({ colores = true, listaContratistas = [], onSinGu
     const indice = Number(contratista);
     if (listaContratistas.length && !(indice >= 1 && indice <= listaContratistas.length + 1)) setContratista("1");
   }, [listaContratistas]);
-
-  const sinGuardar = Boolean(
-    orden ||
-      modo !== "orden" ||
-      productos.some((f) => String(f.codigo).trim() || String(f.cantidad).trim()) ||
-      movimiento !== "1" ||
-      contratista !== "1" ||
-      (movimiento === "2" && almacen !== "M501") ||
-      String(codVenta).trim() !== ""
-  );
-  useEffect(() => {
-    onSinGuardar?.(sinGuardar);
-  }, [sinGuardar]);
 
   function reiniciar() {
     setOrden(null);

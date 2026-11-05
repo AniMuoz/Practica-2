@@ -54,10 +54,14 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
   }
 
   // Al volver a la pagina, repite la ultima busqueda para recuperar los resultados.
+  // Solo cuando el panel se muestra, para no consultar al servidor con el panel cerrado.
+  const restaurada = useRef(false);
   useEffect(() => {
+    if (!visible || restaurada.current) return;
+    restaurada.current = true;
     if (consultaGuardada?.numero) buscar(consultaGuardada.numero, consultaGuardada.por);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -136,11 +140,12 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
             type="button"
             disabled={busquedaReserva.filas.length === 0}
             onClick={() => {
-              const numero = ordenReserva.trim();
+              // Se descarga lo que se esta viendo, no lo que se escribio despues sin buscar.
+              const numero = busquedaReserva.consulta;
               if (!numero) return;
               const params = new URLSearchParams({
                 reserva: numero,
-                por: buscarPorReserva,
+                por: busquedaReserva.por || "reserva",
                 colores: colores ? "1" : "0",
               });
               descargarBlob(`/api/reservas/excel?${params.toString()}`)

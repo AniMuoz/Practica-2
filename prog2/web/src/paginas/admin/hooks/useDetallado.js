@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useEstadoPersistente } from "../../../lib/persistencia.js";
 import { enviarJson } from "../../../lib/api.js";
 
 function clavePendiente(codigo, indiceColumna) {
@@ -33,8 +34,66 @@ function agruparPorCodigo(items) {
 // funciones de useRefrescoSse para que el SSE no recargue mientras hay ediciones sin guardar.
 export function useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco }) {
   const [errorDetallado, setErrorDetallado] = useState("");
-  const [pendientes, setPendientes] = useState(() => new Map());
+  // Los cambios pendientes se guardan en sessionStorage (como lista) para sobrevivir a cambiar de pagina.
+  const [listaPendientes, setListaPendientes] = useEstadoPersistente("admin:detallado:pendientes", []);
+  const pendientes = useMemo(
+    () => new Map(listaPendientes.map((item) => [clavePendiente(item.codigo, item.indiceColumna), item])),
+    [listaPendientes]
+  );
+  function setPendientes(valor) {
+    setListaPendientes((prev) => {
+      const actual = new Map(prev.map((item) => [clavePendiente(item.codigo, item.indiceColumna), item]));
+      const siguiente = typeof valor === "function" ? valor(actual) : valor;
+      return [...siguiente.values()];
+    });
+  }
   const [guardandoDetallado, setGuardandoDetallado] = useState(false);
+
+  // Cada vez que la tabla se recarga del servidor, reaplica los cambios pendientes sobre ella.
+  // Si el valor del servidor ya no es el original del pendiente (alguien lo cambio), se descarta.
+  useEffect(() => {
+    const filas = detallado.filas || [];
+    if (!filas.length || pendientes.size === 0 || guardandoRef.current) return;
+    const aplicar = new Map();
+    const descartar = [];
+    for (const [key, item] of pendientes) {
+      const indice = filas.findIndex((fila) => String(fila[1]) === String(item.codigo));
+      if (indice < 0) {
+        descartar.push(key);
+        continue;
+      }
+      const actual = filas[indice][item.indiceColumna] == null ? "" : String(filas[indice][item.indiceColumna]);
+      if (actual === String(item.valor ?? "")) continue;
+      if (actual === item.original) aplicar.set(`${indice}\t${item.indiceColumna}`, item.valor);
+      else descartar.push(key);
+    }
+    if (aplicar.size) {
+      setDetallado((prev) => ({
+        ...prev,
+        filas: prev.filas.map((fila, indice) => {
+          let copia = null;
+          for (const [clave, valor] of aplicar) {
+            const [i, col] = clave.split("\t");
+            if (Number(i) !== indice) continue;
+            copia = copia || fila.slice();
+            copia[Number(col)] = valor;
+          }
+          return copia || fila;
+        }),
+      }));
+    }
+    if (descartar.length) {
+      setErrorDetallado(
+        `Se descartaron ${descartar.length} cambio(s) sin guardar porque esos datos cambiaron en el servidor.`
+      );
+      setPendientes((prev) => {
+        const next = new Map(prev);
+        descartar.forEach((key) => next.delete(key));
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detallado.filas]);
   const guardandoRef = useRef(false);
   const suspendidoPorEdicion = useRef(false);
 

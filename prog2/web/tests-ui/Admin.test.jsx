@@ -127,25 +127,22 @@ describe("Admin", () => {
       fireEvent.change(await screen.findByLabelText("Descripcion"), { target: { value: "Perno" } });
     }
 
-    it("avisa al cambiar de panel y permite seguir en la pagina", async () => {
+    it("cambia de panel sin preguntar y conserva el formulario al volver a abrirlo", async () => {
       montar();
       await escribirEnFormulario();
       fireEvent.click(screen.getByText("Stock en bodega"));
-      expect(await screen.findByText("Hay cambios sin guardar")).toBeTruthy();
-      fireEvent.click(screen.getByText("Seguir en esta página"));
+      await waitFor(() => expect(cuantas("/api/bodega")).toBe(1));
       expect(screen.queryByText("Hay cambios sin guardar")).toBeNull();
-      expect(screen.getByLabelText("Descripcion").value).toBe("Perno");
-      expect(cuantas("/api/bodega")).toBe(0);
+      fireEvent.click(screen.getByText("Añadir/cargar datos"));
+      expect((await screen.findByLabelText("Descripcion")).value).toBe("Perno");
     });
 
-    it("al salir sin guardar descarta el formulario y abre el otro panel", async () => {
-      montar();
+    it("restaura el formulario al volver a montar la pagina", async () => {
+      const primero = montar();
       await escribirEnFormulario();
-      fireEvent.click(screen.getByText("Stock en bodega"));
-      fireEvent.click(await screen.findByText("Salir sin guardar"));
-      await waitFor(() => expect(cuantas("/api/bodega")).toBe(1));
-      expect(screen.queryByLabelText("Descripcion")).toBeNull();
-      expect(screen.queryByText("Hay cambios sin guardar")).toBeNull();
+      primero.unmount();
+      montar();
+      expect((await screen.findByLabelText("Descripcion")).value).toBe("Perno");
     });
 
     it("sin cambios cambia de panel sin preguntar", async () => {
@@ -157,27 +154,22 @@ describe("Admin", () => {
       expect(screen.queryByText("Hay cambios sin guardar")).toBeNull();
     });
 
-    it("registra el aviso al cerrar la pestana solo si hay cambios", async () => {
+    it("no avisa al cerrar la pestana por el formulario", async () => {
       montar();
-      fireEvent.click(await screen.findByText("Añadir/cargar datos"));
-      await screen.findByLabelText("Descripcion");
-      const limpio = new Event("beforeunload", { cancelable: true });
-      window.dispatchEvent(limpio);
-      expect(limpio.defaultPrevented).toBe(false);
-      fireEvent.change(screen.getByLabelText("Descripcion"), { target: { value: "x" } });
-      const sucio = new Event("beforeunload", { cancelable: true });
-      window.dispatchEvent(sucio);
-      expect(sucio.defaultPrevented).toBe(true);
+      await escribirEnFormulario();
+      const evento = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(evento);
+      expect(evento.defaultPrevented).toBe(false);
     });
 
-    it("tambien avisa si hay contratistas editados sin guardar", async () => {
+    it("conserva los contratistas editados al cambiar de panel y volver", async () => {
       montar();
       fireEvent.click(await screen.findByText("Editar contratistas"));
       fireEvent.change(await screen.findByDisplayValue("Ana"), { target: { value: "Bea" } });
       fireEvent.click(screen.getByText("Stock en bodega"));
-      expect(await screen.findByText("Hay cambios sin guardar")).toBeTruthy();
-      fireEvent.click(screen.getByText("Salir sin guardar"));
       await waitFor(() => expect(cuantas("/api/bodega")).toBe(1));
+      fireEvent.click(screen.getByText("Editar contratistas"));
+      expect(await screen.findByDisplayValue("Bea")).toBeTruthy();
     });
   });
 

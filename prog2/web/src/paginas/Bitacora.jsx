@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useEstadoPersistente } from "../lib/persistencia.js";
 
 const COLUMNAS = [
   { campo: "fecha", titulo: "FECHA", ancho: 140 },
@@ -74,9 +75,9 @@ function imagenDeFirma(valor) {
 
 const BOTON = { padding: "8px 14px", border: 0, borderRadius: 6, color: "var(--sobre)", fontSize: 14, cursor: "pointer" };
 
-export default function Bitacora({ clave, colores, alPendiente }) {
-  const [consulta, setConsulta] = useState("");
-  const [folio, setFolio] = useState(null);
+export default function Bitacora({ clave, colores }) {
+  const [consulta, setConsulta] = useEstadoPersistente("admin:bitacora:consulta", "");
+  const [folio, setFolio] = useEstadoPersistente("admin:bitacora:folio", null);
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [estado, setEstado] = useState("");
@@ -87,7 +88,17 @@ export default function Bitacora({ clave, colores, alPendiente }) {
   const [quitarPendiente, setQuitarPendiente] = useState(null);
   const filasRef = useRef([]);
   const folioRef = useRef(null);
-  const guardadas = useRef(new Map());
+  // Lo ultimo confirmado por el servidor por fila; se conserva junto al folio para detectar ediciones sin guardar.
+  const guardadas = useRef(null);
+  if (guardadas.current === null) {
+    let previo = null;
+    try {
+      previo = JSON.parse(sessionStorage.getItem("admin:bitacora:guardadas") || "null");
+    } catch {
+      previo = null;
+    }
+    guardadas.current = new Map(Array.isArray(previo) ? previo : []);
+  }
   const cola = useRef(Promise.resolve());
   const pendientes = useRef(0);
 
@@ -106,7 +117,6 @@ export default function Bitacora({ clave, colores, alPendiente }) {
   function encolar(tarea) {
     pendientes.current += 1;
     setEstado("guardando");
-    alPendiente?.(true);
     cola.current = cola.current
       .then(tarea)
       .catch((err) => setAviso(err.message))
@@ -115,11 +125,25 @@ export default function Bitacora({ clave, colores, alPendiente }) {
         if (pendientes.current > 0) return;
         const sinGuardar = hayPendiente();
         setEstado(sinGuardar ? "error" : "guardado");
-        alPendiente?.(sinGuardar);
       });
   }
 
-  useEffect(() => () => alPendiente?.(false), []);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("admin:bitacora:guardadas", JSON.stringify([...guardadas.current]));
+    } catch {
+      // ignorar
+    }
+  }, [folio]);
+
+  // Al volver con un folio restaurado, reenvia las filas que quedaron sin guardar.
+  useEffect(() => {
+    if (!folio) return;
+    filasRef.current.forEach((fila) => {
+      if (!guardadas.current.has(fila.n_fila)) guardadas.current.set(fila.n_fila, JSON.stringify(datosDe(fila)));
+      else guardarFila(fila.n_fila);
+    });
+  }, []);
 
   function cargarResumen() {
     return fetch("/api/bitacora/folios/ultimo", { cache: "no-store" })

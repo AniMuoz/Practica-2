@@ -34,6 +34,7 @@ import { useFiltrosStock } from "./admin/hooks/useFiltrosStock.jsx";
 import { useCopiaExistencia } from "./admin/hooks/useCopiaExistencia.js";
 import { textoUltimaCarga } from "./admin/utilidades.js";
 import { obtenerJson, enviarJson } from "../lib/api.js";
+import { useEstadoPersistente } from "../lib/persistencia.js";
 import FiltrosTabla, { FILTROS_INICIALES } from "../componentes/FiltrosTabla.jsx";
 import {
   claveUltimaCarga,
@@ -74,7 +75,7 @@ export default function Admin() {
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
-  const [datos, setDatos] = useState({});
+  const [datos, setDatos] = useEstadoPersistente("admin:formulario", {});
   const [aviso, setAviso] = useState("");
   const [guardando, setGuardando] = useState(false);
   const { ultimasCargas, cargarUltimasCargas } = useUltimasCargas();
@@ -153,12 +154,7 @@ export default function Admin() {
     abrir: abrirContratistas,
     guardarConfirmado: guardarContratistasHook,
     refrescar: refrescarContratistas,
-    hayCambios: contratistasCambiaron,
-    descartar: descartarContratistas,
   } = useContratistas();
-  const [bitacoraSinGuardar, setBitacoraSinGuardar] = useState(false);
-  const [ventaPendiente, setVentaPendiente] = useState(false);
-  const [ventaKey, setVentaKey] = useState(0);
 
   function aplicarColumnas(data) {
     const lista = (data.columnas || []).filter((columna) => !IMAGENES.has(columna));
@@ -200,38 +196,15 @@ export default function Admin() {
     actualizarCeldaDetallado,
     pegarColumnaDetallado,
     guardarCambiosDetallado,
-    descartarCambiosDetallado,
     limpiarColumnaDetallado,
   } = useDetallado({ clave, detallado, setDetallado, codigosFiltrados, ordenCodigos, suspenderRefresco, reanudarRefresco });
 
-  const formularioSinGuardar =
-    mostrarFormulario && columnas.some((columna) => String(datos[columna] ?? "").trim() !== "");
-  const contratistasSinGuardar =
-    mostrarContratistas && contratistasCambiaron();
-  const ventaSinGuardar = mostrarVentas && ventaPendiente;
+  // Formulario, contratistas, ventas, bitacora y detallado conservan su borrador en sessionStorage,
+  // asi que solo la carga de un archivo (que no se puede persistir) avisa al salir.
   const cargaSinGuardar = mostrarCarga && Boolean(archivo);
-  const detalladoSinGuardar = mostrarDetallado && pendientesDetallado > 0;
-  const hayCambiosSinGuardar =
-    formularioSinGuardar || contratistasSinGuardar || ventaSinGuardar || cargaSinGuardar || detalladoSinGuardar || (mostrarBitacora && bitacoraSinGuardar);
+  const hayCambiosSinGuardar = cargaSinGuardar;
   function descartarCambios() {
-    if (formularioSinGuardar) {
-      setDatos((actual) => {
-        const siguientes = {};
-        Object.keys(actual).forEach((columna) => {
-          siguientes[columna] = "";
-        });
-        return siguientes;
-      });
-    }
-    if (contratistasSinGuardar) descartarContratistas();
-    if (cargaSinGuardar) {
-      descartarCarga();
-    }
-    if (ventaSinGuardar) {
-      setVentaPendiente(false);
-      setVentaKey((actual) => actual + 1);
-    }
-    if (detalladoSinGuardar) descartarCambiosDetallado();
+    if (cargaSinGuardar) descartarCarga();
   }
 
   const { mostrarAviso, permitirSalida, intentarSalir, seguirAqui, salirSinGuardar } = useSalidaSegura({
@@ -266,6 +239,7 @@ export default function Admin() {
     enviarJson("/api/material", { clave, datos }, "No se pudo agregar.")
       .then((data) => {
         permitirSalida.current = true;
+        setDatos({});
         navigate(`/${encodeURIComponent(data.fila.Codigo)}`);
       })
       .catch((err) => setAviso(err.message))
@@ -287,7 +261,7 @@ export default function Admin() {
   function alternarBoton(nombre) {
     switch (nombre) {
       case "Bitacora camion":
-        return alternarPanel("bitacora", null, () => setBitacoraSinGuardar(false));
+        return alternarPanel("bitacora");
       case "Añadir/cargar datos": {
         const abrir = !(mostrarCarga && mostrarFormulario);
         if (abrir) cerrarPaneles(["carga", "formulario"]);
@@ -484,7 +458,7 @@ export default function Admin() {
         />
       )}
       {autorizado && mostrarBitacora && (
-        <Bitacora clave={clave} colores={colores} alPendiente={setBitacoraSinGuardar} />
+        <Bitacora clave={clave} colores={colores} />
       )}
       {autorizado && mostrarBodega && (
         <PanelBodega
@@ -561,7 +535,7 @@ export default function Admin() {
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
       {autorizado && mostrarVentas && (
-        <Ventas key={ventaKey} colores={colores} listaContratistas={listaContratistas} onSinGuardar={setVentaPendiente} />
+        <Ventas colores={colores} listaContratistas={listaContratistas} />
       )}
       {autorizado && mostrarContratistas && (
         <PanelContratistas

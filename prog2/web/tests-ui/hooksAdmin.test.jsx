@@ -9,6 +9,7 @@ function json(datos, status = 200) {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   window.fetch = vi.fn();
 });
 

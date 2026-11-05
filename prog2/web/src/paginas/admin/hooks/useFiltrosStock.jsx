@@ -9,6 +9,7 @@ import {
   POSICIONES_MOVIMIENTOS,
 } from "../../../lib/reglasPlanilla.js";
 import { filtrarYOrdenarPorCodigo } from "../utilidades.js";
+import { useEstadoPersistente } from "../../../lib/persistencia.js";
 
 // Campos del stock detallado que también usan los filtros del maestro.
 const CAMPOS_FILTRO_DESDE_DETALLADO = ["Caracteristica", "Stock critico"];
@@ -53,7 +54,7 @@ export function maestroConDetallado(filasMaestro, detallado) {
 // Filtros comunes de los paneles de stock y las filas ya filtradas y ordenadas de cada uno.
 // `activo` indica si hay que leer el maestro de materiales (autorizado y con algun panel de stock abierto).
 export function useFiltrosStock({ activo, detallado, inventario, movimientos, copiarInventario, copiarExistencia }) {
-  const [filtrosStock, setFiltrosStock] = useState(FILTROS_INICIALES);
+  const [filtrosStock, setFiltrosStock] = useEstadoPersistente("admin:filtros", FILTROS_INICIALES);
   const [filasMaestro, setFilasMaestro] = useState([]);
   useEffect(() => {
     if (!activo) return;
@@ -73,7 +74,7 @@ export function useFiltrosStock({ activo, detallado, inventario, movimientos, co
   const aplicarFiltrosStock = (filas, indiceCodigo, marcados) =>
     filtrarYOrdenarPorCodigo(filas, indiceCodigo, marcados, codigosFiltrados, ordenCodigos);
   const detalladoFiltrado = aplicarFiltrosStock(detallado.filas, 1, detallado.marcados);
-  const [verFiltrosStock, setVerFiltrosStock] = useState(true);
+  const [verFiltrosStock, setVerFiltrosStock] = useEstadoPersistente("admin:filtros:ver", true);
   const estiloBotonFiltro = {
     padding: "8px 14px",
     border: 0,

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { limpiarBorradores } from "../lib/persistencia.js";
 import logo from "../../logo/logoberfre.png";
 import { useColoresPlanilla } from "./ColoresPlanilla.jsx";
 import { useSesion } from "./Acceso.jsx";
@@ -178,6 +179,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
   useSondeo(() => leerNovedades.current(), 45000, rol !== "admin" && pathname !== "/buzon");
 
   function cerrarSesion() {
+    limpiarBorradores();
     fetch("/api/logout", { method: "POST" })
       .catch(() => {})
       .finally(() => window.dispatchEvent(new Event("sesion-vencida")));
