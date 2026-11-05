@@ -230,6 +230,13 @@ export default function Admin() {
       .catch(() => setAviso("No se pudo cargar la tabla."));
     cargarUltimasCargas();
     if (recorridoPendiente("admin")) iniciarRecorrido("admin");
+    // Los paneles abiertos se restauran desde sessionStorage: hay que cargar sus datos como al abrirlos a mano.
+    if (mostrarBodega) recargarBodega();
+    if (mostrarInventario) recargarInventario();
+    if (mostrarMovimientos) recargarMovimientos();
+    if (mostrarDetallado) recargarDetallado();
+    if (mostrarContratistas) abrirContratistas();
+    else if (mostrarVentas) cargarNombresContratistas().catch(() => {});
   }, [autorizado]);
 
   function enviarAlta(event) {
