@@ -13,7 +13,7 @@ const TD = { padding: "4px 8px", borderBottom: "1px solid var(--borde-suave)", w
 const COLUMNAS = [
   ["pos", "Pos"], ["codigo", "Código"], ["descripcion", "Descripción"], ["ubicacion", "Ubicación"],
   ["m501", "M501"], ["m502", "M502"], ["m503", "M503"], ["m504", "M504"], ["m505", "M505"],
-  ["solicitado", "Solicitado"], ["entregar", "Entregar", true], ["med", "Med"], ["tiras", "Tiras"], ["dif", "Dif"], ["comp", "Comp"],
+  ["solicitado", "Solicitado"], ["entregar", "Entregar", true], ["med", "Med", true], ["tiras", "Tiras"], ["dif", "Dif"], ["comp", "Comp"],
   ["kg_u", "kg x U"], ["kg_total", "Kg Total GD"], ["precio_u", "$ x U"], ["precio_total", "$ Total GD"],
   ["contratista", "Contratistas"], ["movimiento", "Movimiento"], ["almacen", "Almacén"], ["n_venta", "N°Venta", true],
   ["cant_gd", "Cant:GD", true], ["gd_esval", "GD Esval", true], ["estado", "Estado", true], ["fecha", "Fecha"],
@@ -47,7 +47,7 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
       <input
         aria-label={`editar ${campo} fila ${fila.pos}`}
         value={valor}
-        onChange={(e) => onCambio(fila, campo, e.target.value)}
+        onChange={(e) => onCambio(fila, campo, campo === "med" ? ({ u: "UN", k: "KG" })[e.target.value.toLowerCase()] ?? e.target.value : e.target.value)}
         onPaste={(e) => {
           // Varias filas de una columna (copiadas de Excel) se reparten hacia abajo.
           if (onPegar(fila, campo, e.clipboardData.getData("text"))) e.preventDefault();
@@ -599,7 +599,7 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
                     value={fila.med ?? ""}
                     placeholder="Med"
                     aria-label={`Med producto ${indice + 1}`}
-                    onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, med: e.target.value } : f)))}
+                    onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, med: ({ u: "UN", k: "KG" })[e.target.value.toLowerCase()] ?? e.target.value } : f)))}
                     onPaste={(e) => {
                       if (pegarColumna(indice, "med", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
