@@ -480,7 +480,15 @@ function ordenarDentroDeOrdenes(filas, orden) {
     if (!grupos.has(clave)) grupos.set(clave, []);
     grupos.get(clave).push(fila);
   }
-  return [...grupos.values()].flatMap((grupo) => grupo.sort((a, b) => {
+  // La columna pos no se mueve: cada puesto conserva su número original.
+  return [...grupos.values()].flatMap((grupo) => {
+    const posiciones = grupo.map((f) => f.pos);
+    return grupo.sort(comparar(campo, sentido)).map((f, i) => ({ ...f, pos: posiciones[i] }));
+  });
+}
+
+function comparar(campo, sentido) {
+  return (a, b) => {
     const va = String(a[campo] ?? "").trim();
     const vb = String(b[campo] ?? "").trim();
     if (campo === "ubicacion") {
@@ -489,7 +497,7 @@ function ordenarDentroDeOrdenes(filas, orden) {
       if (!vb) return -1;
     }
     return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
-  }));
+  };
 }
 
 async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa", orden = "") {

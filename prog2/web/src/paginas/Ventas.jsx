@@ -38,7 +38,8 @@ export function ordenarFilasVentas(filas, orden) {
     : orden === "descripcion" ? ["descripcion", true] : orden === "descripcion-desc" ? ["descripcion", false] : [null];
   if (!campo) return filas;
   const sentido = asc ? 1 : -1;
-  return [...filas].sort((a, b) => {
+  const posiciones = filas.map((f) => f.pos);
+  const ordenadas = [...filas].sort((a, b) => {
     const va = String(a[campo] ?? "").trim();
     const vb = String(b[campo] ?? "").trim();
     if (campo === "ubicacion") {
@@ -48,6 +49,8 @@ export function ordenarFilasVentas(filas, orden) {
     }
     return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
   });
+  // La columna Pos no se mueve: cada puesto conserva su número.
+  return ordenadas.map((f, i) => ({ ...f, pos: posiciones[i] }));
 }
 
 export function nombreDescarga(ahora = new Date(), tipo = "completa") {
