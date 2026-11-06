@@ -3,6 +3,7 @@ const {
   BODEGAS_EXPORT,
   CAMPOS_IMAGEN,
   COLUMNAS_EXTRA,
+  COLUMNAS_LOCALES_DETALLADO,
   COLUMNA_MARCADO,
   editarMateriales,
   exigirClave,
@@ -34,7 +35,10 @@ async function importarPlanilla(clave, buffer) {
   const columnasFormato = columnas.filter((columna) => columna !== COLUMNA_MARCADO);
   const encabezadosFormato = encabezados.filter((columna) => columna !== COLUMNA_MARCADO);
   const faltan = columnasFormato.filter(
-    (columna) => !COLUMNAS_EXTRA.includes(columna) && !encabezadosFormato.includes(columna),
+    (columna) =>
+      !COLUMNAS_EXTRA.includes(columna) &&
+      !COLUMNAS_LOCALES_DETALLADO.includes(columna) &&
+      !encabezadosFormato.includes(columna),
   );
   const sobran = encabezadosFormato.filter((columna) => !columnasFormato.includes(columna));
   if (faltan.length || sobran.length) {
@@ -74,7 +78,12 @@ async function importarPlanilla(clave, buffer) {
       if (columna === "Codigo") return codigoNuevo;
       if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
       const valor = fila[indicePorNombre[columna]];
-      if ((columna === COLUMNA_MARCADO || COLUMNAS_EXTRA.includes(columna)) && indicePorNombre[columna] == null) {
+      if (
+        (columna === COLUMNA_MARCADO ||
+          COLUMNAS_EXTRA.includes(columna) ||
+          COLUMNAS_LOCALES_DETALLADO.includes(columna)) &&
+        indicePorNombre[columna] == null
+      ) {
         return filaPrevia[indice] ?? "";
       }
       if (CAMPOS_IMAGEN.has(columna) && String(valor ?? "").trim() === "") {
