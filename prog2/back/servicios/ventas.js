@@ -195,6 +195,31 @@ function columnaPorTitulo(claves, ...opciones) {
   return -1;
 }
 
+// Excel a veces guarda !ref inflado (p. ej. B1:K1047687) sin celdas reales.
+// sheet_to_json recorrería ese millón de filas y la carga falla o se cuelga.
+function acotarHojaExcel(hoja, hardCap = 5000) {
+  if (!hoja || !hoja["!ref"]) return hoja;
+  const rango = XLSX.utils.decode_range(hoja["!ref"]);
+  if (rango.e.r - rango.s.r + 1 <= hardCap) return hoja;
+  let ultima = rango.s.r;
+  for (const clave of Object.keys(hoja)) {
+    if (clave[0] === "!") continue;
+    const { r } = XLSX.utils.decode_cell(clave);
+    if (r > ultima) ultima = r;
+  }
+  return {
+    ...hoja,
+    "!ref": XLSX.utils.encode_range({
+      s: rango.s,
+      e: { c: rango.e.c, r: Math.min(ultima, rango.s.r + hardCap - 1) },
+    }),
+  };
+}
+
+function filasDeHoja(hoja) {
+  return XLSX.utils.sheet_to_json(acotarHojaExcel(hoja), { header: 1, defval: null });
+}
+
 // Nombres de las hojas y la que estaba activa (seleccionada) al guardar el archivo.
 function hojasDeLibro(buffer) {
   const libro = XLSX.read(buffer, { type: "buffer", bookSheets: true });
@@ -209,7 +234,7 @@ function itemsDesdeOrden(ordenBuffer, hoja = "") {
   const nombrePedido = libroOrden.SheetNames.includes(hoja)
     ? hoja
     : libroOrden.SheetNames.find((nombre) => nombre.toLowerCase().includes("pedido")) || libroOrden.SheetNames[0];
-  const orden = XLSX.utils.sheet_to_json(libroOrden.Sheets[nombrePedido], { header: 1, defval: null });
+  const orden = filasDeHoja(libroOrden.Sheets[nombrePedido]);
   const encabezado = orden.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "solicitado"));
   if (encabezado < 0) throw new Error("No se encontró el encabezado \"Solicitado\" en la orden de venta.");
   const claves = (orden[encabezado] || []).map(claveColumna);
@@ -240,7 +265,7 @@ function itemsDesdeTraspaso(traspasoBuffer, nombreHoja = "") {
   // Las columnas se ubican por el nombre del encabezado (la posición puede cambiar).
   const libro = XLSX.read(traspasoBuffer, { type: "buffer" });
   const hoja = libro.Sheets[libro.SheetNames.includes(nombreHoja) ? nombreHoja : libro.SheetNames[0]];
-  const filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: null });
+  const filas = filasDeHoja(hoja);
   const numero = numeroEnTitulo(filas[0]?.[2]);
   const filaEnc = filas.findIndex((fila) => (fila || []).some((celda) => claveColumna(celda) === "codigo"));
   if (filaEnc < 0) throw new Error("No se encontró el encabezado \"Código\" en el traspaso.");
@@ -509,6 +534,8 @@ module.exports = {
   enteroCelda,
   escribirEncabezadoVentas,
   columnaPorTitulo,
+  acotarHojaExcel,
+  filasDeHoja,
   itemsDesdeOrden,
   hojasDeLibro,
   numeroEnTitulo,

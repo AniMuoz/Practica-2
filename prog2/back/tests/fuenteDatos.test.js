@@ -192,6 +192,42 @@ test("itemsDesdeTraspaso lee cantidades y el número del título", () => {
   assert.equal(items[0].concon, 1);
 });
 
+test("acotarHojaExcel evita recorrer !ref inflado al leer un traspaso", () => {
+  const { acotarHojaExcel, filasDeHoja } = require("../servicios/ventas");
+  const buffer = libroBuffer([
+    [null, null, "Traspaso N° 66"],
+    [],
+    ["Pos", "Código", "Descripción", "Medida", "Solicitud", "a", "b", "TRASPASO DE M501", "c", "TRASPASO DE M505"],
+    [1, "30000059", "Golilla", "UN", 100, 0, 0, 100, null, null],
+  ]);
+  const libro = XLSX.read(buffer, { type: "buffer" });
+  const hoja = libro.Sheets[libro.SheetNames[0]];
+  const rango = XLSX.utils.decode_range(hoja["!ref"]);
+  rango.e.r = 1047687;
+  hoja["!ref"] = XLSX.utils.encode_range(rango);
+
+  const acotada = acotarHojaExcel(hoja);
+  assert.equal(XLSX.utils.decode_range(acotada["!ref"]).e.r, 3);
+
+  const t0 = Date.now();
+  const filas = filasDeHoja(hoja);
+  assert.ok(Date.now() - t0 < 1000);
+  assert.ok(filas.length < 20);
+  assert.equal(filas[3][1], "30000059");
+
+  const conM501 = libroBuffer([
+    [null, null, "SOLICITUD DE TRASPASO NUMERO N°66"],
+    [],
+    ["Pos", "Código", "Descripción", "Medida", "Solicitud", "a", "b", "TRASPASO DE M501", "c", "TRASPASO DE M505"],
+    [1, "30000059", "Golilla", "UN", 100, 0, 0, 100, null, null],
+  ]);
+  const { items, numero } = itemsDesdeTraspaso(conM501);
+  assert.equal(numero, "66");
+  assert.equal(items.length, 1);
+  assert.equal(String(items[0].codigo), "30000059");
+  assert.equal(items[0].cantidad, 100);
+});
+
 test("textoFecha formatea Date y serial de Excel", () => {
   assert.equal(textoFecha(new Date(Date.UTC(2026, 0, 5))), "05/01/2026");
   assert.equal(textoFecha("texto"), "texto");
