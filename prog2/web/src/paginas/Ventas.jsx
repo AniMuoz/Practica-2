@@ -37,6 +37,13 @@ async function leerJson(res, mensaje) {
   return data;
 }
 
+// Autocompleta la medida al escribir (u -> UN, k -> KG, m -> M); no al borrar.
+function autoMed(e) {
+  const valor = e.target.value;
+  if (String(e.nativeEvent?.inputType ?? "").startsWith("delete")) return valor;
+  return ({ u: "UN", k: "KG", m: "M" })[valor.toLowerCase()] ?? valor;
+}
+
 function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) {
   if (!editando) {
     // Texto normal: se puede seleccionar y copiar a Excel.
@@ -47,7 +54,7 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
       <input
         aria-label={`editar ${campo} fila ${fila.pos}`}
         value={valor}
-        onChange={(e) => onCambio(fila, campo, campo === "med" ? ({ u: "UN", k: "KG" })[e.target.value.toLowerCase()] ?? e.target.value : e.target.value)}
+        onChange={(e) => onCambio(fila, campo, campo === "med" ? autoMed(e) : e.target.value)}
         onPaste={(e) => {
           // Varias filas de una columna (copiadas de Excel) se reparten hacia abajo.
           if (onPegar(fila, campo, e.clipboardData.getData("text"))) e.preventDefault();
@@ -599,7 +606,7 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
                     value={fila.med ?? ""}
                     placeholder="Med"
                     aria-label={`Med producto ${indice + 1}`}
-                    onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, med: ({ u: "UN", k: "KG" })[e.target.value.toLowerCase()] ?? e.target.value } : f)))}
+                    onChange={(e) => setProductos(productos.map((f, i) => (i === indice ? { ...f, med: autoMed(e) } : f)))}
                     onPaste={(e) => {
                       if (pegarColumna(indice, "med", e.clipboardData.getData("text"))) e.preventDefault();
                     }}
