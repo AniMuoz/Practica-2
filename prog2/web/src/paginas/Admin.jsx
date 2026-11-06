@@ -395,10 +395,10 @@ export default function Admin() {
             "Stock detallado",
             "Planilla de inventario",
             "Movimientos",
-            "Gastos",
-            "Bitacora camion",
             "Planilla de ventas",
             "Editar contratistas",
+            "Gastos",
+            "Bitacora camion",
           ]
             .filter((nombre) => rol === "admin" || !BOTONES_SOLO_ADMIN.has(nombre))
             .map((nombre, indice, lista) => {
@@ -435,7 +435,7 @@ export default function Admin() {
                   opacity: importando && !activo ? 0.55 : 1,
                 }}
               >
-                {nombre === "Bitacora camion" ? "Bitácora camión" : nombre}
+                {nombre === "Bitacora camion" ? "Bitácora camión" : nombre === "Planilla de ventas" ? "Ventas y Traspasos" : nombre}
               </button>
             );
           })}

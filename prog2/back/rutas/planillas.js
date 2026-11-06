@@ -1,4 +1,4 @@
-const { exportarTabla, stockEnBodega, exportarStockBodega, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
+const { exportarTabla, stockEnBodega, exportarStockBodega, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, vaciarMovimientos, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
 const { claveDe } = require("../servicios/nucleoDatos");
 const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../utils/compartido");
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
@@ -118,6 +118,15 @@ module.exports = function rutasPlanillas(app) {
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo eliminar el código." });
+    }
+  });
+
+  app.delete("/api/movimientos", async (req, res) => {
+    try {
+      res.json(await vaciarMovimientos(claveDe(req)));
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo vaciar la planilla." });
     }
   });
 

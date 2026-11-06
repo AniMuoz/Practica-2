@@ -105,6 +105,36 @@ const PASOS = {
       texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
     },
     {
+      id: "Planilla de ventas",
+      titulo: "Ventas y Traspasos",
+      texto: "Registra ventas y traspasos en la planilla del mes, que se guarda en la base de datos (ya no hay que subir la planilla anterior). Sube una orden, un traspaso o carga producto a producto, y elige un contratista de la lista. Cada carga queda registrada en Auditoría.",
+    },
+    {
+      id: "ventas-preview",
+      titulo: "Vista previa de la planilla",
+      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables con el botón Editar (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Puedes seleccionar celdas con el mouse y copiarlas (Ctrl+C) para pegarlas en Excel. Para modificar datos presiona Editar, cambia las celdas y presiona Guardar (el mismo botón). En modo edición puedes pegar varias filas de una columna copiadas de Excel (se reparten hacia abajo desde la celda donde pegas) y usar la flecha ↓ (o Ctrl+D) para repetir el valor de una celda hacia abajo hasta el final de la orden. Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
+    },
+    {
+      id: "ventas-mes",
+      titulo: "Planillas anteriores",
+      texto: "Hay una planilla por mes; al empezar un mes nuevo se crea sola. Para ver una anterior, elige su mes y año con el selector de fecha.",
+    },
+    {
+      id: "ventas-descargar",
+      titulo: "Descargar Excel",
+      texto: "Descarga la planilla del mes mostrado como VENTAS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
+    },
+    {
+      id: "ventas-anual",
+      titulo: "Planilla anual",
+      texto: "Descarga en un solo Excel todas las planillas que existan del año del mes mostrado, de enero a diciembre, como si fuera una sola planilla. Cada orden mantiene su numeración y sus encabezados.",
+    },
+    {
+      id: "Editar contratistas",
+      titulo: "Contratistas",
+      texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta. Se abre sola, sin la planilla de ventas, y al guardar la página te pide confirmar el cambio.",
+    },
+    {
       id: "Gastos",
       titulo: "Planilla de gastos",
       texto:
@@ -133,36 +163,6 @@ const PASOS = {
       titulo: "Tabla de viajes",
       texto:
         "Las columnas están agrupadas por color: Viaje, Horarios, Kilometraje, Detalle y Firma. Cada celda se guarda sola al salir de ella y KM/RECO se calcula. Al subir la imagen de la firma hay que confirmar el RUT de la fila: queda Vigente, y si después cambian los datos del viaje pasa a Vencida. Para quitarla hay que indicar un motivo, que queda en el historial de Auditoría y no sale en el Excel.",
-    },
-    {
-      id: "Planilla de ventas",
-      titulo: "Planilla de ventas",
-      texto: "Registra ventas y traspasos en la planilla del mes, que se guarda en la base de datos (ya no hay que subir la planilla anterior). Sube una orden, un traspaso o carga producto a producto, y elige un contratista de la lista. Cada carga queda registrada en Auditoría.",
-    },
-    {
-      id: "ventas-preview",
-      titulo: "Vista previa de la planilla",
-      texto: "Muestra las filas de la planilla del mes. Puedes filtrar por código o descripción, corregir las columnas editables con el botón Editar (Entregar, N°Venta, Cant:GD, GD Esval, Estado, Observación) y quitar filas con Quitar. Puedes seleccionar celdas con el mouse y copiarlas (Ctrl+C) para pegarlas en Excel. Para modificar datos presiona Editar, cambia las celdas y presiona Guardar (el mismo botón). En modo edición puedes pegar varias filas de una columna copiadas de Excel (se reparten hacia abajo desde la celda donde pegas) y usar la flecha ↓ (o Ctrl+D) para repetir el valor de una celda hacia abajo hasta el final de la orden. Las filas se agrupan por orden y cada orden tiene un botón Eliminar orden para borrarla completa. Cada cambio queda registrado con tu usuario.",
-    },
-    {
-      id: "ventas-mes",
-      titulo: "Planillas anteriores",
-      texto: "Hay una planilla por mes; al empezar un mes nuevo se crea sola. Para ver una anterior, elige su mes y año con el selector de fecha.",
-    },
-    {
-      id: "ventas-descargar",
-      titulo: "Descargar Excel",
-      texto: "Descarga la planilla del mes mostrado como VENTAS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
-    },
-    {
-      id: "ventas-anual",
-      titulo: "Planilla anual",
-      texto: "Descarga en un solo Excel todas las planillas que existan del año del mes mostrado, de enero a diciembre, como si fuera una sola planilla. Cada orden mantiene su numeración y sus encabezados.",
-    },
-    {
-      id: "Editar contratistas",
-      titulo: "Contratistas",
-      texto: "Edita la lista de contratistas que se pueden elegir al cargar una orden de venta. Se abre sola, sin la planilla de ventas, y al guardar la página te pide confirmar el cambio.",
     },
   ],
   personal: [

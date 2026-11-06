@@ -50,6 +50,16 @@ export default function PanelMovimientos({
       .finally(() => setGuardandoFilaMovimiento(false));
   }
 
+  function vaciarPlanilla() {
+    if (!window.confirm("¿Borrar TODA la planilla de movimientos? Esta acción no se puede deshacer.")) return;
+    setErrorCodigoMovimiento("");
+    setGuardandoFilaMovimiento(true);
+    enviarJson("/api/movimientos", { clave }, "No se pudo borrar la planilla.", "DELETE")
+      .then(() => recargarMovimientos(true))
+      .catch((err) => setErrorCodigoMovimiento(err.message))
+      .finally(() => setGuardandoFilaMovimiento(false));
+  }
+
   function iniciarEdicionCodigo(codigo) {
     setCodigoEditando(codigo);
     setValorCodigoEditando(codigo);
@@ -138,6 +148,16 @@ export default function PanelMovimientos({
                   flex: "0 0 auto",
                 }}
               >
+                {!soloLectura && (
+                  <button
+                    type="button"
+                    onClick={vaciarPlanilla}
+                    disabled={guardandoFilaMovimiento || filasMovimientos.length === 0}
+                    style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "#d32f2f", color: "#fff", fontSize: 14, cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    Borrar planilla
+                  </button>
+                )}
                 <Interruptor activo={copiarExistencia} onClick={alternarExistencia} texto="Libre utilización" />
                 <Interruptor activo={copiarInventario} onClick={alternarInventario} texto="Inventario" />
                 <a

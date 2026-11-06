@@ -44,6 +44,19 @@ function normalizarFechas(columnas, filas) {
   });
 }
 
+// Quita reservas cuya fecha de necesidad tiene más de 12 meses. Sin fecha válida se conservan.
+function sinReservasVencidas(columnas, filas, hoy = new Date()) {
+  const indice = columnas.findIndex((columna) => /fecha de necesidad/i.test(String(columna).trim()));
+  if (indice < 0) return filas;
+  const limite = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 12, hoy.getUTCDate()));
+  return filas.filter((fila) => {
+    const coincide = String(textoFecha(fila[indice]) ?? "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!coincide) return true;
+    const fecha = new Date(Date.UTC(Number(coincide[3]), Number(coincide[2]) - 1, Number(coincide[1])));
+    return fecha >= limite;
+  });
+}
+
 let cacheReservas = null;
 
 function recordarReservas(columnas, filas) {
@@ -73,10 +86,14 @@ async function cargarReservas() {
   const matriz = matrizReserva(filasDb);
   if (matriz.length === 0) return recordarReservas([], []);
   const columnas = (matriz[0] || []).map((nombre) => String(nombre).trim());
-  const filas = normalizarFechas(
+  const todas = normalizarFechas(
     columnas,
     matriz.slice(1).filter((fila) => fila.some((celda) => String(celda ?? "").trim() !== ""))
   );
+  const filas = sinReservasVencidas(columnas, todas);
+  if (filas.length !== todas.length) {
+    await ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registrosReserva([columnas, ...filas]) });
+  }
   return recordarReservas(columnas, filas);
 }
 
@@ -147,9 +164,10 @@ async function importarReservas(clave, buffer) {
     guardadas[existente] = fila;
     actualizados += 1;
   });
-  const matriz = [columnas, ...guardadas];
+  const vigentes = sinReservasVencidas(columnas, guardadas);
+  const matriz = [columnas, ...vigentes];
   await ejecutar("reemplazar", { tabla: "reservas", columna: "orden", filas: registrosReserva(matriz) });
-  recordarReservas(columnas, guardadas);
+  recordarReservas(columnas, vigentes);
   return { agregados, actualizados, omitidos };
 }
 

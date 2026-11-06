@@ -55,6 +55,7 @@ module.exports = {
   importarMovimientos: movimientos.importarMovimientos,
   agregarCodigoMovimiento: movimientos.agregarCodigoMovimiento,
   eliminarCodigoMovimiento: movimientos.eliminarCodigoMovimiento,
+  vaciarMovimientos: movimientos.vaciarMovimientos,
   editarCodigoMovimiento: movimientos.editarCodigoMovimiento,
   stockDetallado: stock.stockDetallado,
   exportarStockDetallado: stock.exportarStockDetallado,

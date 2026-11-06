@@ -142,6 +142,13 @@ async function eliminarCodigoMovimiento(clave, codigoCrudo) {
   return { codigo };
 }
 
+async function vaciarMovimientos(clave) {
+  exigirClave(clave);
+  await ejecutar("reemplazar", { tabla: "movimientos", columna: "codigo", filas: [] });
+  cacheCodigos = [];
+  return { vaciada: true };
+}
+
 async function editarCodigoMovimiento(clave, codigoAnteriorCrudo, codigoNuevoCrudo) {
   exigirClave(clave);
   const anterior = String(codigoAnteriorCrudo ?? "").trim();
@@ -169,6 +176,7 @@ module.exports = {
   importarMovimientos,
   agregarCodigoMovimiento,
   eliminarCodigoMovimiento,
+  vaciarMovimientos,
   editarCodigoMovimiento,
   leerCodigosMovimientos,
   cargarCodigosMovimientos,
