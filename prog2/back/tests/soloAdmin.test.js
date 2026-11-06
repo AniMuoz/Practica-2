@@ -12,7 +12,6 @@ const ESCRITURAS = [
   ["POST", "/tabla/excel"],
   ["POST", "/tabla/limpiar-inventario"],
   ["POST", "/material"],
-  ["PUT", "/material/1"],
   ["PUT", "/material/1/datos"],
   ["PUT", "/material/1/marcado"],
   ["DELETE", "/material/1"],
@@ -33,6 +32,8 @@ const LIBRES = [
   ["GET", "/inventario"],
   ["GET", "/movimientos"],
   ["GET", "/material/1"],
+  ["PUT", "/material/1"],
+  ["PUT", "/material/ABC-12"],
   ["GET", "/ventas/auditoria"],
   ["POST", "/ventas/hojas"],
   ["POST", "/reserva"],
@@ -52,7 +53,7 @@ test("las escrituras de Admin (stock detallado, contratistas, etc.) exigen rol a
   for (const [metodo, ruta] of ESCRITURAS) assert.equal(requiereAdmin(metodo, ruta), true, `${metodo} ${ruta}`);
 });
 
-test("ver, filtrar y descargar, y Gastos/Buzón, quedan abiertos a operadores", () => {
+test("ver, filtrar, descargar, Gastos/Buzón y el conteo de material quedan abiertos a operadores", () => {
   for (const [metodo, ruta] of LIBRES) assert.equal(requiereAdmin(metodo, ruta), false, `${metodo} ${ruta}`);
 });
 
@@ -81,7 +82,7 @@ test("un operador recibe 403 en cada escritura de Admin y no llega a la ruta", a
   }
 });
 
-test("un operador sigue pasando en lecturas, Gastos y Buzón", async () => {
+test("un operador sigue pasando en lecturas, Gastos, Buzón y el guardado de inventario", async () => {
   const exigirAdmin = async () => {
     throw Object.assign(new Error("no admin"), { status: 403 });
   };

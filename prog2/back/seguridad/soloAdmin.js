@@ -1,5 +1,5 @@
 // Los operadores solo pueden ver, filtrar y descargar en la pagina Admin: toda escritura exige rol admin.
-// Gastos y buzon quedan fuera a proposito: los operadores si los usan.
+// Gastos, buzon y el conteo de la pagina de material (inventario y comentario) quedan fuera a proposito.
 const ESCRITURAS_ADMIN = [
   /^\/movimientos\/codigo/,
   /^\/stock-detallado/,
@@ -10,9 +10,13 @@ const ESCRITURAS_ADMIN = [
   /^\/bitacora\//,
 ];
 const METODOS_LECTURA = new Set(["GET", "HEAD", "OPTIONS"]);
+// PUT /material/:codigo guarda inventario y comentario. No incluye /datos, /marcado ni /imagen.
+const CONTEO_MATERIAL = /^\/material\/[^/]+$/;
 
 function requiereAdmin(metodo, ruta) {
-  return !METODOS_LECTURA.has(metodo) && ESCRITURAS_ADMIN.some((patron) => patron.test(ruta));
+  if (METODOS_LECTURA.has(metodo)) return false;
+  if (metodo === "PUT" && CONTEO_MATERIAL.test(ruta)) return false;
+  return ESCRITURAS_ADMIN.some((patron) => patron.test(ruta));
 }
 
 // `exigirAdmin` y `responderError` se reciben para poder probar el middleware sin Supabase.
