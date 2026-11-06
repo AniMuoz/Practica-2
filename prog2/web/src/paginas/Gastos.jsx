@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
+import { apiFetch } from "../lib/api.js";
 
 const CLAVE_GUARDADO = "gastosPendientes";
 const VACIO = { topico: "", proveedor: "", nboleta: "", fecha: "", monto: "" };
@@ -70,7 +71,7 @@ export function CuerpoGastos({ Titulo = "h1" }) {
   const archivo = useRef(null);
 
   useEffect(() => {
-    fetch("/api/gastos/topicos")
+    apiFetch("/api/gastos/topicos")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => setTopicos(data.topicos || []))
       .catch(() => setError("No se pudieron cargar los tópicos."));
@@ -110,7 +111,7 @@ export function CuerpoGastos({ Titulo = "h1" }) {
   }
 
   async function pedirArchivo(ruta, cuerpo, respaldo) {
-    const res = await fetch(ruta, {
+    const res = await apiFetch(ruta, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cuerpo),
@@ -152,7 +153,7 @@ export function CuerpoGastos({ Titulo = "h1" }) {
     const datos = new FormData();
     datos.append("archivo", elegido);
     try {
-      const res = await fetch("/api/gastos/recuperar", { method: "POST", body: datos });
+      const res = await apiFetch("/api/gastos/recuperar", { method: "POST", body: datos });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo recuperar el archivo.");
       setGastos((anterior) => [...anterior, ...data.gastos]);

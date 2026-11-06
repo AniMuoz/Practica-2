@@ -8,6 +8,7 @@ import { iniciarRecorrido } from "./Recorrido.jsx";
 import { sonarActualizacion, useSonido } from "../lib/sonido.js";
 import { useSondeo } from "../lib/useSondeo.js";
 import { suscribirEventos } from "../lib/eventos.js";
+import { apiFetch } from "../lib/api.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
   const { rol, usuario } = useSesion();
@@ -32,7 +33,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
     }
     const controlador = new AbortController();
     const espera = setTimeout(() => {
-      fetch(`/api/buscar?q=${encodeURIComponent(consulta)}`, { signal: controlador.signal })
+      apiFetch(`/api/buscar?q=${encodeURIComponent(consulta)}`, { signal: controlador.signal })
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => {
           setResultados(data.resultados || []);
@@ -106,7 +107,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
     let pendienteSse = 0;
     function leer() {
       if (document.visibilityState !== "visible") return Promise.resolve();
-      return fetch("/api/buzon/pendientes", { cache: "no-store" })
+      return apiFetch("/api/buzon/pendientes", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : Promise.reject()))
         .then((data) => {
           if (!activo) return;
@@ -154,7 +155,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
     let activo = true;
     function leer() {
       if (document.visibilityState !== "visible") return Promise.resolve();
-      return fetch("/api/buzon/novedades", { cache: "no-store" })
+      return apiFetch("/api/buzon/novedades", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(({ novedades }) => {
           if (!activo) return;
@@ -180,7 +181,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
 
   function cerrarSesion() {
     limpiarBorradores();
-    fetch("/api/logout", { method: "POST" })
+    apiFetch("/api/logout", { method: "POST" })
       .catch(() => {})
       .finally(() => window.dispatchEvent(new Event("sesion-vencida")));
   }

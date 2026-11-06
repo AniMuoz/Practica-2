@@ -20,6 +20,7 @@ const {
   mapaPorCodigo,
   indicePorCodigo,
   claveCorrecta,
+  claveDe,
   exigirClave,
 } = require("../servicios/nucleoDatos");
 
@@ -199,4 +200,11 @@ test("claveCorrecta solo acepta la clave exacta", () => {
 test("exigirClave lanza 403 con una clave mala y no hace nada con la buena", () => {
   assert.throws(() => exigirClave("mala"), { status: 403, message: "Contraseña incorrecta." });
   assert.doesNotThrow(() => exigirClave(CLAVE_DATOS));
+});
+
+test("claveDe usa CLAVE_DATOS solo para admin; el resto toma el cuerpo", () => {
+  assert.equal(claveDe({ rol: "admin", body: { clave: "otra" } }), CLAVE_DATOS);
+  assert.equal(claveDe({ rol: "operador", body: { clave: "x" } }), "x");
+  assert.equal(claveDe({ body: { clave: "y" } }), "y");
+  assert.equal(claveDe(null), null);
 });

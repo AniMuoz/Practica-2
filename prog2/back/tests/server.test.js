@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { app, conColores, respuestaConexion } = require("../server");
+const { crearApp, conColores, respuestaConexion } = require("../server");
+const app = crearApp({ proteger: false });
 delete process.env.SECRETO_PROXY;
 
 // Los rechazos esperados (403, 400) imprimen su traza con console.error; se silencian aquí.
@@ -57,6 +58,24 @@ test("buscar con menos de dos letras no consulta materiales", async () => {
 test("agregar un material sin clave responde 403", async () => {
   const respuesta = await pedir("POST", "/api/material", { clave: "no", datos: { Codigo: "1" } });
   assert.equal(respuesta.status, 403);
+});
+
+test("crearApp protege la API por defecto (401 sin sesión)", async () => {
+  const { crearApp: crear } = require("../server");
+  const protegida = crear({ proteger: true });
+  const respuesta = await new Promise((resolve, reject) => {
+    const servidor = protegida.listen(0, "127.0.0.1", async () => {
+      try {
+        const res = await fetch(`http://127.0.0.1:${servidor.address().port}/api/buscar?q=ab`);
+        resolve({ status: res.status, json: await res.json().catch(() => null) });
+      } catch (error) {
+        reject(error);
+      } finally {
+        servidor.close();
+      }
+    });
+  });
+  assert.equal(respuesta.status, 401);
 });
 
 test("el acceso con clave incorrecta no revela la contraseña", async () => {

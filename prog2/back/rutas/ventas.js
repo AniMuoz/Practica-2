@@ -1,4 +1,5 @@
 const { leerContratistas, guardarContratistas } = require("../servicios/fuenteDatos");
+const { claveDe } = require("../servicios/nucleoDatos");
 const { uploadXlsx, conColores, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const ventasBd = require("../servicios/ventasBd");
 const { hojasDeLibro } = require("../servicios/ventas");
@@ -171,7 +172,7 @@ module.exports = function rutasVentas(app) {
 
   app.put("/api/contratistas", async (req, res) => {
     try {
-      res.json(await guardarContratistas(req.body.clave, req.body.filas));
+      res.json(await guardarContratistas(claveDe(req), req.body.filas));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.message || "No se pudieron guardar los contratistas." });

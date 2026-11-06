@@ -6,6 +6,7 @@ import { useSondeo } from "../lib/useSondeo.js";
 import { suscribirEventos } from "../lib/eventos.js";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import "../estilos/buzon.css";
+import { apiFetch } from "../lib/api.js";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };
@@ -15,7 +16,7 @@ const MAX_DESC = 200;
 const INTERVALO_NOVEDADES = 45_000; // 45 s: el SSE avisa al instante, el sondeo es solo respaldo
 
 async function pedir(url, opciones) {
-  const res = await fetch(url, opciones);
+  const res = await apiFetch(url, opciones);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Error de conexión.");
   return data;
@@ -79,7 +80,7 @@ function useBuzonNovedades(usuario, admin) {
 
   const verificar = useCallback(() => {
     if (document.visibilityState !== "visible") return Promise.resolve();
-    return fetch("/api/buzon/novedades", { cache: "no-store" })
+    return apiFetch("/api/buzon/novedades", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ novedades }) => {
         const vistos = leerVistos(usuario);
@@ -128,7 +129,7 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pu
 
   const cargarRespuestas = useCallback(
     (silencioso = false) => {
-      fetch(`/api/buzon/${buzonId}/respuestas`, { cache: "no-store" })
+      apiFetch(`/api/buzon/${buzonId}/respuestas`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(({ respuestas: lista }) => {
           setRespuestas(lista || []);

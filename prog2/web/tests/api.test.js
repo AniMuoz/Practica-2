@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { obtenerJson, enviarJson, enviarFormulario, descargarBlob } from "../src/lib/api.js";
+import { apiFetch, obtenerJson, enviarJson, enviarFormulario, descargarBlob } from "../src/lib/api.js";
 
 function simularFetch(respuesta) {
   const llamadas = [];
@@ -48,4 +48,22 @@ test("descargarBlob devuelve el blob y propaga errores JSON", async () => {
   assert.equal(await descargarBlob("/api/x"), "blob");
   simularFetch(falla(403, { error: "Prohibido" }));
   await assert.rejects(descargarBlob("/api/x"), { message: "Prohibido" });
+});
+
+test("apiFetch avisa sesion-vencida en 401 salvo login/logout/sesion", async () => {
+  const eventos = [];
+  const original = globalThis.window;
+  globalThis.window = {
+    dispatchEvent: (ev) => eventos.push(ev.type),
+  };
+  try {
+    simularFetch(falla(401, { error: "no" }));
+    await apiFetch("/api/tabla");
+    assert.deepEqual(eventos, ["sesion-vencida"]);
+    eventos.length = 0;
+    await apiFetch("/api/sesion");
+    assert.deepEqual(eventos, []);
+  } finally {
+    globalThis.window = original;
+  }
 });

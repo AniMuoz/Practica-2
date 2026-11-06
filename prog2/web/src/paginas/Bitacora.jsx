@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useEstadoPersistente } from "../lib/persistencia.js";
+import { apiFetch } from "../lib/api.js";
 
 const COLUMNAS = [
   { campo: "fecha", titulo: "FECHA", ancho: 140 },
@@ -146,7 +147,7 @@ export default function Bitacora({ clave, colores }) {
   }, []);
 
   function cargarResumen() {
-    return fetch("/api/bitacora/folios/ultimo", { cache: "no-store" })
+    return apiFetch("/api/bitacora/folios/ultimo", { cache: "no-store" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "No se pudo leer el último folio.");
@@ -178,7 +179,7 @@ export default function Bitacora({ clave, colores }) {
     }
     setAviso("");
     setCargando(true);
-    fetch(`/api/bitacora/folios/${texto}`, { cache: "no-store" })
+    apiFetch(`/api/bitacora/folios/${texto}`, { cache: "no-store" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "No se pudo leer el folio.");
@@ -195,7 +196,7 @@ export default function Bitacora({ clave, colores }) {
     if (!window.confirm("¿Generar un nuevo folio de bitácora?")) return;
     setAviso("");
     setGenerando(true);
-    fetch("/api/bitacora/folios", {
+    apiFetch("/api/bitacora/folios", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clave }),
@@ -225,7 +226,7 @@ export default function Bitacora({ clave, colores }) {
       const fila = filasRef.current.find((item) => item.n_fila === n);
       if (!fila || folioRef.current !== numeroFolio) return;
       const datos = datosDe(fila);
-      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}`, {
+      const res = await apiFetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clave, datos }),
@@ -265,7 +266,7 @@ export default function Bitacora({ clave, colores }) {
       cuerpo.append("clave", clave);
       cuerpo.append("rut", rut.trim());
       cuerpo.append("archivo", png, archivo.type === "image/jpeg" ? "firma.jpg" : "firma.png");
-      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, { method: "POST", body: cuerpo });
+      const res = await apiFetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, { method: "POST", body: cuerpo });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar la imagen de la firma.");
       if (folioRef.current !== numeroFolio) return;
@@ -286,7 +287,7 @@ export default function Bitacora({ clave, colores }) {
     const numeroFolio = folioRef.current;
     setAviso("");
     encolar(async () => {
-      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, {
+      const res = await apiFetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}/firma`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clave, motivo: motivo.trim() }),
@@ -318,7 +319,7 @@ export default function Bitacora({ clave, colores }) {
     const numeroFolio = folioRef.current;
     setAviso("");
     encolar(async () => {
-      const res = await fetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}`, {
+      const res = await apiFetch(`/api/bitacora/folios/${numeroFolio}/filas/${n}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clave }),
@@ -339,7 +340,7 @@ export default function Bitacora({ clave, colores }) {
     setEliminando(null);
     setAviso("");
     encolar(async () => {
-      const res = await fetch(`/api/bitacora/folios/${numeroFolio}`, {
+      const res = await apiFetch(`/api/bitacora/folios/${numeroFolio}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clave, confirmacion: escrito.trim() }),
@@ -360,7 +361,7 @@ export default function Bitacora({ clave, colores }) {
     const numeroFolio = folioRef.current;
     setAviso("");
     const descarga = () =>
-      fetch(`/api/bitacora/folios/${numeroFolio}/excel`)
+      apiFetch(`/api/bitacora/folios/${numeroFolio}/excel`)
         .then(async (res) => {
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));

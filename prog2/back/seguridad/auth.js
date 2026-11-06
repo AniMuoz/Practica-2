@@ -248,6 +248,7 @@ async function protegerApi(req, res, next) {
       return;
     }
     req.usuario = sesion.registro.usuario;
+    req.rol = sesion.registro.rol;
     if (sesion.datos.exp - Date.now() < RENOVAR_BAJO_MS) {
       ponerCookie(req, res, crearToken(sesion.registro), DURACION_MS);
     }

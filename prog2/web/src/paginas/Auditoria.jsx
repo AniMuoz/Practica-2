@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
+import { apiFetch } from "../lib/api.js";
 
 async function leer(url) {
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "No se pudo leer la auditoría.");
   return data;
@@ -18,7 +19,7 @@ function BotonDescargar({ url, filtros, marca }) {
     try {
       const q = new URLSearchParams();
       Object.entries(filtros).forEach(([k, v]) => v.trim() && q.set(k, v.trim()));
-      const res = await fetch(`${url}?${q}`);
+      const res = await apiFetch(`${url}?${q}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo descargar el log.");

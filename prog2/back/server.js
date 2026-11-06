@@ -12,91 +12,8 @@ const { comprobarBase } = require("./utils/salud");
 const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
 
-const app = express();
-const PORT = Number(process.env.PORT) || 3001;
 // Los nombres de imagen son unicos (nunca se reemplaza el contenido de un nombre), asi que 24 h es seguro.
 const CACHE_IMAGENES = "private, max-age=86400, must-revalidate";
-
-app.disable("x-powered-by");
-app.use(cabecerasSeguras);
-app.use(middlewareCors());
-app.use(express.json({ limit: "1mb" }));
-// Comprobacion de vida para Render/Docker: publica, sin sesion y sin tocar Supabase.
-app.get("/healthz", (_req, res) => {
-  res.json({ ok: true });
-});
-app.use(exigirProxy);
-// Igual que /healthz pero consulta Supabase (lo llama el cron del Worker una vez al dia). Va despues de exigirProxy: exige el secreto.
-app.get("/healthz/db", async (_req, res) => {
-  try {
-    const { ok } = await comprobarBase(supabase);
-    res.status(ok ? 200 : 502).json({ ok });
-  } catch (error) {
-    console.error(error);
-    res.status(502).json({ ok: false });
-  }
-});
-
-app.use("/api", conIpDeClave);
-if (require.main === module) {
-  app.use("/api", limitarPeticiones);
-  app.use("/api", protegerApi);
-  app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
-}
-rutasAuth(app);
-app.use("/api", (_req, res, next) => {
-  res.set("Cache-Control", "no-store");
-  next();
-});
-
-app.get("/api/imagenes/:nombre", async (req, res) => {
-  const nombre = path.basename(req.params.nombre);
-  if (!nombre || nombre === "." || nombre === "..") {
-    res.status(404).end();
-    return;
-  }
-  try {
-    const remoto = await bajarImagen(nombre);
-    if (remoto) {
-      res.type(path.extname(nombre));
-      // Cache privada en el navegador: las vistas repetidas no vuelven a pasar por el Worker.
-      res.set("Cache-Control", CACHE_IMAGENES);
-      res.send(remoto);
-      return;
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(error.status || 502).json({ error: error.message });
-    return;
-  }
-  const local = path.join(carpetaImagenes, nombre);
-  if (fs.existsSync(local)) {
-    res.sendFile(local, { headers: { "Cache-Control": CACHE_IMAGENES } });
-    return;
-  }
-  res.status(404).end();
-});
-
-app.get("/api/eventos", (req, res) => {
-  if (clientesEventos.size >= MAX_EVENTOS) {
-    res.status(503).json({ error: "Demasiadas conexiones abiertas." });
-    return;
-  }
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
-  res.write(": conectado\n\n");
-  clientesEventos.add(res);
-  const pulso = setInterval(() => {
-    res.write(": pulso\n\n");
-  }, 15000);
-  req.on("close", () => {
-    clearInterval(pulso);
-    clientesEventos.delete(res);
-  });
-});
 
 function respuestaConexion(error) {
   if (error && error.code !== "PGRST205" && error.code !== "42P01") {
@@ -106,21 +23,113 @@ function respuestaConexion(error) {
   return { status: 200, cuerpo: { conectado: true } };
 }
 
-app.get("/api/supabase", async (_req, res) => {
-  const { error } = await supabase.from("planillas").select("nombre").limit(1);
-  const respuesta = respuestaConexion(error);
-  res.status(respuesta.status).json(respuesta.cuerpo);
-});
+// `proteger: false` solo para pruebas unitarias de rutas; en produccion siempre va protegido.
+function crearApp({ proteger = true } = {}) {
+  const app = express();
+  const PORT = Number(process.env.PORT) || 3001;
 
-// Las rutas se registran por tema, en el mismo orden en que estaban en este archivo.
-require("./rutas/planillas")(app);
-require("./rutas/reservas")(app);
-require("./rutas/ventas")(app);
-require("./rutas/bitacora")(app);
-require("./rutas/materiales")(app);
-require("./rutas/usuarios")(app);
-require("./rutas/gastos")(app);
-require("./rutas/buzon")(app);
+  app.disable("x-powered-by");
+  app.use(cabecerasSeguras);
+  app.use(middlewareCors());
+  app.use(express.json({ limit: "1mb" }));
+  // Comprobacion de vida para Render/Docker: publica, sin sesion y sin tocar Supabase.
+  app.get("/healthz", (_req, res) => {
+    res.json({ ok: true });
+  });
+  app.use(exigirProxy);
+  // Igual que /healthz pero consulta Supabase (lo llama el cron del Worker una vez al dia). Va despues de exigirProxy: exige el secreto.
+  app.get("/healthz/db", async (_req, res) => {
+    try {
+      const { ok } = await comprobarBase(supabase);
+      res.status(ok ? 200 : 502).json({ ok });
+    } catch (error) {
+      console.error(error);
+      res.status(502).json({ ok: false });
+    }
+  });
+
+  app.use("/api", conIpDeClave);
+  if (proteger) {
+    app.use("/api", limitarPeticiones);
+    app.use("/api", protegerApi);
+    app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
+  }
+  rutasAuth(app);
+  app.use("/api", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
+
+  app.get("/api/imagenes/:nombre", async (req, res) => {
+    const nombre = path.basename(req.params.nombre);
+    if (!nombre || nombre === "." || nombre === "..") {
+      res.status(404).end();
+      return;
+    }
+    try {
+      const remoto = await bajarImagen(nombre);
+      if (remoto) {
+        res.type(path.extname(nombre));
+        // Cache privada en el navegador: las vistas repetidas no vuelven a pasar por el Worker.
+        res.set("Cache-Control", CACHE_IMAGENES);
+        res.send(remoto);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(error.status || 502).json({ error: error.message });
+      return;
+    }
+    const local = path.join(carpetaImagenes, nombre);
+    if (fs.existsSync(local)) {
+      res.sendFile(local, { headers: { "Cache-Control": CACHE_IMAGENES } });
+      return;
+    }
+    res.status(404).end();
+  });
+
+  app.get("/api/eventos", (req, res) => {
+    if (clientesEventos.size >= MAX_EVENTOS) {
+      res.status(503).json({ error: "Demasiadas conexiones abiertas." });
+      return;
+    }
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+    res.write(": conectado\n\n");
+    clientesEventos.add(res);
+    const pulso = setInterval(() => {
+      res.write(": pulso\n\n");
+    }, 15000);
+    req.on("close", () => {
+      clearInterval(pulso);
+      clientesEventos.delete(res);
+    });
+  });
+
+  app.get("/api/supabase", async (_req, res) => {
+    const { error } = await supabase.from("planillas").select("nombre").limit(1);
+    const respuesta = respuestaConexion(error);
+    res.status(respuesta.status).json(respuesta.cuerpo);
+  });
+
+  // Las rutas se registran por tema, en el mismo orden en que estaban en este archivo.
+  require("./rutas/planillas")(app);
+  require("./rutas/reservas")(app);
+  require("./rutas/ventas")(app);
+  require("./rutas/bitacora")(app);
+  require("./rutas/materiales")(app);
+  require("./rutas/usuarios")(app);
+  require("./rutas/gastos")(app);
+  require("./rutas/buzon")(app);
+
+  app.locals.port = PORT;
+  return app;
+}
+
+const app = crearApp({ proteger: true });
 
 process.on("unhandledRejection", (motivo) => {
   console.error("Promesa rechazada sin manejar:", motivo);
@@ -140,6 +149,7 @@ async function subirImagenesLocales() {
 }
 
 if (require.main === module) {
+  const PORT = app.locals.port || Number(process.env.PORT) || 3001;
   verificarEntorno();
   asegurarCubo()
     .catch((error) => {
@@ -180,4 +190,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { app, conColores, respuestaConexion };
+module.exports = { app, crearApp, conColores, respuestaConexion };

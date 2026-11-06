@@ -53,7 +53,7 @@ beforeEach(() => {
   window.fetch = vi.fn(async (url) => {
     const ruta = String(url);
     llamadas.push(ruta);
-    if (ruta === "/api/acceso") return json({ clave: "k" });
+    if (ruta === "/api/acceso") return json({ ok: true });
     if (ruta === "/api/tabla") return json(TABLA);
     if (ruta === "/api/tabla/ultimas-cargas") return json({ cargas: {} });
     if (ruta === "/api/contratistas") return json({ filas: [{ nombre: "Ana" }] });

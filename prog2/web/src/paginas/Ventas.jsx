@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
 import { useEstadoPersistente } from "../lib/persistencia.js";
+import { apiFetch } from "../lib/api.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
@@ -102,7 +103,7 @@ function Preview({ colores, recarga }) {
 
   function cargar() {
     setCargando(true);
-    return fetch(`/api/ventas/planilla?anio=${anio}&mes=${mes}`, { cache: "no-store" })
+    return apiFetch(`/api/ventas/planilla?anio=${anio}&mes=${mes}`, { cache: "no-store" })
       .then((res) => leerJson(res, "No se pudo leer la planilla."))
       .then((data) => {
         setAviso("");
@@ -113,7 +114,7 @@ function Preview({ colores, recarga }) {
   }
 
   useEffect(() => {
-    fetch("/api/ventas/meses", { cache: "no-store" })
+    apiFetch("/api/ventas/meses", { cache: "no-store" })
       .then((res) => leerJson(res, "No se pudieron leer los años."))
       .then((data) => setAniosConDatos([...new Set((data.meses || []).map((m) => m.anio))]))
       .catch(() => {});
@@ -174,7 +175,7 @@ function Preview({ colores, recarga }) {
     setGuardando(true);
     try {
       for (const [id, cambios] of pendientes) {
-        const res = await fetch(`/api/ventas/filas/${id}`, {
+        const res = await apiFetch(`/api/ventas/filas/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(cambios),
@@ -193,7 +194,7 @@ function Preview({ colores, recarga }) {
   }
   function quitar(fila) {
     if (!window.confirm(`¿Quitar la fila ${fila.pos} (${fila.codigo}) de la planilla?`)) return;
-    fetch(`/api/ventas/filas/${fila.id}`, { method: "DELETE" })
+    apiFetch(`/api/ventas/filas/${fila.id}`, { method: "DELETE" })
       .then((res) => leerJson(res, "No se pudo quitar la fila."))
       .then(() => cargar())
       .catch((e) => setAviso(e.message));
@@ -202,7 +203,7 @@ function Preview({ colores, recarga }) {
   function quitarOrden(grupo) {
     const { fila } = grupo;
     if (!window.confirm(`¿Eliminar la orden completa (${grupo.filas.length} filas, ${fila.movimiento} N° ${fila.n_venta})?`)) return;
-    fetch(`/api/ventas/ordenes/${planilla.id}/${fila.lote}`, { method: "DELETE" })
+    apiFetch(`/api/ventas/ordenes/${planilla.id}/${fila.lote}`, { method: "DELETE" })
       .then((res) => leerJson(res, "No se pudo quitar la orden."))
       .then(() => cargar())
       .catch((e) => setAviso(e.message));
@@ -214,7 +215,7 @@ function Preview({ colores, recarga }) {
     const ruta = anual
       ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}${extra}`
       : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}${extra}`;
-    fetch(ruta)
+    apiFetch(ruta)
       .then(async (res) => {
         if (!res.ok) await leerJson(res, "No se pudo descargar la planilla.");
         const url = URL.createObjectURL(await res.blob());
@@ -453,7 +454,7 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
     if (!archivo) return;
     const cuerpo = new FormData();
     cuerpo.append("archivo", archivo);
-    fetch("/api/ventas/hojas", { method: "POST", body: cuerpo })
+    apiFetch("/api/ventas/hojas", { method: "POST", body: cuerpo })
       .then((res) => leerJson(res, "No se pudieron leer las hojas del archivo."))
       .then((data) => {
         if (archivoActual.current !== archivo) return;
@@ -524,7 +525,7 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
     cuerpo.append("movimiento", movimiento);
     cuerpo.append("almacen", movimiento === "2" ? almacen : "M501");
     cuerpo.append("codVenta", movimiento === "2" && modo !== "manual" ? "n/a" : codVenta);
-    fetch("/api/ventas", { method: "POST", body: cuerpo })
+    apiFetch("/api/ventas", { method: "POST", body: cuerpo })
       .then((res) => leerJson(res, "No se pudo guardar la venta."))
       .then((data) => {
         reiniciar();

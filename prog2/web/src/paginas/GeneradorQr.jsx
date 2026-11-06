@@ -6,6 +6,7 @@ import Navbar from "../componentes/Navbar.jsx";
 import { crearQrPng, estadoQr, marcaRombo, sinQr, tieneRombo } from "../lib/generarQr.js";
 import { filtrarFilas } from "../lib/reglasPlanilla.js";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
+import { apiFetch } from "../lib/api.js";
 
 const boton = {
   padding: "8px 14px",
@@ -31,7 +32,7 @@ export default function GeneradorQr() {
   const cancelar = useRef(false);
 
   function cargar() {
-    return fetch("/api/tabla", { cache: "no-store" })
+    return apiFetch("/api/tabla", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -58,7 +59,7 @@ export default function GeneradorQr() {
   function aceptarClave(event) {
     event.preventDefault();
     setErrorClave("");
-    fetch("/api/acceso", {
+    apiFetch("/api/acceso", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clave }),
@@ -91,7 +92,7 @@ export default function GeneradorQr() {
         cuerpo.append("campo", "QR");
         if (rombo) cuerpo.append("rombo_usado", marcaRombo(rombo));
         cuerpo.append("archivo", new File([blob], `qr_${codigo}.png`, { type: "image/png" }));
-        const res = await fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, { method: "POST", body: cuerpo });
+        const res = await apiFetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, { method: "POST", body: cuerpo });
         if (!res.ok) throw new Error();
         ok++;
       } catch {

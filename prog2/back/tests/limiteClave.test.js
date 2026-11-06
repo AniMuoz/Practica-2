@@ -58,7 +58,8 @@ test("un acierto reinicia el contador", () => {
 test("POST /api/acceso real: 3 claves malas y luego 429, sin sesion", async () => {
   process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
   process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
-  const { app } = require("../server");
+  const { crearApp } = require("../server");
+  const app = crearApp({ proteger: false });
   delete process.env.SECRETO_PROXY;
   const servidor = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));

@@ -1,4 +1,5 @@
 ﻿import { createContext, useContext, useEffect, useState } from "react";
+import { apiFetch } from "../lib/api.js";
 
 const SesionContext = createContext({ usuario: "", rol: "operador" });
 export function useSesion() {
@@ -6,20 +7,6 @@ export function useSesion() {
 }
 
 const MENSAJE_DESACTIVADA = "Cuenta desactivada, contactese con un administrador";
-
-const originalFetch = window.fetch.bind(window);
-window.fetch = async (...args) => {
-  const respuesta = await originalFetch(...args);
-  if (respuesta.status === 403) {
-    const data = await respuesta.clone().json().catch(() => ({}));
-    if (data && data.desactivada) window.dispatchEvent(new Event("cuenta-desactivada"));
-  }
-  if (respuesta.status === 401) {
-    const url = String(typeof args[0] === "string" ? args[0] : args[0]?.url || "");
-    if (!/\/api\/(login|logout|sesion)/.test(url)) window.dispatchEvent(new Event("sesion-vencida"));
-  }
-  return respuesta;
-};
 
 const campo = {
   width: "100%",
@@ -108,7 +95,7 @@ function CambiarClave({ usuarioInicial = "", alTerminar, alCancelar }) {
     setEnviando(true);
     setError("");
     try {
-      const res = await fetch("/api/cambiar-clave", {
+      const res = await apiFetch("/api/cambiar-clave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, claveActual, claveNueva }),
@@ -211,7 +198,7 @@ function Login({ alEntrar, avisoInicial = "" }) {
     setEnviando(true);
     setError("");
     try {
-      const res = await fetch("/api/login", {
+      const res = await apiFetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, clave }),
@@ -316,7 +303,7 @@ export default function Acceso({ children }) {
     async function verificar() {
       for (let intento = 0; intento < 12 && !cancelado; intento++) {
         try {
-          const res = await originalFetch("/api/sesion", { cache: "no-store" });
+          const res = await apiFetch("/api/sesion", { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
             if (data && data.rol === "desactivado") return "desactivada";

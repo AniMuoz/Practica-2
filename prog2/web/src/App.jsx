@@ -6,6 +6,7 @@ import Planilla from "./paginas/Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./componentes/Recorrido.jsx";
 import { sonarActualizacion } from "./lib/sonido.js";
 import { suscribirEventos } from "./lib/eventos.js";
+import { apiFetch } from "./lib/api.js";
 import {
   aplicarFilaRecibida,
   bodegasDe,
@@ -139,7 +140,7 @@ export default function App() {
   function cargarTabla() {
     const headers = {};
     if (etagTabla.current) headers["If-None-Match"] = etagTabla.current;
-    return fetch("/api/tabla", { cache: "no-store", headers })
+    return apiFetch("/api/tabla", { cache: "no-store", headers })
       .then((res) => {
         if (res.status === 304) return null;
         if (!res.ok) throw new Error("No se pudo leer la API");
@@ -257,7 +258,7 @@ export default function App() {
     setLimpiando(true);
     setError("");
     setAvisoClave("");
-    fetch("/api/tabla/limpiar-inventario", {
+    apiFetch("/api/tabla/limpiar-inventario", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clave }),

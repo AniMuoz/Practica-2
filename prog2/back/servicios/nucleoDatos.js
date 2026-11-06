@@ -553,6 +553,13 @@ function exigirClave(clave) {
   }
 }
 
+// Admin con sesión: el servidor usa CLAVE_DATOS internamente; nunca se envía al navegador.
+// Operador u otras rutas: se valida la clave que viene en el cuerpo.
+function claveDe(req) {
+  if (req && req.rol === "admin") return CLAVE_DATOS;
+  return req && req.body && req.body.clave;
+}
+
 async function actualizarCamposDetallado(codigo, clave, datos) {
   exigirClave(clave);
   if (!datos || typeof datos !== "object") {
@@ -856,6 +863,7 @@ module.exports = {
   COLUMNAS_BLOQUEADAS,
   CLAVE_DATOS,
   claveCorrecta,
+  claveDe,
   exigirClave,
   actualizarCamposDetallado,
   limpiarColumnaDetallado,

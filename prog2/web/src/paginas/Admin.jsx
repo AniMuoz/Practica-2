@@ -216,8 +216,7 @@ export default function Admin() {
   useEffect(() => {
     if (rol !== "admin") return;
     obtenerJson("/api/acceso")
-      .then((data) => {
-        setClave(data.clave);
+      .then(() => {
         setAutorizado(true);
       })
       .catch(() => {});

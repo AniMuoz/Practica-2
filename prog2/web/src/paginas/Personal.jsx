@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSesion } from "../componentes/Acceso.jsx";
 import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
+import { apiFetch } from "../lib/api.js";
 
 const campo = {
   padding: "8px 10px",
@@ -22,7 +23,7 @@ const boton = {
 };
 
 async function pedir(url, opciones) {
-  const res = await fetch(url, opciones);
+  const res = await apiFetch(url, opciones);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "No se pudo completar la operación.");
   return data;

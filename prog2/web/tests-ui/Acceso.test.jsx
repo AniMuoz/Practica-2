@@ -10,7 +10,6 @@ let Acceso;
 beforeEach(async () => {
   vi.resetModules();
   fetchFalso = vi.fn();
-  // Acceso.jsx guarda window.fetch al importarse, asi que el falso debe estar antes del import.
   window.fetch = fetchFalso;
   Acceso = (await import("../src/componentes/Acceso.jsx")).default;
 });

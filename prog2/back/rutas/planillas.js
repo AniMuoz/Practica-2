@@ -1,4 +1,5 @@
 const { exportarTabla, stockEnBodega, exportarStockBodega, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
+const { claveDe } = require("../servicios/nucleoDatos");
 const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../utils/compartido");
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
 function filtrosDeConsulta(q) {
@@ -104,7 +105,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.post("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.status(201).json(await agregarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+      res.status(201).json(await agregarCodigoMovimiento(claveDe(req), req.body && req.body.codigo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo añadir el código." });
@@ -113,7 +114,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.delete("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.json(await eliminarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigo));
+      res.json(await eliminarCodigoMovimiento(claveDe(req), req.body && req.body.codigo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo eliminar el código." });
@@ -122,7 +123,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.put("/api/movimientos/codigo", async (req, res) => {
     try {
-      res.json(await editarCodigoMovimiento(req.body && req.body.clave, req.body && req.body.codigoAnterior, req.body && req.body.codigoNuevo));
+      res.json(await editarCodigoMovimiento(claveDe(req), req.body && req.body.codigoAnterior, req.body && req.body.codigoNuevo));
     } catch (error) {
       console.error(error);
       res.status(error.status || 500).json({ error: error.status ? error.message : "No se pudo editar el código." });
@@ -152,7 +153,7 @@ module.exports = function rutasPlanillas(app) {
   app.put("/api/stock-detallado", async (req, res) => {
     try {
       const codigo = String(req.body?.codigo ?? "").trim();
-      const resultado = await actualizarCamposDetallado(codigo, req.body?.clave, req.body?.datos);
+      const resultado = await actualizarCamposDetallado(codigo, claveDe(req), req.body?.datos);
       if (!resultado || !resultado.fila) {
         res.status(404).json({ error: "Material no encontrado." });
         return;
@@ -167,7 +168,7 @@ module.exports = function rutasPlanillas(app) {
 
   app.delete("/api/stock-detallado/columna", async (req, res) => {
     try {
-      const resultado = await limpiarColumnaDetallado(req.body?.clave, req.body?.columna);
+      const resultado = await limpiarColumnaDetallado(claveDe(req), req.body?.columna);
       emitir({ tipo: "recarga" });
       res.json(resultado);
     } catch (error) {

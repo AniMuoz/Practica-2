@@ -4,6 +4,7 @@ import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { useEsMovil } from "../lib/useEsMovil.js";
 import { estadoInventario as estadoDeInventario, textoCampo } from "../lib/reglasPlanilla.js";
+import { apiFetch } from "../lib/api.js";
 
 export default function Detalle() {
   const { codigo } = useParams();
@@ -52,7 +53,7 @@ export default function Detalle() {
   useEffect(() => {
     setCargando(true);
     setError("");
-    fetch(`/api/material/${encodeURIComponent(codigo)}`)
+    apiFetch(`/api/material/${encodeURIComponent(codigo)}`)
       .then((res) => {
         if (res.status === 404) throw new Error("Material no encontrado.");
         if (!res.ok) throw new Error("No se pudo leer la API");
@@ -88,7 +89,7 @@ export default function Detalle() {
     setAvisoDatos("");
     setGuardandoDatos(true);
     setEnCurso("Guardando datos del material...");
-    fetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
+    apiFetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clave, datos, reemplazar }),
@@ -123,7 +124,7 @@ export default function Detalle() {
     setAvisoDatos("");
     setEliminando(true);
     setEnCurso("Eliminando material...");
-    fetch(`/api/material/${encodeURIComponent(codigo)}`, {
+    apiFetch(`/api/material/${encodeURIComponent(codigo)}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clave }),
@@ -202,7 +203,7 @@ export default function Detalle() {
     cuerpo.append("archivo", archivo);
     setAvisoDatos("");
     setEnCurso(`Subiendo ${campo}...`);
-    fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
+    apiFetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
       method: "POST",
       body: cuerpo,
     })
@@ -414,7 +415,7 @@ export default function Detalle() {
                           onClick={() => {
                             setAvisoDatos("");
                             setEnCurso(`Quitando ${campo}...`);
-                            fetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
+                            apiFetch(`/api/material/${encodeURIComponent(codigo)}/imagen`, {
                               method: "DELETE",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ campo, clave }),
@@ -481,7 +482,7 @@ export default function Detalle() {
                 onClick={() => {
                   const marcado = String(fila.Marcado) !== "1";
                   setMarcando(true);
-                  fetch(`/api/material/${encodeURIComponent(codigo)}/marcado`, {
+                  apiFetch(`/api/material/${encodeURIComponent(codigo)}/marcado`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ marcado }),
@@ -535,7 +536,7 @@ export default function Detalle() {
                 onSubmit={(event) => {
                   event.preventDefault();
                   setAvisoDatos("");
-                  fetch("/api/acceso", {
+                  apiFetch("/api/acceso", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ clave }),
@@ -747,7 +748,7 @@ export default function Detalle() {
               setAviso("");
               setGuardando(true);
               setEnCurso("Guardando inventario y comentario...");
-              fetch(`/api/material/${encodeURIComponent(codigo)}`, {
+              apiFetch(`/api/material/${encodeURIComponent(codigo)}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ inventario, comentario }),

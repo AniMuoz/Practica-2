@@ -33,6 +33,7 @@ module.exports = {
   actualizarMaterial: nucleo.actualizarMaterial,
   limpiarInventarioComentarios: nucleo.limpiarInventarioComentarios,
   claveCorrecta: nucleo.claveCorrecta,
+  claveDe: nucleo.claveDe,
   actualizarDatos: nucleo.actualizarDatos,
   actualizarCamposDetallado: nucleo.actualizarCamposDetallado,
   limpiarColumnaDetallado: nucleo.limpiarColumnaDetallado,

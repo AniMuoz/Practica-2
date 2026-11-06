@@ -39,7 +39,8 @@ const { supabase } = require("../supabase/supabase");
 let errorConexion = null;
 supabase.from = () => ({ select: () => ({ limit: async () => ({ error: errorConexion }) }) });
 
-const { app } = require("../server");
+const { crearApp } = require("../server");
+const app = crearApp({ proteger: false });
 // supabase.js puede haber cargado SECRETO_PROXY desde .env; en tests se llama al API en directo.
 delete process.env.SECRETO_PROXY;
 
@@ -503,6 +504,12 @@ test("GET /api/buscar entrega el texto buscado a la búsqueda", async () => {
   const respuesta = await pedir("GET", "/api/buscar?q=perno");
   assert.deepEqual(respuesta.json, { resultados: [{ codigo: "1", descripcion: "A" }] });
   assert.equal(llamadasA("buscarMateriales")[0].args[0], "perno");
+});
+
+test("GET /api/acceso nunca incluye CLAVE_DATOS en el JSON", async () => {
+  const respuesta = await pedir("GET", "/api/acceso");
+  assert.equal(respuesta.json?.clave, undefined);
+  assert.equal(JSON.stringify(respuesta.json || {}).includes(process.env.CLAVE_DATOS), false);
 });
 
 test("POST /api/acceso valida la clave", async () => {

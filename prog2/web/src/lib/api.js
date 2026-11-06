@@ -1,12 +1,37 @@
 // Cliente HTTP unico del frontend: centraliza cabeceras JSON, lectura de la respuesta y mensajes de error.
+// Tambien avisa si la sesion caduco o la cuenta quedo desactivada (sin parchear window.fetch).
 
 async function leerJson(res) {
   return res.json().catch(() => ({}));
 }
 
+function urlDe(input) {
+  return String(typeof input === "string" ? input : input?.url || "");
+}
+
+async function avisarSesion(input, respuesta) {
+  if (typeof window === "undefined") return;
+  if (respuesta.status === 403) {
+    const data = await respuesta.clone().json().catch(() => ({}));
+    if (data && data.desactivada) window.dispatchEvent(new Event("cuenta-desactivada"));
+  }
+  if (respuesta.status === 401) {
+    if (!/\/api\/(login|logout|sesion)/.test(urlDe(input))) {
+      window.dispatchEvent(new Event("sesion-vencida"));
+    }
+  }
+}
+
+/** fetch de la API con avisos de sesion; usar en lugar de window.fetch para /api. */
+export async function apiFetch(input, init) {
+  const respuesta = await fetch(input, init);
+  await avisarSesion(input, respuesta);
+  return respuesta;
+}
+
 // Devuelve el JSON de la respuesta o lanza Error con el mensaje del servidor (o `mensajeError`).
 async function pedirJson(url, opciones = {}, mensajeError = "No se pudo completar la operación.") {
-  const res = await fetch(url, opciones);
+  const res = await apiFetch(url, opciones);
   const data = await leerJson(res);
   if (!res.ok) {
     const error = new Error(data.error || mensajeError);
@@ -44,7 +69,7 @@ export function guardarBlob(blob, nombre) {
 
 // Descarga un archivo (Excel, etc.) como Blob; los errores del servidor llegan como JSON.
 export async function descargarBlob(url, opciones = {}, mensajeError = "No se pudo descargar.") {
-  const res = await fetch(url, opciones);
+  const res = await apiFetch(url, opciones);
   if (!res.ok) {
     const data = await leerJson(res);
     throw new Error(data.error || mensajeError);
