@@ -11,7 +11,7 @@ const TD = { padding: "4px 8px", borderBottom: "1px solid var(--borde-suave)", w
 
 // [clave, titulo, editable]
 const COLUMNAS = [
-  ["pos", "Pos"], ["codigo", "Código"], ["descripcion", "Descripción"], ["ubicacion", "Ubicación"],
+  ["pos", "Pos"], ["codigo", "Código"], ["descripcion", "Descripción"], ["ubicacion", "Ubicación", true],
   ["m501", "M501"], ["m502", "M502"], ["m503", "M503"], ["m504", "M504"], ["m505", "M505"],
   ["solicitado", "Solicitado"], ["entregar", "Entregar", true], ["med", "Med", true], ["tiras", "Tiras"], ["dif", "Dif"], ["comp", "Comp"],
   ["kg_u", "kg x U"], ["kg_total", "Kg Total GD"], ["precio_u", "$ x U"], ["precio_total", "$ Total GD"],
@@ -81,6 +81,30 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
   if (!editando) {
     // Texto normal: se puede seleccionar y copiar a Excel.
     return <span aria-label={`${campo} fila ${fila.pos}`}>{String(fila[campo] ?? "")}</span>;
+  }
+  if (campo === "ubicacion") {
+    const esConcon = String(valor).trim().toUpperCase() === "CONCON";
+    return (
+      <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+        <select
+          aria-label={`tipo de ubicacion fila ${fila.pos}`}
+          value={esConcon ? "CONCON" : "OTRA"}
+          onChange={(e) => onCambio(fila, campo, e.target.value === "CONCON" ? "CONCON" : (String(fila[campo] ?? "").toUpperCase() === "CONCON" ? "" : String(fila[campo] ?? "")))}
+          style={{ padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
+        >
+          <option value="CONCON">CONCON</option>
+          <option value="OTRA">Escribir ubicación</option>
+        </select>
+        {!esConcon && (
+          <input
+            aria-label={`editar ubicacion fila ${fila.pos}`}
+            value={valor}
+            onChange={(e) => onCambio(fila, campo, e.target.value)}
+            style={{ width: 90, padding: "2px 4px", border: "1px solid var(--borde)", borderRadius: 4 }}
+          />
+        )}
+      </span>
+    );
   }
   return (
     <span style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>

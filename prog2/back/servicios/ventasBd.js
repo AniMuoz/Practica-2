@@ -7,7 +7,7 @@ const { leerContratistas } = require("./contratistas");
 const { itemsDesdeOrden, itemsDesdeTraspaso, itemsDesdeManual, enteroCelda, escribirEncabezadoVentas } = require("./ventas");
 
 const LIMITE_LOG = 25;
-const CAMPOS_TEXTO = ["contratista", "n_venta", "gd_esval", "estado", "fecha_gd", "gd_esval2", "observacion", "med"];
+const CAMPOS_TEXTO = ["contratista", "n_venta", "gd_esval", "estado", "fecha_gd", "gd_esval2", "observacion", "med", "ubicacion"];
 const CAMPOS_NUMERO = ["solicitado", "entregar", "cant_gd"];
 const CAMPOS_EDITABLES = [...CAMPOS_NUMERO, ...CAMPOS_TEXTO];
 const LARGO_MAXIMO = 200;
@@ -299,6 +299,22 @@ async function editarFila(valorId, cambios, usuario) {
       nuevos[campo] = String(cambios[campo] ?? "").trim().slice(0, LARGO_MAXIMO);
     }
   });
+  if (campos.includes("ubicacion")) {
+    const eraConcon = String(anterior.ubicacion ?? "").trim().toUpperCase() === "CONCON";
+    if (nuevos.ubicacion.toUpperCase() === "CONCON") {
+      // Formato CONCON automático (igual que al generar la venta).
+      const entregar = "entregar" in nuevos ? nuevos.entregar : numero(anterior.entregar);
+      const solicitado = "solicitado" in nuevos ? nuevos.solicitado : numero(anterior.solicitado);
+      const concon = solicitado - entregar > 0 ? solicitado - entregar : solicitado;
+      nuevos.ubicacion = "CONCON";
+      nuevos.rojo = true;
+      nuevos.almacen = "CONCON";
+      nuevos.cant_gd = concon;
+      nuevos.observacion = `CONCON ${concon}`;
+    } else if (eraConcon) {
+      nuevos.rojo = false;
+    }
+  }
   const cambiados = campos.filter((campo) => String(anterior[campo] ?? "") !== String(nuevos[campo]));
   if (cambiados.length === 0) return { fila: conCalculos(anterior) };
   const { error } = await supabase.from("ventas_filas").update(nuevos).eq("id", id);
