@@ -437,6 +437,7 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
   const [productos, setProductos] = useEstadoPersistente("admin:ventas:productos", [{ codigo: "", cantidad: "" }]);
   const [codVenta, setCodVenta] = useEstadoPersistente("admin:ventas:codVenta", "");
   const [almacen, setAlmacen] = useEstadoPersistente("admin:ventas:almacen", "M501");
+  const [origenNumero, setOrigenNumero] = useEstadoPersistente("admin:ventas:origenNumero", "planilla");
   const [procesando, setProcesando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
@@ -524,7 +525,8 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
     cuerpo.append("contratista", contratista);
     cuerpo.append("movimiento", movimiento);
     cuerpo.append("almacen", movimiento === "2" ? almacen : "M501");
-    cuerpo.append("codVenta", movimiento === "2" && modo !== "manual" ? "n/a" : codVenta);
+    const usarNumeroPlanilla = movimiento === "2" && modo !== "manual" && origenNumero === "planilla";
+    cuerpo.append("codVenta", usarNumeroPlanilla ? "n/a" : codVenta);
     apiFetch("/api/ventas", { method: "POST", body: cuerpo })
       .then((res) => leerJson(res, "No se pudo guardar la venta."))
       .then((data) => {
@@ -651,7 +653,16 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
               <option value="2">Traspaso</option>
             </select>
           </label>
-          {(movimiento === "1" || (movimiento === "2" && modo === "manual")) && (
+          {movimiento === "2" && modo === "orden" && (
+            <label style={ETIQUETA}>
+              Número del traspaso
+              <select aria-label="Origen del número de traspaso" value={origenNumero} onChange={(e) => setOrigenNumero(e.target.value)} style={CAMPO}>
+                <option value="planilla">Usar el número de la planilla</option>
+                <option value="manual">Digitarlo manualmente</option>
+              </select>
+            </label>
+          )}
+          {(movimiento === "1" || (movimiento === "2" && (modo === "manual" || origenNumero === "manual"))) && (
             <label style={ETIQUETA}>
               Número de venta
               <input value={codVenta} placeholder="Ej: 12345" onChange={(e) => setCodVenta(e.target.value)} style={CAMPO} />

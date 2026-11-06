@@ -250,7 +250,8 @@ async function anadirVenta({ ordenBuffer, hoja = "", contratistaIdx, movTipo, al
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
   const almacenFila = mov === "VENTA" ? "M501" : (new Set(BODEGAS_EXPORT).has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
   const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
-  const codcomp = mov === "TRASPASO" ? (numeroTraspaso || numeroIngresado) : numeroIngresado;
+  const manual = String(numeroIngresado).trim().toLowerCase() !== "n/a";
+  const codcomp = mov === "TRASPASO" ? (manual ? numeroIngresado : (numeroTraspaso || numeroIngresado)) : numeroIngresado;
 
   const hoy = new Date();
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;

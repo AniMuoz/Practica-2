@@ -336,7 +336,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   const almacenFila = mov === "VENTA" ? "M501" : (bodegas.has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
   const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
   const codcomp = mov === "TRASPASO"
-    ? (numeroTraspaso || numeroIngresado)
+    ? (String(numeroIngresado).trim().toLowerCase() !== "n/a" ? numeroIngresado : (numeroTraspaso || numeroIngresado))
     : numeroIngresado;
   const contratista = contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
   const hoy = new Date();
