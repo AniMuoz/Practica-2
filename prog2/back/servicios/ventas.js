@@ -299,6 +299,14 @@ function itemsDesdeManual(lista) {
   });
 }
 
+// Vacío / "n/a" en traspaso → número leído de la planilla; si no, el ingresado a mano.
+function resolverCodcomp(mov, codVenta, numeroTraspaso) {
+  const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
+  if (mov !== "TRASPASO") return numeroIngresado;
+  const manual = String(numeroIngresado).trim().toLowerCase() !== "n/a";
+  return manual ? numeroIngresado : (numeroTraspaso || numeroIngresado);
+}
+
 async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo, almacen, codVenta, colores = true, itemsManuales = null }) {
   const materiales = new Map();
   filasConBodegas().forEach((fila) => {
@@ -350,10 +358,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
   const bodegas = new Set(BODEGAS_EXPORT);
   const almacenFila = mov === "VENTA" ? "M501" : (bodegas.has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
-  const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
-  const codcomp = mov === "TRASPASO"
-    ? (String(numeroIngresado).trim().toLowerCase() !== "n/a" ? numeroIngresado : (numeroTraspaso || numeroIngresado))
-    : numeroIngresado;
+  const codcomp = resolverCodcomp(mov, codVenta, numeroTraspaso);
   const contratista = contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
   const hoy = new Date();
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
@@ -509,5 +514,6 @@ module.exports = {
   numeroEnTitulo,
   itemsDesdeTraspaso,
   itemsDesdeManual,
+  resolverCodcomp,
   añadirVenta,
 };

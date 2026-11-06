@@ -139,19 +139,25 @@ test("anadirVenta rechaza peticiones sin productos", async () => {
   assert.equal(tablas.ventas_planillas.length, 0);
 });
 
-test("editarFila guarda solo campos permitidos y registra cada cambio", async () => {
+test("editarFila guarda campos permitidos, valida codigo y registra cada cambio", async () => {
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: [{ codigo: "100", cantidad: 4 }] });
   const fila = tablas.ventas_filas[0];
-  const r = await ventasBd.editarFila(fila.id, { estado: "Entregado", entregar: "3,5", codigo: "X" }, "luis");
+  const r = await ventasBd.editarFila(fila.id, { estado: "Entregado", entregar: "3,5" }, "luis");
   assert.equal(r.fila.estado, "Entregado");
   assert.equal(tablas.ventas_filas[0].entregar, 3.5);
-  assert.equal(tablas.ventas_filas[0].codigo, "100");
   const cambios = tablas.ventas_log.filter((l) => l.accion === "editar_celda");
   assert.deepEqual(cambios.map((c) => [c.campo, c.valor_anterior, c.valor_nuevo, c.usuario]), [
     ["estado", "", "Entregado", "luis"],
     ["entregar", "4", "3.5", "luis"],
   ]);
-  await assert.rejects(ventasBd.editarFila(fila.id, { codigo: "X" }, "luis"), { status: 400 });
+  await assert.rejects(ventasBd.editarFila(fila.id, { codigo: "X" }, "luis"), { status: 422 });
+  await assert.rejects(ventasBd.editarFila(fila.id, { codigo: "X", estado: "Otro" }, "luis"), { status: 422 });
+  assert.equal(tablas.ventas_filas[0].codigo, "100");
+  assert.equal(tablas.ventas_filas[0].estado, "Entregado");
+  const cambiado = await ventasBd.editarFila(fila.id, { codigo: "200" }, "luis");
+  assert.equal(cambiado.fila.codigo, "200");
+  assert.equal(cambiado.fila.descripcion, "Cañería PVC");
+  assert.equal(tablas.ventas_filas[0].codigo, "200");
   await assert.rejects(ventasBd.editarFila(fila.id, { entregar: "abc" }, "luis"), { status: 400 });
   await assert.rejects(ventasBd.editarFila(999, { estado: "x" }, "luis"), { status: 404 });
 });
@@ -257,4 +263,70 @@ test("leerAuditoria devuelve filas y log de la planilla", async () => {
   assert.equal(a.filas.length, 3);
   assert.equal(a.log.length, 2);
   await assert.rejects(ventasBd.leerAuditoria(99), { status: 404 });
+});
+
+test("editarFila CONCON restaura almacen cant_gd observacion al salir y audita side-effects", async () => {
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: [{ codigo: "100", cantidad: 4 }], usuario: "ana" });
+  const fila = tablas.ventas_filas[0];
+  await ventasBd.editarFila(fila.id, { ubicacion: "CONCON" }, "ana");
+  const concon = tablas.ventas_filas[0];
+  assert.equal(concon.ubicacion, "CONCON");
+  assert.equal(concon.almacen, "CONCON");
+  assert.equal(concon.rojo, true);
+  assert.equal(concon.cant_gd, 4);
+  assert.equal(concon.observacion, "CONCON 4");
+  const logEntrada = tablas.ventas_log.filter((l) => l.accion === "editar_celda" && l.campo === "almacen");
+  assert.equal(logEntrada.some((l) => l.valor_nuevo === "CONCON"), true);
+
+  await ventasBd.editarFila(fila.id, { ubicacion: "0102-A" }, "ana");
+  const salida = tablas.ventas_filas[0];
+  assert.equal(salida.ubicacion, "0102-A");
+  assert.equal(salida.rojo, false);
+  assert.equal(salida.almacen, "M501");
+  assert.equal(salida.cant_gd, salida.entregar);
+  assert.equal(salida.observacion, "");
+  assert.equal(tablas.ventas_log.some((l) => l.campo === "almacen" && l.valor_nuevo === "M501"), true);
+});
+
+test("anadirFilaVacia permite completar el codigo despues", async () => {
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, itemsManuales: [{ codigo: "100", cantidad: 1 }], usuario: "ana" });
+  const planillaId = tablas.ventas_planillas[0].id;
+  const lote = tablas.ventas_filas[0].lote;
+  await ventasBd.anadirFilaVacia(planillaId, lote, "ana");
+  const vacia = tablas.ventas_filas.find((f) => f.codigo === "");
+  assert.ok(vacia);
+  const r = await ventasBd.editarFila(vacia.id, { codigo: "100" }, "ana");
+  assert.equal(r.fila.codigo, "100");
+  assert.equal(r.fila.descripcion, "Perno");
+});
+
+test("exportarPlanilla ordena dentro de la orden y filtra por lote", async () => {
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "1", itemsManuales: [{ codigo: "200", cantidad: 1 }, { codigo: "100", cantidad: 1 }], usuario: "ana" });
+  // Forzar otro lote: Date.now() puede repetirse en la misma ms.
+  const lote1 = tablas.ventas_filas[0].lote;
+  tablas.ventas_filas.forEach((f) => { f.lote = 111; });
+  await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "2", itemsManuales: [{ codigo: "100", cantidad: 1 }], usuario: "ana" });
+  tablas.ventas_filas.filter((f) => f.n_venta === "2").forEach((f) => { f.lote = 222; });
+  const { anio, mes } = ventasBd.mesActual();
+  const { buffer } = await ventasBd.exportarPlanilla(anio, mes, "ana", true, "completa", "codigo-asc", 111);
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(buffer);
+  const hoja = libro.worksheets[0];
+  assert.equal(hoja.getCell(2, 2).value, "100");
+  assert.equal(hoja.getCell(3, 2).value, "200");
+  assert.equal(lote1 != null, true);
+  await assert.rejects(ventasBd.exportarPlanilla(anio, mes, "ana", true, "completa", "", 999999), { status: 404 });
+});
+
+test("ordenarFilasVentas usa keys campo-asc/campo-desc", () => {
+  const { ordenarFilasVentas } = require("../servicios/ordenFilasVentas");
+  const filas = [
+    { planilla_id: 1, lote: 1, pos: 10, codigo: "200", ubicacion: "B" },
+    { planilla_id: 1, lote: 1, pos: 20, codigo: "100", ubicacion: "" },
+  ];
+  const asc = ordenarFilasVentas(filas, "codigo-asc");
+  assert.deepEqual(asc.map((f) => f.codigo), ["100", "200"]);
+  assert.deepEqual(asc.map((f) => f.pos), [10, 20]);
+  const desc = ordenarFilasVentas(filas, "codigo-desc");
+  assert.deepEqual(desc.map((f) => f.codigo), ["200", "100"]);
 });

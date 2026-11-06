@@ -373,7 +373,7 @@ test("GET /api/ventas/descargar entrega el Excel con el nombre VENTAS dd-mm-aaaa
   respuestasVentas = { exportarPlanilla: { buffer: Buffer.from("xlsx"), nombre: "VENTAS Y TRASPASOS 05-10-2026.xlsx" } };
   const r = await pedir("GET", "/api/ventas/descargar?anio=2026&mes=10&colores=0");
   assert.equal(r.status, 200);
-  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%2005-10-2026.xlsx");
+  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%20Y%20TRASPASOS%2005-10-2026.xlsx");
   assert.equal(r.cuerpo.toString(), "xlsx");
   assert.equal(llamadasVentas[0].args[3], false);
   respuestasVentas = { exportarPlanilla: fallar(404, "No hay planilla de ventas para ese mes.") };
@@ -385,7 +385,7 @@ test("GET /api/ventas/descargar-anual entrega el Excel anual", async () => {
   respuestasVentas = { exportarAnual: { buffer: Buffer.from("anual"), nombre: "VENTAS Y TRASPASOS ANUAL 2026 05-10-2026.xlsx" } };
   const r = await pedir("GET", "/api/ventas/descargar-anual?anio=2026");
   assert.equal(r.status, 200);
-  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%20ANUAL%202026%2005-10-2026.xlsx");
+  assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%20Y%20TRASPASOS%20ANUAL%202026%2005-10-2026.xlsx");
   assert.equal(llamadasVentas[0].args[0], "2026");
 });
 

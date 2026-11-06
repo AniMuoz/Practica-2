@@ -4,13 +4,18 @@ const { leerTodo, generarExcelLog, detalleTexto } = require("./logsAuditoria");
 const { BODEGAS_EXPORT } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");
-const { itemsDesdeOrden, itemsDesdeTraspaso, itemsDesdeManual, enteroCelda, escribirEncabezadoVentas } = require("./ventas");
+const { itemsDesdeOrden, itemsDesdeTraspaso, itemsDesdeManual, enteroCelda, escribirEncabezadoVentas, resolverCodcomp } = require("./ventas");
+const { ordenarDentroDeOrdenes } = require("./ordenFilasVentas");
 
 const LIMITE_LOG = 25;
-const CAMPOS_TEXTO = ["contratista", "n_venta", "gd_esval", "estado", "fecha_gd", "gd_esval2", "observacion", "med", "ubicacion"];
+const CAMPOS_TEXTO = ["codigo", "contratista", "n_venta", "gd_esval", "estado", "fecha_gd", "gd_esval2", "observacion", "med", "ubicacion"];
 const CAMPOS_NUMERO = ["solicitado", "entregar", "cant_gd"];
 const CAMPOS_EDITABLES = [...CAMPOS_NUMERO, ...CAMPOS_TEXTO];
 const LARGO_MAXIMO = 200;
+
+function marcarCampo(campos, campo) {
+  if (!campos.includes(campo)) campos.push(campo);
+}
 
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
@@ -249,9 +254,7 @@ async function anadirVenta({ ordenBuffer, hoja = "", contratistaIdx, movTipo, al
   const contratista = contratistaIdx >= 1 && contratistaIdx <= contratistas.length ? contratistas[contratistaIdx - 1] : "n/a";
   const mov = Number(movTipo) === 2 ? "TRASPASO" : "VENTA";
   const almacenFila = mov === "VENTA" ? "M501" : (new Set(BODEGAS_EXPORT).has(String(almacen || "").trim()) ? String(almacen).trim() : "M501");
-  const numeroIngresado = codVenta === "" || codVenta == null ? "n/a" : codVenta;
-  const manual = String(numeroIngresado).trim().toLowerCase() !== "n/a";
-  const codcomp = mov === "TRASPASO" ? (manual ? numeroIngresado : (numeroTraspaso || numeroIngresado)) : numeroIngresado;
+  const codcomp = resolverCodcomp(mov, codVenta, numeroTraspaso);
 
   const hoy = new Date();
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
@@ -333,8 +336,18 @@ async function editarFila(valorId, cambios, usuario) {
       nuevos.almacen = "CONCON";
       nuevos.cant_gd = concon;
       nuevos.observacion = `CONCON ${concon}`;
+      ["rojo", "almacen", "cant_gd", "observacion"].forEach((c) => marcarCampo(campos, c));
     } else if (eraConcon) {
+      const entregar = "entregar" in nuevos ? nuevos.entregar : numero(anterior.entregar);
       nuevos.rojo = false;
+      nuevos.cant_gd = entregar;
+      // El almacén previo a CONCON no se guarda; mismo default que anadirVenta.
+      nuevos.almacen = "M501";
+      ["rojo", "cant_gd", "almacen"].forEach((c) => marcarCampo(campos, c));
+      if (/^CONCON\b/i.test(String(anterior.observacion ?? "").trim())) {
+        nuevos.observacion = "";
+        marcarCampo(campos, "observacion");
+      }
     }
   }
   const cambiados = campos.filter((campo) => String(anterior[campo] ?? "") !== String(nuevos[campo]));
@@ -520,43 +533,6 @@ async function armarExcelReservar(filas, colores = true) {
 }
 
 const armadorPlanilla = (tipo) => (tipo === "reservar" ? armarExcelReservar : armarExcel);
-
-const ORDENES_FILAS = {
-  "codigo-asc": ["codigo", 1], codigo: ["codigo", -1],
-  "ubicacion-asc": ["ubicacion", 1], ubicacion: ["ubicacion", -1],
-  descripcion: ["descripcion", 1], "descripcion-desc": ["descripcion", -1],
-};
-
-// Ordena las filas dentro de cada orden (lote); nunca mezcla filas de órdenes distintas.
-function ordenarDentroDeOrdenes(filas, orden) {
-  const regla = ORDENES_FILAS[orden];
-  if (!regla) return filas;
-  const [campo, sentido] = regla;
-  const grupos = new Map();
-  for (const fila of filas) {
-    const clave = `${fila.planilla_id}-${fila.lote}`;
-    if (!grupos.has(clave)) grupos.set(clave, []);
-    grupos.get(clave).push(fila);
-  }
-  // La columna pos no se mueve: cada puesto conserva su número original.
-  return [...grupos.values()].flatMap((grupo) => {
-    const posiciones = grupo.map((f) => f.pos);
-    return grupo.sort(comparar(campo, sentido)).map((f, i) => ({ ...f, pos: posiciones[i] }));
-  });
-}
-
-function comparar(campo, sentido) {
-  return (a, b) => {
-    const va = String(a[campo] ?? "").trim();
-    const vb = String(b[campo] ?? "").trim();
-    if (campo === "ubicacion") {
-      if (!va && !vb) return 0;
-      if (!va) return 1;
-      if (!vb) return -1;
-    }
-    return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
-  };
-}
 
 async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa", orden = "", lote = null) {
   const { anio, mes } = validarMes(valorAnio, valorMes);

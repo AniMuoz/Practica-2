@@ -2,6 +2,9 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
 import { useEstadoPersistente } from "../lib/persistencia.js";
 import { apiFetch } from "../lib/api.js";
+import { OPCIONES_ORDEN, ordenarFilasVentas } from "../lib/ordenFilasVentas.js";
+
+export { ordenarFilasVentas };
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const CAMPO = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6 };
@@ -19,39 +22,6 @@ const COLUMNAS = [
   ["cant_gd", "Cant:GD", true], ["gd_esval", "GD Esval", true], ["estado", "Estado", true], ["fecha", "Fecha"],
   ["dif_pend", "Dif.Pend"], ["gd_esval2", "GD Esval (2)", true], ["fecha_gd", "Fecha GD", true], ["observacion", "Observación", true],
 ];
-
-const ORDENES_FILAS = [
-  ["", "Sin orden extra"],
-  ["codigo-asc", "Códigos de menor a mayor"],
-  ["codigo", "Códigos de mayor a menor"],
-  ["ubicacion-asc", "Ubicaciones de menor a mayor"],
-  ["ubicacion", "Ubicaciones de mayor a menor"],
-  ["descripcion", "Descripciones A-Z"],
-  ["descripcion-desc", "Descripciones Z-A"],
-];
-
-// Misma lógica que el servidor (ventasBd.js): se ordena una sola orden (lote) a la vez.
-export function ordenarFilasVentas(filas, orden) {
-  if (!orden) return filas;
-  const [campo, asc] = orden === "codigo" ? ["codigo", false] : orden === "codigo-asc" ? ["codigo", true]
-    : orden === "ubicacion" ? ["ubicacion", false] : orden === "ubicacion-asc" ? ["ubicacion", true]
-    : orden === "descripcion" ? ["descripcion", true] : orden === "descripcion-desc" ? ["descripcion", false] : [null];
-  if (!campo) return filas;
-  const sentido = asc ? 1 : -1;
-  const posiciones = filas.map((f) => f.pos);
-  const ordenadas = [...filas].sort((a, b) => {
-    const va = String(a[campo] ?? "").trim();
-    const vb = String(b[campo] ?? "").trim();
-    if (campo === "ubicacion") {
-      if (!va && !vb) return 0;
-      if (!va) return 1;
-      if (!vb) return -1;
-    }
-    return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
-  });
-  // La columna Pos no se mueve: cada puesto conserva su número.
-  return ordenadas.map((f, i) => ({ ...f, pos: posiciones[i] }));
-}
 
 export function nombreDescarga(ahora = new Date(), tipo = "completa") {
   const dia = String(ahora.getDate()).padStart(2, "0");
@@ -356,7 +326,7 @@ function Preview({ colores, recarga }) {
         </label>
         <input aria-label="Filtrar filas" placeholder="Filtrar código, descripción..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} style={{ ...CAMPO, flex: 1, minWidth: 160 }} />
         <select aria-label="Orden de las filas" title="Se ordena dentro de cada orden, sin mezclar órdenes" value={ordenFilas} onChange={(e) => setOrdenFilas(e.target.value)} style={CAMPO}>
-          {ORDENES_FILAS.map(([valor, titulo]) => <option key={valor} value={valor}>{titulo}</option>)}
+          {OPCIONES_ORDEN.map(([valor, titulo]) => <option key={valor} value={valor}>{titulo}</option>)}
         </select>
         <button
           type="button"
@@ -550,7 +520,6 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
   const [productos, setProductos] = useEstadoPersistente("admin:ventas:productos", [{ codigo: "", cantidad: "" }]);
   const [codVenta, setCodVenta] = useEstadoPersistente("admin:ventas:codVenta", "");
   const [almacen, setAlmacen] = useEstadoPersistente("admin:ventas:almacen", "M501");
-  const [origenNumero, setOrigenNumero] = useEstadoPersistente("admin:ventas:origenNumero", "planilla");
   const [procesando, setProcesando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [recarga, setRecarga] = useState(0);
@@ -638,8 +607,9 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
     cuerpo.append("contratista", contratista);
     cuerpo.append("movimiento", movimiento);
     cuerpo.append("almacen", movimiento === "2" ? almacen : "M501");
-    const usarNumeroPlanilla = movimiento === "2" && modo !== "manual" && origenNumero === "planilla";
-    cuerpo.append("codVenta", usarNumeroPlanilla ? "n/a" : codVenta);
+    // Traspaso: vacío → "n/a" (usar número de la planilla). Venta: se envía lo digitado.
+    const numero = String(codVenta ?? "").trim();
+    cuerpo.append("codVenta", movimiento === "2" && numero === "" ? "n/a" : codVenta);
     apiFetch("/api/ventas", { method: "POST", body: cuerpo })
       .then((res) => leerJson(res, "No se pudo guardar la venta."))
       .then((data) => {
@@ -766,21 +736,16 @@ export default function Ventas({ colores = true, listaContratistas = [] }) {
               <option value="2">Traspaso</option>
             </select>
           </label>
-          {movimiento === "2" && modo === "orden" && (
-            <label style={ETIQUETA}>
-              Número del traspaso
-              <select aria-label="Origen del número de traspaso" value={origenNumero} onChange={(e) => setOrigenNumero(e.target.value)} style={CAMPO}>
-                <option value="planilla">Usar el número de la planilla</option>
-                <option value="manual">Digitarlo manualmente</option>
-              </select>
-            </label>
-          )}
-          {(movimiento === "1" || (movimiento === "2" && (modo === "manual" || origenNumero === "manual"))) && (
-            <label style={ETIQUETA}>
-              Número de venta
-              <input value={codVenta} placeholder="Ej: 12345" onChange={(e) => setCodVenta(e.target.value)} style={CAMPO} />
-            </label>
-          )}
+          <label style={ETIQUETA}>
+            {movimiento === "2" ? "Número del traspaso" : "Número de venta"}
+            <input
+              value={codVenta}
+              placeholder={movimiento === "2" ? "Vacío = número de la planilla" : "Ej: 12345"}
+              aria-label={movimiento === "2" ? "Número del traspaso" : "Número de venta"}
+              onChange={(e) => setCodVenta(e.target.value)}
+              style={CAMPO}
+            />
+          </label>
           {movimiento === "2" && (
             <label style={ETIQUETA}>
               Almacén

@@ -23,7 +23,7 @@ const nucleo = require("../servicios/nucleoDatos");
 nucleo.materialesEnCache = () => ({ filasBodega: MATERIALES });
 const contratistas = require("../servicios/contratistas");
 
-const { armarReserva, columnaPorTitulo, añadirVenta } = require("../servicios/ventas");
+const { armarReserva, columnaPorTitulo, añadirVenta, resolverCodcomp } = require("../servicios/ventas");
 
 test.before(async () => {
   await contratistas.cargarContratistas();
@@ -31,6 +31,15 @@ test.before(async () => {
 
 const COLUMNAS_RESERVA = ["N°", "N° Orden", "Código", "Descripción", "Reserva", "Stock", "Ubicación", "Estado"];
 const SIN_UBICACION = "No se encontro ubicación";
+
+test("resolverCodcomp: vacío/n/a en traspaso usa el número de planilla", () => {
+  assert.equal(resolverCodcomp("VENTA", "", ""), "n/a");
+  assert.equal(resolverCodcomp("VENTA", "55", "339"), "55");
+  assert.equal(resolverCodcomp("TRASPASO", "n/a", "339943"), "339943");
+  assert.equal(resolverCodcomp("TRASPASO", "", "339943"), "339943");
+  assert.equal(resolverCodcomp("TRASPASO", "99", "339943"), "99");
+  assert.equal(resolverCodcomp("TRASPASO", "n/a", ""), "n/a");
+});
 
 // ---------- armarReserva ----------
 
