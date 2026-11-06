@@ -11,7 +11,7 @@ const TD = { padding: "4px 8px", borderBottom: "1px solid var(--borde-suave)", w
 
 // [clave, titulo, editable]
 const COLUMNAS = [
-  ["pos", "Pos"], ["codigo", "Código"], ["descripcion", "Descripción"], ["ubicacion", "Ubicación", true],
+  ["pos", "Pos"], ["codigo", "Código", true], ["descripcion", "Descripción"], ["ubicacion", "Ubicación", true],
   ["m501", "M501"], ["m502", "M502"], ["m503", "M503"], ["m504", "M504"], ["m505", "M505"],
   ["solicitado", "Solicitado"], ["entregar", "Entregar", true], ["med", "Med", true], ["tiras", "Tiras"], ["dif", "Dif"], ["comp", "Comp"],
   ["kg_u", "kg x U"], ["kg_total", "Kg Total GD"], ["precio_u", "$ x U"], ["precio_total", "$ Total GD"],
@@ -56,12 +56,12 @@ export function ordenarFilasVentas(filas, orden) {
 export function nombreDescarga(ahora = new Date(), tipo = "completa") {
   const dia = String(ahora.getDate()).padStart(2, "0");
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  const prefijo = tipo === "reservar" ? "VENTAS RESERVAR" : "VENTAS";
+  const prefijo = tipo === "reservar" ? "VENTAS Y TRASPASOS RESERVAR" : "VENTAS Y TRASPASOS";
   return `${prefijo} ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
 export function nombreDescargaAnual(anio, ahora = new Date(), tipo = "completa") {
-  return nombreDescarga(ahora, tipo).replace(/^(VENTAS(?: RESERVAR)?) /, `$1 ANUAL ${anio} `);
+  return nombreDescarga(ahora, tipo).replace(/^(VENTAS Y TRASPASOS(?: RESERVAR)?) /, `$1 ANUAL ${anio} `);
 }
 
 async function leerJson(res, mensaje) {
@@ -239,17 +239,28 @@ function Preview({ colores, recarga }) {
     });
     setGuardando(true);
     try {
+      const revertidos = [];
+      const patch = (id, cuerpo) => apiFetch(`/api/ventas/filas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cuerpo),
+      });
       for (const [id, cambios] of pendientes) {
-        const res = await apiFetch(`/api/ventas/filas/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cambios),
-        });
+        let res = await patch(id, cambios);
+        if (res.status === 422 && "codigo" in cambios) {
+          // Código inexistente: se revierte solo ese cambio y se guardan los demás.
+          const data = await res.json().catch(() => ({}));
+          revertidos.push(data.error || `El codigo ${cambios.codigo} no existe, se revirtio ese cambio`);
+          const { codigo, ...resto } = cambios;
+          if (Object.keys(resto).length === 0) continue;
+          res = await patch(id, resto);
+        }
         await leerJson(res, "No se pudo guardar la fila.");
       }
       setBorradores({});
       setEditando(false);
-      setAviso(pendientes.length ? `Se guardaron los cambios de ${pendientes.length} filas.` : "");
+      const guardado = pendientes.length ? `Se guardaron los cambios de ${pendientes.length} filas.` : "";
+      setAviso([...revertidos, guardado].filter(Boolean).join(" "));
       await cargar();
     } catch (e) {
       setAviso(e.message);
@@ -261,6 +272,13 @@ function Preview({ colores, recarga }) {
     if (!window.confirm(`¿Quitar la fila ${fila.pos} (${fila.codigo}) de la planilla?`)) return;
     apiFetch(`/api/ventas/filas/${fila.id}`, { method: "DELETE" })
       .then((res) => leerJson(res, "No se pudo quitar la fila."))
+      .then(() => cargar())
+      .catch((e) => setAviso(e.message));
+  }
+
+  function anadirFila(grupo) {
+    apiFetch(`/api/ventas/ordenes/${planilla.id}/${grupo.fila.lote}/filas`, { method: "POST" })
+      .then((res) => leerJson(res, "No se pudo añadir la fila."))
       .then(() => cargar())
       .catch((e) => setAviso(e.message));
   }
@@ -422,6 +440,15 @@ function Preview({ colores, recarga }) {
                   <tr data-sin-copia="1">
                     <td colSpan={COLUMNAS.length + 2} style={{ ...TD, background: "var(--acento)", color: "var(--sobre)", fontWeight: 700 }}>
                       Orden: {grupo.fila.movimiento} N° {grupo.fila.n_venta} · {grupo.fila.contratista} · {grupo.fila.fecha} ({grupo.filas.length} filas){" "}
+                      {editando && (
+                        <button
+                          type="button"
+                          onClick={() => anadirFila(grupo)}
+                          style={{ marginLeft: 8, padding: "3px 10px", border: "1px solid var(--borde)", background: "var(--superficie)", color: "var(--texto)", fontSize: 12, cursor: "pointer", boxShadow: "none", verticalAlign: "middle" }}
+                        >
+                          + Añadir fila
+                        </button>
+                      )}
                       <button
                         type="button"
                         title="Eliminar la orden completa"

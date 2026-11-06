@@ -136,10 +136,10 @@ describe("Ventas", () => {
     fireEvent.click(screen.getByText("Descargar planilla anual"));
     fireEvent.click(await screen.findByText("Descargar planilla completa"));
     await waitFor(() => expect(llamadas.some((l) => l.url.startsWith("/api/ventas/descargar-anual?anio=2025"))).toBe(true));
-    expect(nombreDescargaAnual(2026, new Date(2026, 9, 5))).toBe("VENTAS ANUAL 2026 05-10-2026.xlsx");
+    expect(nombreDescargaAnual(2026, new Date(2026, 9, 5))).toBe("VENTAS Y TRASPASOS ANUAL 2026 05-10-2026.xlsx");
   });
 
   it("nombra la descarga VENTAS dd-mm-aaaa.xlsx", () => {
-    expect(nombreDescarga(new Date(2026, 9, 5))).toBe("VENTAS 05-10-2026.xlsx");
+    expect(nombreDescarga(new Date(2026, 9, 5))).toBe("VENTAS Y TRASPASOS 05-10-2026.xlsx");
   });
 });

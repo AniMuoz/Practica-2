@@ -299,6 +299,28 @@ async function editarFila(valorId, cambios, usuario) {
       nuevos[campo] = String(cambios[campo] ?? "").trim().slice(0, LARGO_MAXIMO);
     }
   });
+  if (campos.includes("codigo") && String(anterior.codigo ?? "") !== nuevos.codigo) {
+    const material = filasConBodegas().find((m) => String(m.Codigo ?? "").trim() === nuevos.codigo);
+    if (!nuevos.codigo || !material) {
+      const error = errorHttp(422, `El codigo ${nuevos.codigo} no existe, se revirtio ese cambio`);
+      error.codigoInvalido = true;
+      throw error;
+    }
+    const entregarFila = "entregar" in nuevos ? nuevos.entregar : numero(anterior.entregar);
+    const solicitadoFila = "solicitado" in nuevos ? nuevos.solicitado : numero(anterior.solicitado);
+    const medFila = "med" in nuevos ? nuevos.med : String(anterior.med ?? "");
+    const [calculada] = calcularFilas(
+      [{ codigo: nuevos.codigo, cantidad: solicitadoFila, unidad: medFila, entregar: entregarFila }],
+      { materiales: new Map([[nuevos.codigo, material]]), contratista: anterior.contratista, mov: anterior.movimiento, almacenFila: anterior.almacen, codcomp: anterior.n_venta, fecha: anterior.fecha, posInicial: 0 },
+    );
+    const derivados = ["descripcion", "ubicacion", "m501", "m502", "m503", "m504", "m505", "tiras", "dif", "kg_u", "precio_u", "precio_total", "rojo"];
+    derivados.forEach((campo) => {
+      // Una ubicación cambiada a mano en la misma edición se conserva.
+      if (campo === "ubicacion" && campos.includes("ubicacion")) return;
+      nuevos[campo] = calculada[campo];
+      if (!campos.includes(campo)) campos.push(campo);
+    });
+  }
   if (campos.includes("ubicacion")) {
     const eraConcon = String(anterior.ubicacion ?? "").trim().toUpperCase() === "CONCON";
     if (nuevos.ubicacion.toUpperCase() === "CONCON") {
@@ -329,6 +351,26 @@ async function editarFila(valorId, cambios, usuario) {
     detalle: { pos: anterior.pos, codigo: anterior.codigo },
   })));
   return { fila: conCalculos({ ...anterior, ...nuevos }) };
+}
+
+async function anadirFilaVacia(valorPlanilla, valorLote, usuario) {
+  const planillaId = enteroId(valorPlanilla, "Planilla");
+  const lote = enteroId(valorLote, "Orden");
+  const { data, error } = await supabase.from("ventas_filas").select("*").eq("planilla_id", planillaId).eq("lote", lote);
+  if (error) falloBd(error);
+  if (!data || data.length === 0) throw errorHttp(404, "La orden no existe.");
+  const base = data[0];
+  const fila = {
+    planilla_id: planillaId, lote, pos: (data.length + 1) * 10, fecha: base.fecha,
+    codigo: "", descripcion: "", ubicacion: "", m501: 0, m502: 0, m503: 0, m504: 0, m505: 0,
+    solicitado: 0, entregar: 0, med: "", tiras: null, dif: 0, kg_u: 0, precio_u: 0, precio_total: 0,
+    contratista: base.contratista, movimiento: base.movimiento, almacen: base.almacen, n_venta: base.n_venta,
+    cant_gd: 0, observacion: "", rojo: false,
+  };
+  const { data: creada, error: errorInsertar } = await supabase.from("ventas_filas").insert(fila).select("id").single();
+  if (errorInsertar) falloBd(errorInsertar);
+  await registrarLog(usuario, { accion: "anadir_venta", planilla_id: planillaId, fila_id: creada?.id ?? null, detalle: { lote, filas: 1, fila_extra: true } });
+  return { planilla_id: planillaId, lote, agregada: true };
 }
 
 async function quitarFila(valorId, usuario) {
@@ -372,7 +414,7 @@ async function quitarOrden(valorPlanilla, valorLote, usuario) {
 function nombreDescarga(ahora = new Date()) {
   const dia = String(ahora.getDate()).padStart(2, "0");
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  return `VENTAS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
+  return `VENTAS Y TRASPASOS ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
 async function armarExcel(filas, colores = true) {
@@ -524,11 +566,11 @@ async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, ti
   const reservar = tipo === "reservar";
   const buffer = await armadorPlanilla(tipo)(filas, colores);
   await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length, tipo } });
-  return { buffer, nombre: reservar ? nombreDescarga().replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescarga() };
+  return { buffer, nombre: reservar ? nombreDescarga().replace("VENTAS Y TRASPASOS ", "VENTAS Y TRASPASOS RESERVAR ") : nombreDescarga() };
 }
 
 function nombreDescargaAnual(anio, ahora = new Date()) {
-  return nombreDescarga(ahora).replace("VENTAS ", `VENTAS ANUAL ${anio} `);
+  return nombreDescarga(ahora).replace("VENTAS Y TRASPASOS ", `VENTAS Y TRASPASOS ANUAL ${anio} `);
 }
 
 // Une las planillas existentes del año (enero a diciembre) en una sola, sin separar los meses.
@@ -546,7 +588,7 @@ async function exportarAnual(valorAnio, usuario, colores = true, tipo = "complet
   const reservar = tipo === "reservar";
   const buffer = await armadorPlanilla(tipo)(ordenarDentroDeOrdenes(filas, orden), colores);
   await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length, tipo } });
-  return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescargaAnual(anio) };
+  return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS Y TRASPASOS ", "VENTAS Y TRASPASOS RESERVAR ") : nombreDescargaAnual(anio) };
 }
 
 function consultaLog(filtros, opciones) {
@@ -614,6 +656,7 @@ module.exports = {
   listarMeses,
   anadirVenta,
   editarFila,
+  anadirFilaVacia,
   quitarFila,
   quitarOrden,
   armarExcel,

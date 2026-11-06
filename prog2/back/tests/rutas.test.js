@@ -1,4 +1,4 @@
-﻿process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:1";
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "clave-de-prueba";
 process.env.CLAVE_DATOS = process.env.CLAVE_DATOS || "clave-datos-de-prueba";
 
@@ -370,7 +370,7 @@ test("GET /api/ventas/planilla y /meses leen la planilla del mes pedido", async 
 });
 
 test("GET /api/ventas/descargar entrega el Excel con el nombre VENTAS dd-mm-aaaa", async () => {
-  respuestasVentas = { exportarPlanilla: { buffer: Buffer.from("xlsx"), nombre: "VENTAS 05-10-2026.xlsx" } };
+  respuestasVentas = { exportarPlanilla: { buffer: Buffer.from("xlsx"), nombre: "VENTAS Y TRASPASOS 05-10-2026.xlsx" } };
   const r = await pedir("GET", "/api/ventas/descargar?anio=2026&mes=10&colores=0");
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%2005-10-2026.xlsx");
@@ -382,7 +382,7 @@ test("GET /api/ventas/descargar entrega el Excel con el nombre VENTAS dd-mm-aaaa
 });
 
 test("GET /api/ventas/descargar-anual entrega el Excel anual", async () => {
-  respuestasVentas = { exportarAnual: { buffer: Buffer.from("anual"), nombre: "VENTAS ANUAL 2026 05-10-2026.xlsx" } };
+  respuestasVentas = { exportarAnual: { buffer: Buffer.from("anual"), nombre: "VENTAS Y TRASPASOS ANUAL 2026 05-10-2026.xlsx" } };
   const r = await pedir("GET", "/api/ventas/descargar-anual?anio=2026");
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-disposition"), "attachment; filename=VENTAS%20ANUAL%202026%2005-10-2026.xlsx");

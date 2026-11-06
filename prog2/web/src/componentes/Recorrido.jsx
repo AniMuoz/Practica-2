@@ -122,7 +122,7 @@ const PASOS = {
     {
       id: "ventas-descargar",
       titulo: "Descargar Excel",
-      texto: "Descarga la planilla del mes mostrado como VENTAS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
+      texto: "Descarga la planilla del mes mostrado como VENTAS Y TRASPASOS día-mes-año.xlsx, con la fecha de hoy. La descarga también queda registrada en Auditoría.",
     },
     {
       id: "ventas-anual",

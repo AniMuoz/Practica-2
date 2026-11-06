@@ -189,14 +189,14 @@ test("quitarOrden borra solo las filas de esa orden y deja constancia", async ()
 });
 
 test("nombreDescarga usa VENTAS dd-mm-aaaa.xlsx", () => {
-  assert.equal(ventasBd.nombreDescarga(new Date(2026, 9, 5)), "VENTAS 05-10-2026.xlsx");
+  assert.equal(ventasBd.nombreDescarga(new Date(2026, 9, 5)), "VENTAS Y TRASPASOS 05-10-2026.xlsx");
 });
 
 test("exportarPlanilla arma el Excel desde la BD, con totales y registra la descarga", async () => {
   await ventasBd.anadirVenta({ contratistaIdx: 1, movTipo: 1, codVenta: "7", itemsManuales: ITEMS });
   const { anio, mes } = ventasBd.mesActual();
   const { buffer, nombre } = await ventasBd.exportarPlanilla(anio, mes, "ana");
-  assert.match(nombre, /^VENTAS \d{2}-\d{2}-\d{4}\.xlsx$/);
+  assert.match(nombre, /^VENTAS Y TRASPASOS \d{2}-\d{2}-\d{4}\.xlsx$/);
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
@@ -232,7 +232,7 @@ test("exportarAnual une las planillas del año de enero a diciembre como si fuer
   const fila = (planilla_id, lote, codigo) => ({ id: ids.ventas_filas++, planilla_id, lote, pos: 10, codigo, descripcion: codigo, solicitado: 1, entregar: 1, m501: 1, comp: "", rojo: false });
   tablas.ventas_filas.push(fila(100, 5, "MARZO"), fila(101, 3, "ENERO"), fila(102, 1, "OTROANIO"));
   const { buffer, nombre } = await ventasBd.exportarAnual(anio, "ana");
-  assert.match(nombre, new RegExp(`^VENTAS ANUAL ${anio} \\d{2}-\\d{2}-\\d{4}\\.xlsx$`));
+  assert.match(nombre, new RegExp(`^VENTAS Y TRASPASOS ANUAL ${anio} \\d{2}-\\d{2}-\\d{4}\\.xlsx$`));
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];

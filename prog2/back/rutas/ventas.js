@@ -145,6 +145,14 @@ module.exports = function rutasVentas(app) {
     }
   });
 
+  app.post("/api/ventas/ordenes/:planilla/:lote/filas", async (req, res) => {
+    try {
+      res.status(201).json(await ventasBd.anadirFilaVacia(req.params.planilla, req.params.lote, req.usuario));
+    } catch (error) {
+      responder(res, error, "No se pudo añadir la fila.");
+    }
+  });
+
   app.delete("/api/ventas/filas/:id", async (req, res) => {
     try {
       res.json(await ventasBd.quitarFila(req.params.id, req.usuario));
