@@ -60,6 +60,13 @@ export function nombreDescarga(ahora = new Date(), tipo = "completa") {
   return `${prefijo} ${dia}-${mes}-${ahora.getFullYear()}.xlsx`;
 }
 
+// Nombre igual al título de la orden: "TRASPASO N° 339943 - contratista - fecha.xlsx".
+export function nombreOrden(fila) {
+  const limpio = (v) => String(v ?? "").replace(/[\\/:*?"<>|]/g, "-").trim();
+  const mov = limpio(fila.movimiento).toUpperCase();
+  return `${mov} N° ${limpio(fila.n_venta)} - ${limpio(fila.contratista)} - ${limpio(fila.fecha)}.xlsx`;
+}
+
 export function nombreDescargaAnual(anio, ahora = new Date(), tipo = "completa") {
   return nombreDescarga(ahora, tipo).replace(/^(VENTAS Y TRASPASOS(?: RESERVAR)?) /, `$1 ANUAL ${anio} `);
 }
@@ -292,9 +299,9 @@ function Preview({ colores, recarga }) {
       .catch((e) => setAviso(e.message));
   }
 
-  function descargar(anual = false, tipo = "completa") {
+  function descargar(anual = false, tipo = "completa", orden = null) {
     setOpcionDescarga(null);
-    const extra = (tipo === "reservar" ? "&tipo=reservar" : "") + (ordenFilas ? `&orden=${ordenFilas}` : "");
+    const extra = (tipo === "reservar" ? "&tipo=reservar" : "") + (ordenFilas ? `&orden=${ordenFilas}` : "") + (orden ? `&lote=${orden.lote}` : "");
     const ruta = anual
       ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}${extra}`
       : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}${extra}`;
@@ -304,7 +311,7 @@ function Preview({ colores, recarga }) {
         const url = URL.createObjectURL(await res.blob());
         const enlace = document.createElement("a");
         enlace.href = url;
-        enlace.download = anual ? nombreDescargaAnual(anioAnual, new Date(), tipo) : nombreDescarga(new Date(), tipo);
+        enlace.download = orden ? nombreOrden(orden) : anual ? nombreDescargaAnual(anioAnual, new Date(), tipo) : nombreDescarga(new Date(), tipo);
         enlace.click();
         URL.revokeObjectURL(url);
       })
@@ -399,14 +406,14 @@ function Preview({ colores, recarga }) {
             <h3 style={{ margin: 0, fontSize: 16 }}>¿Qué planilla quieres descargar?</h3>
             <button
               type="button"
-              onClick={() => descargar(opcionDescarga.anual, "completa")}
+              onClick={() => descargar(opcionDescarga.anual, "completa", opcionDescarga.orden)}
               style={{ padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
             >
               Descargar planilla completa
             </button>
             <button
               type="button"
-              onClick={() => descargar(opcionDescarga.anual, "reservar")}
+              onClick={() => descargar(opcionDescarga.anual, "reservar", opcionDescarga.orden)}
               style={{ padding: "10px 14px", border: 0, borderRadius: 6, background: "var(--acento)", color: "var(--sobre)", cursor: "pointer" }}
             >
               Descargar planilla para reservar material
@@ -475,6 +482,14 @@ function Preview({ colores, recarga }) {
                           <path d="M10 11v5M14 11v5" />
                         </svg>
                         <span>Eliminar orden</span>
+                      </button>
+                      <button
+                        type="button"
+                        title="Descargar solo esta orden"
+                        onClick={() => setOpcionDescarga({ anual: false, orden: grupo.fila })}
+                        style={{ marginLeft: 8, padding: "3px 10px", border: "1px solid var(--borde)", background: "var(--superficie)", color: "var(--texto)", fontSize: 12, cursor: "pointer", boxShadow: "none", verticalAlign: "middle" }}
+                      >
+                        Descargar orden
                       </button>
                     </td>
                   </tr>

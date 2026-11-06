@@ -558,11 +558,16 @@ function comparar(campo, sentido) {
   };
 }
 
-async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa", orden = "") {
+async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa", orden = "", lote = null) {
   const { anio, mes } = validarMes(valorAnio, valorMes);
   const planilla = await buscarPlanilla(anio, mes);
   if (!planilla) throw errorHttp(404, "No hay planilla de ventas para ese mes.");
-  const filas = ordenarDentroDeOrdenes(await leerFilas(planilla.id), orden);
+  let todas = await leerFilas(planilla.id);
+  if (lote !== null && lote !== undefined && lote !== "") {
+    todas = todas.filter((f) => Number(f.lote) === Number(lote));
+    if (todas.length === 0) throw errorHttp(404, "No existe esa orden en la planilla.");
+  }
+  const filas = ordenarDentroDeOrdenes(todas, orden);
   const reservar = tipo === "reservar";
   const buffer = await armadorPlanilla(tipo)(filas, colores);
   await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length, tipo } });

@@ -84,7 +84,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/descargar", async (req, res) => {
     try {
-      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo), req.query.orden);
+      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo), req.query.orden, req.query.lote);
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de ventas.");
