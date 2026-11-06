@@ -463,11 +463,40 @@ async function armarExcelReservar(filas, colores = true) {
 
 const armadorPlanilla = (tipo) => (tipo === "reservar" ? armarExcelReservar : armarExcel);
 
-async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa") {
+const ORDENES_FILAS = {
+  "codigo-asc": ["codigo", 1], codigo: ["codigo", -1],
+  "ubicacion-asc": ["ubicacion", 1], ubicacion: ["ubicacion", -1],
+  descripcion: ["descripcion", 1], "descripcion-desc": ["descripcion", -1],
+};
+
+// Ordena las filas dentro de cada orden (lote); nunca mezcla filas de órdenes distintas.
+function ordenarDentroDeOrdenes(filas, orden) {
+  const regla = ORDENES_FILAS[orden];
+  if (!regla) return filas;
+  const [campo, sentido] = regla;
+  const grupos = new Map();
+  for (const fila of filas) {
+    const clave = `${fila.planilla_id}-${fila.lote}`;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(fila);
+  }
+  return [...grupos.values()].flatMap((grupo) => grupo.sort((a, b) => {
+    const va = String(a[campo] ?? "").trim();
+    const vb = String(b[campo] ?? "").trim();
+    if (campo === "ubicacion") {
+      if (!va && !vb) return 0;
+      if (!va) return 1;
+      if (!vb) return -1;
+    }
+    return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
+  }));
+}
+
+async function exportarPlanilla(valorAnio, valorMes, usuario, colores = true, tipo = "completa", orden = "") {
   const { anio, mes } = validarMes(valorAnio, valorMes);
   const planilla = await buscarPlanilla(anio, mes);
   if (!planilla) throw errorHttp(404, "No hay planilla de ventas para ese mes.");
-  const filas = await leerFilas(planilla.id);
+  const filas = ordenarDentroDeOrdenes(await leerFilas(planilla.id), orden);
   const reservar = tipo === "reservar";
   const buffer = await armadorPlanilla(tipo)(filas, colores);
   await registrarLog(usuario, { accion: "descargar_excel", planilla_id: planilla.id, detalle: { anio, mes, filas: filas.length, tipo } });
@@ -479,7 +508,7 @@ function nombreDescargaAnual(anio, ahora = new Date()) {
 }
 
 // Une las planillas existentes del año (enero a diciembre) en una sola, sin separar los meses.
-async function exportarAnual(valorAnio, usuario, colores = true, tipo = "completa") {
+async function exportarAnual(valorAnio, usuario, colores = true, tipo = "completa", orden = "") {
   const { anio } = validarMes(valorAnio, 1);
   const { data, error } = await supabase
     .from("ventas_planillas")
@@ -491,7 +520,7 @@ async function exportarAnual(valorAnio, usuario, colores = true, tipo = "complet
   const filas = [];
   for (const planilla of data) filas.push(...(await leerFilas(planilla.id)));
   const reservar = tipo === "reservar";
-  const buffer = await armadorPlanilla(tipo)(filas, colores);
+  const buffer = await armadorPlanilla(tipo)(ordenarDentroDeOrdenes(filas, orden), colores);
   await registrarLog(usuario, { accion: "descargar_excel", detalle: { anio, anual: true, planillas: data.length, filas: filas.length, tipo } });
   return { buffer, nombre: reservar ? nombreDescargaAnual(anio).replace("VENTAS ", "VENTAS RESERVAR ") : nombreDescargaAnual(anio) };
 }

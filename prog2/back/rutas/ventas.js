@@ -84,7 +84,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/descargar", async (req, res) => {
     try {
-      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo));
+      const { buffer, nombre } = await ventasBd.exportarPlanilla(req.query.anio, req.query.mes, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo), req.query.orden);
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla de ventas.");
@@ -93,7 +93,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/descargar-anual", async (req, res) => {
     try {
-      const { buffer, nombre } = await ventasBd.exportarAnual(req.query.anio, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo));
+      const { buffer, nombre } = await ventasBd.exportarAnual(req.query.anio, req.usuario, conColores(req.query.colores), tipoPlanilla(req.query.tipo), req.query.orden);
       enviarPlanilla(res, buffer, `attachment; filename=${encodeURIComponent(nombre)}`);
     } catch (error) {
       responder(res, error, "No se pudo generar la planilla anual.");

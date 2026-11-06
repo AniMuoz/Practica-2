@@ -20,6 +20,36 @@ const COLUMNAS = [
   ["dif_pend", "Dif.Pend"], ["gd_esval2", "GD Esval (2)", true], ["fecha_gd", "Fecha GD", true], ["observacion", "Observación", true],
 ];
 
+const ORDENES_FILAS = [
+  ["", "Sin orden extra"],
+  ["codigo-asc", "Códigos de menor a mayor"],
+  ["codigo", "Códigos de mayor a menor"],
+  ["ubicacion-asc", "Ubicaciones de menor a mayor"],
+  ["ubicacion", "Ubicaciones de mayor a menor"],
+  ["descripcion", "Descripciones A-Z"],
+  ["descripcion-desc", "Descripciones Z-A"],
+];
+
+// Misma lógica que el servidor (ventasBd.js): se ordena una sola orden (lote) a la vez.
+export function ordenarFilasVentas(filas, orden) {
+  if (!orden) return filas;
+  const [campo, asc] = orden === "codigo" ? ["codigo", false] : orden === "codigo-asc" ? ["codigo", true]
+    : orden === "ubicacion" ? ["ubicacion", false] : orden === "ubicacion-asc" ? ["ubicacion", true]
+    : orden === "descripcion" ? ["descripcion", true] : orden === "descripcion-desc" ? ["descripcion", false] : [null];
+  if (!campo) return filas;
+  const sentido = asc ? 1 : -1;
+  return [...filas].sort((a, b) => {
+    const va = String(a[campo] ?? "").trim();
+    const vb = String(b[campo] ?? "").trim();
+    if (campo === "ubicacion") {
+      if (!va && !vb) return 0;
+      if (!va) return 1;
+      if (!vb) return -1;
+    }
+    return va.localeCompare(vb, "es", { numeric: true, sensitivity: "base" }) * sentido;
+  });
+}
+
 export function nombreDescarga(ahora = new Date(), tipo = "completa") {
   const dia = String(ahora.getDate()).padStart(2, "0");
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
@@ -101,6 +131,7 @@ function Preview({ colores, recarga }) {
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [ordenFilas, setOrdenFilas] = useState("");
   const [anioAnual, setAnioAnual] = useState(hoy.getFullYear());
   const [aniosConDatos, setAniosConDatos] = useState([]);
   const [editando, setEditando] = useState(false);
@@ -218,7 +249,7 @@ function Preview({ colores, recarga }) {
 
   function descargar(anual = false, tipo = "completa") {
     setOpcionDescarga(null);
-    const extra = tipo === "reservar" ? "&tipo=reservar" : "";
+    const extra = (tipo === "reservar" ? "&tipo=reservar" : "") + (ordenFilas ? `&orden=${ordenFilas}` : "");
     const ruta = anual
       ? `/api/ventas/descargar-anual?anio=${anioAnual}&colores=${colores ? "1" : "0"}${extra}`
       : `/api/ventas/descargar?anio=${anio}&mes=${mes}&colores=${colores ? "1" : "0"}${extra}`;
@@ -246,7 +277,10 @@ function Preview({ colores, recarga }) {
     if (!porLote.has(clave)) porLote.set(clave, { fila: f, filas: [] });
     porLote.get(clave).filas.push(f);
   });
-  const ordenes = [...porLote.values()].sort((a, b) => Number(a.fila.lote) - Number(b.fila.lote));
+  // El orden elegido se aplica dentro de cada orden: nunca se mezclan filas de órdenes distintas.
+  const ordenes = [...porLote.values()]
+    .sort((a, b) => Number(a.fila.lote) - Number(b.fila.lote))
+    .map((g) => ({ ...g, filas: ordenarFilasVentas(g.filas, ordenFilas) }));
 
   return (
     <section data-tour="ventas-preview" style={{ background: "var(--superficie)", borderRadius: 8, padding: 16, margin: "0 auto 16px", maxWidth: "100%", width: "100%", boxSizing: "border-box" }}>
@@ -269,6 +303,9 @@ function Preview({ colores, recarga }) {
           />
         </label>
         <input aria-label="Filtrar filas" placeholder="Filtrar código, descripción..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} style={{ ...CAMPO, flex: 1, minWidth: 160 }} />
+        <select aria-label="Orden de las filas" title="Se ordena dentro de cada orden, sin mezclar órdenes" value={ordenFilas} onChange={(e) => setOrdenFilas(e.target.value)} style={CAMPO}>
+          {ORDENES_FILAS.map(([valor, titulo]) => <option key={valor} value={valor}>{titulo}</option>)}
+        </select>
         <button
           type="button"
           onClick={alternarEdicion}
