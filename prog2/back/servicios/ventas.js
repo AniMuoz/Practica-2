@@ -248,26 +248,42 @@ function itemsDesdeTraspaso(traspasoBuffer, nombreHoja = "") {
   const colCodigo = columnaPorTitulo(claves, "codigo");
   const colDescripcion = columnaPorTitulo(claves, (c) => c.startsWith("descrip"));
   const colUnidad = columnaPorTitulo(claves, "medida", "med", "un", "unidad", (c) => c.startsWith("medida"));
-  const colCantidad = columnaPorTitulo(claves, (c) => c.startsWith("solicit"));
+  // "Traspaso de M501" / "Traspaso M501" (y lo mismo para M505, que corresponde a CONCON).
+  const colM501 = columnaPorTitulo(claves, (c) => c.startsWith("traspaso") && c.endsWith("m501"));
+  const colM505 = columnaPorTitulo(claves, (c) => c.startsWith("traspaso") && c.endsWith("m505"));
+  const colCantidadAntigua = columnaPorTitulo(claves, (c) => c.startsWith("solicit"));
   const colConcon = columnaPorTitulo(claves, (c) => c.includes("concon"));
   const colEntregar = columnaPorTitulo(claves, (c) => c.includes("entregar") && !c.includes("concon"));
   const valorEn = (fila, indice) => (indice >= 0 ? fila?.[indice] : undefined);
+  // Solo vale un número mayor que 0; "N/A", "quiebre", "quiebre stock" o vacío se ignoran.
+  const cantidadValida = (valor) => {
+    if (valor == null || typeof valor === "boolean") return null;
+    const texto = String(valor).trim().replace(",", ".");
+    if (texto === "") return null;
+    const n = Number(texto);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
   const items = filas.slice(filaEnc + 1).flatMap((fila) => {
     const codigo = valorEn(fila, colCodigo);
     if (codigo == null || String(codigo).trim() === "") return [];
-    const cantidad = valorEn(fila, colCantidad);
-    const entregar = valorEn(fila, colEntregar);
-    const concon = valorEn(fila, colConcon);
-    const hayCantidad = [cantidad, entregar, concon].some((valor) => valor != null && valor !== "" && Number(valor) !== 0);
-    if (!hayCantidad) return [];
-    return [{
+    const base = {
       codigo,
       descripcion: valorEn(fila, colDescripcion) ?? "",
       unidad: valorEn(fila, colUnidad) ?? "",
-      cantidad: cantidad ?? 0,
-      entregar,
-      concon,
-    }];
+    };
+    if (colM501 < 0 && colM505 < 0) {
+      const cantidad = valorEn(fila, colCantidadAntigua);
+      const entregar = valorEn(fila, colEntregar);
+      const concon = valorEn(fila, colConcon);
+      const hayCantidad = [cantidad, entregar, concon].some((valor) => valor != null && valor !== "" && Number(valor) !== 0);
+      return hayCantidad ? [{ ...base, cantidad: cantidad ?? 0, entregar, concon }] : [];
+    }
+    const resultado = [];
+    const normal = cantidadValida(valorEn(fila, colM501));
+    if (normal != null) resultado.push({ ...base, cantidad: normal });
+    const concon = cantidadValida(valorEn(fila, colM505));
+    if (concon != null) resultado.push({ ...base, cantidad: concon, entregar: 0, concon });
+    return resultado;
   });
   return { items, numero };
 }
