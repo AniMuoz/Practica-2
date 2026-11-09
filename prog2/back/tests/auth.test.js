@@ -181,7 +181,7 @@ test("login correcto responde el usuario y entrega una cookie HttpOnly", async (
   await guardarUsuario("luis", "clave-segura-1");
   const respuesta = await pedir("POST", "/api/login", { cuerpo: { usuario: " LUIS ", clave: "clave-segura-1" } });
   assert.equal(respuesta.status, 200);
-  assert.deepEqual(respuesta.json, { usuario: "luis", rol: "operador" });
+  assert.deepEqual(respuesta.json, { usuario: "luis", rol: "operador", bodega: "M501" });
   const cookie = respuesta.cookies[0];
   assert.match(cookie, /^sesion=[^;]+/);
   assert.match(cookie, /HttpOnly/);
@@ -325,7 +325,7 @@ test("/api/sesion informa el usuario o responde 401", async () => {
   await guardarUsuario("sesionada", "clave-segura-1");
   const login = await pedir("POST", "/api/login", { cuerpo: { usuario: "sesionada", clave: "clave-segura-1" } });
   const con = await pedir("GET", "/api/sesion", { cookie: login.cookie });
-  assert.deepEqual(con.json, { usuario: "sesionada", rol: "operador" });
+  assert.deepEqual(con.json, { usuario: "sesionada", rol: "operador", bodega: "M501" });
   assert.equal((await pedir("GET", "/api/sesion")).status, 401);
 });
 
@@ -418,7 +418,7 @@ test("el admin crea un operador y aparece en el listado sin clave_hash", async (
   const cookie = await sesionAdmin("jefe1");
   const creado = await pedir("POST", "/api/usuarios", { cookie, cuerpo: { usuario: "  Nuevo1 ", clave: "clave-segura-1" } });
   assert.equal(creado.status, 201);
-  assert.deepEqual(creado.json, { usuario: "nuevo1", rol: "operador" });
+  assert.deepEqual(creado.json, { usuario: "nuevo1", rol: "operador", bodega: "M501" });
   const lista = await pedir("GET", "/api/usuarios", { cookie });
   const fila = lista.json.usuarios.find((u) => u.usuario === "nuevo1");
   assert.equal(fila.rol, "operador");
