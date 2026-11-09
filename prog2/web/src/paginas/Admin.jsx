@@ -44,7 +44,7 @@ import {
 } from "../lib/reglasPlanilla.js";
 
 // Funciones que solo escriben datos: los operadores no las ven.
-const BOTONES_SOLO_ADMIN = new Set(["Añadir/cargar datos", "Bitacora camion", "Planilla de ventas"]);
+const BOTONES_SOLO_ADMIN = new Set(["Añadir/cargar datos", "Planilla de ventas"]);
 
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 

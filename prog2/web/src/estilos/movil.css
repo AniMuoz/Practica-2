@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --fondo: #f4f6f8;
   --superficie: #ffffff;
   --texto: #111111;
@@ -261,43 +261,64 @@ select {
     margin-bottom: 10px !important;
   }
 
-  .barra > a:first-child {
-    flex: 1 1 calc(100% - 44px);
-    min-width: 0;
-    font-size: 17px !important;
+  .barra {
+    white-space: normal !important;
+    zoom: 1 !important;
   }
 
-  .barra-ayuda {
-    flex: 0 0 28px;
+  .barra-salir { order: 0; }
+
+  .barra .barra-titulo {
     order: 1;
+    flex: 1 1 0 !important;
+    min-width: 0;
+    font-size: 15px !important;
+    line-height: 1.2;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
   }
+
+  .barra .barra-titulo img { height: 26px !important; }
+
+  .barra-ayuda { order: 2; flex: 0 0 28px; }
+  .barra-sonido { order: 2; flex: 0 0 auto; }
 
   .barra-switch {
-    order: 2;
+    order: 3;
     flex: 0 0 auto;
-  }
-
-  .barra-admin {
-    order: 2;
-    margin-left: auto;
-    padding: 6px 12px !important;
+    font-size: 13px !important;
   }
 
   .barra-buscar {
-    order: 3;
+    order: 4;
     margin-left: 0 !important;
     width: 100%;
     flex: 1 1 100% !important;
+    min-width: 0 !important;
     flex-direction: row !important;
+  }
+
+  .barra-buscar > span {
+    flex: 1;
+    min-width: 0 !important;
   }
 
   .barra-buscar input {
     min-width: 0 !important;
-    width: auto;
-    flex: 1;
+    width: 100%;
     padding: 6px 10px !important;
   }
 
+  .barra .barra-enlace {
+    order: 5;
+    flex: 1 1 auto;
+    margin-left: 0 !important;
+    text-align: center;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+  }
+
+  .barra .barra-menu { order: 6; }
   .pagina-material {
     height: auto !important;
     overflow: visible !important;

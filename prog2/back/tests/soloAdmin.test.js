@@ -20,11 +20,11 @@ const ESCRITURAS = [
   ["PATCH", "/ventas/filas/5"],
   ["DELETE", "/ventas/filas/5"],
   ["DELETE", "/ventas/ordenes/1/2"],
-  ["POST", "/bitacora/folios"],
-  ["PUT", "/bitacora/folios/1/filas/1"],
 ];
 
 const LIBRES = [
+  ["POST", "/bitacora/folios"],
+  ["PUT", "/bitacora/folios/1/filas/1"],
   ["GET", "/stock-detallado"],
   ["GET", "/stock-detallado/excel"],
   ["GET", "/contratistas"],

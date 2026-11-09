@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { limpiarBorradores } from "../lib/persistencia.js";
 import logo from "../../logo/logoberfre.png";
@@ -533,7 +533,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
       {menuVisible && (
         <Link
           to="/admin"
-          className="barra-admin"
+          className="barra-admin barra-enlace"
           style={{
             padding: "8px 14px",
             borderRadius: 6,
@@ -549,7 +549,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
       {menuVisible && (
         <Link
           to="/buzon"
-          className="barra-buzon"
+          className="barra-buzon barra-enlace"
           style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none", flexShrink: 0, position: "relative" }}
         >
           Buzón
@@ -568,13 +568,13 @@ export default function Navbar({ buzonNovedades = 0 }) {
       )}
       {rol === "admin" && menuVisible && (
         <>
-          <Link to="/personal" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+          <Link to="/personal" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Personal
           </Link>
-          <Link to="/qr" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+          <Link to="/qr" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             QR
           </Link>
-          <Link to="/auditoria" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+          <Link to="/auditoria" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Auditoría
           </Link>
         </>
@@ -584,6 +584,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
         aria-label={menuVisible ? "Ocultar botones" : "Mostrar botones"}
         title={menuVisible ? "Ocultar botones" : "Mostrar botones"}
         aria-expanded={menuVisible}
+        className="barra-menu"
         onClick={() => setMenuVisible(!menuVisible)}
         style={{ padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", cursor: "pointer", lineHeight: 0 }}
       >

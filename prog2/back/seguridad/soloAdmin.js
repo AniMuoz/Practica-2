@@ -7,7 +7,6 @@ const ESCRITURAS_ADMIN = [
   /^\/material(\/|$)/,
   /^\/contratistas$/,
   /^\/ventas(\/(filas|ordenes)\b.*)?$/,
-  /^\/bitacora\//,
 ];
 const METODOS_LECTURA = new Set(["GET", "HEAD", "OPTIONS"]);
 // PUT /material/:codigo guarda inventario y comentario. No incluye /datos, /marcado ni /imagen.
