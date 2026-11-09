@@ -4,6 +4,8 @@ const {
   materialesEnCache,
   leerTabla,
   textoBusqueda,
+  bodegaActual,
+  vistaFilaBodega,
 } = require("./nucleoDatos");
 
 function columnaExcel(indice) {
@@ -72,7 +74,7 @@ async function exportarStockBodega(colores = true, filtros = null) {
   const { columnas, filas: todas } = stockEnBodega();
   const { filas } = filtrarPorCodigos(todas, 0, filtros);
   const libro = new ExcelJS.Workbook();
-  const hoja = libro.addWorksheet("M501");
+  const hoja = libro.addWorksheet(bodegaActual());
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -87,7 +89,7 @@ async function exportarStockBodega(colores = true, filtros = null) {
   };
 
   hoja.getCell("A1").value = "Bodega";
-  hoja.getCell("B1").value = "M501";
+  hoja.getCell("B1").value = bodegaActual();
   ["A1", "B1"].forEach((ref) => {
     const celda = hoja.getCell(ref);
     celda.font = { bold: true, size: 12 };
@@ -134,6 +136,12 @@ function valorStock(valor) {
 
 function filasConBodegas() {
   return materialesEnCache().filasBodega;
+}
+
+// Filas completas vistas desde la bodega principal elegida (M501: sin cambios).
+function filasDeBodega() {
+  const bodega = bodegaActual();
+  return bodega === "M501" ? filasConBodegas() : filasConBodegas().map((fila) => vistaFilaBodega(fila, bodega));
 }
 
 function claveUbicacion(ubicacion) {
@@ -234,11 +242,11 @@ function aplicarExistencia(filas, origen, { libre, destino, inventario } = POSIC
 async function exportarPlanillaInventario(colores = true, origenExistencia = "", filtros = null) {
   const { filas: todas } = planillaInventario();
   const { filas } = filtrarPorCodigos(todas, 0, filtros);
-  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), "M501", colores);
+  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), bodegaActual(), colores);
 }
 
 function stockDetallado() {
-  const filas = filasConBodegas();
+  const filas = filasDeBodega();
   const columnas = [
     "Ubicación",
     "Código",
@@ -256,6 +264,12 @@ function stockDetallado() {
     "Stock Max",
     "INDICADOR",
   ];
+  // Con otra bodega principal, su columna ocupa el lugar de M501 y M501 el de ella.
+  const principal = bodegaActual();
+  if (principal !== "M501") {
+    columnas[columnas.indexOf(principal)] = "M501";
+    columnas[3] = principal;
+  }
   const resultado = [];
   const marcados = [];
   filas
@@ -376,10 +390,11 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   const subUbicacion = String(filtros.subUbicacion ?? "").trim();
   const caracteristica = String(filtros.caracteristica ?? "").trim();
   const stockMinimo = String(filtros.stockMinimo ?? "").trim();
-  if (bodega) {
+  const conUbicacion = bodegaActual() === "M501"; // esos campos solo existen en M501
+  if (bodega && conUbicacion) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
   }
-  if (subUbicacion) {
+  if (subUbicacion && conUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
   }
   if (caracteristica) {
@@ -395,7 +410,7 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.soloConPrecio) {
     lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
   }
-  if (filtros.soloConUbicacion) {
+  if (filtros.soloConUbicacion && conUbicacion) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
   }
   if (filtros.soloStockCritico) {
@@ -410,7 +425,7 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.soloStockCero) {
     lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
   }
-  if (filtros.soloInventarioOComentario) {
+  if (filtros.soloInventarioOComentario && conUbicacion) {
     lista = lista.filter((fila) => {
       const inventario = String(fila.Inventario ?? "").trim();
       const comentario = String(fila.Comentario ?? "").trim();
@@ -569,6 +584,7 @@ module.exports = {
   exportarStockBodega,
   valorStock,
   filasConBodegas,
+  filasDeBodega,
   claveUbicacion,
   planillaInventario,
   armarPlanillaInventario,

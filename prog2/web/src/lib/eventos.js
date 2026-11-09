@@ -1,3 +1,5 @@
+import { esM501 } from "./bodega.js";
+
 // Conexion SSE unica por pestaña: todos los componentes comparten un solo EventSource a /api/eventos
 // (cada conexion es una request larga del Worker y ocupa un cupo en el servidor).
 
@@ -25,6 +27,8 @@ function abrir() {
     } catch {
       return;
     }
+    // La fila del evento viene de M501; en otra bodega se pide de nuevo la tabla.
+    if (data && data.tipo === "fila" && !esM501()) data = { tipo: "recarga" };
     notificar("alMensaje", data);
   };
 }

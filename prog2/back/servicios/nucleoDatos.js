@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { AsyncLocalStorage } = require("async_hooks");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
@@ -391,8 +392,47 @@ async function guardarFila(matriz, indiceFila) {
   return recordarMateriales(matriz, nombreHoja);
 }
 
+// Bodega "principal" de la petición en curso (middleware de server.js). Sin contexto: M501.
+const contextoBodega = new AsyncLocalStorage();
+const CAMPOS_SOLO_M501 = ["Ubicación", "Sub-ubicación", "Inventario", "Comentario"];
+
+function bodegaActual() {
+  const bodega = contextoBodega.getStore()?.bodega;
+  return BODEGAS_EXPORT.includes(bodega) ? bodega : "M501";
+}
+
+function bodegaValida(valor) {
+  const texto = String(valor ?? "").trim().toUpperCase();
+  return BODEGAS_EXPORT.includes(texto) ? texto : "M501";
+}
+
+// Fila completa (con columnas M502..M505) vista desde otra bodega: su stock pasa a "Stock",
+// el de M501 ocupa su lugar y se vacían los campos que solo existen en M501.
+function vistaFilaBodega(fila, bodega = bodegaActual()) {
+  if (bodega === "M501" || !fila) return fila;
+  const copia = { ...fila, Stock: fila[bodega] ?? "", [bodega]: fila.Stock ?? "" };
+  CAMPOS_SOLO_M501.forEach((campo) => {
+    if (campo in copia) copia[campo] = "";
+  });
+  return copia;
+}
+
 function leerTabla() {
-  return materialesEnCache().tabla;
+  const actual = materialesEnCache();
+  const bodega = bodegaActual();
+  if (bodega === "M501") return actual.tabla;
+  if (!actual.vistas) actual.vistas = new Map();
+  if (actual.vistas.has(bodega)) return actual.vistas.get(bodega);
+  const columnas = actual.tabla.columnas.filter((columna) => !CAMPOS_SOLO_M501.includes(columna));
+  const filas = actual.tabla.filas.map((fila) => {
+    const completa = actual.porFilaBodega.get(String(fila.Codigo ?? "")) || {};
+    const registro = { ...fila, Stock: completa[bodega] ?? "" };
+    CAMPOS_SOLO_M501.forEach((campo) => delete registro[campo]);
+    return registro;
+  });
+  const vista = { columnas, filas };
+  actual.vistas.set(bodega, vista);
+  return vista;
 }
 
 async function marcarMaterial(codigo, marcado) {
@@ -422,11 +462,18 @@ function stockPorBodega(codigo) {
 }
 
 function buscarMaterial(codigo) {
-  const { tabla, porFila } = materialesEnCache();
+  const { porFila } = materialesEnCache();
+  const { columnas, filas } = leerTabla();
   const buscado = String(codigo);
-  const fila = porFila.get(buscado) || null;
-  const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== "M501");
-  return { columnas: tabla.columnas, fila, bodegas };
+  const original = porFila.get(buscado) || null;
+  const bodegaPrincipal = bodegaActual();
+  const fila = original == null
+    ? null
+    : bodegaPrincipal === "M501"
+      ? original
+      : filas.find((f) => String(f.Codigo ?? "") === buscado) || null;
+  const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== bodegaPrincipal);
+  return { columnas, fila, bodegas };
 }
 
 function textoBusqueda(valor) {
@@ -853,6 +900,10 @@ module.exports = {
   guardarMateriales,
   guardarFila,
   leerTabla,
+  contextoBodega,
+  bodegaActual,
+  bodegaValida,
+  vistaFilaBodega,
   marcarMaterial,
   stockPorBodega,
   buscarMaterial,

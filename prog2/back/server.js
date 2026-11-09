@@ -8,6 +8,7 @@ const { soloAdminEnEscrituras } = require("./seguridad/soloAdmin");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./supabase/imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
+const { contextoBodega, bodegaValida } = require("./servicios/nucleoDatos");
 const { comprobarBase } = require("./utils/salud");
 const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
@@ -48,6 +49,10 @@ function crearApp({ proteger = true } = {}) {
     }
   });
 
+  // Bodega principal elegida en el navegador (cabecera X-Bodega); la leen leerTabla y las planillas.
+  app.use("/api", (req, _res, next) => {
+    contextoBodega.run({ bodega: bodegaValida(req.get("X-Bodega") || req.query.principal) }, next);
+  });
   app.use("/api", conIpDeClave);
   if (proteger) {
     app.use("/api", limitarPeticiones);

@@ -1,4 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { limpiarBorradores } from "../lib/persistencia.js";
 import logo from "../../logo/logoberfre.png";
@@ -9,6 +9,7 @@ import { sonarActualizacion, useSonido } from "../lib/sonido.js";
 import { useSondeo } from "../lib/useSondeo.js";
 import { suscribirEventos } from "../lib/eventos.js";
 import { apiFetch } from "../lib/api.js";
+import { BODEGAS, bodegaPrincipal, elegirBodega, nombreBodega, tituloBodega } from "../lib/bodega.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
   const { rol, usuario } = useSesion();
@@ -20,6 +21,9 @@ export default function Navbar({ buzonNovedades = 0 }) {
   const [abierto, setAbierto] = useState(false);
   const [aviso, setAviso] = useState("");
   const [menuVisible, setMenuVisible] = useState(true);
+  const [bodegasAbiertas, setBodegasAbiertas] = useState(false);
+  const cajaBodegas = useRef(null);
+  const bodegaActiva = bodegaPrincipal();
   const caja = useRef(null);
   const campo = useRef(null);
   const barraRef = useRef(null);
@@ -57,8 +61,15 @@ export default function Navbar({ buzonNovedades = 0 }) {
     function cerrar(event) {
       if (caja.current && !caja.current.contains(event.target)) setAbierto(false);
     }
+    function cerrarBodegas(event) {
+      if (cajaBodegas.current && !cajaBodegas.current.contains(event.target)) setBodegasAbiertas(false);
+    }
+    document.addEventListener("mousedown", cerrarBodegas);
     document.addEventListener("mousedown", cerrar);
-    return () => document.removeEventListener("mousedown", cerrar);
+    return () => {
+      document.removeEventListener("mousedown", cerrar);
+      document.removeEventListener("mousedown", cerrarBodegas);
+    };
   }, []);
 
   function soltarFoco() {
@@ -258,6 +269,44 @@ export default function Navbar({ buzonNovedades = 0 }) {
           <path d="M6.3 6.8a8 8 0 1 0 11.4 0" />
         </svg>
       </button>
+      <div ref={cajaBodegas} data-tour="bodega" style={{ position: "relative", flexShrink: 0 }}>
+        <button
+          type="button"
+          className="barra-bodega"
+          aria-haspopup="listbox"
+          aria-expanded={bodegasAbiertas}
+          aria-label={`Bodega principal: ${bodegaActiva}`}
+          onClick={() => setBodegasAbiertas(!bodegasAbiertas)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+        >
+          {bodegaActiva}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        {bodegasAbiertas && (
+          <ul
+            role="listbox"
+            aria-label="Bodegas"
+            style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, margin: 0, padding: 4, listStyle: "none", background: "var(--superficie)", border: "1px solid var(--borde)", borderRadius: 6, zIndex: 30, boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)", minWidth: 90 }}
+          >
+            {BODEGAS.map((bodega) => (
+              <li key={bodega} role="option" aria-selected={bodega === bodegaActiva}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBodegasAbiertas(false);
+                    elegirBodega(bodega);
+                  }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 10px", border: 0, borderRadius: 4, background: bodega === bodegaActiva ? "var(--boton)" : "transparent", color: bodega === bodegaActiva ? "var(--sobre)" : "var(--texto)", fontSize: 14, fontWeight: bodega === bodegaActiva ? 700 : 400, cursor: "pointer" }}
+                >
+                  {bodega}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <Link
         data-tour="titulo"
         to="/"
@@ -272,7 +321,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
         }}
       >
         <img src={logo} alt="BERFRE" style={{ height: 32, width: "auto" }} />
-        Bodega Esval Coraceros Viña
+        {tituloBodega(bodegaActiva)}
       </Link>
       <button
         type="button"

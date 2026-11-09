@@ -1,5 +1,5 @@
 const { exportarTabla, stockEnBodega, exportarStockBodega, planillaInventario, exportarPlanillaInventario, planillaMovimientos, exportarMovimientos, agregarCodigoMovimiento, eliminarCodigoMovimiento, vaciarMovimientos, editarCodigoMovimiento, stockDetallado, exportarStockDetallado, actualizarCamposDetallado, limpiarColumnaDetallado } = require("../servicios/fuenteDatos");
-const { claveDe } = require("../servicios/nucleoDatos");
+const { claveDe, bodegaActual } = require("../servicios/nucleoDatos");
 const { conColores, nombreConFecha, enviarPlanilla, emitir } = require("../utils/compartido");
 // Filtros de la tabla principal enviados al descargar una planilla (solo si filtrar=1).
 function filtrosDeConsulta(q) {
@@ -67,7 +67,7 @@ module.exports = function rutasPlanillas(app) {
   app.get("/api/bodega/excel", async (req, res) => {
     try {
       const buffer = await exportarStockBodega(conColores(req.query.colores), filtrosDeConsulta(req.query));
-      enviarPlanilla(res, buffer, nombreConFecha("PLANILLA M501"));
+      enviarPlanilla(res, buffer, nombreConFecha(`PLANILLA ${bodegaActual()}`));
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo generar la planilla de bodega." });
@@ -87,7 +87,7 @@ module.exports = function rutasPlanillas(app) {
     try {
       const origen = req.query.inventario === "1" ? "inventario" : req.query.existencia === "1" ? "libre" : "";
       const buffer = await exportarPlanillaInventario(conColores(req.query.colores), origen, filtrosDeConsulta(req.query));
-      enviarPlanilla(res, buffer, nombreConFecha("PLANILLA DE INVENTARIO M501"));
+      enviarPlanilla(res, buffer, nombreConFecha(`PLANILLA DE INVENTARIO ${bodegaActual()}`));
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "No se pudo generar la planilla de inventario." });

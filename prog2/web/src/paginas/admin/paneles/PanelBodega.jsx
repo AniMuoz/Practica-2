@@ -1,3 +1,4 @@
+import { bodegaPrincipal } from "../../../lib/bodega.js";
 import { colorLibre } from "../../../lib/reglasPlanilla.js";
 import PanelPlanilla from "./PanelPlanilla.jsx";
 import VistaPrevia from "./VistaPrevia.jsx";
@@ -15,7 +16,7 @@ const ESTILO_TH = (colores) => ({
 export default function PanelBodega({ tabla, filas, cargando, aviso, hrefExcel, filtros, colores, clasePlanilla }) {
   return (
     <PanelPlanilla
-      titulo="Bodega M501"
+      titulo={`Bodega ${bodegaPrincipal()}`}
       hrefExcel={hrefExcel}
       filtros={filtros}
       cargando={cargando}
@@ -26,7 +27,7 @@ export default function PanelBodega({ tabla, filas, cargando, aviso, hrefExcel, 
         filas={filas}
         columnas={tabla.columnas.length}
         className={clasePlanilla}
-        vacio="No hay stock de M501 cargado."
+        vacio={`No hay stock de ${bodegaPrincipal()} cargado.`}
         renderFila={(fila, indice) => {
           const fondo = colorLibre(fila[2]);
           return (

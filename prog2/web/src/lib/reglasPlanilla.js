@@ -1,3 +1,4 @@
+import { conBodega, esM501 } from "./bodega.js";
 export function textoCampo(valor) {
   return valor == null ? "" : String(valor);
 }
@@ -89,14 +90,15 @@ export function filtrarFilas(filas, filtros) {
     ignorarNulo = false,
     texto = "",
   } = filtros;
+  const conUbicacion = esM501(); // Ubicación, sub-ubicación e inventario solo existen en M501.
   let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
   if (ignorarNulo) {
     lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
   }
-  if (bodega) {
+  if (conUbicacion && bodega) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
   }
-  if (subUbicacion) {
+  if (conUbicacion && subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
   }
   if (caracteristica) {
@@ -112,7 +114,7 @@ export function filtrarFilas(filas, filtros) {
   if (soloConPrecio) {
     lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
   }
-  if (soloConUbicacion) {
+  if (conUbicacion && soloConUbicacion) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
   }
   if (soloStockCritico) {
@@ -127,7 +129,7 @@ export function filtrarFilas(filas, filtros) {
   if (soloStockCero) {
     lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
   }
-  if (soloInventarioOComentario) {
+  if (conUbicacion && soloInventarioOComentario) {
     lista = lista.filter((fila) => {
       const inventario = String(fila.Inventario ?? "").trim();
       const comentario = String(fila.Comentario ?? "").trim();
@@ -196,7 +198,7 @@ export function consultaExcel(filtros) {
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
   if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
   const consulta = params.toString();
-  return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
+  return conBodega(consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel");
 }
 
 // Agrega los filtros de la tabla a la ruta de descarga de una planilla (el servidor los aplica con filtrar=1).
@@ -217,7 +219,7 @@ export function rutaConFiltros(ruta, filtros) {
   if (filtros.soloConRombo) params.set("rombo", "1");
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
   if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
-  return `${ruta}${ruta.includes("?") ? "&" : "?"}${params.toString()}`;
+  return conBodega(`${ruta}${ruta.includes("?") ? "&" : "?"}${params.toString()}`);
 }
 
 export function aplicarFilaRecibida(actuales, data) {

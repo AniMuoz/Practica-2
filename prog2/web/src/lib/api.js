@@ -1,6 +1,8 @@
 // Cliente HTTP unico del frontend: centraliza cabeceras JSON, lectura de la respuesta y mensajes de error.
 // Tambien avisa si la sesion caduco o la cuenta quedo desactivada (sin parchear window.fetch).
 
+import { bodegaPrincipal } from "./bodega.js";
+
 async function leerJson(res) {
   return res.json().catch(() => ({}));
 }
@@ -24,6 +26,12 @@ async function avisarSesion(input, respuesta) {
 
 /** fetch de la API con avisos de sesion; usar en lugar de window.fetch para /api. */
 export async function apiFetch(input, init) {
+  const bodega = bodegaPrincipal();
+  if (bodega !== "M501" && /^\/api\//.test(urlDe(input))) {
+    const cabeceras = new Headers(init?.headers);
+    cabeceras.set("X-Bodega", bodega);
+    init = { ...init, headers: cabeceras };
+  }
   const respuesta = await fetch(input, init);
   await avisarSesion(input, respuesta);
   return respuesta;

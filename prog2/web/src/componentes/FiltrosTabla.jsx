@@ -1,3 +1,4 @@
+import { esM501 } from "../lib/bodega.js";
 import { bodegasDe, caracteristicasDe, subUbicacionesDe } from "../lib/reglasPlanilla.js";
 
 const campo = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 };
@@ -29,11 +30,13 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   const caracteristicas = caracteristicasDe(filas);
+  const conUbicacion = esM501();
+  const soloM501 = new Set(["soloConUbicacion", "soloInventarioOComentario"]);
   return (
     <div className={centrado ? `filtros-panel filtros-centrado${sinOrden ? " filtros-2col" : ""}` : "filtros-panel"}>
       {!sinOrden && (
         <div className="filtros-col">
-          {ORDENES.filter(([, , soloUbic]) => !soloUbic || conOrdenUbicacion).map(([valor, texto]) => (
+          {ORDENES.filter(([, , soloUbic]) => !soloUbic || (conOrdenUbicacion && conUbicacion)).map(([valor, texto]) => (
             <label key={valor} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
               <input type="radio" name="orden-filtros" checked={filtros.orden === valor} onChange={() => poner("orden", valor)} />
               {texto}
@@ -42,20 +45,24 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
         </div>
       )}
       <div className="filtros-col filtros-campos">
-        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-          Bodega
-          <select value={filtros.bodega} onChange={(e) => poner("bodega", e.target.value)} style={campo}>
-            <option value="">Todas</option>
-            {bodegas.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </label>
-        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-          Sub-ubicación
-          <select value={filtros.subUbicacion} onChange={(e) => poner("subUbicacion", e.target.value)} style={campo}>
-            <option value="">Todas</option>
-            {subUbicaciones.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </label>
+        {conUbicacion && (
+          <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+            Bodega
+            <select value={filtros.bodega} onChange={(e) => poner("bodega", e.target.value)} style={campo}>
+              <option value="">Todas</option>
+              {bodegas.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </label>
+        )}
+        {conUbicacion && (
+          <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+            Sub-ubicación
+            <select value={filtros.subUbicacion} onChange={(e) => poner("subUbicacion", e.target.value)} style={campo}>
+              <option value="">Todas</option>
+              {subUbicaciones.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </label>
+        )}
         <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
           Característica
           <select value={filtros.caracteristica} onChange={(e) => poner("caracteristica", e.target.value)} style={campo}>
@@ -82,7 +89,7 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
         </label>
       </div>
       <div className="filtros-col">
-        {CHECKS.map(([clave, texto]) => (
+        {CHECKS.filter(([clave]) => conUbicacion || !soloM501.has(clave)).map(([clave, texto]) => (
           <label key={clave} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
             <input type="checkbox" checked={filtros[clave]} onChange={(e) => poner(clave, e.target.checked)} />
             {texto}

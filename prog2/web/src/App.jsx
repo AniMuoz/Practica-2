@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useColoresPlanilla } from "./componentes/ColoresPlanilla.jsx";
 import Navbar from "./componentes/Navbar.jsx";
+import { esM501 } from "./lib/bodega.js";
 import Planilla from "./paginas/Planilla.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "./componentes/Recorrido.jsx";
 import { sonarActualizacion } from "./lib/sonido.js";
@@ -47,6 +48,7 @@ function useFiltroPersistente(clave, inicial) {
 }
 
 export default function App() {
+  const m501 = esM501(); // Ubicación, inventario y comentario solo existen en M501.
   const navigate = useNavigate();
   const [parametros, setParametros] = useSearchParams();
   const texto = parametros.get("q") || "";
@@ -341,19 +343,21 @@ export default function App() {
             </label>
           )}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
-            <button
-              type="button"
-              disabled={cargando || limpiando}
-              data-tour="limpiar"
-              onClick={() => {
-                setAvisoClave("");
-                setClave("");
-                setPedirClave(true);
-              }}
-              style={estiloBoton(!(cargando || limpiando), "var(--peligro)")}
-            >
-              {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
-            </button>
+            {m501 && (
+              <button
+                type="button"
+                disabled={cargando || limpiando}
+                data-tour="limpiar"
+                onClick={() => {
+                  setAvisoClave("");
+                  setClave("");
+                  setPedirClave(true);
+                }}
+                style={estiloBoton(!(cargando || limpiando), "var(--peligro)")}
+              >
+                {limpiando ? "Limpiando..." : "Limpiar inventario y comentarios"}
+              </button>
+            )}
             <a
               data-tour="descargar"
               onClick={(e) => {
@@ -425,24 +429,28 @@ export default function App() {
                   />
                   Ordenar códigos de mayor a menor
                 </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                  <input
-                    type="radio"
-                    name="orden"
-                    checked={orden === "ubicacion-asc"}
-                    onChange={() => setOrden("ubicacion-asc")}
-                  />
-                  Ordenar ubicaciones de menor a mayor
-                </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                  <input
-                    type="radio"
-                    name="orden"
-                    checked={orden === "ubicacion"}
-                    onChange={() => setOrden("ubicacion")}
-                  />
-                  Ordenar ubicaciones de mayor a menor
-                </label>
+                {m501 && (
+                  <>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="orden"
+                      checked={orden === "ubicacion-asc"}
+                      onChange={() => setOrden("ubicacion-asc")}
+                    />
+                    Ordenar ubicaciones de menor a mayor
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="orden"
+                      checked={orden === "ubicacion"}
+                      onChange={() => setOrden("ubicacion")}
+                    />
+                    Ordenar ubicaciones de mayor a menor
+                  </label>
+                  </>
+                )}
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="radio"
@@ -463,36 +471,40 @@ export default function App() {
                 </label>
               </div>
               <div className="filtros-col filtros-campos">
-                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-                  Bodega
-                  <select
-                    value={bodega}
-                    onChange={(event) => setBodega(event.target.value)}
-                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-                  >
-                    <option value="">Todas</option>
-                    {bodegas.map((valor) => (
-                      <option key={valor} value={valor}>
-                        {valor}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
-                  Sub-ubicación
-                  <select
-                    value={subUbicacion}
-                    onChange={(event) => setSubUbicacion(event.target.value)}
-                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
-                  >
-                    <option value="">Todas</option>
-                    {subUbicaciones.map((valor) => (
-                      <option key={valor} value={valor}>
-                        {valor}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {m501 && (
+                  <>
+                  <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                    Bodega
+                    <select
+                      value={bodega}
+                      onChange={(event) => setBodega(event.target.value)}
+                      style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                    >
+                      <option value="">Todas</option>
+                      {bodegas.map((valor) => (
+                        <option key={valor} value={valor}>
+                          {valor}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                    Sub-ubicación
+                    <select
+                      value={subUbicacion}
+                      onChange={(event) => setSubUbicacion(event.target.value)}
+                      style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                    >
+                      <option value="">Todas</option>
+                      {subUbicaciones.map((valor) => (
+                        <option key={valor} value={valor}>
+                          {valor}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  </>
+                )}
                 <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
                   Característica
                   <select
@@ -531,14 +543,16 @@ export default function App() {
                   />
                   Mostrar solo materiales con precio
                 </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                  <input
-                    type="checkbox"
-                    checked={soloConUbicacion}
-                    onChange={(event) => setSoloConUbicacion(event.target.checked)}
-                  />
-                  Mostrar solo materiales con ubicación
-                </label>
+{m501 && (
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={soloConUbicacion}
+                      onChange={(event) => setSoloConUbicacion(event.target.checked)}
+                    />
+                    Mostrar solo materiales con ubicación
+                  </label>
+)}
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="checkbox"
@@ -555,14 +569,16 @@ export default function App() {
                   />
                   Mostrar solo materiales con stock igual a 0
                 </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                  <input
-                    type="checkbox"
-                    checked={soloInventarioOComentario}
-                    onChange={(event) => setSoloInventarioOComentario(event.target.checked)}
-                  />
-                  Mostrar solo materiales con inventario o comentario
-                </label>
+{m501 && (
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={soloInventarioOComentario}
+                      onChange={(event) => setSoloInventarioOComentario(event.target.checked)}
+                    />
+                    Mostrar solo materiales con inventario o comentario
+                  </label>
+)}
                 <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                   <input
                     type="checkbox"
