@@ -17,6 +17,7 @@ const {
 const ROLES = new Set(["admin", "operador", "desactivado"]);
 // Usuario protegido: ningun otro usuario puede modificarlo ni eliminarlo.
 const USUARIO_PROTEGIDO = "adminm501";
+const BODEGAS = new Set(["M501", "M502", "M503", "M504", "M505"]);
 
 function normalizar(valor) {
   return String(valor || "").trim().toLowerCase();
@@ -95,7 +96,7 @@ module.exports = function rutasUsuarios(app) {
   app.get("/api/usuarios", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { data, error } = await supabase.from("usuarios").select("usuario, rol, creado_en").order("usuario", { ascending: true });
+      const { data, error } = await supabase.from("usuarios").select("usuario, rol, bodega, creado_en").order("usuario", { ascending: true });
       if (error) falloBd(error);
       res.json({ usuarios: data || [] });
     } catch (error) {
@@ -109,18 +110,20 @@ module.exports = function rutasUsuarios(app) {
       const usuario = normalizar(req.body && req.body.usuario);
       const clave = req.body && req.body.clave;
       const rol = (req.body && req.body.rol) || "operador";
+      const bodega = String((req.body && req.body.bodega) || "M501").toUpperCase();
+      if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");
       if (!usuario) throw errorHttp(400, "Falta el nombre de usuario.");
       if (!ROLES.has(rol)) throw errorHttp(400, "El rol debe ser admin u operador.");
       validarClaveNueva(clave);
       if (await leerUsuario(usuario)) throw errorHttp(409, "Ese usuario ya existe.");
-      const { error } = await supabase.from("usuarios").insert({ usuario, clave_hash: await hashClave(clave), rol });
+      const { error } = await supabase.from("usuarios").insert({ usuario, clave_hash: await hashClave(clave), rol, bodega });
       if (error) {
         if (error.code === "23505") throw errorHttp(409, "Ese usuario ya existe.");
         falloBd(error);
       }
       cacheUsuarios.delete(usuario);
       await registrarCambioUsuario(req.usuario, { objetivo: usuario, accion: "crear_usuario", rol_nuevo: rol });
-      res.status(201).json({ usuario, rol });
+      res.status(201).json({ usuario, rol, bodega });
     } catch (error) {
       responderError(res, error, "No se pudo crear el usuario.");
     }
@@ -143,6 +146,22 @@ module.exports = function rutasUsuarios(app) {
       res.json({ ok: true, usuario, rol });
     } catch (error) {
       responderError(res, error, "No se pudo cambiar el rol.");
+    }
+  });
+
+  app.post("/api/usuarios/:nombre/bodega", async (req, res) => {
+    try {
+      await exigirAdmin(req);
+      const usuario = normalizar(req.params.nombre);
+      const bodega = String((req.body && req.body.bodega) || "").toUpperCase();
+      if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");
+      if (!(await leerUsuario(usuario))) throw errorHttp(404, "El usuario no existe.");
+      const { error } = await supabase.from("usuarios").update({ bodega }).eq("usuario", usuario);
+      if (error) falloBd(error);
+      cacheUsuarios.delete(usuario);
+      res.json({ ok: true, usuario, bodega });
+    } catch (error) {
+      responderError(res, error, "No se pudo cambiar la bodega.");
     }
   });
 

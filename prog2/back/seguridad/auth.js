@@ -52,7 +52,7 @@ function datosValidos(usuario, clave) {
 async function buscarUsuario(nombre) {
   const guardado = cacheUsuarios.get(nombre);
   if (guardado && guardado.hasta > Date.now()) return guardado.registro;
-  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash, rol, sesion_version").eq("usuario", nombre).maybeSingle();
+  const { data, error } = await supabase.from("usuarios").select("usuario, clave_hash, rol, sesion_version, bodega").eq("usuario", nombre).maybeSingle();
   if (error) falloBd(error);
   recortar(cacheUsuarios, MAX_CACHE_USUARIOS, (v) => v.hasta <= Date.now());
   cacheUsuarios.set(nombre, { registro: data, hasta: Date.now() + CACHE_USUARIO_MS });
@@ -249,6 +249,7 @@ async function protegerApi(req, res, next) {
     }
     req.usuario = sesion.registro.usuario;
     req.rol = sesion.registro.rol;
+    req.bodega = sesion.registro.bodega || "M501";
     if (sesion.datos.exp - Date.now() < RENOVAR_BAJO_MS) {
       ponerCookie(req, res, crearToken(sesion.registro), DURACION_MS);
     }
@@ -287,7 +288,7 @@ function rutasAuth(app) {
       intentos.delete(llave);
       intentos.delete(llaveUsuario);
       ponerCookie(req, res, crearToken(registro), DURACION_MS);
-      res.json({ usuario: registro.usuario, rol: registro.rol || "operador" });
+      res.json({ usuario: registro.usuario, rol: registro.rol || "operador", bodega: registro.bodega || "M501" });
     } catch (error) {
       responderError(res, error, "No se pudo iniciar sesión.");
     }
@@ -345,7 +346,7 @@ function rutasAuth(app) {
     try {
       const sesion = await sesionDe(req);
       if (!sesion) throw errorHttp(401, "Sesión no iniciada.");
-      res.json({ usuario: sesion.registro.usuario, rol: sesion.registro.rol || "operador" });
+      res.json({ usuario: sesion.registro.usuario, rol: sesion.registro.rol || "operador", bodega: sesion.registro.bodega || "M501" });
     } catch (error) {
       responderError(res, error, "No se pudo verificar la sesión.");
     }

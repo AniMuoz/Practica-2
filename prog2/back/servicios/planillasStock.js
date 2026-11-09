@@ -4,6 +4,9 @@ const {
   materialesEnCache,
   leerTabla,
   textoBusqueda,
+  bodegaActual,
+  vistaFilaBodega,
+  BODEGAS_EXPORT,
 } = require("./nucleoDatos");
 
 function columnaExcel(indice) {
@@ -72,7 +75,7 @@ async function exportarStockBodega(colores = true, filtros = null) {
   const { columnas, filas: todas } = stockEnBodega();
   const { filas } = filtrarPorCodigos(todas, 0, filtros);
   const libro = new ExcelJS.Workbook();
-  const hoja = libro.addWorksheet("M501");
+  const hoja = libro.addWorksheet(bodegaActual());
 
   const borde = {
     bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -87,7 +90,7 @@ async function exportarStockBodega(colores = true, filtros = null) {
   };
 
   hoja.getCell("A1").value = "Bodega";
-  hoja.getCell("B1").value = "M501";
+  hoja.getCell("B1").value = bodegaActual();
   ["A1", "B1"].forEach((ref) => {
     const celda = hoja.getCell(ref);
     celda.font = { bold: true, size: 12 };
@@ -134,6 +137,12 @@ function valorStock(valor) {
 
 function filasConBodegas() {
   return materialesEnCache().filasBodega;
+}
+
+// Filas completas vistas desde la bodega principal elegida (M501: sin cambios).
+function filasDeBodega() {
+  const bodega = bodegaActual();
+  return bodega === "M501" ? filasConBodegas() : filasConBodegas().map((fila) => vistaFilaBodega(fila, bodega));
 }
 
 function claveUbicacion(ubicacion) {
@@ -234,22 +243,21 @@ function aplicarExistencia(filas, origen, { libre, destino, inventario } = POSIC
 async function exportarPlanillaInventario(colores = true, origenExistencia = "", filtros = null) {
   const { filas: todas } = planillaInventario();
   const { filas } = filtrarPorCodigos(todas, 0, filtros);
-  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), "M501", colores);
+  return armarPlanillaInventario(aplicarExistencia(filas, origenExistencia), bodegaActual(), colores);
 }
 
 function stockDetallado() {
-  const filas = filasConBodegas();
+  const principal = bodegaActual();
+  // La bodega principal va en su propia columna; las otras cuatro, siempre de menor a mayor.
+  const otras = BODEGAS_EXPORT.filter((bodega) => bodega !== principal);
   const columnas = [
     "Ubicación",
     "Código",
     "Descripción",
-    "M501",
+    principal,
     "Precio x Unidad",
     "Caracteristica",
-    "M502",
-    "M503",
-    "M504",
-    "M505",
+    ...otras,
     "Total",
     "Cons.Prom.Mensual",
     "Stock critico",
@@ -258,16 +266,18 @@ function stockDetallado() {
   ];
   const resultado = [];
   const marcados = [];
-  filas
+  const stockDe = (fila, bodega) => valorStock(bodega === "M501" ? fila.Stock : fila[bodega]) ?? "";
+  filasConBodegas()
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
     .forEach((fila) => {
-      const ubicacion = String(fila["Ubicación"] ?? "").trim();
+      const vista = vistaFilaBodega(fila, principal);
+      const ubicacion = String(vista["Ubicación"] ?? "").trim();
       const precioTexto = String(fila.Precio ?? "").trim();
       const precio = precioTexto === "" ? "Sin precio" : `$${precioTexto}`;
-      const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
+      const cantidades = [principal, ...otras].map((bodega) => stockDe(fila, bodega));
       const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
       resultado.push([
-        ubicacion === "" || ubicacion === "          " ? "" : fila["Ubicación"],
+        ubicacion === "" ? "" : vista["Ubicación"],
         fila.Codigo ?? "",
         fila.Descripcion ?? "",
         cantidades[0],
@@ -569,6 +579,7 @@ module.exports = {
   exportarStockBodega,
   valorStock,
   filasConBodegas,
+  filasDeBodega,
   claveUbicacion,
   planillaInventario,
   armarPlanillaInventario,

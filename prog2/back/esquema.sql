@@ -13,6 +13,10 @@ alter table public.usuarios add column if not exists rol text not null default '
 alter table public.usuarios drop constraint if exists usuarios_rol_check;
 alter table public.usuarios add constraint usuarios_rol_check check (rol in ('admin', 'operador', 'desactivado'));
 
+alter table public.usuarios add column if not exists bodega text not null default 'M501';
+alter table public.usuarios drop constraint if exists usuarios_bodega_check;
+alter table public.usuarios add constraint usuarios_bodega_check check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'));
+
 alter table public.usuarios enable row level security;
 
 create table if not exists public.usuarios_log (
@@ -181,10 +185,16 @@ create table if not exists public.buzon (
   titulo text not null,
   descripcion text not null,
   urgencia text not null check (urgencia in ('leve', 'media', 'alta', 'urgente')),
-  estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado'))
+  estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado')),
+  bodega text not null default 'M501' check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'))
 );
 
 alter table public.buzon enable row level security;
+
+-- Mensajes internos por bodega: el admin solo ve los de la bodega activa.
+alter table public.buzon add column if not exists bodega text not null default 'M501';
+alter table public.buzon drop constraint if exists buzon_bodega_check;
+alter table public.buzon add constraint buzon_bodega_check check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'));
 
 create table if not exists public.buzon_respuestas (
   id         bigint generated always as identity primary key,
@@ -206,3 +216,21 @@ alter table public.materiales drop column if exists cambio_de_ubicacion;
 
 -- Contador de sesion: al cerrar sesion sube y anula los tokens anteriores.
 alter table public.usuarios add column if not exists sesion_version integer not null default 0;
+
+-- Ubicación, sub-ubicación, inventario y comentario propios de cada bodega (M501 usa las columnas base).
+alter table public.materiales add column if not exists ubicacion_m502 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m502 text not null default '';
+alter table public.materiales add column if not exists inventario_m502 text not null default '';
+alter table public.materiales add column if not exists comentario_m502 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m503 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m503 text not null default '';
+alter table public.materiales add column if not exists inventario_m503 text not null default '';
+alter table public.materiales add column if not exists comentario_m503 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m504 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m504 text not null default '';
+alter table public.materiales add column if not exists inventario_m504 text not null default '';
+alter table public.materiales add column if not exists comentario_m504 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m505 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m505 text not null default '';
+alter table public.materiales add column if not exists inventario_m505 text not null default '';
+alter table public.materiales add column if not exists comentario_m505 text not null default '';
