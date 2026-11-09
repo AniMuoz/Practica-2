@@ -1,3 +1,4 @@
+import { conBodega } from "./bodega.js";
 export function textoCampo(valor) {
   return valor == null ? "" : String(valor);
 }
@@ -196,7 +197,7 @@ export function consultaExcel(filtros) {
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
   if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
   const consulta = params.toString();
-  return consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel";
+  return conBodega(consulta ? `/api/tabla/excel?${consulta}` : "/api/tabla/excel");
 }
 
 // Agrega los filtros de la tabla a la ruta de descarga de una planilla (el servidor los aplica con filtrar=1).
@@ -217,7 +218,7 @@ export function rutaConFiltros(ruta, filtros) {
   if (filtros.soloConRombo) params.set("rombo", "1");
   if (filtros.ignorarNulo) params.set("ignorarNulo", "1");
   if (String(filtros.texto ?? "").trim().length >= 2) params.set("q", String(filtros.texto).trim());
-  return `${ruta}${ruta.includes("?") ? "&" : "?"}${params.toString()}`;
+  return conBodega(`${ruta}${ruta.includes("?") ? "&" : "?"}${params.toString()}`);
 }
 
 export function aplicarFilaRecibida(actuales, data) {

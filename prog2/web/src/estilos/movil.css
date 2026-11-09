@@ -251,6 +251,30 @@ select {
   flex-shrink: 0;
 }
 
+.barra-bodega {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.barra-bodega--editable:hover,
+.barra-bodega--editable:focus-visible {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 22%, transparent);
+  outline: none;
+}
+
+.barra-bodega--editable[aria-expanded="true"] {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 22%, transparent);
+}
+
+.barra-bodega__opcion:hover:not(.barra-bodega__opcion--activa) {
+  background: var(--campo-suave) !important;
+}
+
+html.oscuro .barra-bodega {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
 @media (max-width: 800px) {
   .barra {
     flex-direction: row !important;
@@ -267,6 +291,7 @@ select {
   }
 
   .barra-salir { order: 0; }
+  .barra-bodega { order: 0; padding: 4px 8px 4px 5px !important; gap: 6px !important; }
 
   .barra .barra-titulo {
     order: 1;

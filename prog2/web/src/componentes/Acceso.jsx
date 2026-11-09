@@ -1,5 +1,6 @@
 ﻿import { createContext, useContext, useEffect, useState } from "react";
 import { apiFetch } from "../lib/api.js";
+import { fijarBodega } from "../lib/bodega.js";
 
 const SesionContext = createContext({ usuario: "", rol: "operador" });
 export function useSesion() {
@@ -209,7 +210,8 @@ function Login({ alEntrar, avisoInicial = "" }) {
         setError(MENSAJE_DESACTIVADA);
         return;
       }
-      alEntrar({ usuario: data.usuario, rol: data.rol || "operador" });
+      fijarBodega(data.bodega);
+      alEntrar({ usuario: data.usuario, rol: data.rol || "operador", bodega: data.bodega });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -307,7 +309,8 @@ export default function Acceso({ children }) {
           if (res.ok) {
             const data = await res.json();
             if (data && data.rol === "desactivado") return "desactivada";
-            return data ? { usuario: data.usuario, rol: data.rol || "operador" } : null;
+            if (data && (data.rol || "operador") !== "admin") fijarBodega(data.bodega);
+            return data ? { usuario: data.usuario, rol: data.rol || "operador", bodega: data.bodega } : null;
           }
           if (res.status === 401) return null;
         } catch {

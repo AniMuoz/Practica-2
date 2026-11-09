@@ -1,8 +1,8 @@
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
 const { ejecutar } = require("../supabase/supabaseTablas");
-const { exigirClave } = require("./nucleoDatos");
-const { aplicarExistencia, compactarPlanilla, filasConBodegas, filtrarPorCodigos, pintar, valorStock } = require("./planillasStock");
+const { exigirClave, bodegaActual } = require("./nucleoDatos");
+const { aplicarExistencia, compactarPlanilla, filasDeBodega, filtrarPorCodigos, pintar, valorStock } = require("./planillasStock");
 
 const COLUMNAS_MOVIMIENTOS = ["N°", "Código", "Descripción", "Ubicación", "Sub-Ubicación", "M501", "Físico"];
 // Cada fila trae además, al final, el inventario: solo sirve para rellenar "Físico".
@@ -72,7 +72,7 @@ async function agregarCodigoMovimiento(clave, codigoCrudo) {
 const CODIGO_DESCONOCIDO = "Código desconocido en la base de datos";
 
 function planillaMovimientos() {
-  const porCodigo = new Map(filasConBodegas().map((fila) => [String(fila.Codigo ?? "").trim(), fila]));
+  const porCodigo = new Map(filasDeBodega().map((fila) => [String(fila.Codigo ?? "").trim(), fila]));
   const filas = leerCodigosMovimientos()
     .map((codigo, indice) => {
       const fila = porCodigo.get(codigo);
@@ -88,7 +88,8 @@ function planillaMovimientos() {
         String(fila.Inventario ?? "").trim(),
       ];
     });
-  return { columnas: COLUMNAS_MOVIMIENTOS, filas };
+  const columnas = COLUMNAS_MOVIMIENTOS.map((nombre) => (nombre === "M501" ? bodegaActual() : nombre));
+  return { columnas, filas };
 }
 
 async function exportarMovimientos(colores = true, origenExistencia = "", filtros = null) {

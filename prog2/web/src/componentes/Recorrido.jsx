@@ -1,3 +1,4 @@
+import { bodegaPrincipal } from "../lib/bodega.js";
 import { useCallback, useEffect, useState } from "react";
 
 const PASOS = {
@@ -86,8 +87,8 @@ const PASOS = {
     },
     {
       id: "Stock en bodega",
-      titulo: "Stock M501",
-      texto: "Genera una planilla con el stock de la bodega M501.",
+      titulo: `Stock ${bodegaPrincipal()}`,
+      texto: `Genera una planilla con el stock de la bodega ${bodegaPrincipal()}.`,
     },
     {
       id: "Stock detallado",
@@ -97,12 +98,12 @@ const PASOS = {
     {
       id: "Planilla de inventario",
       titulo: "Inventario manual",
-      texto: "Genera una planilla para hacer el inventario a mano en la bodega M501.",
+      texto: `Genera una planilla para hacer el inventario a mano en la bodega ${bodegaPrincipal()}.`,
     },
     {
       id: "Movimientos",
       titulo: "Movimientos",
-      texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock M501. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
+      texto: "Muestra los materiales de la lista de códigos cargada en Añadir/cargar datos (opción Movimientos), con su ubicación y stock de la bodega elegida. La columna Físico se puede rellenar con Libre utilización o Inventario. Cada carga reemplaza la anterior.",
     },
     {
       id: "Planilla de ventas",

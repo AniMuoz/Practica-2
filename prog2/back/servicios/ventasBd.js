@@ -1,7 +1,7 @@
 const ExcelJS = require("exceljs");
 const { supabase } = require("../supabase/supabase");
 const { leerTodo, generarExcelLog, detalleTexto } = require("./logsAuditoria");
-const { BODEGAS_EXPORT } = require("./nucleoDatos");
+const { BODEGAS_EXPORT, bodegaActual, nombreCampoBodega } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");
 const { itemsDesdeOrden, itemsDesdeTraspaso, itemsDesdeManual, enteroCelda, escribirEncabezadoVentas, resolverCodcomp } = require("./ventas");
@@ -166,22 +166,25 @@ function calcularFilas(items, { materiales, contratista, mov, almacenFila, codco
     const stock = (campo) => enteroCelda(material?.[campo]);
     const m501 = material ? stock("Stock") : 0;
     const m505 = material ? stock("M505") : 0;
+    // El "entregar" se calcula con el stock de la bodega en que se hace la planilla.
+    const principal = bodegaActual();
+    const base = principal === "M501" ? m501 : (material ? stock(principal) : 0);
     const cantidad = enteroCelda(cant);
     const concon = enteroCelda(item.concon);
 
     let entregar = 0;
     if (item.entregar != null && item.entregar !== "") {
       entregar = numero(item.entregar);
-    } else if (material && cantidad <= m501) {
+    } else if (material && cantidad <= base) {
       entregar = numero(cant);
     }
 
-    let ubicacion = material ? String(material["Ubicación"] ?? "") : "";
+    let ubicacion = material ? String(material[nombreCampoBodega("Ubicación")] ?? "") : "";
     let rojo = false;
-    if (concon > 0 || (item.entregar == null && material && m505 > m501 && cantidad > m501)) {
+    if (concon > 0 || (principal === "M501" && item.entregar == null && material && m505 > m501 && cantidad > m501)) {
       ubicacion = "CONCON";
       rojo = true;
-    } else if (item.entregar == null && material && m505 === 0 && m501 === 0) {
+    } else if (item.entregar == null && material && (principal === "M501" ? m505 === 0 && m501 === 0 : base === 0)) {
       rojo = true;
     }
 
@@ -217,7 +220,7 @@ function calcularFilas(items, { materiales, contratista, mov, almacenFila, codco
       entregar,
       med: String(item.unidad ?? ""),
       tiras,
-      dif: m501 - cantidad,
+      dif: base - cantidad,
       kg_u: numero(material?.Peso),
       precio_u: precio,
       precio_total: cantidad * precio,
@@ -496,7 +499,7 @@ async function armarExcelReservar(filas, colores = true) {
   const titulos = ["Pos", "Código", "Descripción", "Ubicación", "Sub-ubicación", "M501", "Solicitado", "Entregar", "Med", "Tiras"];
   const borde = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   const subPorCodigo = new Map();
-  filasConBodegas().forEach((m) => subPorCodigo.set(String(m.Codigo ?? "").trim(), String(m["Sub-ubicación"] ?? "")));
+  filasConBodegas().forEach((m) => subPorCodigo.set(String(m.Codigo ?? "").trim(), String(m[nombreCampoBodega("Sub-ubicación")] ?? "")));
   const encabezado = (n) => {
     titulos.forEach((titulo, i) => {
       const celda = hoja.getCell(n, i + 1);

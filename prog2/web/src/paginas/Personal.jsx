@@ -3,6 +3,7 @@ import { useSesion } from "../componentes/Acceso.jsx";
 import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
+import { BODEGAS } from "../lib/bodega.js";
 
 const campo = {
   padding: "8px 10px",
@@ -87,6 +88,17 @@ function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar
     });
   }
 
+  async function cambiarBodega(nueva) {
+    await alEjecutar(async () => {
+      try {
+        await pedir(`/api/usuarios/${encodeURIComponent(persona.usuario)}/bodega`, enviarJson("POST", { bodega: nueva }));
+        alCambiar(`Bodega de ${persona.usuario} actualizada a ${nueva}.`);
+      } catch (e) {
+        alError(e.message);
+      }
+    });
+  }
+
   return (
     <tr>
       <td>{persona.usuario}</td>
@@ -98,6 +110,17 @@ function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar
             <option value="operador">Operador</option>
             <option value="admin">Admin</option>
             <option value="desactivado">Desactivado</option>
+          </select>
+        )}
+      </td>
+      <td>
+        {protegido ? (
+          persona.bodega
+        ) : (
+          <select value={persona.bodega || "M501"} disabled={ocupado} onChange={(e) => cambiarBodega(e.target.value)} style={campo}>
+            {BODEGAS.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
           </select>
         )}
       </td>
@@ -130,6 +153,7 @@ export default function Personal() {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
   const [rol, setRol] = useState("operador");
+  const [bodegaNueva, setBodegaNueva] = useState("M501");
   const [ocupado, setOcupado] = useState(false);
 
   const ocupadoRef = useRef(false);
@@ -197,7 +221,7 @@ export default function Personal() {
     }
     await alEjecutar(async () => {
       try {
-        await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol }));
+        await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol, bodega: bodegaNueva }));
         setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
         setNombre("");
         setClave("");
@@ -239,6 +263,11 @@ export default function Personal() {
                 <option value="operador">Operador</option>
                 <option value="admin">Admin</option>
               </select>
+              <select value={bodegaNueva} disabled={ocupado} onChange={(e) => setBodegaNueva(e.target.value)} style={campo} aria-label="Bodega">
+                {BODEGAS.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
               <button type="submit" disabled={ocupado || sinDatos} style={{ ...boton, opacity: ocupado || sinDatos ? 0.6 : 1 }}>
                 {ocupado ? "Procesando..." : "Crear usuario"}
               </button>
@@ -251,6 +280,7 @@ export default function Personal() {
                   <tr>
                     <th>Usuario</th>
                     <th>Rol</th>
+                    <th>Bodega</th>
                     <th>Alta</th>
                     <th data-tour="personal-acciones">Acciones</th>
                   </tr>

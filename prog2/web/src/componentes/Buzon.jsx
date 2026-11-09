@@ -7,6 +7,7 @@ import { suscribirEventos } from "../lib/eventos.js";
 import { iniciarRecorrido, recorridoPendiente } from "./Recorrido.jsx";
 import "../estilos/buzon.css";
 import { apiFetch } from "../lib/api.js";
+import { bodegaPrincipal } from "../lib/bodega.js";
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const COLOR_URGENCIA = { leve: "#2e7d32", media: "#f9a825", alta: "#ef6c00", urgente: "#c62828" };
@@ -425,6 +426,8 @@ export default function Buzon() {
     const cancelar = suscribirEventos({
       alMensaje: (data) => {
         if (data.tipo !== "buzon") return;
+        // Admin: solo la bodega activa. Operador: sus mensajes ya vienen filtrados por usuario.
+        if (admin && data.bodega && data.bodega !== bodegaPrincipal()) return;
         window.clearTimeout(pendiente);
         pendiente = window.setTimeout(() => {
           cargar();
@@ -436,7 +439,7 @@ export default function Buzon() {
       window.clearTimeout(pendiente);
       cancelar();
     };
-  }, [cargar]);
+  }, [admin, cargar]);
 
   function cambiarEstado(id, estado) {
     pedir(`/api/buzon/${id}/estado`, {

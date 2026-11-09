@@ -1,3 +1,4 @@
+import { nombreBodega } from "./lib/bodega.js";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
@@ -49,3 +50,6 @@ createRoot(document.getElementById("root")).render(
     <RouterProvider router={router} />
   </StrictMode>
 );
+
+// Título de la pestaña según la bodega elegida.
+document.title = nombreBodega().toUpperCase();

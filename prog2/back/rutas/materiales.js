@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../servicios/fuenteDatos");
 const { claveDe } = require("../servicios/nucleoDatos");
+
 const { uploadXlsx, upload, emitir, esImagenReal, esHeicReal, convertirHeicAJpeg } = require("../utils/compartido");
 const { subirImagen } = require("../supabase/imagenesSupabase");
 const { exigirAdmin } = require("../seguridad/auth");
