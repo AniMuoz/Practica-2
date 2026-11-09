@@ -185,10 +185,16 @@ create table if not exists public.buzon (
   titulo text not null,
   descripcion text not null,
   urgencia text not null check (urgencia in ('leve', 'media', 'alta', 'urgente')),
-  estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado'))
+  estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado')),
+  bodega text not null default 'M501' check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'))
 );
 
 alter table public.buzon enable row level security;
+
+-- Mensajes internos por bodega: el admin solo ve los de la bodega activa.
+alter table public.buzon add column if not exists bodega text not null default 'M501';
+alter table public.buzon drop constraint if exists buzon_bodega_check;
+alter table public.buzon add constraint buzon_bodega_check check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'));
 
 create table if not exists public.buzon_respuestas (
   id         bigint generated always as identity primary key,

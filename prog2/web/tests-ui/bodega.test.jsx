@@ -5,7 +5,8 @@ import Navbar from "../src/componentes/Navbar.jsx";
 import { ColoresPlanillaProvider } from "../src/componentes/ColoresPlanilla.jsx";
 import { bodegaPrincipal, conBodega } from "../src/lib/bodega.js";
 
-vi.mock("../src/componentes/Acceso.jsx", () => ({ useSesion: () => ({ rol: "operador", usuario: "ana" }) }));
+vi.mock("../src/componentes/Acceso.jsx", () => ({ useSesion: () => ({ rol: "admin", usuario: "ana" }) }));
+vi.mock("../src/lib/eventos.js", () => ({ suscribirEventos: () => () => {} }));
 
 beforeEach(() => {
   localStorage.clear();

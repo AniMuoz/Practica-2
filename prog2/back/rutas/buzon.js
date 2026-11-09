@@ -1,10 +1,11 @@
 const { supabase } = require("../supabase/supabase");
 const { exigirAdmin, buscarUsuario } = require("../seguridad/auth");
 const { emitir } = require("../utils/compartido");
+const { bodegaActual } = require("../servicios/nucleoDatos");
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
-const CAMPOS = "id, creado_en, usuario, titulo, descripcion, urgencia, estado";
+const CAMPOS = "id, creado_en, usuario, titulo, descripcion, urgencia, estado, bodega";
 const MAX_DESC = 200;
 
 function errorHttp(status, mensaje) {
@@ -19,7 +20,8 @@ module.exports = function rutasBuzon(app) {
     res.status(error.status || 500).json({ error: error.status ? error.message : mensaje });
   }
 
-  // Historial del propio usuario.
+  // Historial del propio usuario (sus mensajes, sin filtrar por bodega activa:
+  // un operador solo escribe en su bodega asignada).
   app.get("/api/buzon/mios", async (req, res) => {
     try {
       const { data, error } = await supabase.from("buzon").select(CAMPOS).eq("usuario", req.usuario).order("creado_en", { ascending: false });
@@ -30,11 +32,15 @@ module.exports = function rutasBuzon(app) {
     }
   });
 
-  // Cantidad de mensajes sin revisar (solo admin).
+  // Cantidad de mensajes sin revisar de la bodega activa (solo admin).
   app.get("/api/buzon/pendientes", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { count, error } = await supabase.from("buzon").select("id", { count: "exact", head: true }).eq("estado", "sin revisar");
+      const { count, error } = await supabase
+        .from("buzon")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", "sin revisar")
+        .eq("bodega", bodegaActual());
       if (error) throw error;
       res.json({ pendientes: count || 0 });
     } catch (error) {
@@ -43,35 +49,32 @@ module.exports = function rutasBuzon(app) {
   });
 
   // Novedades de respuestas para el usuario que llama:
-  //   - Operador → devuelve el id de la última respuesta de CADA uno de sus mensajes
-  //     (para que el front detecte si llegó algo nuevo desde lo que ya vio).
-  //   - Admin → además devuelve cuántas respuestas nuevas hay agrupadas por estado del mensaje,
-  //     útil para pintar los badges en las tabs.
+  //   - Operador → id de la última respuesta de admin en CADA uno de sus mensajes.
+  //   - Admin → solo mensajes de la bodega activa; además el estado del mensaje
+  //     para pintar badges en las tabs.
   app.get("/api/buzon/novedades", async (req, res) => {
     try {
       const registro = await buscarUsuario(req.usuario);
       const esAdmin = registro && registro.rol === "admin";
 
       if (esAdmin) {
-        // Para admin: id de la última respuesta de CADA mensaje (de operadores, es_admin=false).
-        // Agrupamos por mensaje y por estado del mensaje.
         const { data, error } = await supabase
           .from("buzon_respuestas")
-          .select("id, buzon_id, buzon:buzon_id(estado)")
+          .select("id, buzon_id, buzon:buzon_id(estado, bodega)")
           .eq("es_admin", false)
           .order("id", { ascending: false });
         if (error) throw error;
 
-        // ultima respuesta (de operador) por buzon_id
+        const bodega = bodegaActual();
         const porMensaje = {};
         for (const r of data || []) {
+          if (r.buzon?.bodega !== bodega) continue;
           if (!porMensaje[r.buzon_id]) {
             porMensaje[r.buzon_id] = { ultimaId: r.id, estado: r.buzon?.estado ?? null };
           }
         }
         res.json({ novedades: porMensaje });
       } else {
-        // Para operador: id de la última respuesta de admin en CADA uno de sus mensajes.
         const { data: msgs, error: errMsgs } = await supabase
           .from("buzon")
           .select("id")
@@ -100,11 +103,15 @@ module.exports = function rutasBuzon(app) {
     }
   });
 
-  // Todos los mensajes (solo admin).
+  // Todos los mensajes de la bodega activa (solo admin).
   app.get("/api/buzon", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { data, error } = await supabase.from("buzon").select(CAMPOS).order("creado_en", { ascending: false });
+      const { data, error } = await supabase
+        .from("buzon")
+        .select(CAMPOS)
+        .eq("bodega", bodegaActual())
+        .order("creado_en", { ascending: false });
       if (error) throw error;
       res.json({ mensajes: data });
     } catch (error) {
@@ -121,9 +128,15 @@ module.exports = function rutasBuzon(app) {
       if (!titulo || titulo.length > 120) throw errorHttp(400, "El título es obligatorio (máximo 120 caracteres).");
       if (!descripcion || descripcion.length > MAX_DESC) throw errorHttp(400, `La descripción es obligatoria (máximo ${MAX_DESC} caracteres).`);
       if (!URGENCIAS.includes(urgencia)) throw errorHttp(400, "Nivel de urgencia no válido.");
-      const { data, error } = await supabase.from("buzon").insert({ usuario: req.usuario, titulo, descripcion, urgencia }).select(CAMPOS).single();
+      // Operador: middleware fuerza su bodega asignada. Admin: usa la bodega activa de la barra.
+      const bodega = bodegaActual();
+      const { data, error } = await supabase
+        .from("buzon")
+        .insert({ usuario: req.usuario, titulo, descripcion, urgencia, bodega })
+        .select(CAMPOS)
+        .single();
       if (error) throw error;
-      emitir({ tipo: "buzon" });
+      emitir({ tipo: "buzon", bodega });
       res.status(201).json({ mensaje: data });
     } catch (error) {
       responder(res, error, "No se pudo enviar el mensaje.");
@@ -135,10 +148,16 @@ module.exports = function rutasBuzon(app) {
       await exigirAdmin(req);
       const estado = String((req.body && req.body.estado) || "");
       if (!ESTADOS.includes(estado)) throw errorHttp(400, "Estado no válido.");
-      const { data, error } = await supabase.from("buzon").update({ estado }).eq("id", req.params.id).select(CAMPOS).maybeSingle();
+      const { data, error } = await supabase
+        .from("buzon")
+        .update({ estado })
+        .eq("id", req.params.id)
+        .eq("bodega", bodegaActual())
+        .select(CAMPOS)
+        .maybeSingle();
       if (error) throw error;
       if (!data) throw errorHttp(404, "Mensaje no encontrado.");
-      emitir({ tipo: "buzon" });
+      emitir({ tipo: "buzon", bodega: data.bodega });
       res.json({ mensaje: data });
     } catch (error) {
       responder(res, error, "No se pudo cambiar el estado.");
@@ -148,13 +167,18 @@ module.exports = function rutasBuzon(app) {
   app.delete("/api/buzon/:id", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { data, error } = await supabase.from("buzon").select("estado").eq("id", req.params.id).maybeSingle();
+      const { data, error } = await supabase
+        .from("buzon")
+        .select("estado, bodega")
+        .eq("id", req.params.id)
+        .eq("bodega", bodegaActual())
+        .maybeSingle();
       if (error) throw error;
       if (!data) throw errorHttp(404, "Mensaje no encontrado.");
       if (data.estado !== "cerrado") throw errorHttp(400, "Solo se pueden eliminar mensajes cerrados.");
-      const borrado = await supabase.from("buzon").delete().eq("id", req.params.id);
+      const borrado = await supabase.from("buzon").delete().eq("id", req.params.id).eq("bodega", bodegaActual());
       if (borrado.error) throw borrado.error;
-      emitir({ tipo: "buzon" });
+      emitir({ tipo: "buzon", bodega: data.bodega });
       res.json({ ok: true });
     } catch (error) {
       responder(res, error, "No se pudo eliminar el mensaje.");
@@ -163,20 +187,24 @@ module.exports = function rutasBuzon(app) {
 
   // ── Conversación (respuestas) ────────────────────────────────────────────────
 
-  // Leer respuestas de un mensaje.
-  // Admin: puede leer cualquier mensaje. Operador: solo sus propios mensajes.
+  // Admin: solo mensajes de la bodega activa. Operador: solo los suyos.
   app.get("/api/buzon/:id/respuestas", async (req, res) => {
     try {
       const id = req.params.id;
       const registro = await buscarUsuario(req.usuario);
       const esAdmin = registro && registro.rol === "admin";
 
-      if (!esAdmin) {
-        // Verificar que el mensaje pertenece al usuario.
-        const { data: msg, error: errMsg } = await supabase.from("buzon").select("usuario").eq("id", id).maybeSingle();
-        if (errMsg) throw errMsg;
-        if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
-        if (msg.usuario !== req.usuario) throw errorHttp(403, "No tienes permiso para ver este mensaje.");
+      const { data: msg, error: errMsg } = await supabase
+        .from("buzon")
+        .select("usuario, bodega")
+        .eq("id", id)
+        .maybeSingle();
+      if (errMsg) throw errMsg;
+      if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
+      if (esAdmin) {
+        if (msg.bodega !== bodegaActual()) throw errorHttp(404, "Mensaje no encontrado.");
+      } else if (msg.usuario !== req.usuario) {
+        throw errorHttp(403, "No tienes permiso para ver este mensaje.");
       }
 
       const { data, error } = await supabase
@@ -191,8 +219,7 @@ module.exports = function rutasBuzon(app) {
     }
   });
 
-  // Agregar respuesta a un mensaje.
-  // Admin puede responder cualquier mensaje; operador solo los suyos.
+  // Admin responde solo en su bodega activa; operador solo en los suyos.
   app.post("/api/buzon/:id/respuestas", async (req, res) => {
     try {
       const id = req.params.id;
@@ -202,11 +229,18 @@ module.exports = function rutasBuzon(app) {
       const registro = await buscarUsuario(req.usuario);
       const esAdmin = registro && registro.rol === "admin";
 
-      // Verificar existencia y permisos.
-      const { data: msg, error: errMsg } = await supabase.from("buzon").select("usuario, estado").eq("id", id).maybeSingle();
+      const { data: msg, error: errMsg } = await supabase
+        .from("buzon")
+        .select("usuario, estado, bodega")
+        .eq("id", id)
+        .maybeSingle();
       if (errMsg) throw errMsg;
       if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
-      if (!esAdmin && msg.usuario !== req.usuario) throw errorHttp(403, "No tienes permiso para responder este mensaje.");
+      if (esAdmin) {
+        if (msg.bodega !== bodegaActual()) throw errorHttp(404, "Mensaje no encontrado.");
+      } else if (msg.usuario !== req.usuario) {
+        throw errorHttp(403, "No tienes permiso para responder este mensaje.");
+      }
       if (msg.estado === "cerrado") throw errorHttp(400, "No se puede responder a un mensaje cerrado.");
 
       const { data, error } = await supabase
@@ -216,12 +250,11 @@ module.exports = function rutasBuzon(app) {
         .single();
       if (error) throw error;
 
-      // Si el admin responde por primera vez, pasar automáticamente a "revisando".
       if (esAdmin && msg.estado === "sin revisar") {
         await supabase.from("buzon").update({ estado: "revisando" }).eq("id", id);
       }
 
-      emitir({ tipo: "buzon" });
+      emitir({ tipo: "buzon", bodega: msg.bodega });
       res.status(201).json({ respuesta: data });
     } catch (error) {
       responder(res, error, "No se pudo enviar la respuesta.");

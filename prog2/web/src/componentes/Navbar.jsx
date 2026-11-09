@@ -139,6 +139,8 @@ export default function Navbar({ buzonNovedades = 0 }) {
     const cancelar = suscribirEventos({
       alMensaje: (data) => {
         if (data.tipo !== "buzon") return;
+        // Solo reaccionar a mensajes de la bodega que se está viendo.
+        if (data.bodega && data.bodega !== bodegaPrincipal()) return;
         window.clearTimeout(pendienteSse);
         pendienteSse = window.setTimeout(() => leer().catch(() => {}), 200);
       },
@@ -272,16 +274,70 @@ export default function Navbar({ buzonNovedades = 0 }) {
       <div ref={cajaBodegas} data-tour="bodega" style={{ position: "relative", flexShrink: 0 }}>
         <button
           type="button"
-          className="barra-bodega"
+          className={`barra-bodega${rol === "admin" ? " barra-bodega--editable" : ""}`}
           aria-haspopup="listbox"
           aria-expanded={bodegasAbiertas}
           aria-label={`Bodega principal: ${bodegaActiva}`}
           onClick={() => rol === "admin" && setBodegasAbiertas(!bodegasAbiertas)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, fontWeight: 700, cursor: rol === "admin" ? "pointer" : "default" }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "5px 10px 5px 6px",
+            border: "1px solid var(--borde)",
+            borderRadius: 8,
+            background: "var(--superficie)",
+            color: "var(--texto)",
+            fontSize: 14,
+            fontWeight: 700,
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+            cursor: rol === "admin" ? "pointer" : "default",
+          }}
         >
-          {bodegaActiva}
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              background: "var(--acento)",
+              color: "var(--sobre)",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 21V8l9-5 9 5v13" />
+              <path d="M9 21V12h6v9" />
+            </svg>
+          </span>
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, lineHeight: 1.15, minWidth: 0 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--texto-suave)" }}>
+              Bodega
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "baseline", gap: 5, whiteSpace: "nowrap" }}>
+              <span>{bodegaActiva}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--texto-suave)" }}>
+                {nombreBodega(bodegaActiva)}
+              </span>
+            </span>
+          </span>
           {rol === "admin" && (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              className="barra-bodega__flecha"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ color: "var(--texto-suave)", transition: "transform 0.18s ease", transform: bodegasAbiertas ? "rotate(180deg)" : "none" }}
+            >
               <path d="M6 9l6 6 6-6" />
             </svg>
           )}
@@ -290,22 +346,66 @@ export default function Navbar({ buzonNovedades = 0 }) {
           <ul
             role="listbox"
             aria-label="Bodegas"
-            style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, margin: 0, padding: 4, listStyle: "none", background: "var(--superficie)", border: "1px solid var(--borde)", borderRadius: 6, zIndex: 30, boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)", minWidth: 90 }}
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              margin: 0,
+              padding: 6,
+              listStyle: "none",
+              background: "var(--superficie)",
+              border: "1px solid var(--borde)",
+              borderRadius: 10,
+              zIndex: 30,
+              boxShadow: "0 12px 28px rgba(15, 23, 42, 0.16)",
+              minWidth: "100%",
+              width: "max-content",
+            }}
           >
-            {BODEGAS.map((bodega) => (
-              <li key={bodega} role="option" aria-selected={bodega === bodegaActiva}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBodegasAbiertas(false);
-                    elegirBodega(bodega);
-                  }}
-                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 10px", border: 0, borderRadius: 4, background: bodega === bodegaActiva ? "var(--boton)" : "transparent", color: bodega === bodegaActiva ? "var(--sobre)" : "var(--texto)", fontSize: 14, fontWeight: bodega === bodegaActiva ? 700 : 400, cursor: "pointer" }}
-                >
-                  {bodega}
-                </button>
-              </li>
-            ))}
+            {BODEGAS.map((bodega) => {
+              const activa = bodega === bodegaActiva;
+              return (
+                <li key={bodega} role="option" aria-selected={activa}>
+                  <button
+                    type="button"
+                    className={`barra-bodega__opcion${activa ? " barra-bodega__opcion--activa" : ""}`}
+                    aria-label={bodega}
+                    onClick={() => {
+                      setBodegasAbiertas(false);
+                      elegirBodega(bodega);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 14,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      border: 0,
+                      borderRadius: 7,
+                      background: activa ? "var(--acento)" : "transparent",
+                      color: activa ? "var(--sobre)" : "var(--texto)",
+                      fontSize: 14,
+                      fontWeight: activa ? 700 : 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+                      <span>{bodega}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, opacity: activa ? 0.9 : 0.7 }}>
+                        {nombreBodega(bodega)}
+                      </span>
+                    </span>
+                    {activa && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
