@@ -8,6 +8,8 @@ const ORDENES_FILAS = {
   "ubicacion-desc": ["ubicacion", -1],
   "descripcion-asc": ["descripcion", 1],
   "descripcion-desc": ["descripcion", -1],
+  "entregar-asc": ["entregar", 1],
+  "entregar-desc": ["entregar", -1],
 };
 
 const OPCIONES_ORDEN = [
@@ -18,6 +20,8 @@ const OPCIONES_ORDEN = [
   ["ubicacion-desc", "Ubicaciones de mayor a menor"],
   ["descripcion-asc", "Descripciones A-Z"],
   ["descripcion-desc", "Descripciones Z-A"],
+  ["entregar-asc", "Entregar de menor a mayor"],
+  ["entregar-desc", "Entregar de mayor a menor"],
 ];
 
 function comparar(campo, sentido) {

@@ -304,10 +304,15 @@ function itemsDesdeTraspaso(traspasoBuffer, nombreHoja = "") {
       return hayCantidad ? [{ ...base, cantidad: cantidad ?? 0, entregar, concon }] : [];
     }
     const resultado = [];
-    const normal = cantidadValida(valorEn(fila, colM501));
+    const rawNormal = valorEn(fila, colM501);
+    const rawConcon = valorEn(fila, colM505);
+    const normal = cantidadValida(rawNormal);
     if (normal != null) resultado.push({ ...base, cantidad: normal });
-    const concon = cantidadValida(valorEn(fila, colM505));
+    const concon = cantidadValida(rawConcon);
     if (concon != null) resultado.push({ ...base, cantidad: concon, entregar: 0, concon });
+    // Texto no numérico (n/a, quiebre, etc.) cuenta como 0: la fila no se descarta.
+    const hayTexto = [rawNormal, rawConcon].some((v) => v != null && String(v).trim() !== "");
+    if (resultado.length === 0 && hayTexto) resultado.push({ ...base, cantidad: 0 });
     return resultado;
   });
   return { items, numero };

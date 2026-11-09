@@ -336,7 +336,8 @@ async function editarFila(valorId, cambios, usuario) {
       nuevos.almacen = "CONCON";
       nuevos.cant_gd = concon;
       nuevos.observacion = `CONCON ${concon}`;
-      ["rojo", "almacen", "cant_gd", "observacion"].forEach((c) => marcarCampo(campos, c));
+      nuevos.entregar = 0;
+      ["rojo", "almacen", "cant_gd", "observacion", "entregar"].forEach((c) => marcarCampo(campos, c));
     } else if (eraConcon) {
       const entregar = "entregar" in nuevos ? nuevos.entregar : numero(anterior.entregar);
       nuevos.rojo = false;
