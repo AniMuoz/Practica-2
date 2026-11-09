@@ -206,3 +206,21 @@ alter table public.materiales drop column if exists cambio_de_ubicacion;
 
 -- Contador de sesion: al cerrar sesion sube y anula los tokens anteriores.
 alter table public.usuarios add column if not exists sesion_version integer not null default 0;
+
+-- Ubicación, sub-ubicación, inventario y comentario propios de cada bodega (M501 usa las columnas base).
+alter table public.materiales add column if not exists ubicacion_m502 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m502 text not null default '';
+alter table public.materiales add column if not exists inventario_m502 text not null default '';
+alter table public.materiales add column if not exists comentario_m502 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m503 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m503 text not null default '';
+alter table public.materiales add column if not exists inventario_m503 text not null default '';
+alter table public.materiales add column if not exists comentario_m503 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m504 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m504 text not null default '';
+alter table public.materiales add column if not exists inventario_m504 text not null default '';
+alter table public.materiales add column if not exists comentario_m504 text not null default '';
+alter table public.materiales add column if not exists ubicacion_m505 text not null default '';
+alter table public.materiales add column if not exists sub_ubicacion_m505 text not null default '';
+alter table public.materiales add column if not exists inventario_m505 text not null default '';
+alter table public.materiales add column if not exists comentario_m505 text not null default '';

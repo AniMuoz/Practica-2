@@ -33,6 +33,19 @@ const CAMPOS_MATERIAL = [
   ["INDICADOR", "indicador"],
 ];
 
+// Ubicación, sub-ubicación, inventario y comentario existen por bodega: M501 usa las columnas
+// base y M502..M505 las suyas ("Ubicación M502" / ubicacion_m502, etc.).
+const CAMPOS_POR_BODEGA = [
+  ["Ubicación", "ubicacion"],
+  ["Sub-ubicación", "sub_ubicacion"],
+  ["Inventario", "inventario"],
+  ["Comentario", "comentario"],
+];
+const CAMPOS_BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"].flatMap((bodega) =>
+  CAMPOS_POR_BODEGA.map(([titulo, campo]) => [`${titulo} ${bodega}`, `${campo}_${bodega.toLowerCase()}`])
+);
+CAMPOS_MATERIAL.push(...CAMPOS_BODEGAS_EXTRA);
+
 const CAMPOS_RESERVA = [
   ["Orden", "orden"],
   ["Nº reserva", "n_reserva"],
@@ -168,7 +181,10 @@ const COLUMNA_MARCADO = "Marcado";
 const COLUMNAS_LOCALES_DETALLADO = ["Cons.Prom.Mensual", "Stock Max", "INDICADOR"];
 const COLUMNAS_DETALLADO = ["Caracteristica", "Stock critico", ...COLUMNAS_LOCALES_DETALLADO];
 const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_LOCALES_DETALLADO]);
-const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA];
+const COLUMNAS_BODEGAS_EXTRA = CAMPOS_BODEGAS_EXTRA.map(([titulo]) => titulo);
+ENCABEZADO_MATERIALES.push(...COLUMNAS_BODEGAS_EXTRA);
+COLUMNAS_BODEGAS_EXTRA.forEach((titulo) => COLUMNAS_OCULTAS.add(titulo));
+const COLUMNAS_EXTRA = ["Rombo", "QR", "Foto", ...BODEGAS_EXTRA, ...COLUMNAS_BODEGAS_EXTRA];
 const CAMPOS_IMAGEN = new Set(["Rombo", "QR", "Foto"]);
 const COLUMNA_STOCK_CRITICO = "Stock critico";
 const ARCHIVO_MARCADOS = path.join(__dirname, "..", "marcados.json");
@@ -394,8 +410,6 @@ async function guardarFila(matriz, indiceFila) {
 
 // Bodega "principal" de la petición en curso (middleware de server.js). Sin contexto: M501.
 const contextoBodega = new AsyncLocalStorage();
-const CAMPOS_SOLO_M501 = ["Ubicación", "Sub-ubicación", "Inventario", "Comentario"];
-
 function bodegaActual() {
   const bodega = contextoBodega.getStore()?.bodega;
   return BODEGAS_EXPORT.includes(bodega) ? bodega : "M501";
@@ -406,13 +420,35 @@ function bodegaValida(valor) {
   return BODEGAS_EXPORT.includes(texto) ? texto : "M501";
 }
 
-// Fila completa (con columnas M502..M505) vista desde otra bodega: su stock pasa a "Stock",
-// el de M501 ocupa su lugar y se vacían los campos que solo existen en M501.
+// Nombre de la columna que guarda `campo` (Stock, Ubicación, Sub-ubicación, Inventario, Comentario) en la bodega.
+function nombreCampoBodega(campo, bodega = bodegaActual()) {
+  if (bodega === "M501") return campo;
+  if (campo === "Stock") return bodega;
+  return CAMPOS_POR_BODEGA.some(([titulo]) => titulo === campo) ? `${campo} ${bodega}` : campo;
+}
+
+// Igual que nombreCampoBodega pero para el campo de la base de datos (inventario -> inventario_m502).
+function campoBdBodega(campo, bodega = bodegaActual()) {
+  return bodega === "M501" ? campo : `${campo}_${bodega.toLowerCase()}`;
+}
+
+// Traduce las claves de un formulario (Stock, Ubicación, ...) a las columnas de la bodega.
+function datosDeBodega(datos, bodega = bodegaActual()) {
+  if (bodega === "M501" || !datos || typeof datos !== "object") return datos;
+  const resultado = {};
+  Object.entries(datos).forEach(([clave, valor]) => {
+    resultado[nombreCampoBodega(clave, bodega)] = valor;
+  });
+  return resultado;
+}
+
+// Fila completa (con las columnas de todas las bodegas) vista desde la bodega principal: su stock,
+// ubicación, sub-ubicación, inventario y comentario pasan a las columnas base.
 function vistaFilaBodega(fila, bodega = bodegaActual()) {
   if (bodega === "M501" || !fila) return fila;
-  const copia = { ...fila, Stock: fila[bodega] ?? "", [bodega]: fila.Stock ?? "" };
-  CAMPOS_SOLO_M501.forEach((campo) => {
-    if (campo in copia) copia[campo] = "";
+  const copia = { ...fila, Stock: fila[bodega] ?? "" };
+  CAMPOS_POR_BODEGA.forEach(([titulo]) => {
+    copia[titulo] = fila[nombreCampoBodega(titulo, bodega)] ?? "";
   });
   return copia;
 }
@@ -423,14 +459,16 @@ function leerTabla() {
   if (bodega === "M501") return actual.tabla;
   if (!actual.vistas) actual.vistas = new Map();
   if (actual.vistas.has(bodega)) return actual.vistas.get(bodega);
-  const columnas = actual.tabla.columnas.filter((columna) => !CAMPOS_SOLO_M501.includes(columna));
   const filas = actual.tabla.filas.map((fila) => {
     const completa = actual.porFilaBodega.get(String(fila.Codigo ?? "")) || {};
-    const registro = { ...fila, Stock: completa[bodega] ?? "" };
-    CAMPOS_SOLO_M501.forEach((campo) => delete registro[campo]);
+    const vista = vistaFilaBodega(completa, bodega);
+    const registro = { ...fila, Stock: vista.Stock ?? "" };
+    CAMPOS_POR_BODEGA.forEach(([titulo]) => {
+      if (titulo in fila) registro[titulo] = vista[titulo] ?? "";
+    });
     return registro;
   });
-  const vista = { columnas, filas };
+  const vista = { columnas: actual.tabla.columnas, filas };
   actual.vistas.set(bodega, vista);
   return vista;
 }
@@ -523,8 +561,8 @@ async function actualizarMaterial(codigo, { inventario, comentario }) {
   const { matriz, porCodigo } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceCodigo = columnas.indexOf("Codigo");
-  const indiceInventario = columnas.indexOf("Inventario");
-  const indiceComentario = columnas.indexOf("Comentario");
+  const indiceInventario = columnas.indexOf(nombreCampoBodega("Inventario"));
+  const indiceComentario = columnas.indexOf(nombreCampoBodega("Comentario"));
 
   if (indiceCodigo < 0 || indiceInventario < 0 || indiceComentario < 0) {
     const error = new Error("La tabla no tiene las columnas esperadas.");
@@ -548,8 +586,8 @@ async function limpiarInventarioComentarios(clave) {
   exigirClave(clave);
   const { matriz } = editarMateriales();
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  const indiceInventario = columnas.indexOf("Inventario");
-  const indiceComentario = columnas.indexOf("Comentario");
+  const indiceInventario = columnas.indexOf(nombreCampoBodega("Inventario"));
+  const indiceComentario = columnas.indexOf(nombreCampoBodega("Comentario"));
 
   if (indiceInventario < 0 || indiceComentario < 0) {
     const error = new Error("La tabla no tiene las columnas esperadas.");
@@ -565,13 +603,13 @@ async function limpiarInventarioComentarios(clave) {
     matriz[indice] = fila;
   }
 
-  const { error } = await supabase.from("materiales").update({ inventario: "", comentario: "" }).neq("codigo", "");
+  const { error } = await supabase.from("materiales").update({ [campoBdBodega("inventario")]: "", [campoBdBodega("comentario")]: "" }).neq("codigo", "");
   if (error) falloSupabase(error);
   recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
   return leerTabla();
 }
 
-const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
+const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", ...COLUMNAS_BODEGAS_EXTRA.filter((c) => /^(Inventario|Comentario) /.test(c)), "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
 const CLAVE_DATOS = process.env.CLAVE_DATOS;
 if (!CLAVE_DATOS) {
   throw new Error("Falta CLAVE_DATOS en prog2/back/.env");
@@ -670,9 +708,10 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
-  const valores = { ...datos };
-  if ("Ubicación" in valores) {
-    valores["Sub-ubicación"] = String(valores["Ubicación"] ?? "").slice(0, 4);
+  const valores = { ...datosDeBodega(datos) };
+  const columnaUbicacion = nombreCampoBodega("Ubicación");
+  if (columnaUbicacion in valores) {
+    valores[nombreCampoBodega("Sub-ubicación")] = String(valores[columnaUbicacion] ?? "").slice(0, 4);
   }
 
   const { matriz, porCodigo } = editarMateriales();
@@ -808,13 +847,18 @@ async function agregarMaterial(clave, datos) {
     throw error;
   }
 
+  datos = datosDeBodega(datos);
+  const bodegaPrincipal = bodegaActual();
+  const columnaInventario = nombreCampoBodega("Inventario");
+  const columnaUbicacion = nombreCampoBodega("Ubicación");
+  const columnaSub = nombreCampoBodega("Sub-ubicación");
   const codigoNuevo = String(datos.Codigo ?? "").trim();
   if (!codigoNuevo) {
     const error = new Error("El código no puede quedar vacío.");
     error.status = 400;
     throw error;
   }
-  if (String(datos.Inventario ?? "").trim() !== "" && !/^-?\d+$/.test(String(datos.Inventario).trim())) {
+  if (String(datos[columnaInventario] ?? "").trim() !== "" && !/^-?\d+$/.test(String(datos[columnaInventario]).trim())) {
     const error = new Error("Inventario debe ser un número entero.");
     error.status = 400;
     throw error;
@@ -837,15 +881,17 @@ async function agregarMaterial(clave, datos) {
   const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
 
   const subUbicacion =
-    "Ubicación" in datos ? String(datos["Ubicación"] ?? "").slice(0, 4) : datos["Sub-ubicación"];
+    columnaUbicacion in datos ? String(datos[columnaUbicacion] ?? "").slice(0, 4) : datos[columnaSub];
   const filaNueva = columnas.map((columna, indice) => {
     if (columna === "Codigo") return codigoNuevo;
-    if (columna === "Inventario") {
-      const valor = String(datos.Inventario ?? "").trim();
+    if (columna === columnaInventario) {
+      const valor = String(datos[columnaInventario] ?? "").trim();
       return valor === "" ? "" : Number(valor);
     }
-    if (columna === "Sub-ubicación" && "Ubicación" in datos) return subUbicacion;
+    if (columna === columnaSub && columnaUbicacion in datos) return subUbicacion;
     if (CAMPOS_IMAGEN.has(columna) || columna === COLUMNA_MARCADO) return filaPrevia[indice] ?? "";
+    // En otra bodega se conserva lo que no viene del formulario (stock M501, otras bodegas, etc.).
+    if (bodegaPrincipal !== "M501" && !(columna in datos)) return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";
   });
   if (indiceExistente >= 0) matriz[indiceExistente] = filaNueva;
@@ -900,6 +946,10 @@ module.exports = {
   guardarMateriales,
   guardarFila,
   leerTabla,
+  nombreCampoBodega,
+  campoBdBodega,
+  datosDeBodega,
+  CAMPOS_POR_BODEGA,
   contextoBodega,
   bodegaActual,
   bodegaValida,

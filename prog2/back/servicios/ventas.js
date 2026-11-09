@@ -1,6 +1,6 @@
 const XLSX = require("xlsx");
 const ExcelJS = require("exceljs");
-const { BODEGAS_EXPORT, claveColumna } = require("./nucleoDatos");
+const { BODEGAS_EXPORT, claveColumna, bodegaActual, nombreCampoBodega } = require("./nucleoDatos");
 const { compactarPlanilla, filasConBodegas, pintar } = require("./planillasStock");
 const { leerContratistas } = require("./contratistas");
 
@@ -414,6 +414,9 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     const fila = lastPos + 1;
     const m501 = material ? stock("Stock") : 0;
     const m505 = material ? stock("M505") : 0;
+    // El "entregar" se calcula con el stock de la bodega en que se hace la planilla.
+    const principal = bodegaActual();
+    const base = principal === "M501" ? m501 : (material ? stock(principal) : 0);
     const cantidad = enteroCelda(cant);
 
     for (let columna = 1; columna <= 36; columna += 1) {
@@ -426,7 +429,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
     hoja.getCell(fila, 2).value = item.codigo;
     hoja.getCell(fila, 3).value = material?.Descripcion || item.descripcion || "";
     if (material) {
-      hoja.getCell(fila, 4).value = material["Ubicación"] ?? "";
+      hoja.getCell(fila, 4).value = material[nombreCampoBodega("Ubicación")] ?? "";
     }
     hoja.getCell(fila, 5).value = m501;
     hoja.getCell(fila, 5).font = colores
@@ -444,15 +447,15 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
       const textoEntregar = String(item.entregar).trim().replace(",", ".");
       const numeroEntregar = Number(textoEntregar);
       entregar = Number.isFinite(numeroEntregar) ? numeroEntregar : 0;
-    } else if (material && cantidad <= m501) {
+    } else if (material && cantidad <= base) {
       entregar = cant;
     }
-    if (concon > 0 || (item.entregar == null && material && m505 > m501 && cantidad > m501)) {
+    if (concon > 0 || (principal === "M501" && item.entregar == null && material && m505 > m501 && cantidad > m501)) {
       hoja.getCell(fila, 4).value = "CONCON";
       for (let columna = 1; columna <= 36; columna += 1) {
         hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
-    } else if (item.entregar == null && material && m505 === 0 && m501 === 0) {
+    } else if (item.entregar == null && material && (principal === "M501" ? m505 === 0 && m501 === 0 : base === 0)) {
       for (let columna = 1; columna <= 36; columna += 1) {
         hoja.getCell(fila, columna).font = colores ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
       }
@@ -482,7 +485,7 @@ async function añadirVenta({ ordenBuffer, ventasBuffer, contratistaIdx, movTipo
         if (Number.isFinite(total)) hoja.getCell(fila, 13).value = Math.round(total * 1000) / 1000;
       }
     }
-    hoja.getCell(fila, 14).value = m501 - cantidad;
+    hoja.getCell(fila, 14).value = base - cantidad;
     hoja.getCell(fila, 15).value = hoja.getCell(fila, 11).value === hoja.getCell(fila, 10).value ? "VERDADERO" : "FALSO";
     const peso = Number(String(material?.Peso ?? "").replace(",", ".").trim());
     hoja.getCell(fila, 16).value = Number.isFinite(peso) ? peso : 0;

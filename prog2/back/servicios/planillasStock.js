@@ -6,6 +6,7 @@ const {
   textoBusqueda,
   bodegaActual,
   vistaFilaBodega,
+  BODEGAS_EXPORT,
 } = require("./nucleoDatos");
 
 function columnaExcel(indice) {
@@ -246,42 +247,37 @@ async function exportarPlanillaInventario(colores = true, origenExistencia = "",
 }
 
 function stockDetallado() {
-  const filas = filasDeBodega();
+  const principal = bodegaActual();
+  // La bodega principal va en su propia columna; las otras cuatro, siempre de menor a mayor.
+  const otras = BODEGAS_EXPORT.filter((bodega) => bodega !== principal);
   const columnas = [
     "Ubicación",
     "Código",
     "Descripción",
-    "M501",
+    principal,
     "Precio x Unidad",
     "Caracteristica",
-    "M502",
-    "M503",
-    "M504",
-    "M505",
+    ...otras,
     "Total",
     "Cons.Prom.Mensual",
     "Stock critico",
     "Stock Max",
     "INDICADOR",
   ];
-  // Con otra bodega principal, su columna ocupa el lugar de M501 y M501 el de ella.
-  const principal = bodegaActual();
-  if (principal !== "M501") {
-    columnas[columnas.indexOf(principal)] = "M501";
-    columnas[3] = principal;
-  }
   const resultado = [];
   const marcados = [];
-  filas
+  const stockDe = (fila, bodega) => valorStock(bodega === "M501" ? fila.Stock : fila[bodega]) ?? "";
+  filasConBodegas()
     .filter((fila) => String(fila.Descripcion ?? "").trim() !== "NULO")
     .forEach((fila) => {
-      const ubicacion = String(fila["Ubicación"] ?? "").trim();
+      const vista = vistaFilaBodega(fila, principal);
+      const ubicacion = String(vista["Ubicación"] ?? "").trim();
       const precioTexto = String(fila.Precio ?? "").trim();
       const precio = precioTexto === "" ? "Sin precio" : `$${precioTexto}`;
-      const cantidades = [fila.Stock, fila.M502, fila.M503, fila.M504, fila.M505].map((valor) => valorStock(valor) ?? "");
+      const cantidades = [principal, ...otras].map((bodega) => stockDe(fila, bodega));
       const total = cantidades.reduce((suma, valor) => suma + (typeof valor === "number" ? valor : Number(valor) || 0), 0);
       resultado.push([
-        ubicacion === "" || ubicacion === "          " ? "" : fila["Ubicación"],
+        ubicacion === "" ? "" : vista["Ubicación"],
         fila.Codigo ?? "",
         fila.Descripcion ?? "",
         cantidades[0],
@@ -390,11 +386,10 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   const subUbicacion = String(filtros.subUbicacion ?? "").trim();
   const caracteristica = String(filtros.caracteristica ?? "").trim();
   const stockMinimo = String(filtros.stockMinimo ?? "").trim();
-  const conUbicacion = bodegaActual() === "M501"; // esos campos solo existen en M501
-  if (bodega && conUbicacion) {
+  if (bodega) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
   }
-  if (subUbicacion && conUbicacion) {
+  if (subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
   }
   if (caracteristica) {
@@ -410,7 +405,7 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.soloConPrecio) {
     lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
   }
-  if (filtros.soloConUbicacion && conUbicacion) {
+  if (filtros.soloConUbicacion) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
   }
   if (filtros.soloStockCritico) {
@@ -425,7 +420,7 @@ function aplicarFiltrosTabla(filas, filtros = {}) {
   if (filtros.soloStockCero) {
     lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
   }
-  if (filtros.soloInventarioOComentario && conUbicacion) {
+  if (filtros.soloInventarioOComentario) {
     lista = lista.filter((fila) => {
       const inventario = String(fila.Inventario ?? "").trim();
       const comentario = String(fila.Comentario ?? "").trim();

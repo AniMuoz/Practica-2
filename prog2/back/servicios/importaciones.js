@@ -1,6 +1,9 @@
 const XLSX = require("xlsx");
 const {
   BODEGAS_EXPORT,
+  bodegaActual,
+  CAMPOS_POR_BODEGA,
+  nombreCampoBodega,
   CAMPOS_IMAGEN,
   COLUMNAS_EXTRA,
   COLUMNAS_LOCALES_DETALLADO,
@@ -23,7 +26,11 @@ async function importarPlanilla(clave, buffer) {
     throw error;
   }
   const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
-  const encabezados = (matrizEntrada[0] || []).map((nombre) => String(nombre).trim()).filter(Boolean);
+  // La planilla trae las columnas visibles de la bodega elegida (Stock, Ubicación, Inventario...):
+  // en M502..M505 se traducen a las columnas de esa bodega y las de M501 se conservan.
+  const principal = bodegaActual();
+  const conservadas = principal === "M501" ? new Set() : new Set(["Stock", ...CAMPOS_POR_BODEGA.map(([titulo]) => titulo)]);
+  const encabezados = (matrizEntrada[0] || []).map((nombre) => nombreCampoBodega(String(nombre).trim())).filter(Boolean);
 
   const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
@@ -32,11 +39,11 @@ async function importarPlanilla(clave, buffer) {
   }
   matriz[0] = columnas;
 
-  const columnasFormato = columnas.filter((columna) => columna !== COLUMNA_MARCADO);
+  const columnasFormato = columnas.filter((columna) => columna !== COLUMNA_MARCADO && !conservadas.has(columna));
   const encabezadosFormato = encabezados.filter((columna) => columna !== COLUMNA_MARCADO);
   const faltan = columnasFormato.filter(
     (columna) =>
-      !COLUMNAS_EXTRA.includes(columna) &&
+      (columna === principal || !COLUMNAS_EXTRA.includes(columna)) &&
       !COLUMNAS_LOCALES_DETALLADO.includes(columna) &&
       !encabezadosFormato.includes(columna),
   );
@@ -65,7 +72,8 @@ async function importarPlanilla(clave, buffer) {
       error.status = 400;
       throw error;
     }
-    const inventarioTexto = String(fila[indicePorNombre.Inventario] ?? "").trim();
+    const columnaInventario = nombreCampoBodega("Inventario");
+    const inventarioTexto = String(fila[indicePorNombre[columnaInventario]] ?? "").trim();
     if (inventarioTexto !== "" && !/^-?\d+$/.test(inventarioTexto)) {
       const error = new Error(`Inventario de la fila ${numero} debe ser un número entero.`);
       error.status = 400;
@@ -76,7 +84,8 @@ async function importarPlanilla(clave, buffer) {
     const filaPrevia = indiceExistente >= 0 ? matriz[indiceExistente] : [];
     const filaNueva = columnas.map((columna, indice) => {
       if (columna === "Codigo") return codigoNuevo;
-      if (columna === "Inventario") return inventarioTexto === "" ? "" : Number(inventarioTexto);
+      if (columna === columnaInventario) return inventarioTexto === "" ? "" : Number(inventarioTexto);
+      if (conservadas.has(columna)) return filaPrevia[indice] ?? "";
       const valor = fila[indicePorNombre[columna]];
       if (
         (columna === COLUMNA_MARCADO ||
@@ -288,8 +297,9 @@ async function importarUbicaciones(clave, buffer) {
   matriz[0] = columnas;
 
   const indiceCodigo = columnas.indexOf("Codigo");
-  const indiceUbicacion = columnas.indexOf("Ubicación");
-  const indiceSub = columnas.indexOf("Sub-ubicación");
+  const bodegaPrincipal = bodegaActual();
+  const indiceUbicacion = columnas.indexOf(nombreCampoBodega("Ubicación"));
+  const indiceSub = columnas.indexOf(nombreCampoBodega("Sub-ubicación"));
   if (indiceCodigo < 0 || indiceUbicacion < 0 || indiceSub < 0) {
     const error = new Error("La tabla no tiene las columnas Codigo, Ubicación y Sub-ubicación.");
     error.status = 500;
@@ -311,7 +321,7 @@ async function importarUbicaciones(clave, buffer) {
     const planta = String(fila[cols.planta] ?? "").trim();
     const ubicacion = String(fila[cols.ubicacion] ?? "").trim();
     if (!codigo && planta === "" && ubicacion === "") return;
-    if (planta !== "M501") {
+    if (planta !== bodegaPrincipal) {
       omitidos += 1;
       return;
     }
@@ -345,8 +355,8 @@ async function importarUbicaciones(clave, buffer) {
 
 async function importarDosColumnas(clave, buffer, columnaDestino) {
   exigirClave(clave);
-  const destino = String(columnaDestino ?? "").trim();
-  if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino)) {
+  const destino = nombreCampoBodega(String(columnaDestino ?? "").trim());
+  if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino) || /^(Inventario|Comentario) M50\d$/.test(destino)) {
     const error = new Error("Elige una columna válida para actualizar.");
     error.status = 400;
     throw error;

@@ -1,4 +1,4 @@
-import { conBodega, esM501 } from "./bodega.js";
+import { conBodega } from "./bodega.js";
 export function textoCampo(valor) {
   return valor == null ? "" : String(valor);
 }
@@ -90,15 +90,14 @@ export function filtrarFilas(filas, filtros) {
     ignorarNulo = false,
     texto = "",
   } = filtros;
-  const conUbicacion = esM501(); // Ubicación, sub-ubicación e inventario solo existen en M501.
   let lista = filas.filter((fila) => String(fila.Stock ?? "").trim() !== "");
   if (ignorarNulo) {
     lista = lista.filter((fila) => String(fila.Descripcion ?? "").trim().toUpperCase() !== "NULO");
   }
-  if (conUbicacion && bodega) {
+  if (bodega) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim().slice(0, 2) === bodega);
   }
-  if (conUbicacion && subUbicacion) {
+  if (subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
   }
   if (caracteristica) {
@@ -114,7 +113,7 @@ export function filtrarFilas(filas, filtros) {
   if (soloConPrecio) {
     lista = lista.filter((fila) => String(fila.Precio ?? "").trim() !== "");
   }
-  if (conUbicacion && soloConUbicacion) {
+  if (soloConUbicacion) {
     lista = lista.filter((fila) => String(fila["Ubicación"] ?? "").trim() !== "");
   }
   if (soloStockCritico) {
@@ -129,7 +128,7 @@ export function filtrarFilas(filas, filtros) {
   if (soloStockCero) {
     lista = lista.filter((fila) => Number(String(fila.Stock ?? "").trim()) === 0);
   }
-  if (conUbicacion && soloInventarioOComentario) {
+  if (soloInventarioOComentario) {
     lista = lista.filter((fila) => {
       const inventario = String(fila.Inventario ?? "").trim();
       const comentario = String(fila.Comentario ?? "").trim();

@@ -1,14 +1,8 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const { leerTabla, buscarMaterial, marcarMaterial, buscarMateriales, actualizarMaterial, limpiarInventarioComentarios, claveCorrecta, actualizarDatos, guardarImagen, agregarMaterial, eliminarMaterial, importarPlanilla, importarSap, importarPrecios, importarUbicaciones, importarDosColumnas, importarReservas, importarMovimientos, leerUltimasCargas, registrarCarga } = require("../servicios/fuenteDatos");
-const { claveDe, bodegaActual } = require("../servicios/nucleoDatos");
+const { claveDe } = require("../servicios/nucleoDatos");
 
-// Inventario y comentario solo existen en M501.
-function soloM501(res) {
-  if (bodegaActual() === "M501") return false;
-  res.status(400).json({ error: "Inventario y comentario solo se editan en la bodega M501." });
-  return true;
-}
 const { uploadXlsx, upload, emitir, esImagenReal, esHeicReal, convertirHeicAJpeg } = require("../utils/compartido");
 const { subirImagen } = require("../supabase/imagenesSupabase");
 const { exigirAdmin } = require("../seguridad/auth");
@@ -158,7 +152,6 @@ module.exports = function rutasMateriales(app) {
   });
 
   app.post("/api/tabla/limpiar-inventario", async (req, res) => {
-    if (soloM501(res)) return;
     try {
       const tabla = await limpiarInventarioComentarios(claveDe(req));
       emitir({ tipo: "recarga" });
@@ -185,7 +178,6 @@ module.exports = function rutasMateriales(app) {
   });
 
   app.put("/api/material/:codigo", async (req, res) => {
-    if (soloM501(res)) return;
     try {
       const resultado = await actualizarMaterial(req.params.codigo, {
         inventario: req.body.inventario,
