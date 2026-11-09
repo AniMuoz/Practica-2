@@ -319,7 +319,7 @@ export default function Admin() {
     >
       <Navbar />
       <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 16px" }}>
-        <h1 style={{ margin: 0, fontSize: 22 }}>Agregar material</h1>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Administración</h1>
         {autorizado && (
           <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer", userSelect: "none" }}>
             Agrandar
