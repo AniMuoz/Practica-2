@@ -3,6 +3,7 @@ const { leerTodo, generarExcelLog } = require("../servicios/logsAuditoria");
 const { enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const {
   exigirAdmin,
+  exigirAdminM501,
   hashClave,
   validarClaveNueva,
   registrarCambioUsuario,
@@ -106,7 +107,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const usuario = normalizar(req.body && req.body.usuario);
       const clave = req.body && req.body.clave;
       const rol = (req.body && req.body.rol) || "operador";
@@ -151,7 +152,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios/:nombre/bodega", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const usuario = normalizar(req.params.nombre);
       const bodega = String((req.body && req.body.bodega) || "").toUpperCase();
       if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");

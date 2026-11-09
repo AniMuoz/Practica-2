@@ -36,7 +36,7 @@ const enviarJson = (metodo, cuerpo) => ({
   body: JSON.stringify(cuerpo),
 });
 
-function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar, alError }) {
+function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar, alSucio, alCambiar, alError }) {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
 
@@ -114,8 +114,8 @@ function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar
         )}
       </td>
       <td>
-        {protegido ? (
-          persona.bodega
+        {protegido || !puedeCambiarBodega ? (
+          persona.bodega || "M501"
         ) : (
           <select value={persona.bodega || "M501"} disabled={ocupado} onChange={(e) => cambiarBodega(e.target.value)} style={campo}>
             {BODEGAS.map((b) => (
@@ -144,7 +144,8 @@ function FilaPersonal({ persona, propia, ocupado, alEjecutar, alSucio, alCambiar
 }
 
 export default function Personal() {
-  const { usuario: yo } = useSesion();
+  const { usuario: yo, bodega: bodegaUsuario } = useSesion();
+  const esAdminM501 = (bodegaUsuario || "M501") === "M501";
   const [personas, setPersonas] = useState([]);
   const [errorCarga, setErrorCarga] = useState("");
   const [error, setError] = useState("");
@@ -255,6 +256,7 @@ export default function Personal() {
           <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
         ) : (
           <>
+            {esAdminM501 && (
             <form data-tour="personal-crear" onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
               <input value={nombre} disabled={ocupado} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
               <input type="password" value={clave} disabled={ocupado} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
@@ -272,6 +274,7 @@ export default function Personal() {
                 {ocupado ? "Procesando..." : "Crear usuario"}
               </button>
             </form>
+            )}
             {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
             {aviso && <p>{aviso}</p>}
             <div data-tour="personal-tabla" style={{ overflowX: "auto" }}>
@@ -292,6 +295,7 @@ export default function Personal() {
                       persona={persona}
                       propia={persona.usuario === yo}
                       ocupado={ocupado}
+                      puedeCambiarBodega={esAdminM501}
                       alEjecutar={alEjecutar}
                       alSucio={alSucio}
                       alCambiar={tras}

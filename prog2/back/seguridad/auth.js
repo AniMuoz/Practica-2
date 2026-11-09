@@ -263,6 +263,15 @@ async function exigirAdmin(req) {
   if (!req.usuario) throw errorHttp(401, "Sesión no iniciada.");
   const registro = await buscarUsuario(req.usuario);
   if (!registro || registro.rol !== "admin") throw errorHttp(403, "Solo un administrador puede hacer esto.");
+  return registro;
+}
+
+async function exigirAdminM501(req) {
+  const registro = await exigirAdmin(req);
+  if ((registro.bodega || "M501") !== "M501") {
+    throw errorHttp(403, "Solo un administrador de M501 puede hacer esto.");
+  }
+  return registro;
 }
 
 function rutasAuth(app) {
@@ -359,6 +368,7 @@ module.exports = {
   guardarUsuario,
   contarUsuarios,
   exigirAdmin,
+  exigirAdminM501,
   buscarUsuario,
   hashClave,
   validarClaveNueva,

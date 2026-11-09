@@ -19,6 +19,7 @@ const usuariosLog = [];
 let errorBd = null;
 
 const roles = new Map();
+const bodegas = new Map();
 
 supabase.from = (tabla) => {
   assert.ok(tabla === "usuarios" || tabla === "usuarios_log");
@@ -52,7 +53,13 @@ supabase.from = (tabla) => {
     return b;
   }
   const e = { op: "select", filtros: [], valores: null, head: false, unico: false, orden: false };
-  const fila = (nombre) => ({ usuario: nombre, clave_hash: usuarios.get(nombre), rol: roles.get(nombre) || "operador", creado_en: "2026-01-01T00:00:00Z" });
+  const fila = (nombre) => ({
+    usuario: nombre,
+    clave_hash: usuarios.get(nombre),
+    rol: roles.get(nombre) || "operador",
+    bodega: bodegas.get(nombre) || "M501",
+    creado_en: "2026-01-01T00:00:00Z",
+  });
   const b = {
     select(columnas, opciones) { e.cols = String(columnas).split(",").map((c) => c.trim()); if (opciones && opciones.head) e.head = true; return b; },
     insert(valores) { e.op = "insert"; e.valores = valores; return b; },
@@ -72,14 +79,23 @@ supabase.from = (tabla) => {
       if (e.op === "insert" && usuarios.has(v.usuario)) return { error: { code: "23505", message: "duplicado" } };
       usuarios.set(v.usuario, v.clave_hash);
       if (v.rol) roles.set(v.usuario, v.rol);
+      if (v.bodega) bodegas.set(v.usuario, v.bodega);
       return { error: null };
     }
     if (e.op === "update") {
-      for (const n of [...usuarios.keys()].filter(coincide)) if (e.valores.clave_hash) usuarios.set(n, e.valores.clave_hash);
+      for (const n of [...usuarios.keys()].filter(coincide)) {
+        if (e.valores.clave_hash) usuarios.set(n, e.valores.clave_hash);
+        if (e.valores.rol) roles.set(n, e.valores.rol);
+        if (e.valores.bodega) bodegas.set(n, e.valores.bodega);
+      }
       return { error: null };
     }
     if (e.op === "delete") {
-      for (const n of [...usuarios.keys()].filter(coincide)) { usuarios.delete(n); roles.delete(n); }
+      for (const n of [...usuarios.keys()].filter(coincide)) {
+        usuarios.delete(n);
+        roles.delete(n);
+        bodegas.delete(n);
+      }
       return { error: null };
     }
     const nombres = [...usuarios.keys()].filter(coincide).sort();
@@ -485,4 +501,22 @@ test("el admin resetea la clave de otro y la cookie anterior queda inválida", a
   assert.equal((await pedir("POST", "/api/login", { cuerpo: { usuario: "olvidadizo", clave: "clave-vieja-1" } })).status, 401);
   await entrar("olvidadizo", "clave-nueva-1");
   assert.equal((await pedir("GET", "/api/privado", { cookie: cookieVieja })).status, 401);
+});
+
+test("solo un admin de M501 puede crear usuarios y cambiar bodega", async () => {
+  await guardarUsuario("admin502", "clave-admin-1", "admin");
+  bodegas.set("admin502", "M502");
+  const cookie502 = await entrar("admin502", "clave-admin-1");
+  assert.equal((await pedir("POST", "/api/usuarios", { cookie: cookie502, cuerpo: { usuario: "nuevo502", clave: "clave-segura-1" } })).status, 403);
+  assert.equal(usuarios.has("nuevo502"), false);
+
+  const cookie = await sesionAdmin("jefe6");
+  await guardarUsuario("operbodega", "clave-segura-1");
+  assert.equal((await pedir("POST", "/api/usuarios/operbodega/bodega", { cookie: cookie502, cuerpo: { bodega: "M503" } })).status, 403);
+  assert.equal(bodegas.get("operbodega") || "M501", "M501");
+
+  const r = await pedir("POST", "/api/usuarios/operbodega/bodega", { cookie, cuerpo: { bodega: "M503" } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json, { ok: true, usuario: "operbodega", bodega: "M503" });
+  assert.equal(bodegas.get("operbodega"), "M503");
 });
