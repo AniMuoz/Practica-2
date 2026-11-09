@@ -174,18 +174,42 @@ function Preview({ colores, recarga }) {
     const lineas = String(texto ?? "").replace(/\r/g, "").split("\n");
     if (lineas[lineas.length - 1] === "") lineas.pop();
     if (lineas.length < 2) return false;
-    const visibles = ordenes.flatMap((o) => o.filas);
-    const inicio = visibles.findIndex((f) => f.id === fila.id);
-    if (inicio < 0) return false;
-    setBorradores((b) => {
+    const grupo = ordenes.find((o) => o.filas.some((f) => f.id === fila.id));
+    if (!grupo) return false;
+    const inicio = grupo.filas.findIndex((f) => f.id === fila.id);
+    const valores = lineas.map((l) => l.split("\t")[0].trim());
+    const aplicar = (destinos) => setBorradores((b) => {
       const siguiente = { ...b };
-      lineas.forEach((linea, i) => {
-        const destino = visibles[inicio + i];
-        if (destino) siguiente[destino.id] = { ...siguiente[destino.id], [campo]: linea.split("\t")[0].trim() };
+      destinos.forEach((d, i) => {
+        siguiente[d.id] = { ...siguiente[d.id], [campo]: valores[i] };
       });
       return siguiente;
     });
+    const existentes = grupo.filas.slice(inicio, inicio + valores.length);
+    const conDatos = existentes.filter((f) => String(borradores[f.id]?.[campo] ?? f[campo] ?? "").trim() !== "").length;
+    if (conDatos > 0 && !window.confirm(`Al pegar se van a reemplazar datos de ${conDatos} filas que ya tienen contenido. ¿Quieres editar filas existentes?`)) return true;
+    aplicar(existentes);
+    const faltan = valores.length - existentes.length;
+    if (faltan > 0) crearYPegar(grupo, existentes, faltan, aplicar);
     return true;
+  }
+
+  // Crea las filas que faltan en la orden y completa con los valores restantes.
+  async function crearYPegar(grupo, existentes, faltan, aplicar) {
+    try {
+      const antes = new Set(planilla.filas.map((f) => f.id));
+      for (let i = 0; i < faltan; i++) {
+        const res = await apiFetch(`/api/ventas/ordenes/${planilla.id}/${grupo.fila.lote}/filas`, { method: "POST" });
+        await leerJson(res, "No se pudo añadir la fila.");
+      }
+      const res = await apiFetch(`/api/ventas/planilla?anio=${anio}&mes=${mes}`, { cache: "no-store" });
+      const data = await leerJson(res, "No se pudo leer la planilla.");
+      setPlanilla(data);
+      const nuevas = data.filas.filter((f) => !antes.has(f.id)).sort((a, b) => Number(a.id) - Number(b.id));
+      aplicar([...existentes, ...nuevas]);
+    } catch (e) {
+      setAviso(e.message);
+    }
   }
 
   function propagar(fila, campo) {
