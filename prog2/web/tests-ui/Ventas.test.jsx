@@ -12,6 +12,7 @@ const FILA = {
 
 let llamadas;
 beforeEach(() => {
+  sessionStorage.clear();
   llamadas = [];
   window.confirm = vi.fn(() => true);
   window.fetch = vi.fn(async (url, opciones = {}) => {
@@ -121,7 +122,7 @@ describe("Ventas", () => {
     const evento = new Event("copy", { bubbles: true, cancelable: true });
     evento.clipboardData = { setData: (tipo, valor) => { datos[tipo] = valor; } };
     document.dispatchEvent(evento);
-    expect(datos["text/plain"]).toBe("100\tPerno");
+    expect(datos["text/plain"]).toBe("100\tPerno\r\n");
   });
 
   it("ofrece descargar la planilla anual del año a la vista", async () => {

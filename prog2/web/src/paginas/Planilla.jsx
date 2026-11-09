@@ -71,17 +71,26 @@ export default function Planilla({ className, style, children }) {
       const colDesde = Math.min(actual.colDesde, actual.colHasta);
       const colHasta = Math.max(actual.colDesde, actual.colHasta);
       const lineas = [];
+      // Para SAP: sin encabezados si hay más filas, valores limpios (sin tabs/saltos),
+      // separados por \r\n como Excel, para pegar columnas (p. ej. códigos de material).
+      const soloEncabezado = (n) => Array.from(tabla.rows[n]?.cells ?? []).every((c) => c.tagName === "TH");
       for (let fila = desde; fila <= hasta; fila += 1) {
         if (tabla.rows[fila]?.dataset.sinCopia) continue;
+        if (hasta > desde && soloEncabezado(fila)) continue;
         const celdas = [];
         for (let col = colDesde; col <= colHasta; col += 1) {
           const celda = tabla.rows[fila]?.cells[col];
-          celdas.push(celda && !celda.dataset.sinCopia ? celda.textContent : "");
+          let texto = "";
+          if (celda && !celda.dataset.sinCopia) {
+            const campo = celda.querySelector("input:not([type=hidden]), select");
+            texto = campo ? campo.value : celda.textContent;
+          }
+          celdas.push(String(texto).replace(/[\t\r\n]+/g, " ").replace(/\u00a0/g, " ").trim());
         }
         lineas.push(celdas.join("\t"));
       }
       evento.preventDefault();
-      evento.clipboardData.setData("text/plain", lineas.join("\n"));
+      evento.clipboardData.setData("text/plain", lineas.join("\r\n") + "\r\n");
     };
 
     const afuera = (evento) => {

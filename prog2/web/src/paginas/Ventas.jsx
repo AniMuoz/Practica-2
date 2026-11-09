@@ -129,13 +129,13 @@ function Celda({ fila, campo, editando, valor, onCambio, onPegar, onPropagar }) 
 }
 function Preview({ colores, recarga }) {
   const hoy = new Date();
-  const [anio, setAnio] = useState(hoy.getFullYear());
-  const [mes, setMes] = useState(hoy.getMonth() + 1);
+  const [anio, setAnio] = useEstadoPersistente("admin:ventas:anio", hoy.getFullYear());
+  const [mes, setMes] = useEstadoPersistente("admin:ventas:mes", hoy.getMonth() + 1);
   const [planilla, setPlanilla] = useState({ filas: [], existe: false });
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [ordenFilas, setOrdenFilas] = useState("");
+  const [busqueda, setBusqueda] = useEstadoPersistente("admin:ventas:busqueda", "");
+  const [ordenFilas, setOrdenFilas] = useEstadoPersistente("admin:ventas:ordenFilas", "");
   const [anioAnual, setAnioAnual] = useState(hoy.getFullYear());
   const [aniosConDatos, setAniosConDatos] = useState([]);
   const [editando, setEditando] = useState(false);
