@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useColoresPlanilla } from "../componentes/ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import { useSesion } from "../componentes/Acceso.jsx";
@@ -46,6 +46,9 @@ import {
 // Funciones que solo escriben datos: los operadores no las ven.
 const BOTONES_SOLO_ADMIN = new Set(["Añadir/cargar datos", "Planilla de ventas"]);
 
+// Secciones que solo ve un admin de la bodega M501; las demas bodegas solo ven y descargan planillas.
+const BOTONES_SOLO_M501 = new Set(["Añadir/cargar datos", "Movimientos", "Planilla de ventas", "Editar contratistas", "Bitacora camion"]);
+
 const IMAGENES = new Set(["Rombo", "QR", "Foto"]);
 
 // Paneles que enciende cada boton de la barra (para marcarlo como activo).
@@ -71,7 +74,8 @@ export default function Admin() {
   const esMovilCarga = useEsMovil();
   const [botonesMinimizados, setBotonesMinimizados] = useState(false);
   const esBotonActivo = (nombre) => PANELES_BOTON[nombre]?.some((panel) => abierto[panel]) ?? false;
-  const { rol } = useSesion();
+  const { rol, bodega: bodegaUsuario } = useSesion();
+  const puedeEditar = rol === "admin" && (bodegaUsuario || "M501") === "M501";
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -400,7 +404,7 @@ export default function Admin() {
             "Gastos",
             "Bitacora camion",
           ]
-            .filter((nombre) => rol === "admin" || !BOTONES_SOLO_ADMIN.has(nombre))
+            .filter((nombre) => (puedeEditar || !BOTONES_SOLO_M501.has(nombre)) && (rol === "admin" || !BOTONES_SOLO_ADMIN.has(nombre)))
             .map((nombre, indice, lista) => {
             const activo = esBotonActivo(nombre);
             if (esMovilCarga && botonesMinimizados) {
@@ -598,3 +602,4 @@ export default function Admin() {
     </main>
   );
 }
+

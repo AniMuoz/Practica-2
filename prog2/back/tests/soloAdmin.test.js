@@ -23,8 +23,6 @@ const ESCRITURAS = [
 ];
 
 const LIBRES = [
-  ["POST", "/bitacora/folios"],
-  ["PUT", "/bitacora/folios/1/filas/1"],
   ["GET", "/stock-detallado"],
   ["GET", "/stock-detallado/excel"],
   ["GET", "/contratistas"],
@@ -99,3 +97,18 @@ test("un administrador pasa en todas las escrituras de Admin", async () => {
     assert.deepEqual(resultado, { bloqueado: false }, `${metodo} ${ruta}`);
   }
 });
+
+test("un admin de otra bodega solo puede editar ubicacion y sub-ubicacion", async () => {
+  const exigirAdmin = async () => {};
+  const correr = (metodo, ruta, body) =>
+    new Promise((resolve) => {
+      const mw = soloAdminEnEscrituras(exigirAdmin, (_res, error) => resolve({ bloqueado: true, status: error.status }));
+      mw({ method: metodo, path: ruta, bodega: "M502", body }, {}, () => resolve({ bloqueado: false }));
+    });
+  assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { "Ubicación M502": "A1", "Sub-ubicación M502": "A1" } }), { bloqueado: false });
+  assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { Precio: 5 } }), { bloqueado: true, status: 403 });
+  assert.deepEqual(await correr("POST", "/ventas", {}), { bloqueado: true, status: 403 });
+  assert.deepEqual(await correr("POST", "/bitacora/folios", {}), { bloqueado: true, status: 403 });
+});
+
+
