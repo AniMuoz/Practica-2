@@ -57,6 +57,12 @@ function crearApp({ proteger = true } = {}) {
   if (proteger) {
     app.use("/api", limitarPeticiones);
     app.use("/api", protegerApi);
+    // Los operadores solo trabajan en su bodega asignada, sin importar la cabecera X-Bodega.
+    app.use("/api", (req, _res, next) => {
+      const contexto = contextoBodega.getStore();
+      if (contexto && req.rol && req.rol !== "admin" && req.bodega) contexto.bodega = bodegaValida(req.bodega);
+      next();
+    });
     app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
   }
   rutasAuth(app);

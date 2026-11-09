@@ -276,15 +276,17 @@ export default function Navbar({ buzonNovedades = 0 }) {
           aria-haspopup="listbox"
           aria-expanded={bodegasAbiertas}
           aria-label={`Bodega principal: ${bodegaActiva}`}
-          onClick={() => setBodegasAbiertas(!bodegasAbiertas)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+          onClick={() => rol === "admin" && setBodegasAbiertas(!bodegasAbiertas)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 10px", border: 0, borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, fontWeight: 700, cursor: rol === "admin" ? "pointer" : "default" }}
         >
           {bodegaActiva}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          {rol === "admin" && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          )}
         </button>
-        {bodegasAbiertas && (
+        {bodegasAbiertas && rol === "admin" && (
           <ul
             role="listbox"
             aria-label="Bodegas"

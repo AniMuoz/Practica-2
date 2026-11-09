@@ -27,6 +27,16 @@ export function esM501() {
   return bodegaPrincipal() === "M501";
 }
 
+// Fija la bodega asignada al usuario sin recargar (se usa al iniciar sesion).
+export function fijarBodega(bodega) {
+  if (!BODEGAS.includes(bodega)) return;
+  try {
+    localStorage.setItem(CLAVE, bodega);
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 // Cambia la bodega y recarga la página para que todos los datos (principal y Admin) se pidan de nuevo.
 export function elegirBodega(bodega) {
   if (!BODEGAS.includes(bodega) || bodega === bodegaPrincipal()) return;
