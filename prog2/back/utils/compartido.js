@@ -53,7 +53,7 @@ function subidaEnMemoria(extension, mensaje, esValido, mensajeContenido, limite 
   return verificandoContenido(instancia, esValido, mensajeContenido);
 }
 
-const uploadXlsx = subidaEnMemoria(".xlsx", "Solo se aceptan archivos .xlsx.", esXlsxReal, "El archivo no es un .xlsx válido.");
+const uploadXlsx = subidaEnMemoria(".xlsx", "Solo se aceptan archivos .xlsx.", esXlsxReal, "El archivo no es un .xlsx válido.", 40 * 1024 * 1024);
 const uploadPdf = subidaEnMemoria(".pdf", "Solo se aceptan archivos PDF.", esPdfReal, "El archivo no es un PDF válido.");
 
 const uploadFirmaBase = multer({
