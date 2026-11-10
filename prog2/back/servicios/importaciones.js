@@ -280,7 +280,8 @@ async function importarPrecios(clave, buffer) {
 async function importarUbicaciones(clave, buffer) {
   exigirClave(clave);
 
-  const libroEntrada = XLSX.read(buffer, { type: "buffer" });
+  // Solo se usa la primera hoja: leer las demás (el archivo de SAP trae 4) gasta memoria de más.
+  const libroEntrada = XLSX.read(buffer, { type: "buffer", sheets: 0 });
   const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
   if (!hojaEntrada) {
     const error = new Error("El archivo no tiene hojas.");
