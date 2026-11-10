@@ -38,5 +38,6 @@ describe("GeneradorQr", () => {
   it("muestra la pagina al admin", async () => {
     await montar("admin");
     expect(await screen.findByRole("heading", { name: /generador de qr/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /revision de qr/i })).toBeTruthy();
   });
 });

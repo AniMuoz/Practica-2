@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useSesion } from "../componentes/Acceso.jsx";
 import FiltrosTabla, { FILTROS_INICIALES } from "../componentes/FiltrosTabla.jsx";
 import Navbar from "../componentes/Navbar.jsx";
-import { crearQrPng, estadoQr, marcaRombo, sinQr, tieneRombo } from "../lib/generarQr.js";
+import { crearQrPng, estadoQr, marcaRombo, revisarFilaQr, resumenRevisionQr, sinQr, tieneRombo } from "../lib/generarQr.js";
 import { filtrarFilas } from "../lib/reglasPlanilla.js";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
@@ -29,6 +29,7 @@ export default function GeneradorQr() {
   const [errorClave, setErrorClave] = useState("");
   const [trabajando, setTrabajando] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [revision, setRevision] = useState(null);
   const cancelar = useRef(false);
 
   function cargar() {
@@ -152,6 +153,33 @@ export default function GeneradorQr() {
     setTrabajando(false);
   }
 
+  async function revisionDeQr() {
+    const conArchivo = filtradas.filter((f) => String(f.QR ?? "").trim() !== "");
+    if (!conArchivo.length) return setAviso("No hay materiales con QR en estos filtros.");
+    if (!window.confirm(`¿Revisar ${conArchivo.length} QR (código y URL dentro de cada imagen)?`)) return;
+    cancelar.current = false;
+    setTrabajando(true);
+    setRevision(null);
+    const resultados = [];
+    for (let i = 0; i < conArchivo.length; i++) {
+      if (cancelar.current) break;
+      const codigo = String(conArchivo[i].Codigo);
+      setAviso(`Revisando ${i + 1} de ${conArchivo.length}...`);
+      resultados.push(await revisarFilaQr(conArchivo[i]));
+    }
+    const conteo = resumenRevisionQr(resultados);
+    const problemas = resultados.filter((r) => r.estado !== "ok");
+    setRevision({ conteo, problemas, cancelado: cancelar.current });
+    const partes = [
+      `${conteo.ok} correctos`,
+      conteo.url_incorrecta ? `${conteo.url_incorrecta} con URL/código incorrecto` : "",
+      conteo.ilegible ? `${conteo.ilegible} ilegibles` : "",
+      conteo.sin_imagen ? `${conteo.sin_imagen} sin imagen` : "",
+    ].filter(Boolean);
+    setAviso(`${cancelar.current ? "Revisión cancelada" : "Revisión lista"}: ${partes.join(", ")}.`);
+    setTrabajando(false);
+  }
+
   const conQr = filtradas.length - pendientes.length;
   const naranja = "#ea580c";
   const pct = filtradas.length ? Math.round((conQr / filtradas.length) * 100) : 0;
@@ -247,7 +275,38 @@ export default function GeneradorQr() {
           </button>
         )}
       </div>
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+        <button
+          type="button"
+          style={{ ...botonAccion(habilitado), background: "#dc2626" }}
+          disabled={!habilitado}
+          onClick={revisionDeQr}
+        >
+          Revision de QR
+        </button>
+      </div>
       {aviso && <p style={{ fontSize: 14 }}>{aviso}</p>}
+      {revision?.problemas?.length > 0 && (
+        <div style={{ marginTop: 8, textAlign: "left", maxWidth: 640, marginInline: "auto", fontSize: 13 }}>
+          <p style={{ margin: "0 0 6px", fontWeight: 600, color: "#dc2626" }}>
+            Problemas detectados ({revision.problemas.length}):
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 180, overflow: "auto" }}>
+            {revision.problemas.slice(0, 50).map((p) => (
+              <li key={`${p.codigo}-${p.estado}`}>
+                {p.codigo}: {p.estado === "url_incorrecta"
+                  ? `esperaba ${p.esperado}, leyó ${p.leido || "(vacío)"}`
+                  : p.estado === "ilegible"
+                    ? "no se pudo leer el QR de la imagen"
+                    : p.estado === "sin_imagen"
+                      ? "no se pudo cargar la imagen"
+                      : p.estado}
+              </li>
+            ))}
+            {revision.problemas.length > 50 && <li>...y {revision.problemas.length - 50} más</li>}
+          </ul>
+        </div>
+      )}
       </section>
 
       <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Filtros</h2>

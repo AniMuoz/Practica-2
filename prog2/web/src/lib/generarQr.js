@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import jsQR from "jsqr";
 
 export const URL_BASE_QR = "https://inventariom501.proyectobodegam501.workers.dev/";
 export const MAX_BYTES_QR = 100 * 1024;
@@ -35,13 +36,52 @@ export function qrDesactualizados(filas) {
   return filas.filter((fila) => estadoQr(fila) === "desactualizado");
 }
 
-function cargarImagen(url) {
+// Compara el texto leído del PNG con la URL esperada (base + código).
+export function evaluarLecturaQr(codigo, leido, base = URL_BASE_QR) {
+  const esperado = urlQr(codigo, base);
+  const texto = String(leido ?? "").trim();
+  if (!texto) return { estado: "ilegible", esperado, leido: "" };
+  if (texto === esperado) return { estado: "ok", esperado, leido: texto };
+  return { estado: "url_incorrecta", esperado, leido: texto };
+}
+
+export function resumenRevisionQr(resultados) {
+  const conteo = { ok: 0, url_incorrecta: 0, ilegible: 0, sin_imagen: 0, sin_qr: 0 };
+  for (const r of resultados) conteo[r.estado] = (conteo[r.estado] || 0) + 1;
+  return conteo;
+}
+
+function cargarImagen(url, mensaje = "No se pudo cargar la imagen.") {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("No se pudo cargar el rombo."));
+    img.onerror = () => reject(new Error(mensaje));
     img.src = url;
   });
+}
+
+export async function decodificarQrDesdeUrl(url) {
+  const img = await cargarImagen(url, "No se pudo cargar el QR.");
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return jsQR(data, width, height, { inversionAttempts: "attemptBoth" })?.data ?? "";
+}
+
+export async function revisarFilaQr(fila, { base = URL_BASE_QR, urlImagen = (nombre) => `/api/imagenes/${encodeURIComponent(nombre)}` } = {}) {
+  const codigo = String(fila?.Codigo ?? "").trim();
+  const archivo = String(fila?.QR ?? "").trim();
+  const esperado = urlQr(codigo, base);
+  if (!archivo) return { codigo, archivo: "", estado: "sin_qr", esperado, leido: "" };
+  try {
+    const leido = await decodificarQrDesdeUrl(urlImagen(archivo));
+    return { codigo, archivo, ...evaluarLecturaQr(codigo, leido, base) };
+  } catch {
+    return { codigo, archivo, estado: "sin_imagen", esperado, leido: "" };
+  }
 }
 
 function aBlob(canvas) {

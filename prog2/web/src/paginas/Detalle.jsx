@@ -513,7 +513,18 @@ export default function Detalle() {
                 onClick={() => {
                   setAvisoDatos("");
                   setClave("");
-                  setPidiendoClave(true);
+                  // Un admin con sesión no necesita contraseña: el servidor la aplica solo.
+                  apiFetch("/api/acceso")
+                    .then((res) => {
+                      if (!res.ok) throw new Error("clave");
+                      const iniciales = {};
+                      soloLectura.forEach((columna) => {
+                        iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
+                      });
+                      setDatos(iniciales);
+                      setEditando(true);
+                    })
+                    .catch(() => setPidiendoClave(true));
                 }}
                 style={{
                   justifySelf: "start",

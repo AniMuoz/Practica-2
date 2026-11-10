@@ -1,6 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { estadoQr, marcaRombo, sinQr, urlQr, URL_BASE_QR } from "../src/lib/generarQr.js";
+import {
+  estadoQr,
+  evaluarLecturaQr,
+  marcaRombo,
+  resumenRevisionQr,
+  sinQr,
+  urlQr,
+  URL_BASE_QR,
+} from "../src/lib/generarQr.js";
 
 describe("generarQr", () => {
   it("urlQr concatena base y codigo", () => {
@@ -20,5 +28,25 @@ describe("generarQr", () => {
     assert.equal(estadoQr({ QR: `1-qr-r${marca}.png`, Rombo: "1-rombo-ab.png" }), "ok");
     assert.equal(estadoQr({ QR: `1-qr-r${marca}.png`, Rombo: "1-rombo-cd.png" }), "desactualizado");
     assert.equal(estadoQr({ QR: `1-qr-r${marca}.png`, Rombo: "" }), "desactualizado");
+  });
+
+  it("evaluarLecturaQr valida codigo y url del QR", () => {
+    assert.equal(evaluarLecturaQr("10", `${URL_BASE_QR}10`).estado, "ok");
+    assert.equal(evaluarLecturaQr("10", `${URL_BASE_QR}99`).estado, "url_incorrecta");
+    assert.equal(evaluarLecturaQr("10", "http://otra/10").estado, "url_incorrecta");
+    assert.equal(evaluarLecturaQr("10", "").estado, "ilegible");
+  });
+
+  it("resumenRevisionQr cuenta por estado", () => {
+    assert.deepEqual(
+      resumenRevisionQr([
+        { estado: "ok" },
+        { estado: "ok" },
+        { estado: "url_incorrecta" },
+        { estado: "ilegible" },
+        { estado: "sin_imagen" },
+      ]),
+      { ok: 2, url_incorrecta: 1, ilegible: 1, sin_imagen: 1, sin_qr: 0 }
+    );
   });
 });
