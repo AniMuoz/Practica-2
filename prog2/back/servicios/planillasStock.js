@@ -502,7 +502,8 @@ async function exportarTabla(colores = true, filtros = {}) {
   hoja.addRow(columnas);
   const indiceInventario = columnas.indexOf("Inventario");
   const indiceComentario = columnas.indexOf("Comentario");
-  const hasta = indiceComentario >= 0 ? indiceComentario + 1 : columnas.length;
+  const indiceEditor = columnas.indexOf("Editor");
+  const hasta = indiceEditor >= 0 ? indiceEditor + 1 : indiceComentario >= 0 ? indiceComentario + 1 : columnas.length;
   filas.forEach((fila) => {
     const filaHoja = hoja.addRow(columnas.map((columna) => fila[columna] ?? ""));
     if (String(fila.Codigo ?? "").trim() !== "") {
@@ -521,7 +522,7 @@ async function exportarTabla(colores = true, filtros = {}) {
     ) {
       const rellenoCritico = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
       columnas.forEach((columna, indice) => {
-        if (columna === "Inventario" || columna === "Comentario") return;
+        if (columna === "Inventario" || columna === "Comentario" || columna === "Editor") return;
         if (columna === "Stock" && String(fila.Marcado) === "1") return;
         pintar(filaHoja.getCell(indice + 1), rellenoCritico, colores);
       });
@@ -545,11 +546,12 @@ async function exportarTabla(colores = true, filtros = {}) {
     const relleno = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
     pintar(filaHoja.getCell(indiceInventario + 1), relleno, colores);
     pintar(filaHoja.getCell(indiceComentario + 1), relleno, colores);
+    if (indiceEditor >= 0) pintar(filaHoja.getCell(indiceEditor + 1), relleno, colores);
   });
 
   const encabezado = hoja.getRow(1);
   encabezado.font = { bold: true };
-  for (let columna = 1; columna <= (indiceComentario >= 0 ? indiceComentario + 1 : columnas.length); columna += 1) {
+  for (let columna = 1; columna <= hasta; columna += 1) {
     const celda = encabezado.getCell(columna);
     celda.font = { bold: true };
     celda.border = borde;

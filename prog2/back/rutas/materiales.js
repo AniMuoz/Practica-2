@@ -182,6 +182,7 @@ module.exports = function rutasMateriales(app) {
       const resultado = await actualizarMaterial(req.params.codigo, {
         inventario: req.body.inventario,
         comentario: req.body.comentario,
+        editor: req.usuario || "",
       });
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });

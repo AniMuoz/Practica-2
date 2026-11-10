@@ -234,3 +234,10 @@ alter table public.materiales add column if not exists ubicacion_m505 text not n
 alter table public.materiales add column if not exists sub_ubicacion_m505 text not null default '';
 alter table public.materiales add column if not exists inventario_m505 text not null default '';
 alter table public.materiales add column if not exists comentario_m505 text not null default '';
+
+-- Usuario que edito inventario y/o comentario (editor = M501; editor_m502.. para las otras bodegas).
+alter table public.materiales add column if not exists editor text not null default '';
+alter table public.materiales add column if not exists editor_m502 text not null default '';
+alter table public.materiales add column if not exists editor_m503 text not null default '';
+alter table public.materiales add column if not exists editor_m504 text not null default '';
+alter table public.materiales add column if not exists editor_m505 text not null default '';

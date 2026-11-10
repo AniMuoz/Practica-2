@@ -356,7 +356,7 @@ async function importarUbicaciones(clave, buffer) {
 async function importarDosColumnas(clave, buffer, columnaDestino) {
   exigirClave(clave);
   const destino = nombreCampoBodega(String(columnaDestino ?? "").trim());
-  if (!destino || ["Codigo", "Inventario", "Comentario"].includes(destino) || /^(Inventario|Comentario) M50\d$/.test(destino)) {
+  if (!destino || ["Codigo", "Inventario", "Comentario", "Editor"].includes(destino) || /^(Inventario|Comentario|Editor) M50\d$/.test(destino)) {
     const error = new Error("Elige una columna válida para actualizar.");
     error.status = 400;
     throw error;

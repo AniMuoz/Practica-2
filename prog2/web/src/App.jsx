@@ -254,7 +254,7 @@ export default function App() {
 
   function limpiarInventario(event) {
     event.preventDefault();
-    if (!window.confirm("¿Vaciar las columnas Inventario y Comentario de todos los materiales?")) return;
+    if (!window.confirm("¿Vaciar las columnas Inventario, Comentario y Editor de todos los materiales?")) return;
     setLimpiando(true);
     setError("");
     setAvisoClave("");
@@ -710,6 +710,7 @@ export default function App() {
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
                         background: colores ? colorCelda(columna, fila) : undefined,
+                        ...(columna === "Editor" ? { maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", fontSize: 12 } : {}),
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}
@@ -737,6 +738,7 @@ export default function App() {
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
                         background: colores ? colorCelda(columna, fila) : undefined,
+                        ...(columna === "Editor" ? { maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", fontSize: 12 } : {}),
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}

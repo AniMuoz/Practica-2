@@ -80,7 +80,7 @@ export default function Detalle() {
   }, [cargando, error, fila]);
 
   const soloLectura = columnas.filter(
-    (columna) => !["Inventario", "Comentario", "Rombo", "QR", "Foto"].includes(columna)
+    (columna) => !["Inventario", "Comentario", "Editor", "Rombo", "QR", "Foto"].includes(columna)
   );
 
   const estadoInventario = estadoDeInventario(fila);
@@ -823,6 +823,9 @@ export default function Detalle() {
                 }}
               />
             </label>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>
+              Editor: {fila && String(fila.Editor ?? "").trim() !== "" ? fila.Editor : "—"}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button
                 type="submit"

@@ -23,6 +23,7 @@ const CAMPOS_MATERIAL = [
   ["Foto", "foto"],
   ["Inventario", "inventario"],
   ["Comentario", "comentario"],
+  ["Editor", "editor"],
   ["Marcado", "marcado"],
   ["M502", "m502"],
   ["M503", "m503"],
@@ -40,6 +41,7 @@ const CAMPOS_POR_BODEGA = [
   ["Sub-ubicación", "sub_ubicacion"],
   ["Inventario", "inventario"],
   ["Comentario", "comentario"],
+  ["Editor", "editor"],
 ];
 const CAMPOS_BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"].flatMap((bodega) =>
   CAMPOS_POR_BODEGA.map(([titulo, campo]) => [`${titulo} ${bodega}`, `${campo}_${bodega.toLowerCase()}`])
@@ -168,7 +170,7 @@ async function matrizGuardada(nombre) {
 
 const ENCABEZADO_MATERIALES = [
   "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio",
-  "Caracteristica", "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario",
+  "Caracteristica", "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario", "Editor",
   "Marcado", "M502", "M503", "M504", "M505",
   "Cons.Prom.Mensual", "Stock Max", "INDICADOR",
 ];
@@ -548,7 +550,7 @@ function buscarMateriales(texto) {
   return coincidencias.map(({ codigo, descripcion }) => ({ codigo, descripcion }));
 }
 
-async function actualizarMaterial(codigo, { inventario, comentario }) {
+async function actualizarMaterial(codigo, { inventario, comentario, editor }) {
   const textoInventario = String(inventario ?? "").trim();
   const textoComentario = String(comentario ?? "");
   if (textoComentario.length > 50) {
@@ -581,6 +583,11 @@ async function actualizarMaterial(codigo, { inventario, comentario }) {
     matriz[indiceFila][indiceInventario] = Number(textoInventario);
   }
   matriz[indiceFila][indiceComentario] = textoComentario;
+  const indiceEditor = columnas.indexOf(nombreCampoBodega("Editor"));
+  if (indiceEditor >= 0) {
+    while (matriz[indiceFila].length <= indiceEditor) matriz[indiceFila].push("");
+    matriz[indiceFila][indiceEditor] = String(editor ?? "");
+  }
   await guardarFila(matriz, indiceFila);
 
   return buscarMaterial(codigo);
@@ -592,6 +599,7 @@ async function limpiarInventarioComentarios(clave) {
   const columnas = (matriz[0] || []).map((nombre) => String(nombre));
   const indiceInventario = columnas.indexOf(nombreCampoBodega("Inventario"));
   const indiceComentario = columnas.indexOf(nombreCampoBodega("Comentario"));
+  const indiceEditor = columnas.indexOf(nombreCampoBodega("Editor"));
 
   if (indiceInventario < 0 || indiceComentario < 0) {
     const error = new Error("La tabla no tiene las columnas esperadas.");
@@ -604,16 +612,20 @@ async function limpiarInventarioComentarios(clave) {
     while (fila.length <= Math.max(indiceInventario, indiceComentario)) fila.push("");
     fila[indiceInventario] = "";
     fila[indiceComentario] = "";
+    if (indiceEditor >= 0) {
+      while (fila.length <= indiceEditor) fila.push("");
+      fila[indiceEditor] = "";
+    }
     matriz[indice] = fila;
   }
 
-  const { error } = await supabase.from("materiales").update({ [campoBdBodega("inventario")]: "", [campoBdBodega("comentario")]: "" }).neq("codigo", "");
+  const { error } = await supabase.from("materiales").update({ [campoBdBodega("inventario")]: "", [campoBdBodega("comentario")]: "", [campoBdBodega("editor")]: "" }).neq("codigo", "");
   if (error) falloSupabase(error);
   recordarMateriales(matriz, cacheMateriales?.nombreHoja || "Hoja1");
   return leerTabla();
 }
 
-const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", ...COLUMNAS_BODEGAS_EXTRA.filter((c) => /^(Inventario|Comentario) /.test(c)), "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
+const COLUMNAS_BLOQUEADAS = new Set(["Inventario", "Comentario", "Editor", ...COLUMNAS_BODEGAS_EXTRA.filter((c) => /^(Inventario|Comentario|Editor) /.test(c)), "Rombo", "QR", "Foto", COLUMNA_MARCADO]);
 const CLAVE_DATOS = process.env.CLAVE_DATOS;
 if (!CLAVE_DATOS) {
   throw new Error("Falta CLAVE_DATOS en prog2/back/.env");
@@ -893,7 +905,7 @@ async function agregarMaterial(clave, datos) {
       return valor === "" ? "" : Number(valor);
     }
     if (columna === columnaSub && columnaUbicacion in datos) return subUbicacion;
-    if (CAMPOS_IMAGEN.has(columna) || columna === COLUMNA_MARCADO) return filaPrevia[indice] ?? "";
+    if (CAMPOS_IMAGEN.has(columna) || columna === COLUMNA_MARCADO || columna === nombreCampoBodega("Editor")) return filaPrevia[indice] ?? "";
     // En otra bodega se conserva lo que no viene del formulario (stock M501, otras bodegas, etc.).
     if (bodegaPrincipal !== "M501" && !(columna in datos)) return filaPrevia[indice] ?? "";
     return datos[columna] ?? "";

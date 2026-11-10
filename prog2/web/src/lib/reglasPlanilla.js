@@ -4,7 +4,7 @@ export function textoCampo(valor) {
 }
 
 export function colorInventario(columna, fila) {
-  if (columna !== "Inventario" && columna !== "Comentario") return undefined;
+  if (columna !== "Inventario" && columna !== "Comentario" && columna !== "Editor") return undefined;
   if (String(fila.Comentario ?? "").trim() !== "") return "#EFA94A";
   const inventario = String(fila.Inventario ?? "").trim();
   if (inventario === "") return undefined;
@@ -20,7 +20,7 @@ export function colorInventario(columna, fila) {
 
 export function colorCelda(columna, fila, oscuro) {
   if (columna === "Stock" && String(fila.Marcado) === "1") return "#88DC65";
-  if (columna === "Inventario" || columna === "Comentario") return colorInventario(columna, fila);
+  if (columna === "Inventario" || columna === "Comentario" || columna === "Editor") return colorInventario(columna, fila);
   const textoCritico = String(fila["Stock critico"] ?? "").trim();
   if (textoCritico === "") return undefined;
   const critico = Number(textoCritico);

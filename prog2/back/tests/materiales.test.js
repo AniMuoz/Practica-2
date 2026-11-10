@@ -83,7 +83,7 @@ test("leerTabla muestra solo las columnas visibles y conserva el marcado en cada
   const { columnas, filas } = nucleo.leerTabla();
   assert.deepEqual(columnas, [
     "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio", "Caracteristica",
-    "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario",
+    "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario", "Editor",
   ]);
   assert.equal(filas.length, 3);
   assert.equal(filas[0].Descripcion, "Perno");
@@ -214,7 +214,15 @@ test("limpiarInventarioComentarios exige la clave y vacía ambas columnas en tod
   assert.equal(llamadas.length, 0);
   const tabla = await nucleo.limpiarInventarioComentarios(nucleo.CLAVE_DATOS);
   assert.deepEqual(tabla.filas.map((fila) => [fila.Inventario, fila.Comentario]), [["", ""], ["", ""], ["", ""]]);
-  assert.deepEqual(llamadas[0], { tipo: "update", tabla: "materiales", datos: { inventario: "", comentario: "" }, campo: "codigo", valor: "" });
+  assert.deepEqual(llamadas[0], { tipo: "update", tabla: "materiales", datos: { inventario: "", comentario: "", editor: "" }, campo: "codigo", valor: "" });
+});
+
+test("actualizarMaterial guarda el editor y la limpieza lo vacía", async () => {
+  const nucleo = await cargar();
+  const guardado = await nucleo.actualizarMaterial("100", { inventario: "7", comentario: "ok", editor: "ana" });
+  assert.equal(guardado.fila.Editor, "ana");
+  const tabla = await nucleo.limpiarInventarioComentarios(nucleo.CLAVE_DATOS);
+  assert.deepEqual(tabla.filas.map((fila) => fila.Editor), ["", "", ""]);
 });
 
 test("limpiarInventarioComentarios informa un fallo de Supabase y no vacía la tabla", async () => {

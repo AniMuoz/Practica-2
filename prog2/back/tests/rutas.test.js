@@ -523,7 +523,7 @@ test("PUT /api/material/:codigo guarda inventario y comentario o responde 404", 
   responder({ actualizarMaterial: { fila: { Codigo: "1" } } });
   const bien = await pedir("PUT", "/api/material/1", { json: { inventario: "4", comentario: "ok" } });
   assert.equal(bien.status, 200);
-  assert.deepEqual(llamadasA("actualizarMaterial")[0].args, ["1", { inventario: "4", comentario: "ok" }]);
+  assert.deepEqual(llamadasA("actualizarMaterial")[0].args, ["1", { inventario: "4", comentario: "ok", editor: "" }]);
   responder({ actualizarMaterial: null });
   assert.equal((await pedir("PUT", "/api/material/9", { json: {} })).status, 404);
   responder({ actualizarMaterial: fallar(400, "Inventario debe ser un número entero.") });
