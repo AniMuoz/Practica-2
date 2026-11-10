@@ -1,4 +1,6 @@
 const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
+const { Readable } = require("node:stream");
 const {
   BODEGAS_EXPORT,
   bodegaActual,
@@ -277,18 +279,88 @@ async function importarPrecios(clave, buffer) {
   return { agregados, actualizados };
 }
 
-async function importarUbicaciones(clave, buffer) {
-  exigirClave(clave);
+// Lee solo la primera hoja en streaming y conserva código, almacén y ubicación de cada fila.
+// Un archivo de SAP con ~100.000 filas no se carga entero en memoria.
+async function leerUbicacionesXlsx(buffer) {
+  const lector = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from([buffer]), {
+    sharedStrings: "cache",
+    hyperlinks: "ignore",
+    styles: "ignore",
+    worksheets: "emit",
+  });
+  const requeridas = {
+    codigo: ["matnr", "Material"],
+    planta: ["lgort", "Almacén"],
+    ubicacion: ["lgpbe", "Ubicación"],
+  };
+  const textos = (fila) => Array.from({ length: fila.cellCount }, (_, i) => fila.getCell(i + 1).text);
+  const inicio = [];
+  const registros = [];
+  let cols = null;
+  let hojas = 0;
 
-  // Solo se usa la primera hoja: leer las demás (el archivo de SAP trae 4) gasta memoria de más.
-  const libroEntrada = XLSX.read(buffer, { type: "buffer", sheets: 0 });
-  const hojaEntrada = libroEntrada.Sheets[libroEntrada.SheetNames[0]];
-  if (!hojaEntrada) {
+  function agregarFila(valores, numero) {
+    const codigo = String(valores[cols.codigo] ?? "").trim();
+    const planta = String(valores[cols.planta] ?? "").trim();
+    const ubicacion = String(valores[cols.ubicacion] ?? "").trim();
+    if (!codigo && planta === "" && ubicacion === "") return;
+    registros.push({ numero, codigo, planta, ubicacion });
+  }
+
+  // Los encabezados se buscan en las primeras 10 filas; después solo se extraen las 3 columnas.
+  function fijarEncabezados() {
+    const { indices, fila } = ubicarColumnas(inicio, requeridas);
+    cols = indices;
+    inicio.slice(fila + 1).forEach((previa, i) => agregarFila(previa, fila + i + 2));
+  }
+
+  try {
+    for await (const hoja of lector) {
+      hojas += 1;
+      if (hojas > 1) break;
+      for await (const fila of hoja) {
+        if (cols) {
+          agregarFila(textos(fila), fila.number);
+          continue;
+        }
+        inicio.push(textos(fila));
+        if (inicio.length >= 10) fijarEncabezados();
+      }
+    }
+  } catch (error) {
+    if (error.status) throw error;
+    // Archivos con el zip en otro orden (p. ej. generados por otras librerías): lectura completa de la primera hoja.
+    const libro = XLSX.read(buffer, { type: "buffer", sheets: 0 });
+    const hoja = libro.Sheets[libro.SheetNames[0]];
+    if (!hoja) {
+      const sinHojas = new Error("El archivo no tiene hojas.");
+      sinHojas.status = 400;
+      throw sinHojas;
+    }
+    registros.length = 0;
+    inicio.length = 0;
+    cols = null;
+    XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "" }).forEach((valores, i) => {
+      if (cols) return agregarFila(valores, i + 1);
+      inicio.push(valores);
+      if (inicio.length >= 10) fijarEncabezados();
+    });
+    if (!cols) fijarEncabezados();
+    return registros;
+  }
+  if (hojas === 0) {
     const error = new Error("El archivo no tiene hojas.");
     error.status = 400;
     throw error;
   }
-  const matrizEntrada = XLSX.utils.sheet_to_json(hojaEntrada, { header: 1, defval: "" });
+  if (!cols) fijarEncabezados();
+  return registros;
+}
+
+async function importarUbicaciones(clave, buffer) {
+  exigirClave(clave);
+
+  const filasEntrada = await leerUbicacionesXlsx(buffer);
 
   const { matriz, porCodigo } = editarMateriales();
   let columnas = (matriz[0] || []).map((nombre) => String(nombre));
@@ -317,17 +389,7 @@ async function importarUbicaciones(clave, buffer) {
   let omitidos = 0;
   const porBodega = Object.fromEntries(BODEGAS_EXPORT.map((b) => [b, { agregados: 0, actualizados: 0 }]));
 
-  const { indices: cols, fila: filaEnc } = ubicarColumnas(matrizEntrada, {
-    codigo: ["matnr", "Material"],
-    planta: ["lgort", "Almacén"],
-    ubicacion: ["lgpbe", "Ubicación"],
-  });
-  matrizEntrada.slice(filaEnc + 1).forEach((fila, desplazamiento) => {
-    const numero = desplazamiento + filaEnc + 2;
-    const codigo = String(fila[cols.codigo] ?? "").trim();
-    const planta = String(fila[cols.planta] ?? "").trim();
-    const ubicacion = String(fila[cols.ubicacion] ?? "").trim();
-    if (!codigo && planta === "" && ubicacion === "") return;
+  filasEntrada.forEach(({ numero, codigo, planta, ubicacion }) => {
     if (!destinos[planta]) {
       omitidos += 1;
       return;
