@@ -178,7 +178,7 @@ export default function PanelDetallado({
               </div>
               <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--texto-suave, #666)" }}>
                 {soloLectura
-                  ? "Solo un administrador puede modificar el stock detallado."
+                  ? "Solo un administrador de M501 puede modificar el stock detallado."
                   : "Los cambios se guardan solo al pulsar Guardar. En una celda editable puedes pegar una columna de Excel."}
               </p>
             </div>

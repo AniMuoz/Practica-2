@@ -540,7 +540,7 @@ export default function Admin() {
           pendientes={pendientesDetallado}
           guardando={guardandoDetallado}
           onGuardar={guardarCambiosDetallado}
-          soloLectura={rol !== "admin"}
+          soloLectura={!puedeEditar}
         />
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
