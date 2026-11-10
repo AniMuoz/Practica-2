@@ -109,6 +109,8 @@ test("limpiar inventario: cualquier admin, solo en su propia bodega", async () =
   assert.deepEqual(await correr({ bodega: "M501", bodegaActiva: "M501" }), { bloqueado: false });
   assert.deepEqual(await correr({ bodega: "M502", bodegaActiva: "M503" }), { bloqueado: true, status: 403 });
   assert.deepEqual(await correr({ bodega: "M501", bodegaActiva: "M502" }), { bloqueado: true, status: 403 });
+  // El superusuario puede limpiar cualquier bodega.
+  assert.deepEqual(await correr({ usuario: "adminm501", bodega: "M501", bodegaActiva: "M503" }), { bloqueado: false });
 });
 
 test("un admin de otra bodega solo puede editar ubicacion y sub-ubicacion", async () => {

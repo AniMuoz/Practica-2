@@ -16,6 +16,8 @@ const METODOS_LECTURA = new Set(["GET", "HEAD", "OPTIONS"]);
 // PUT /material/:codigo guarda inventario y comentario. No incluye /datos, /marcado ni /imagen.
 const CONTEO_MATERIAL = /^\/material\/[^/]+$/;
 const DATOS_MATERIAL = /^\/material\/[^/]+\/datos$/;
+// El superusuario (admin de M501) puede operar en todas las bodegas, incluida la limpieza ajena.
+const SUPERUSUARIO = "adminm501";
 // Limpiar inventario y comentarios: cualquier admin, pero solo en su propia bodega.
 const LIMPIEZA_PROPIA = /^\/tabla\/limpiar-inventario$/;
 // Solo nombres sin sufijo de bodega: el servidor los traduce a las columnas de la bodega activa.
@@ -45,7 +47,7 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
       // Un admin de otra bodega solo edita campos libres y solo en su propia bodega (no con X-Bodega ajeno).
       const ajena = req.bodegaActiva && req.bodegaActiva !== bodega;
       if (req.method === "POST" && LIMPIEZA_PROPIA.test(req.path)) {
-        if (ajena) throw Object.assign(new Error("Solo puedes limpiar el inventario y comentarios de tu propia bodega."), { status: 403 });
+        if (ajena && req.usuario !== SUPERUSUARIO) throw Object.assign(new Error("Solo puedes limpiar el inventario y comentarios de tu propia bodega."), { status: 403 });
         return next();
       }
       if (bodega !== "M501" && (ajena || !soloCamposLibres(req.method, req.path, req.body))) {
