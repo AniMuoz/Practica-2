@@ -78,6 +78,23 @@ test("crearApp protege la API por defecto (401 sin sesión)", async () => {
   assert.equal(respuesta.status, 401);
 });
 
+test("una bodega X-Bodega o ?principal= fuera de M501-M505 se rechaza con 400", async () => {
+  const servidor = await new Promise((resolve) => {
+    const s = app.listen(0, "127.0.0.1", () => resolve(s));
+  });
+  try {
+    const base = `http://127.0.0.1:${servidor.address().port}`;
+    const conCabecera = await fetch(`${base}/api/buscar?q=a`, { headers: { "X-Bodega": "M999" } });
+    assert.equal(conCabecera.status, 400);
+    const conQuery = await fetch(`${base}/api/buscar?q=a&principal=XX`);
+    assert.equal(conQuery.status, 400);
+    const valida = await fetch(`${base}/api/buscar?q=a`, { headers: { "X-Bodega": "m502" } });
+    assert.equal(valida.status, 200);
+  } finally {
+    servidor.close();
+  }
+});
+
 test("el acceso con clave incorrecta no revela la contraseña", async () => {
   const respuesta = await pedir("POST", "/api/acceso", { clave: "no" });
   assert.equal(respuesta.status, 403);

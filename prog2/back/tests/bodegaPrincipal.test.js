@@ -39,6 +39,21 @@ test("bodegaValida acepta M501-M505 y cae a M501 con cualquier otro valor", () =
   assert.equal(nucleo.bodegaValida(undefined), "M501");
 });
 
+test("bodegaEsValida solo acepta M501-M505", () => {
+  assert.equal(nucleo.bodegaEsValida("m504"), true);
+  assert.equal(nucleo.bodegaEsValida("M999"), false);
+  assert.equal(nucleo.bodegaEsValida(""), false);
+});
+
+test("la vista de otra bodega se recalcula tras escribir (la cache de vistas se invalida)", async () => {
+  const antes = en("M502", () => nucleo.leerTabla()).filas.find((f) => f.Codigo === "200");
+  await en("M502", () => nucleo.actualizarMaterial("200", { inventario: "77", comentario: "vista" }));
+  const despues = en("M502", () => nucleo.leerTabla()).filas.find((f) => f.Codigo === "200");
+  assert.equal(despues.Inventario, 77);
+  assert.equal(despues.Comentario, "vista");
+  assert.notEqual(antes.Comentario, despues.Comentario);
+});
+
 test("M501 (o sin contexto) deja la tabla igual", () => {
   const tabla = nucleo.leerTabla();
   assert.ok(tabla.columnas.includes("Ubicación"));

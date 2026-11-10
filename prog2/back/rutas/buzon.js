@@ -8,6 +8,11 @@ const ESTADOS = ["sin revisar", "revisando", "cerrado"];
 const CAMPOS = "id, creado_en, usuario, titulo, descripcion, urgencia, estado, bodega";
 const MAX_DESC = 200;
 
+// Consulta base de mensajes de la bodega activa: toda lectura de admin pasa por aqui.
+function mensajesDeBodega(columnas, opciones) {
+  return supabase.from("buzon").select(columnas, opciones).eq("bodega", bodegaActual());
+}
+
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
   error.status = status;
@@ -36,11 +41,7 @@ module.exports = function rutasBuzon(app) {
   app.get("/api/buzon/pendientes", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { count, error } = await supabase
-        .from("buzon")
-        .select("id", { count: "exact", head: true })
-        .eq("estado", "sin revisar")
-        .eq("bodega", bodegaActual());
+      const { count, error } = await mensajesDeBodega("id", { count: "exact", head: true }).eq("estado", "sin revisar");
       if (error) throw error;
       res.json({ pendientes: count || 0 });
     } catch (error) {
@@ -60,15 +61,14 @@ module.exports = function rutasBuzon(app) {
       if (esAdmin) {
         const { data, error } = await supabase
           .from("buzon_respuestas")
-          .select("id, buzon_id, buzon:buzon_id(estado, bodega)")
+          .select("id, buzon_id, buzon:buzon_id!inner(estado, bodega)")
           .eq("es_admin", false)
+          .eq("buzon.bodega", bodegaActual())
           .order("id", { ascending: false });
         if (error) throw error;
 
-        const bodega = bodegaActual();
         const porMensaje = {};
         for (const r of data || []) {
-          if (r.buzon?.bodega !== bodega) continue;
           if (!porMensaje[r.buzon_id]) {
             porMensaje[r.buzon_id] = { ultimaId: r.id, estado: r.buzon?.estado ?? null };
           }
@@ -107,10 +107,7 @@ module.exports = function rutasBuzon(app) {
   app.get("/api/buzon", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { data, error } = await supabase
-        .from("buzon")
-        .select(CAMPOS)
-        .eq("bodega", bodegaActual())
+      const { data, error } = await mensajesDeBodega(CAMPOS)
         .order("creado_en", { ascending: false });
       if (error) throw error;
       res.json({ mensajes: data });
@@ -167,12 +164,7 @@ module.exports = function rutasBuzon(app) {
   app.delete("/api/buzon/:id", async (req, res) => {
     try {
       await exigirAdmin(req);
-      const { data, error } = await supabase
-        .from("buzon")
-        .select("estado, bodega")
-        .eq("id", req.params.id)
-        .eq("bodega", bodegaActual())
-        .maybeSingle();
+      const { data, error } = await mensajesDeBodega("estado, bodega").eq("id", req.params.id).maybeSingle();
       if (error) throw error;
       if (!data) throw errorHttp(404, "Mensaje no encontrado.");
       if (data.estado !== "cerrado") throw errorHttp(400, "Solo se pueden eliminar mensajes cerrados.");

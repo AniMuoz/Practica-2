@@ -20,27 +20,22 @@ const OPCIONES_ORDEN = [
   ["bodega", "Bodega"],
 ];
 
+const texto = (v) => String(v ?? "").trim().toLowerCase();
+const porTexto = (extraer) => (a, b) => texto(extraer(a)).localeCompare(texto(extraer(b)), "es");
+const porUsuario = porTexto((p) => p.usuario);
+const tiempo = (p) => (p.creado_en ? new Date(p.creado_en).getTime() : 0);
+
+// Comparador principal de cada orden; el empate se resuelve siempre por usuario.
+const COMPARADORES = {
+  usuario: () => 0,
+  fecha: (a, b) => tiempo(b) - tiempo(a),
+  rol: porTexto((p) => p.rol),
+  bodega: porTexto((p) => p.bodega || "M501"),
+};
+
 function ordenarPersonas(lista, orden) {
-  const filas = [...lista];
-  const texto = (v) => String(v ?? "").trim().toLowerCase();
-  if (orden === "fecha") {
-    return filas.sort((a, b) => {
-      const ta = a.creado_en ? new Date(a.creado_en).getTime() : 0;
-      const tb = b.creado_en ? new Date(b.creado_en).getTime() : 0;
-      return tb - ta || texto(a.usuario).localeCompare(texto(b.usuario), "es");
-    });
-  }
-  if (orden === "rol") {
-    return filas.sort((a, b) => texto(a.rol).localeCompare(texto(b.rol), "es") || texto(a.usuario).localeCompare(texto(b.usuario), "es"));
-  }
-  if (orden === "bodega") {
-    return filas.sort((a, b) => {
-      const ba = texto(a.bodega || "M501");
-      const bb = texto(b.bodega || "M501");
-      return ba.localeCompare(bb, "es") || texto(a.usuario).localeCompare(texto(b.usuario), "es");
-    });
-  }
-  return filas.sort((a, b) => texto(a.usuario).localeCompare(texto(b.usuario), "es"));
+  const principal = COMPARADORES[orden] || COMPARADORES.usuario;
+  return [...lista].sort((a, b) => principal(a, b) || porUsuario(a, b));
 }
 
 const boton = {

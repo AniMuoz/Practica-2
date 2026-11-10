@@ -1,28 +1,21 @@
 // Orden dentro de cada orden (lote). Keys uniformes campo-asc / campo-desc.
 // Mantener en sync con prog2/web/src/lib/ordenFilasVentas.js
 
-const ORDENES_FILAS = {
-  "codigo-asc": ["codigo", 1],
-  "codigo-desc": ["codigo", -1],
-  "ubicacion-asc": ["ubicacion", 1],
-  "ubicacion-desc": ["ubicacion", -1],
-  "descripcion-asc": ["descripcion", 1],
-  "descripcion-desc": ["descripcion", -1],
-  "entregar-asc": ["entregar", 1],
-  "entregar-desc": ["entregar", -1],
-};
-
-const OPCIONES_ORDEN = [
-  ["", "Sin orden extra"],
-  ["codigo-asc", "Códigos de menor a mayor"],
-  ["codigo-desc", "Códigos de mayor a menor"],
-  ["ubicacion-asc", "Ubicaciones de menor a mayor"],
-  ["ubicacion-desc", "Ubicaciones de mayor a menor"],
-  ["descripcion-asc", "Descripciones A-Z"],
-  ["descripcion-desc", "Descripciones Z-A"],
-  ["entregar-asc", "Entregar de menor a mayor"],
-  ["entregar-desc", "Entregar de mayor a menor"],
+// Una sola definicion: [clave, campo, sentido, etiqueta]. ORDENES_FILAS y OPCIONES_ORDEN se derivan de aqui.
+const DEFINICION_ORDENES = [
+  ["codigo-asc", "codigo", 1, "Códigos de menor a mayor"],
+  ["codigo-desc", "codigo", -1, "Códigos de mayor a menor"],
+  ["ubicacion-asc", "ubicacion", 1, "Ubicaciones de menor a mayor"],
+  ["ubicacion-desc", "ubicacion", -1, "Ubicaciones de mayor a menor"],
+  ["descripcion-asc", "descripcion", 1, "Descripciones A-Z"],
+  ["descripcion-desc", "descripcion", -1, "Descripciones Z-A"],
+  ["entregar-asc", "entregar", 1, "Entregar de menor a mayor"],
+  ["entregar-desc", "entregar", -1, "Entregar de mayor a menor"],
 ];
+
+const ORDENES_FILAS = Object.fromEntries(DEFINICION_ORDENES.map(([clave, campo, sentido]) => [clave, [campo, sentido]]));
+
+const OPCIONES_ORDEN = [["", "Sin orden extra"], ...DEFINICION_ORDENES.map(([clave, , , etiqueta]) => [clave, etiqueta])];
 
 function comparar(campo, sentido) {
   return (a, b) => {

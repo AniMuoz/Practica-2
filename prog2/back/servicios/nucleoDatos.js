@@ -420,6 +420,10 @@ function bodegaValida(valor) {
   return BODEGAS_EXPORT.includes(texto) ? texto : "M501";
 }
 
+function bodegaEsValida(valor) {
+  return BODEGAS_EXPORT.includes(String(valor ?? "").trim().toUpperCase());
+}
+
 // Nombre de la columna que guarda `campo` (Stock, Ubicación, Sub-ubicación, Inventario, Comentario) en la bodega.
 function nombreCampoBodega(campo, bodega = bodegaActual()) {
   if (bodega === "M501") return campo;
@@ -953,6 +957,7 @@ module.exports = {
   contextoBodega,
   bodegaActual,
   bodegaValida,
+  bodegaEsValida,
   vistaFilaBodega,
   marcarMaterial,
   stockPorBodega,

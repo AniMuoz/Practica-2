@@ -514,6 +514,12 @@ test("solo un admin de M501 puede crear usuarios, cambiar bodega y ver auditorí
 
   const cookie = await sesionAdmin("jefe6");
   await guardarUsuario("operbodega", "clave-segura-1");
+  // Un admin de otra bodega tampoco puede cambiar roles ni claves ni borrar usuarios.
+  assert.equal((await pedir("POST", "/api/usuarios/operbodega/rol", { cookie: cookie502, cuerpo: { rol: "admin" } })).status, 403);
+  assert.equal(roles.get("operbodega") || "operador", "operador");
+  assert.equal((await pedir("POST", "/api/usuarios/jefe6/clave", { cookie: cookie502, cuerpo: { clave: "clave-robada-1" } })).status, 403);
+  assert.equal((await pedir("DELETE", "/api/usuarios/operbodega", { cookie: cookie502 })).status, 403);
+  assert.equal(usuarios.has("operbodega"), true);
   assert.equal((await pedir("POST", "/api/usuarios/operbodega/bodega", { cookie: cookie502, cuerpo: { bodega: "M503" } })).status, 403);
   assert.equal(bodegas.get("operbodega") || "M501", "M501");
 

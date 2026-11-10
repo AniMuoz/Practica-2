@@ -251,8 +251,119 @@ select {
   flex-shrink: 0;
 }
 
+.selector-bodega {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .barra-bodega {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--texto);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.barra-bodega__icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--acento);
+  color: var(--sobre);
+  flex-shrink: 0;
+}
+
+.barra-bodega__texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.barra-bodega__rotulo {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.barra-bodega__nombre {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.barra-bodega__sede {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.barra-bodega__flecha {
+  color: var(--texto-suave);
+  transition: transform 0.18s ease;
+}
+
+.barra-bodega__lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  z-index: 30;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  min-width: 100%;
+  width: max-content;
+}
+
+.barra-bodega__opcion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--texto);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.barra-bodega__opcion--activa {
+  background: var(--acento);
+  color: var(--sobre);
+  font-weight: 700;
+}
+
+.barra-bodega__opcion .barra-bodega__sede {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.barra-bodega__opcion--activa .barra-bodega__sede {
+  opacity: 0.9;
 }
 
 .barra-bodega--editable:hover,

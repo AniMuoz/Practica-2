@@ -16,7 +16,10 @@ const METODOS_LECTURA = new Set(["GET", "HEAD", "OPTIONS"]);
 // PUT /material/:codigo guarda inventario y comentario. No incluye /datos, /marcado ni /imagen.
 const CONTEO_MATERIAL = /^\/material\/[^/]+$/;
 const DATOS_MATERIAL = /^\/material\/[^/]+\/datos$/;
-const CAMPO_LIBRE = /^(ubicaci[oó]n|sub-ubicaci[oó]n|inventario|comentario)( m50\d)?$/i;
+// Limpiar inventario y comentarios: cualquier admin, pero solo en su propia bodega.
+const LIMPIEZA_PROPIA = /^\/tabla\/limpiar-inventario$/;
+// Solo nombres sin sufijo de bodega: el servidor los traduce a las columnas de la bodega activa.
+const CAMPO_LIBRE = /^(ubicaci[oó]n|sub-ubicaci[oó]n|inventario|comentario)$/i;
 
 function requiereAdmin(metodo, ruta) {
   if (METODOS_LECTURA.has(metodo)) return false;
@@ -39,7 +42,13 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
     try {
       await exigirAdmin(req);
       const bodega = req.bodega || "M501";
-      if (bodega !== "M501" && !soloCamposLibres(req.method, req.path, req.body)) {
+      // Un admin de otra bodega solo edita campos libres y solo en su propia bodega (no con X-Bodega ajeno).
+      const ajena = req.bodegaActiva && req.bodegaActiva !== bodega;
+      if (req.method === "POST" && LIMPIEZA_PROPIA.test(req.path)) {
+        if (ajena) throw Object.assign(new Error("Solo puedes limpiar el inventario y comentarios de tu propia bodega."), { status: 403 });
+        return next();
+      }
+      if (bodega !== "M501" && (ajena || !soloCamposLibres(req.method, req.path, req.body))) {
         const error = new Error("Tu bodega solo puede ver y descargar planillas.");
         error.status = 403;
         throw error;

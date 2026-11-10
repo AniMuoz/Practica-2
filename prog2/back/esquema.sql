@@ -186,7 +186,7 @@ create table if not exists public.buzon (
   descripcion text not null,
   urgencia text not null check (urgencia in ('leve', 'media', 'alta', 'urgente')),
   estado text not null default 'sin revisar' check (estado in ('sin revisar', 'revisando', 'cerrado')),
-  bodega text not null default 'M501' check (bodega in ('M501', 'M502', 'M503', 'M504', 'M505'))
+  bodega text not null default 'M501'
 );
 
 alter table public.buzon enable row level security;

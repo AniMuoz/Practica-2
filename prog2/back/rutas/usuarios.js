@@ -132,7 +132,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios/:nombre/rol", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const usuario = normalizar(req.params.nombre);
       const rol = req.body && req.body.rol;
       if (usuario === USUARIO_PROTEGIDO) throw errorHttp(403, "Este usuario no se puede modificar.");
@@ -168,7 +168,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios/:nombre/clave", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const usuario = normalizar(req.params.nombre);
       if (usuario === USUARIO_PROTEGIDO && usuario !== req.usuario) throw errorHttp(403, "Este usuario no se puede modificar.");
       if (usuario === req.usuario) throw errorHttp(400, "Tu propia contraseña se cambia desde «Cambiar contraseña».");
@@ -186,7 +186,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.delete("/api/usuarios/:nombre", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const usuario = normalizar(req.params.nombre);
       if (usuario === USUARIO_PROTEGIDO) throw errorHttp(403, "Este usuario no se puede eliminar.");
       const objetivo = await leerUsuario(usuario);

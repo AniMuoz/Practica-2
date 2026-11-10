@@ -8,7 +8,7 @@ const { soloAdminEnEscrituras } = require("./seguridad/soloAdmin");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./supabase/imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
-const { contextoBodega, bodegaValida } = require("./servicios/nucleoDatos");
+const { contextoBodega, bodegaValida, bodegaEsValida } = require("./servicios/nucleoDatos");
 const { comprobarBase } = require("./utils/salud");
 const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
@@ -49,22 +49,35 @@ function crearApp({ proteger = true } = {}) {
     }
   });
 
-  // Bodega principal elegida en el navegador (cabecera X-Bodega); la leen leerTabla y las planillas.
-  app.use("/api", (req, _res, next) => {
-    contextoBodega.run({ bodega: bodegaValida(req.get("X-Bodega") || req.query.principal) }, next);
-  });
   app.use("/api", conIpDeClave);
   if (proteger) {
     app.use("/api", limitarPeticiones);
     app.use("/api", protegerApi);
-    // Los operadores solo trabajan en su bodega asignada, sin importar la cabecera X-Bodega.
-    app.use("/api", (req, _res, next) => {
-      const contexto = contextoBodega.getStore();
-      if (contexto && req.rol && req.rol !== "admin" && req.bodega) contexto.bodega = bodegaValida(req.bodega);
-      next();
-    });
-    app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
   }
+  // Unico punto donde se fija la bodega de la peticion (la leen leerTabla y las planillas).
+  // Admin: la que pide con X-Bodega o ?principal= (cualquier admin puede cambiar de bodega); un valor
+  // que no sea M501-M505 se rechaza con 400. Operador: siempre la suya, sin importar la cabecera.
+  app.use("/api", (req, res, next) => {
+    const pedida = req.get("X-Bodega") || req.query.principal;
+    const esOperador = proteger && req.rol && req.rol !== "admin";
+    if (esOperador) {
+      if (!req.bodega) {
+        res.status(403).json({ error: "Tu usuario no tiene bodega asignada." });
+        return;
+      }
+      req.bodega = bodegaValida(req.bodega);
+      req.bodegaActiva = req.bodega;
+      contextoBodega.run({ bodega: req.bodega }, next);
+      return;
+    }
+    if (pedida != null && pedida !== "" && !bodegaEsValida(pedida)) {
+      res.status(400).json({ error: "La bodega debe estar entre M501 y M505." });
+      return;
+    }
+    req.bodegaActiva = bodegaValida(pedida);
+    contextoBodega.run({ bodega: req.bodegaActiva }, next);
+  });
+  if (proteger) app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
   rutasAuth(app);
   app.use("/api", (_req, res, next) => {
     res.set("Cache-Control", "no-store");

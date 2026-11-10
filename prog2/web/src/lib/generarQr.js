@@ -41,7 +41,9 @@ export function evaluarLecturaQr(codigo, leido, base = URL_BASE_QR) {
   const esperado = urlQr(codigo, base);
   const texto = String(leido ?? "").trim();
   if (!texto) return { estado: "ilegible", esperado, leido: "" };
-  if (texto === esperado) return { estado: "ok", esperado, leido: texto };
+  // Se ignoran mayúsculas en el dominio y la barra final; el código sí distingue mayúsculas.
+  const normalizar = (url) => url.replace(/\/+$/, "").replace(/^(https?:\/\/[^/]+)/i, (host) => host.toLowerCase());
+  if (texto === esperado || normalizar(texto) === normalizar(esperado)) return { estado: "ok", esperado, leido: texto };
   return { estado: "url_incorrecta", esperado, leido: texto };
 }
 
@@ -67,6 +69,8 @@ export async function decodificarQrDesdeUrl(url) {
   canvas.height = img.naturalHeight || img.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(img, 0, 0);
+  // Cede el hilo antes de la parte pesada para que una revisión por lotes no congele la interfaz.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
   return jsQR(data, width, height, { inversionAttempts: "attemptBoth" })?.data ?? "";
 }

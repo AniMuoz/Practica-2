@@ -1,6 +1,8 @@
 // Bodega "principal" elegida en la barra superior. Se guarda en el navegador y viaja al servidor
 // en la cabecera X-Bodega (fetch) o en ?principal= (descargas por enlace). M501 es la bodega por defecto.
-export const BODEGAS = ["M501", "M502", "M503", "M504", "M505"];
+// Nombre de la sede de cada bodega (título de la navbar y de la pestaña). Es la única lista de bodegas.
+export const NOMBRES_BODEGA = { M501: "Coraceros", M502: "San Juan", M503: "San Felipe", M504: "Quillota", M505: "Concón" };
+export const BODEGAS = Object.keys(NOMBRES_BODEGA);
 const CLAVE = "bodega-principal";
 
 export function bodegaPrincipal() {
@@ -11,9 +13,6 @@ export function bodegaPrincipal() {
     return "M501";
   }
 }
-
-// Nombre de la sede de cada bodega (título de la navbar y de la pestaña).
-export const NOMBRES_BODEGA = { M501: "Coraceros", M502: "San Juan", M503: "San Felipe", M504: "Quillota", M505: "Concón" };
 
 export function nombreBodega(bodega = bodegaPrincipal()) {
   return NOMBRES_BODEGA[bodega] || NOMBRES_BODEGA.M501;

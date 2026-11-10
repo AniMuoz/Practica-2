@@ -98,6 +98,19 @@ test("un administrador pasa en todas las escrituras de Admin", async () => {
   }
 });
 
+test("limpiar inventario: cualquier admin, solo en su propia bodega", async () => {
+  const exigirAdmin = async () => {};
+  const correr = (req) =>
+    new Promise((resolve) => {
+      const mw = soloAdminEnEscrituras(exigirAdmin, (_res, error) => resolve({ bloqueado: true, status: error.status }));
+      mw({ method: "POST", path: "/tabla/limpiar-inventario", ...req }, {}, () => resolve({ bloqueado: false }));
+    });
+  assert.deepEqual(await correr({ bodega: "M502", bodegaActiva: "M502" }), { bloqueado: false });
+  assert.deepEqual(await correr({ bodega: "M501", bodegaActiva: "M501" }), { bloqueado: false });
+  assert.deepEqual(await correr({ bodega: "M502", bodegaActiva: "M503" }), { bloqueado: true, status: 403 });
+  assert.deepEqual(await correr({ bodega: "M501", bodegaActiva: "M502" }), { bloqueado: true, status: 403 });
+});
+
 test("un admin de otra bodega solo puede editar ubicacion y sub-ubicacion", async () => {
   const exigirAdmin = async () => {};
   const correr = (metodo, ruta, body) =>
@@ -105,7 +118,14 @@ test("un admin de otra bodega solo puede editar ubicacion y sub-ubicacion", asyn
       const mw = soloAdminEnEscrituras(exigirAdmin, (_res, error) => resolve({ bloqueado: true, status: error.status }));
       mw({ method: metodo, path: ruta, bodega: "M502", body }, {}, () => resolve({ bloqueado: false }));
     });
-  assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { "Ubicación M502": "A1", "Sub-ubicación M502": "A1" } }), { bloqueado: false });
+  assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { "Ubicación": "A1", "Sub-ubicación": "A1" } }), { bloqueado: false });
+  // Claves con sufijo de otra bodega y X-Bodega ajeno quedan bloqueados.
+  assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { "Ubicación M503": "A1" } }), { bloqueado: true, status: 403 });
+  const ajena = new Promise((resolve) => {
+    const mw = soloAdminEnEscrituras(exigirAdmin, (_res, error) => resolve({ bloqueado: true, status: error.status }));
+    mw({ method: "PUT", path: "/material/1/datos", bodega: "M502", bodegaActiva: "M501", body: { datos: { Ubicación: "A1" } } }, {}, () => resolve({ bloqueado: false }));
+  });
+  assert.deepEqual(await ajena, { bloqueado: true, status: 403 });
   assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { Precio: 5 } }), { bloqueado: true, status: 403 });
   assert.deepEqual(await correr("POST", "/ventas", {}), { bloqueado: true, status: 403 });
   assert.deepEqual(await correr("POST", "/bitacora/folios", {}), { bloqueado: true, status: 403 });
