@@ -191,18 +191,26 @@ test("importarPrecios rechaza filas sin código", async () => {
 
 // ---------- importarUbicaciones ----------
 
-test("importarUbicaciones solo toma M501 y deriva la sub-ubicación de los 4 primeros caracteres", async () => {
+test("importarUbicaciones reparte M501..M505 en las columnas de cada bodega y omite otros almacenes", async () => {
   const buffer = excel([
     ["matnr", "lgort", "lgpbe"],
     ["100", "M501", "0102-A"],
-    ["200", "M502", "9999-Z"],
+    ["100", "M502", "9999-Z"],
+    ["100", "M505", "3333-Y"],
     ["900", "M501", "0507-B"],
+    ["100", "M401", "7777-X"],
   ]);
-  assert.deepEqual(await importarUbicaciones(CLAVE, buffer), { agregados: 1, actualizados: 1, omitidos: 1 });
+  const r = await importarUbicaciones(CLAVE, buffer);
+  assert.equal(r.agregados, 1);
+  assert.equal(r.actualizados, 3);
+  assert.equal(r.omitidos, 1);
   assert.equal(celda(guardado, "100", "Ubicación"), "0102-A");
   assert.equal(celda(guardado, "100", "Sub-ubicación"), "0102");
-  assert.equal(celda(guardado, "200", "Ubicación"), "");
+  assert.equal(celda(guardado, "100", "Ubicación M502"), "9999-Z");
+  assert.equal(celda(guardado, "100", "Sub-ubicación M502"), "9999");
+  assert.equal(celda(guardado, "100", "Ubicación M505"), "3333-Y");
   assert.equal(celda(guardado, "900", "Sub-ubicación"), "0507");
+  assert.equal(celda(guardado, "200", "Ubicación M502"), "");
 });
 
 test("importarUbicaciones rechaza una fila de M501 sin código", async () => {

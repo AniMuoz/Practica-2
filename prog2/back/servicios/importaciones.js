@@ -297,11 +297,16 @@ async function importarUbicaciones(clave, buffer) {
   matriz[0] = columnas;
 
   const indiceCodigo = columnas.indexOf("Codigo");
-  const bodegaPrincipal = bodegaActual();
-  const indiceUbicacion = columnas.indexOf(nombreCampoBodega("Ubicación"));
-  const indiceSub = columnas.indexOf(nombreCampoBodega("Sub-ubicación"));
-  if (indiceCodigo < 0 || indiceUbicacion < 0 || indiceSub < 0) {
-    const error = new Error("La tabla no tiene las columnas Codigo, Ubicación y Sub-ubicación.");
+  // Cada fila va a las columnas de su propio almacén (M501..M505), sin depender de la bodega activa.
+  const destinos = {};
+  for (const bodega of BODEGAS_EXPORT) {
+    destinos[bodega] = {
+      ubicacion: columnas.indexOf(nombreCampoBodega("Ubicación", bodega)),
+      sub: columnas.indexOf(nombreCampoBodega("Sub-ubicación", bodega)),
+    };
+  }
+  if (indiceCodigo < 0 || Object.values(destinos).some((d) => d.ubicacion < 0 || d.sub < 0)) {
+    const error = new Error("La tabla no tiene las columnas Codigo, Ubicación y Sub-ubicación de cada bodega.");
     error.status = 500;
     throw error;
   }
@@ -309,6 +314,7 @@ async function importarUbicaciones(clave, buffer) {
   let agregados = 0;
   let actualizados = 0;
   let omitidos = 0;
+  const porBodega = Object.fromEntries(BODEGAS_EXPORT.map((b) => [b, { agregados: 0, actualizados: 0 }]));
 
   const { indices: cols, fila: filaEnc } = ubicarColumnas(matrizEntrada, {
     codigo: ["matnr", "Material"],
@@ -321,7 +327,7 @@ async function importarUbicaciones(clave, buffer) {
     const planta = String(fila[cols.planta] ?? "").trim();
     const ubicacion = String(fila[cols.ubicacion] ?? "").trim();
     if (!codigo && planta === "" && ubicacion === "") return;
-    if (planta !== bodegaPrincipal) {
+    if (!destinos[planta]) {
       omitidos += 1;
       return;
     }
@@ -331,12 +337,14 @@ async function importarUbicaciones(clave, buffer) {
       throw error;
     }
 
+    const { ubicacion: indiceUbicacion, sub: indiceSub } = destinos[planta];
     const sub = ubicacion.slice(0, 4);
     const indiceExistente = indicePorCodigo(porCodigo, codigo);
     if (indiceExistente >= 0) {
       matriz[indiceExistente][indiceUbicacion] = ubicacion;
       matriz[indiceExistente][indiceSub] = sub;
       actualizados += 1;
+      porBodega[planta].actualizados += 1;
       return;
     }
 
@@ -347,10 +355,11 @@ async function importarUbicaciones(clave, buffer) {
     matriz.push(filaNueva);
     porCodigo.set(codigo, matriz.length - 1);
     agregados += 1;
+    porBodega[planta].agregados += 1;
   });
 
   await guardarMateriales(matriz);
-  return { agregados, actualizados, omitidos };
+  return { agregados, actualizados, omitidos, porBodega };
 }
 
 async function importarDosColumnas(clave, buffer, columnaDestino) {

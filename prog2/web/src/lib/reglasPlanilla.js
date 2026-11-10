@@ -225,9 +225,10 @@ export function aplicarFilaRecibida(actuales, data) {
   const codigoNuevo = String(data.fila.Codigo);
   const codigoAnterior = data.codigoAnterior ? String(data.codigoAnterior) : codigoNuevo;
   const indice = actuales.findIndex((fila) => String(fila.Codigo) === codigoAnterior);
-  if (indice < 0) return [...actuales, data.fila];
+  // La marca es personal: la fila de otro usuario no pisa la propia.
+  if (indice < 0) return [...actuales, { ...data.fila, Marcado: "" }];
   const copia = actuales.slice();
-  copia[indice] = data.fila;
+  copia[indice] = { ...data.fila, Marcado: actuales[indice].Marcado ?? "" };
   if (codigoAnterior !== codigoNuevo) {
     return copia.filter((fila, posicion) => posicion === indice || String(fila.Codigo) !== codigoNuevo);
   }

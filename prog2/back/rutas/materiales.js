@@ -169,7 +169,7 @@ module.exports = function rutasMateriales(app) {
         res.status(404).json({ error: "Material no encontrado." });
         return;
       }
-      emitir({ tipo: "fila", fila: resultado.fila });
+      // Sin emitir: la marca es personal y no debe llegar a los demás usuarios.
       res.json(resultado);
     } catch (error) {
       console.error(error);

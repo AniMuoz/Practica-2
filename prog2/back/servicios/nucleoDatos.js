@@ -459,7 +459,39 @@ function vistaFilaBodega(fila, bodega = bodegaActual()) {
   return copia;
 }
 
+// Marcas por usuario: Map<usuario, { set, base, tabla }>. Se cargan antes de atender la petición (cargarMarcados).
+const marcasUsuarios = new Map();
+
+function usuarioActual() {
+  return String(contextoBodega.getStore()?.usuario ?? "");
+}
+
+async function cargarMarcados(usuario = usuarioActual()) {
+  if (marcasUsuarios.has(usuario)) return marcasUsuarios.get(usuario).set;
+  const { data, error } = await supabase.from("marcados_usuario").select("codigo").eq("usuario", usuario);
+  if (error) throw Object.assign(new Error(error.message), { status: 502 });
+  if (!marcasUsuarios.has(usuario)) {
+    marcasUsuarios.set(usuario, { set: new Set((data || []).map((r) => String(r.codigo))), base: null, tabla: null });
+  }
+  return marcasUsuarios.get(usuario).set;
+}
+
+function marcasDe(usuario) {
+  if (!marcasUsuarios.has(usuario)) marcasUsuarios.set(usuario, { set: new Set(), base: null, tabla: null });
+  return marcasUsuarios.get(usuario);
+}
+
 function leerTabla() {
+  const base = leerTablaBase();
+  const entrada = marcasDe(usuarioActual());
+  if (entrada.base === base && entrada.tabla) return entrada.tabla;
+  const filas = base.filas.map((fila) => ({ ...fila, Marcado: entrada.set.has(String(fila.Codigo ?? "")) ? "1" : "" }));
+  entrada.base = base;
+  entrada.tabla = { columnas: base.columnas, filas };
+  return entrada.tabla;
+}
+
+function leerTablaBase() {
   const actual = materialesEnCache();
   const bodega = bodegaActual();
   if (bodega === "M501") return actual.tabla;
@@ -480,19 +512,20 @@ function leerTabla() {
 }
 
 async function marcarMaterial(codigo, marcado) {
-  const { matriz, porCodigo } = editarMateriales();
-  const columnas = (matriz[0] || []).map((nombre) => String(nombre));
-  const indiceCodigo = columnas.indexOf("Codigo");
-  const indiceMarcado = columnas.indexOf(COLUMNA_MARCADO);
-  if (indiceCodigo < 0 || indiceMarcado < 0) {
-    const error = new Error("La tabla no tiene las columnas esperadas.");
-    error.status = 500;
-    throw error;
-  }
-  const indiceFila = indicePorCodigo(porCodigo, String(codigo));
-  if (indiceFila < 0) return null;
-  matriz[indiceFila][indiceMarcado] = marcado ? "1" : "";
-  await guardarFila(matriz, indiceFila);
+  const { porCodigo } = editarMateriales();
+  const clave = String(codigo);
+  if (indicePorCodigo(porCodigo, clave) < 0) return null;
+  const usuario = usuarioActual();
+  await cargarMarcados(usuario);
+  const entrada = marcasDe(usuario);
+  const tabla = supabase.from("marcados_usuario");
+  const { error } = marcado
+    ? await tabla.upsert({ usuario, codigo: clave })
+    : await tabla.delete().eq("usuario", usuario).eq("codigo", clave);
+  if (error) throw Object.assign(new Error(error.message), { status: 502 });
+  if (marcado) entrada.set.add(clave);
+  else entrada.set.delete(clave);
+  entrada.tabla = null;
   return buscarMaterial(codigo);
 }
 
@@ -511,11 +544,12 @@ function buscarMaterial(codigo) {
   const buscado = String(codigo);
   const original = porFila.get(buscado) || null;
   const bodegaPrincipal = bodegaActual();
-  const fila = original == null
+  const propia = original == null
     ? null
     : bodegaPrincipal === "M501"
       ? original
       : filas.find((f) => String(f.Codigo ?? "") === buscado) || null;
+  const fila = propia == null ? null : { ...propia, Marcado: marcasDe(usuarioActual()).set.has(buscado) ? "1" : "" };
   const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== bodegaPrincipal);
   return { columnas, fila, bodegas };
 }
@@ -968,6 +1002,8 @@ module.exports = {
   CAMPOS_POR_BODEGA,
   contextoBodega,
   bodegaActual,
+  usuarioActual,
+  cargarMarcados,
   bodegaValida,
   bodegaEsValida,
   vistaFilaBodega,

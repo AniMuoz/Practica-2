@@ -8,7 +8,7 @@ const { soloAdminEnEscrituras } = require("./seguridad/soloAdmin");
 const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./supabase/imagenesSupabase");
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
-const { contextoBodega, bodegaValida, bodegaEsValida } = require("./servicios/nucleoDatos");
+const { contextoBodega, bodegaValida, bodegaEsValida, cargarMarcados } = require("./servicios/nucleoDatos");
 const { comprobarBase } = require("./utils/salud");
 const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
@@ -57,7 +57,10 @@ function crearApp({ proteger = true } = {}) {
   // Unico punto donde se fija la bodega de la peticion (la leen leerTabla y las planillas).
   // Admin: la que pide con X-Bodega o ?principal= (cualquier admin puede cambiar de bodega); un valor
   // que no sea M501-M505 se rechaza con 400. Operador: siempre la suya, sin importar la cabecera.
-  app.use("/api", (req, res, next) => {
+  app.use("/api", async (req, res, next) => {
+    const usuario = String(req.usuario || "");
+    // Las marcas son por usuario: se cargan una vez y quedan en memoria (la lectura de tabla es síncrona).
+    await cargarMarcados(usuario).catch((error) => console.error("No se pudieron leer las marcas:", error.message));
     const pedida = req.get("X-Bodega") || req.query.principal;
     const esOperador = proteger && req.rol && req.rol !== "admin";
     if (esOperador) {
@@ -67,7 +70,7 @@ function crearApp({ proteger = true } = {}) {
       }
       req.bodega = bodegaValida(req.bodega);
       req.bodegaActiva = req.bodega;
-      contextoBodega.run({ bodega: req.bodega }, next);
+      contextoBodega.run({ bodega: req.bodega, usuario }, next);
       return;
     }
     if (pedida != null && pedida !== "" && !bodegaEsValida(pedida)) {
@@ -75,7 +78,7 @@ function crearApp({ proteger = true } = {}) {
       return;
     }
     req.bodegaActiva = bodegaValida(pedida);
-    contextoBodega.run({ bodega: req.bodegaActiva }, next);
+    contextoBodega.run({ bodega: req.bodegaActiva, usuario }, next);
   });
   if (proteger) app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
   rutasAuth(app);

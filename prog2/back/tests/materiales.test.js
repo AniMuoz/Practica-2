@@ -30,15 +30,27 @@ imagenes.quitarImagen = async (nombre) => {
 const { supabase } = require("../supabase/supabase");
 let llamadas = [];
 let errorSupabase = null;
+let marcasBd = [];
 supabase.from = (tabla) => ({
   async upsert(registro) {
     llamadas.push({ tipo: "upsert", tabla, registro });
+    if (tabla === "marcados_usuario") marcasBd.push(registro);
     return { error: errorSupabase };
   },
+  select: () => ({
+    eq: async (campo, valor) => ({ data: marcasBd.filter((m) => m[campo] === valor), error: null }),
+  }),
   delete: () => ({
-    eq: async (campo, valor) => {
-      llamadas.push({ tipo: "delete", tabla, campo, valor });
-      return { error: errorSupabase };
+    eq: (campo, valor) => {
+      const promesa = Promise.resolve().then(() => {
+        llamadas.push({ tipo: "delete", tabla, campo, valor });
+        return { error: errorSupabase };
+      });
+      promesa.eq = (campo2, valor2) => {
+        marcasBd = marcasBd.filter((m) => !(m[campo] === valor && m[campo2] === valor2));
+        return Promise.resolve({ error: errorSupabase });
+      };
+      return promesa;
     },
   }),
   update: (datos) => ({
@@ -65,6 +77,7 @@ const SEMILLA = [
 async function cargar(materiales = SEMILLA, planillas = []) {
   bd = { materiales: materiales.map((fila) => ({ ...fila })), planillas };
   llamadas = [];
+  marcasBd = [];
   quitadas = [];
   errorSupabase = null;
   delete require.cache[require.resolve("../servicios/nucleoDatos")];
@@ -203,9 +216,20 @@ test("un fallo de Supabase al guardar se informa como 502 y no cambia la tabla",
 test("marcarMaterial activa y quita la marca, o devuelve null si no existe", async () => {
   const nucleo = await cargar();
   assert.equal((await nucleo.marcarMaterial("100", true)).fila.Marcado, "1");
-  assert.equal(upserts()[0].registro.marcado, "1");
+  assert.deepEqual(upserts()[0].registro, { usuario: "", codigo: "100" });
   assert.equal((await nucleo.marcarMaterial("100", false)).fila.Marcado, "");
   assert.equal(await nucleo.marcarMaterial("999", true), null);
+});
+
+test("las marcas son por usuario", async () => {
+  const nucleo = await cargar();
+  const como = (usuario, fn) => nucleo.contextoBodega.run({ bodega: "M501", usuario }, fn);
+  await como("ana", () => nucleo.marcarMaterial("100", true));
+  await como("beto", () => nucleo.cargarMarcados("beto"));
+  assert.equal(como("ana", () => nucleo.buscarMaterial("100").fila.Marcado), "1");
+  assert.equal(como("ana", () => nucleo.leerTabla().filas.find((f) => f.Codigo === "100").Marcado), "1");
+  assert.equal(como("beto", () => nucleo.buscarMaterial("100").fila.Marcado), "");
+  assert.equal(como("beto", () => nucleo.leerTabla().filas.find((f) => f.Codigo === "100").Marcado), "");
 });
 
 test("limpiarInventarioComentarios exige la clave y vacía ambas columnas en todas las filas", async () => {

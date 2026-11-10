@@ -32,6 +32,13 @@ create table if not exists public.usuarios_log (
 create index if not exists usuarios_log_creado_idx on public.usuarios_log (creado_en desc);
 alter table public.usuarios_log enable row level security;
 
+create table if not exists public.marcados_usuario (
+  usuario text not null,
+  codigo text not null,
+  primary key (usuario, codigo)
+);
+alter table public.marcados_usuario enable row level security;
+
 create table if not exists public.ultimas_cargas (
   clave text primary key,
   fecha text not null
