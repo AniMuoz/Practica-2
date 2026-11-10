@@ -77,7 +77,7 @@ async function listarCambios(filtros = {}) {
 module.exports = function rutasUsuarios(app) {
   app.get("/api/usuarios/auditoria/descargar", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const { buffer, nombre } = await exportarCambios(req.query || {});
       enviarPlanilla(res, buffer, nombreConFecha(nombre));
     } catch (error) {
@@ -87,7 +87,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.get("/api/usuarios/auditoria", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       res.json(await listarCambios(req.query || {}));
     } catch (error) {
       responderError(res, error, "No se pudo leer la auditoría de usuarios.");

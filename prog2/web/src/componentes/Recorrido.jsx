@@ -176,7 +176,7 @@ const PASOS = {
     {
       id: "personal-tabla",
       titulo: "Lista de personal",
-      texto: "Muestra cada usuario con su rol y la fecha de alta.",
+      texto: "Muestra cada usuario con su rol, bodega y fecha de alta. Puedes ordenarlos por usuario, fecha, rol o bodega.",
     },
     {
       id: "personal-acciones",

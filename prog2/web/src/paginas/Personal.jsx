@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSesion } from "../componentes/Acceso.jsx";
 import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
@@ -12,6 +12,36 @@ const campo = {
   fontSize: 14,
   boxSizing: "border-box",
 };
+
+const OPCIONES_ORDEN = [
+  ["usuario", "Usuario"],
+  ["fecha", "Fecha de alta"],
+  ["rol", "Rol"],
+  ["bodega", "Bodega"],
+];
+
+function ordenarPersonas(lista, orden) {
+  const filas = [...lista];
+  const texto = (v) => String(v ?? "").trim().toLowerCase();
+  if (orden === "fecha") {
+    return filas.sort((a, b) => {
+      const ta = a.creado_en ? new Date(a.creado_en).getTime() : 0;
+      const tb = b.creado_en ? new Date(b.creado_en).getTime() : 0;
+      return tb - ta || texto(a.usuario).localeCompare(texto(b.usuario), "es");
+    });
+  }
+  if (orden === "rol") {
+    return filas.sort((a, b) => texto(a.rol).localeCompare(texto(b.rol), "es") || texto(a.usuario).localeCompare(texto(b.usuario), "es"));
+  }
+  if (orden === "bodega") {
+    return filas.sort((a, b) => {
+      const ba = texto(a.bodega || "M501");
+      const bb = texto(b.bodega || "M501");
+      return ba.localeCompare(bb, "es") || texto(a.usuario).localeCompare(texto(b.usuario), "es");
+    });
+  }
+  return filas.sort((a, b) => texto(a.usuario).localeCompare(texto(b.usuario), "es"));
+}
 
 const boton = {
   padding: "8px 14px",
@@ -155,6 +185,7 @@ export default function Personal() {
   const [repetir, setRepetir] = useState("");
   const [rol, setRol] = useState("operador");
   const [bodegaNueva, setBodegaNueva] = useState("M501");
+  const [orden, setOrden] = useState("usuario");
   const [ocupado, setOcupado] = useState(false);
 
   const ocupadoRef = useRef(false);
@@ -246,6 +277,7 @@ export default function Personal() {
   };
 
   const sinDatos = !nombre.trim() || !clave || !repetir;
+  const personasOrdenadas = useMemo(() => ordenarPersonas(personas, orden), [personas, orden]);
 
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
@@ -277,6 +309,22 @@ export default function Personal() {
             )}
             {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
             {aviso && <p>{aviso}</p>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                Ordenar por
+                <select
+                  data-tour="personal-orden"
+                  aria-label="Ordenar personal"
+                  value={orden}
+                  onChange={(e) => setOrden(e.target.value)}
+                  style={campo}
+                >
+                  {OPCIONES_ORDEN.map(([valor, titulo]) => (
+                    <option key={valor} value={valor}>{titulo}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div data-tour="personal-tabla" style={{ overflowX: "auto" }}>
               <table style={{ borderCollapse: "collapse", width: "100%", textAlign: "left" }}>
                 <thead>
@@ -289,7 +337,7 @@ export default function Personal() {
                   </tr>
                 </thead>
                 <tbody>
-                  {personas.map((persona) => (
+                  {personasOrdenadas.map((persona) => (
                     <FilaPersonal
                       key={persona.usuario}
                       persona={persona}

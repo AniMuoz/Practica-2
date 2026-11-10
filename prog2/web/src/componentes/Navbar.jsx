@@ -12,7 +12,8 @@ import { apiFetch } from "../lib/api.js";
 import { BODEGAS, bodegaPrincipal, elegirBodega, nombreBodega, tituloBodega } from "../lib/bodega.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
-  const { rol, usuario } = useSesion();
+  const { rol, usuario, bodega: bodegaUsuario } = useSesion();
+  const esAdminM501 = rol === "admin" && (bodegaUsuario || "M501") === "M501";
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [parametros, setParametros] = useSearchParams();
@@ -725,9 +726,11 @@ export default function Navbar({ buzonNovedades = 0 }) {
           <Link to="/qr" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             QR
           </Link>
-          <Link to="/auditoria" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
-            Auditoría
-          </Link>
+          {esAdminM501 && (
+            <Link to="/auditoria" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
+              Auditoría
+            </Link>
+          )}
         </>
       )}
       <button

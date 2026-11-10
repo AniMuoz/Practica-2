@@ -3,7 +3,7 @@ const { claveDe } = require("../servicios/nucleoDatos");
 const { uploadXlsx, conColores, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const ventasBd = require("../servicios/ventasBd");
 const { hojasDeLibro } = require("../servicios/ventas");
-const { exigirAdmin } = require("../seguridad/auth");
+const { exigirAdminM501 } = require("../seguridad/auth");
 
 module.exports = function rutasVentas(app) {
   function responder(res, error, mensaje) {
@@ -102,7 +102,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/auditoria", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       res.json({ planillas: await ventasBd.listarPlanillasAuditoria() });
     } catch (error) {
       responder(res, error, "No se pudo leer la auditoría de ventas.");
@@ -111,7 +111,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/auditoria/log/descargar", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       const { buffer, nombre } = await ventasBd.exportarLog(req.query || {});
       enviarPlanilla(res, buffer, nombreConFecha(nombre));
     } catch (error) {
@@ -121,7 +121,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/auditoria/log", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       res.json(await ventasBd.listarLog(req.query || {}));
     } catch (error) {
       responder(res, error, "No se pudo leer el log de ventas.");
@@ -130,7 +130,7 @@ module.exports = function rutasVentas(app) {
 
   app.get("/api/ventas/auditoria/:id", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminM501(req);
       res.json(await ventasBd.leerAuditoria(req.params.id));
     } catch (error) {
       responder(res, error, "No se pudo leer la planilla.");

@@ -503,12 +503,14 @@ test("el admin resetea la clave de otro y la cookie anterior queda inválida", a
   assert.equal((await pedir("GET", "/api/privado", { cookie: cookieVieja })).status, 401);
 });
 
-test("solo un admin de M501 puede crear usuarios y cambiar bodega", async () => {
+test("solo un admin de M501 puede crear usuarios, cambiar bodega y ver auditoría", async () => {
   await guardarUsuario("admin502", "clave-admin-1", "admin");
   bodegas.set("admin502", "M502");
   const cookie502 = await entrar("admin502", "clave-admin-1");
   assert.equal((await pedir("POST", "/api/usuarios", { cookie: cookie502, cuerpo: { usuario: "nuevo502", clave: "clave-segura-1" } })).status, 403);
   assert.equal(usuarios.has("nuevo502"), false);
+  assert.equal((await pedir("GET", "/api/usuarios/auditoria", { cookie: cookie502 })).status, 403);
+  assert.equal((await pedir("GET", "/api/usuarios/auditoria/descargar", { cookie: cookie502 })).status, 403);
 
   const cookie = await sesionAdmin("jefe6");
   await guardarUsuario("operbodega", "clave-segura-1");
@@ -519,4 +521,5 @@ test("solo un admin de M501 puede crear usuarios y cambiar bodega", async () => 
   assert.equal(r.status, 200);
   assert.deepEqual(r.json, { ok: true, usuario: "operbodega", bodega: "M503" });
   assert.equal(bodegas.get("operbodega"), "M503");
+  assert.equal((await pedir("GET", "/api/usuarios/auditoria", { cookie })).status, 200);
 });

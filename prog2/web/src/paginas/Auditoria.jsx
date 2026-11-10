@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import Navbar from "../componentes/Navbar.jsx";
+import { useSesion } from "../componentes/Acceso.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
 
@@ -577,16 +579,20 @@ function Seccion({ titulo, abiertaInicial = false, children }) {
 }
 
 export default function Auditoria() {
+  const { rol, bodega: bodegaUsuario } = useSesion();
+  const esAdminM501 = rol === "admin" && (bodegaUsuario || "M501") === "M501";
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
 
   useEffect(() => {
-    if (listos < 2) return;
+    if (!esAdminM501 || listos < 2) return;
     const espera = setTimeout(() => {
       if (recorridoPendiente("auditoria")) iniciarRecorrido("auditoria");
     }, 300);
     return () => clearTimeout(espera);
-  }, [listos]);
+  }, [esAdminM501, listos]);
+
+  if (!esAdminM501) return <Navigate to="/" replace />;
 
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>
