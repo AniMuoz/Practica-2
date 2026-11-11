@@ -152,16 +152,16 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, soloVer = 
       </td>
       <td>{persona.creado_en ? new Date(persona.creado_en).toLocaleDateString() : ""}</td>
       <td>
-        {!propia && !protegido && !soloVer && (
+        {!propia && !protegido && (!soloVer || persona.rol === "operador") && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <input type="password" autoComplete="new-password" placeholder="Nueva contraseña" value={clave} disabled={ocupado} onChange={(e) => setClave(e.target.value)} style={{ ...campo, width: 150 }} />
             <input type="password" autoComplete="new-password" placeholder="Repetir" value={repetir} disabled={ocupado} onChange={(e) => setRepetir(e.target.value)} style={{ ...campo, width: 110 }} />
             <button type="button" onClick={resetear} disabled={ocupado || sinDatos} style={{ ...boton, opacity: ocupado || sinDatos ? 0.6 : 1 }}>
               Cambiar
             </button>
-            <button type="button" onClick={eliminar} disabled={ocupado} style={{ ...boton, background: "#d32f2f", color: "#fff", opacity: ocupado ? 0.6 : 1 }}>
+            {!soloVer && <button type="button" onClick={eliminar} disabled={ocupado} style={{ ...boton, background: "#d32f2f", color: "#fff", opacity: ocupado ? 0.6 : 1 }}>
               Eliminar
-            </button>
+            </button>}
           </div>
         )}
       </td>

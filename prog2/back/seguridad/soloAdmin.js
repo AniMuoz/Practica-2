@@ -61,6 +61,8 @@ function permitidoAdminExt(metodo, rutaOriginal, body) {
   if (EXT_RUTAS_LIBRES.some((patron) => patron.test(ruta))) return true;
   // Crear personal (el rol y la bodega se validan en la ruta de usuarios).
   if (metodo === "POST" && ruta === "/usuarios") return true;
+  // Cambiar la clave de un operador (la ruta valida que el objetivo sea operador).
+  if (metodo === "POST" && /^\/usuarios\/[^/]+\/clave$/.test(ruta)) return true;
   // Inventario y comentario.
   if (metodo === "PUT" && CONTEO_MATERIAL.test(ruta)) return true;
   if (metodo === "PUT" && DATOS_MATERIAL.test(ruta)) {

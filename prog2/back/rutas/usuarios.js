@@ -183,12 +183,15 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios/:nombre/clave", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      const actor = await exigirAdminM501oExt(req);
       const usuario = normalizar(req.params.nombre);
       if (usuario === USUARIO_PROTEGIDO && usuario !== req.usuario) throw errorHttp(403, "Este usuario no se puede modificar.");
       if (usuario === req.usuario) throw errorHttp(400, "Tu propia contraseña se cambia desde «Cambiar contraseña».");
       validarClaveNueva(req.body && req.body.clave);
-      if (!(await leerUsuario(usuario))) throw errorHttp(404, "El usuario no existe.");
+      const objetivo = await leerUsuario(usuario);
+      if (!objetivo) throw errorHttp(404, "El usuario no existe.");
+      // El admin externo solo cambia la contraseña de operadores.
+      if (actor.rol === "admin_ext" && objetivo.rol !== "operador") throw errorHttp(403, "Solo puedes cambiar la contraseña de operadores.");
       const { error } = await supabase.from("usuarios").update({ clave_hash: await hashClave(req.body.clave) }).eq("usuario", usuario);
       if (error) falloBd(error);
       cacheUsuarios.delete(usuario);

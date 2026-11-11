@@ -155,11 +155,11 @@ test("admin ext: solo ve; escribe unicamente en gastos, bitacora, QR, inventario
     });
   const libre = { bloqueado: false };
   const cerrado = { bloqueado: true, status: 403 };
-  for (const [m, r] of [["GET", "/stock-detallado"], ["GET", "/buzon"], ["PUT", "/material/1"], ["POST", "/gastos/guardar"], ["POST", "/bitacora/folios"], ["DELETE", "/bitacora/folios/3"], ["POST", "/usuarios"], ["POST", "/material/1/imagen"], ["POST", "/reserva"]]) {
+  for (const [m, r] of [["GET", "/stock-detallado"], ["GET", "/buzon"], ["PUT", "/material/1"], ["POST", "/gastos/guardar"], ["POST", "/bitacora/folios"], ["DELETE", "/bitacora/folios/3"], ["POST", "/usuarios"], ["POST", "/usuarios/pepe/clave"], ["POST", "/material/1/imagen"], ["POST", "/reserva"]]) {
     assert.deepEqual(await correr(m, r, {}), libre, `${m} ${r}`);
   }
   assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { Comentario: "x", Inventario: 2 } }), libre);
-  for (const [m, r] of [["POST", "/ventas"], ["POST", "/tabla/excel"], ["PUT", "/stock-detallado"], ["PUT", "/contratistas"], ["POST", "/movimientos/codigo"], ["POST", "/material"], ["DELETE", "/material/1"], ["POST", "/buzon"], ["POST", "/buzon/1/respuestas"], ["PUT", "/buzon/1/estado"], ["DELETE", "/buzon/1"], ["POST", "/usuarios/pepe/rol"], ["POST", "/usuarios/pepe/clave"], ["DELETE", "/usuarios/pepe"], ["POST", "/tabla/limpiar-inventario"]]) {
+  for (const [m, r] of [["POST", "/ventas"], ["POST", "/tabla/excel"], ["PUT", "/stock-detallado"], ["PUT", "/contratistas"], ["POST", "/movimientos/codigo"], ["POST", "/material"], ["DELETE", "/material/1"], ["POST", "/buzon"], ["POST", "/buzon/1/respuestas"], ["PUT", "/buzon/1/estado"], ["DELETE", "/buzon/1"], ["POST", "/usuarios/pepe/rol"], ["DELETE", "/usuarios/pepe"], ["POST", "/tabla/limpiar-inventario"]]) {
     assert.deepEqual(await correr(m, r, {}), cerrado, `${m} ${r}`);
   }
   assert.deepEqual(await correr("PUT", "/material/1/datos", { datos: { Precio: 5 } }), cerrado);
