@@ -170,7 +170,8 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar
 
 export default function Personal() {
   const { usuario: yo, bodega: bodegaUsuario } = useSesion();
-  const esAdminM501 = (bodegaUsuario || "M501") === "M501";
+  const bodegaPropia = bodegaUsuario || "M501";
+  const esAdminM501 = bodegaPropia === "M501";
   const [personas, setPersonas] = useState([]);
   const [errorCarga, setErrorCarga] = useState("");
   const [error, setError] = useState("");
@@ -179,7 +180,7 @@ export default function Personal() {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
   const [rol, setRol] = useState("operador");
-  const [bodegaNueva, setBodegaNueva] = useState("M501");
+  const [bodegaNueva, setBodegaNueva] = useState(bodegaPropia);
   const [orden, setOrden] = useState("usuario");
   const [ocupado, setOcupado] = useState(false);
 
@@ -248,12 +249,15 @@ export default function Personal() {
     }
     await alEjecutar(async () => {
       try {
-        await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol, bodega: bodegaNueva }));
+        const rolCrear = esAdminM501 ? rol : "operador";
+        const bodegaCrear = esAdminM501 ? bodegaNueva : bodegaPropia;
+        await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol: rolCrear, bodega: bodegaCrear }));
         setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
         setNombre("");
         setClave("");
         setRepetir("");
         setRol("operador");
+        setBodegaNueva(bodegaPropia);
         cargar();
       } catch (e) {
         setError(e.message);
@@ -283,25 +287,31 @@ export default function Personal() {
           <p style={{ color: "var(--peligro)" }}>{errorCarga}</p>
         ) : (
           <>
-            {esAdminM501 && (
             <form data-tour="personal-crear" onSubmit={crear} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, justifyContent: "center" }}>
               <input value={nombre} disabled={ocupado} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
               <input type="password" value={clave} disabled={ocupado} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
               <input type="password" value={repetir} disabled={ocupado} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
-              <select value={rol} disabled={ocupado} onChange={(e) => setRol(e.target.value)} style={campo}>
-                <option value="operador">Operador</option>
-                <option value="admin">Admin</option>
-              </select>
-              <select value={bodegaNueva} disabled={ocupado} onChange={(e) => setBodegaNueva(e.target.value)} style={campo} aria-label="Bodega">
-                {BODEGAS.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
+              {esAdminM501 ? (
+                <select value={rol} disabled={ocupado} onChange={(e) => setRol(e.target.value)} style={campo}>
+                  <option value="operador">Operador</option>
+                  <option value="admin">Admin</option>
+                </select>
+              ) : (
+                <span style={{ ...campo, background: "transparent", display: "inline-flex", alignItems: "center" }}>Operador</span>
+              )}
+              {esAdminM501 ? (
+                <select value={bodegaNueva} disabled={ocupado} onChange={(e) => setBodegaNueva(e.target.value)} style={campo} aria-label="Bodega">
+                  {BODEGAS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ ...campo, background: "transparent", display: "inline-flex", alignItems: "center" }} aria-label="Bodega">{bodegaPropia}</span>
+              )}
               <button type="submit" disabled={ocupado || sinDatos} style={{ ...boton, opacity: ocupado || sinDatos ? 0.6 : 1 }}>
                 {ocupado ? "Procesando..." : "Crear usuario"}
               </button>
             </form>
-            )}
             {error && <p style={{ color: "var(--peligro)" }}>{error}</p>}
             {aviso && <p>{aviso}</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>

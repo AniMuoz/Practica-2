@@ -107,14 +107,22 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      const actor = await exigirAdmin(req);
+      const esM501 = (actor.bodega || "M501") === "M501";
       const usuario = normalizar(req.body && req.body.usuario);
       const clave = req.body && req.body.clave;
-      const rol = (req.body && req.body.rol) || "operador";
-      const bodega = String((req.body && req.body.bodega) || "M501").toUpperCase();
-      if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");
+      let rol = (req.body && req.body.rol) || "operador";
+      let bodega = String((req.body && req.body.bodega) || "M501").toUpperCase();
       if (!usuario) throw errorHttp(400, "Falta el nombre de usuario.");
-      if (!ROLES.has(rol)) throw errorHttp(400, "El rol debe ser admin u operador.");
+      if (!esM501) {
+        // Admins de otras bodegas solo crean operadores en su propia bodega.
+        if (rol !== "operador") throw errorHttp(403, "Solo puedes crear operadores.");
+        bodega = actor.bodega || "M501";
+      } else {
+        if (!ROLES.has(rol)) throw errorHttp(400, "El rol debe ser admin u operador.");
+        if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");
+      }
+      if (!BODEGAS.has(bodega)) throw errorHttp(400, "La bodega debe estar entre M501 y M505.");
       validarClaveNueva(clave);
       if (await leerUsuario(usuario)) throw errorHttp(409, "Ese usuario ya existe.");
       const { error } = await supabase.from("usuarios").insert({ usuario, clave_hash: await hashClave(clave), rol, bodega });
