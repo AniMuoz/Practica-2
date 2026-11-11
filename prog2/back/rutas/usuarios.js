@@ -4,6 +4,8 @@ const { enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const {
   exigirAdmin,
   exigirAdminM501,
+  exigirAdminVer,
+  exigirAdminM501oExt,
   hashClave,
   validarClaveNueva,
   registrarCambioUsuario,
@@ -15,7 +17,7 @@ const {
 
 // Los contadores de intentos y la cache de usuarios viven en memoria: asumen una sola instancia del servidor.
 // Cada alta, cambio de rol o de clave debe llamar a cacheUsuarios.delete para que surta efecto al instante.
-const ROLES = new Set(["admin", "operador", "desactivado"]);
+const ROLES = new Set(["admin", "admin_ext", "operador", "desactivado"]);
 // Usuario protegido: ningun otro usuario puede modificarlo ni eliminarlo.
 const USUARIO_PROTEGIDO = "adminm501";
 const BODEGAS = new Set(["M501", "M502", "M503", "M504", "M505"]);
@@ -77,7 +79,7 @@ async function listarCambios(filtros = {}) {
 module.exports = function rutasUsuarios(app) {
   app.get("/api/usuarios/auditoria/descargar", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       const { buffer, nombre } = await exportarCambios(req.query || {});
       enviarPlanilla(res, buffer, nombreConFecha(nombre));
     } catch (error) {
@@ -87,7 +89,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.get("/api/usuarios/auditoria", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       res.json(await listarCambios(req.query || {}));
     } catch (error) {
       responderError(res, error, "No se pudo leer la auditoría de usuarios.");
@@ -96,7 +98,7 @@ module.exports = function rutasUsuarios(app) {
 
   app.get("/api/usuarios", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminVer(req);
       const { data, error } = await supabase.from("usuarios").select("usuario, rol, bodega, creado_en").order("usuario", { ascending: true });
       if (error) falloBd(error);
       res.json({ usuarios: data || [] });
@@ -107,14 +109,19 @@ module.exports = function rutasUsuarios(app) {
 
   app.post("/api/usuarios", async (req, res) => {
     try {
-      const actor = await exigirAdmin(req);
-      const esM501 = (actor.bodega || "M501") === "M501";
+      const actor = await exigirAdminVer(req);
+      const esExt = actor.rol === "admin_ext";
+      const esM501 = !esExt && (actor.bodega || "M501") === "M501";
       const usuario = normalizar(req.body && req.body.usuario);
       const clave = req.body && req.body.clave;
       let rol = (req.body && req.body.rol) || "operador";
       let bodega = String((req.body && req.body.bodega) || "M501").toUpperCase();
       if (!usuario) throw errorHttp(400, "Falta el nombre de usuario.");
-      if (!esM501) {
+      if (esExt) {
+        // Admin externo: solo operadores, en la bodega que elija.
+        if (rol !== "operador") throw errorHttp(403, "Solo puedes crear operadores.");
+        if (!req.body || !req.body.bodega) throw errorHttp(400, "Debes asignar una bodega.");
+      } else if (!esM501) {
         // Admins de otras bodegas solo crean operadores en su propia bodega.
         if (rol !== "operador") throw errorHttp(403, "Solo puedes crear operadores.");
         bodega = actor.bodega || "M501";

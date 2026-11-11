@@ -44,9 +44,42 @@ function soloCamposLibres(metodo, ruta, body) {
   return claves.length > 0 && claves.every((clave) => CAMPO_LIBRE.test(clave));
 }
 
+// Admin externo (rol admin_ext): solo ve. Unicas escrituras permitidas (lista blanca):
+// gastos, bitacora de camiones, QR, crear operadores, inventario/comentario y utilidades que no guardan datos.
+const EXT_RUTAS_LIBRES = [
+  /^\/gastos(\/|$)/,
+  /^\/bitacora(\/|$)/,
+  /^\/acceso$/,
+  /^\/reserva(\/excel)?$/,
+  /^\/ventas\/hojas$/,
+  /^\/material\/[^/]+\/marcado$/,
+];
+const CAMPO_EXT = /^(inventario|comentario|qr)$/i;
+function permitidoAdminExt(metodo, rutaOriginal, body) {
+  if (METODOS_LECTURA.has(metodo)) return true;
+  const ruta = normalizarRuta(rutaOriginal);
+  if (EXT_RUTAS_LIBRES.some((patron) => patron.test(ruta))) return true;
+  // Crear personal (el rol y la bodega se validan en la ruta de usuarios).
+  if (metodo === "POST" && ruta === "/usuarios") return true;
+  // Inventario y comentario.
+  if (metodo === "PUT" && CONTEO_MATERIAL.test(ruta)) return true;
+  if (metodo === "PUT" && DATOS_MATERIAL.test(ruta)) {
+    if (!body || body.reemplazar === true || !body.datos || typeof body.datos !== "object") return false;
+    const claves = Object.keys(body.datos);
+    return claves.length > 0 && claves.every((clave) => CAMPO_EXT.test(clave));
+  }
+  // Imagen QR del material.
+  if ((metodo === "POST" || metodo === "DELETE") && /^\/material\/[^/]+\/imagen$/.test(ruta)) return true;
+  return false;
+}
+
 // `exigirAdmin` y `responderError` se reciben para poder probar el middleware sin Supabase.
 function soloAdminEnEscrituras(exigirAdmin, responderError) {
   return async (req, res, next) => {
+    if (req.rol === "admin_ext") {
+      if (permitidoAdminExt(req.method, req.path, req.body)) return next();
+      return responderError(res, Object.assign(new Error("Tu rol solo puede ver."), { status: 403 }), "No se pudo verificar el rol.");
+    }
     if (!requiereAdmin(req.method, req.path)) return next();
     try {
       await exigirAdmin(req);
@@ -70,4 +103,4 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
   };
 }
 
-module.exports = { requiereAdmin, soloAdminEnEscrituras };
+module.exports = { requiereAdmin, permitidoAdminExt, soloAdminEnEscrituras };

@@ -27,7 +27,15 @@ auth.exigirAdmin = async (req) => {
     throw error;
   }
 };
+auth.exigirAdminVer = async (req) => {
+  if (req.rol !== "admin" && req.rol !== "admin_ext") {
+    const error = new Error("Solo un administrador puede hacer esto.");
+    error.status = 403;
+    throw error;
+  }
+};
 auth.buscarUsuario = async (nombre) => {
+  if (nombre === "ext") return { usuario: "ext", rol: "admin_ext", bodega: "M501" };
   if (nombre === "jefe") return { usuario: "jefe", rol: "admin", bodega: "M501" };
   if (nombre === "op502") return { usuario: "op502", rol: "operador", bodega: "M502" };
   if (nombre === "op501") return { usuario: "op501", rol: "operador", bodega: "M501" };
@@ -228,4 +236,19 @@ test("un admin crea mensajes siempre en su propia bodega, no en la que mira", as
   });
   assert.equal(r.status, 201);
   assert.equal(r.data.mensaje.bodega, "M501");
+});
+
+test("admin ext ve los buzones de cualquier bodega pero no cambia estado ni borra", async () => {
+  mensajes = [
+    { id: 1, usuario: "op502", titulo: "B", descripcion: "b", urgencia: "media", estado: "cerrado", bodega: "M502", creado_en: "2026-01-02" },
+  ];
+  siguienteId = 2;
+  const ver = await pedir("GET", "/api/buzon", { bodega: "M502", usuario: "ext", rol: "admin_ext" });
+  assert.equal(ver.status, 200);
+  assert.deepEqual(ver.data.mensajes.map((m) => m.id), [1]);
+  const estado = await pedir("PUT", "/api/buzon/1/estado", { bodega: "M502", usuario: "ext", rol: "admin_ext", cuerpo: { estado: "revisando" } });
+  assert.equal(estado.status, 403);
+  const borrar = await pedir("DELETE", "/api/buzon/1", { bodega: "M502", usuario: "ext", rol: "admin_ext" });
+  assert.equal(borrar.status, 403);
+  assert.equal(mensajes.length, 1);
 });

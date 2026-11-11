@@ -5,7 +5,7 @@ const { claveDe } = require("../servicios/nucleoDatos");
 
 const { uploadXlsx, upload, emitir, esImagenReal, esHeicReal, convertirHeicAJpeg } = require("../utils/compartido");
 const { subirImagen } = require("../supabase/imagenesSupabase");
-const { exigirAdmin } = require("../seguridad/auth");
+const { exigirAdmin, exigirAdminVer } = require("../seguridad/auth");
 
 module.exports = function rutasMateriales(app) {
   // Una sola importación masiva a la vez: evita que dos cargas se pisen en Supabase.
@@ -222,6 +222,7 @@ module.exports = function rutasMateriales(app) {
 
   app.delete("/api/material/:codigo/imagen", async (req, res) => {
     try {
+      if (req.rol === "admin_ext" && req.body.campo !== "QR") throw Object.assign(new Error("Tu rol solo puede ver."), { status: 403 });
       const resultado = await guardarImagen(req.params.codigo, req.body.campo, "", claveDe(req));
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });
@@ -246,7 +247,8 @@ module.exports = function rutasMateriales(app) {
         return;
       }
       try {
-        if (req.body.campo === "QR") await exigirAdmin(req);
+        if (req.body.campo === "QR") await exigirAdminVer(req);
+        else if (req.rol === "admin_ext") throw Object.assign(new Error("Tu rol solo puede ver."), { status: 403 });
         let contenido = await fs.promises.readFile(req.file.path);
         let mimetype = req.file.mimetype;
         if (esHeicReal(contenido)) {

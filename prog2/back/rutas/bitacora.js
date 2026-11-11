@@ -1,6 +1,6 @@
 const { uploadFirma, enviarPlanilla, nombreConFecha } = require("../utils/compartido");
 const bitacora = require("../servicios/bitacora");
-const { exigirAdminM501 } = require("../seguridad/auth");
+const { exigirAdminM501oExt } = require("../seguridad/auth");
 const { claveDe } = require("../servicios/nucleoDatos");
 
 module.exports = function rutasBitacora(app) {
@@ -10,7 +10,7 @@ module.exports = function rutasBitacora(app) {
 
   app.get("/api/bitacora/auditoria", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       res.json({ folios: await bitacora.listarAuditoria() });
     } catch (error) {
       console.error(error);
@@ -20,7 +20,7 @@ module.exports = function rutasBitacora(app) {
 
   app.get("/api/bitacora/auditoria/log/descargar", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       const { buffer, nombre } = await bitacora.exportarLog(req.query || {});
       enviarPlanilla(res, buffer, nombreConFecha(nombre));
     } catch (error) {
@@ -31,7 +31,7 @@ module.exports = function rutasBitacora(app) {
 
   app.get("/api/bitacora/auditoria/log", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       res.json(await bitacora.listarLog(req.query || {}));
     } catch (error) {
       console.error(error);
@@ -41,7 +41,7 @@ module.exports = function rutasBitacora(app) {
 
   app.get("/api/bitacora/auditoria/:folio", async (req, res) => {
     try {
-      await exigirAdminM501(req);
+      await exigirAdminM501oExt(req);
       res.json(await bitacora.leerAuditoria(req.params.folio));
     } catch (error) {
       console.error(error);

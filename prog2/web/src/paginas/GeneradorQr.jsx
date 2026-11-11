@@ -43,7 +43,8 @@ export default function GeneradorQr() {
   }
 
   useEffect(() => {
-    if (rol === "admin") {
+    if (rol === "admin_ext") setDesbloqueado(true); // el servidor aplica la clave de datos
+    if (rol === "admin" || rol === "admin_ext") {
       cargar();
       if (recorridoPendiente("qr")) iniciarRecorrido("qr");
     }
@@ -55,7 +56,7 @@ export default function GeneradorQr() {
   const pendientes = useMemo(() => [...faltantes, ...desactualizados], [faltantes, desactualizados]);
   const romboDe = (fila) => (tieneRombo(fila) ? String(fila.Rombo).trim() : "");
 
-  if (rol !== "admin") return <Navigate to="/" replace />;
+  if (rol !== "admin" && rol !== "admin_ext") return <Navigate to="/" replace />;
 
   function aceptarClave(event) {
     event.preventDefault();
@@ -74,7 +75,7 @@ export default function GeneradorQr() {
   }
 
   async function generarYSubir() {
-    if (!clave) return setAviso("Escribe la contraseña de datos.");
+    if (!clave && rol !== "admin_ext") return setAviso("Escribe la contraseña de datos.");
     if (!pendientes.length) return setAviso("No hay QR faltantes ni desactualizados con estos filtros.");
     if (!window.confirm(`¿Generar y subir ${pendientes.length} QR (${faltantes.length} nuevos, ${desactualizados.length} a regenerar por rombo nuevo/cambiado)?`)) return;
     cancelar.current = false;

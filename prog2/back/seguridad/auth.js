@@ -266,6 +266,25 @@ async function exigirAdmin(req) {
   return registro;
 }
 
+// Admin o admin externo (el externo solo ve y opera en las excepciones que permite soloAdmin.js).
+async function exigirAdminVer(req) {
+  if (!req.usuario) throw errorHttp(401, "Sesión no iniciada.");
+  const registro = await buscarUsuario(req.usuario);
+  if (!registro || (registro.rol !== "admin" && registro.rol !== "admin_ext")) {
+    throw errorHttp(403, "Solo un administrador puede hacer esto.");
+  }
+  return registro;
+}
+
+// M501 o admin externo (bitacora de camiones, auditoria).
+async function exigirAdminM501oExt(req) {
+  const registro = await exigirAdminVer(req);
+  if (registro.rol !== "admin_ext" && (registro.bodega || "M501") !== "M501") {
+    throw errorHttp(403, "Solo un administrador de M501 puede hacer esto.");
+  }
+  return registro;
+}
+
 async function exigirAdminM501(req) {
   const registro = await exigirAdmin(req);
   if ((registro.bodega || "M501") !== "M501") {
@@ -369,6 +388,8 @@ module.exports = {
   contarUsuarios,
   exigirAdmin,
   exigirAdminM501,
+  exigirAdminVer,
+  exigirAdminM501oExt,
   buscarUsuario,
   hashClave,
   validarClaveNueva,

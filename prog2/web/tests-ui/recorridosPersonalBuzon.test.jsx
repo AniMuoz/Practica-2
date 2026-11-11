@@ -88,3 +88,26 @@ describe("recorridos de personal y buzón", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("admin ext", () => {
+  beforeEach(() => {
+    localStorage.setItem("recorridoVisto:personal", "1");
+    estado.sesion = { rol: "admin_ext", usuario: "ext", bodega: "M501" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const ruta = String(url);
+        if (ruta.includes("/api/usuarios")) return json({ usuarios: [{ usuario: "pepe", rol: "operador", bodega: "M502", creado_en: "2026-01-01" }] });
+        return json({ mensajes: [], novedades: {} });
+      })
+    );
+  });
+
+  it("en Personal solo puede crear operadores eligiendo bodega y no ve acciones sobre otros usuarios", async () => {
+    montar(<Personal />, "/personal");
+    expect(await screen.findByText("pepe")).toBeTruthy();
+    expect(screen.getByLabelText("Bodega").tagName).toBe("SELECT");
+    expect(screen.queryByText("Eliminar")).toBeNull();
+    expect(screen.queryByText("Admin ext")).toBeNull();
+  });
+});

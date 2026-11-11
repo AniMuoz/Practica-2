@@ -11,7 +11,7 @@ create table if not exists public.usuarios (
 
 alter table public.usuarios add column if not exists rol text not null default 'operador';
 alter table public.usuarios drop constraint if exists usuarios_rol_check;
-alter table public.usuarios add constraint usuarios_rol_check check (rol in ('admin', 'operador', 'desactivado'));
+alter table public.usuarios add constraint usuarios_rol_check check (rol in ('admin', 'admin_ext', 'operador', 'desactivado'));
 
 alter table public.usuarios add column if not exists bodega text not null default 'M501';
 alter table public.usuarios drop constraint if exists usuarios_bodega_check;

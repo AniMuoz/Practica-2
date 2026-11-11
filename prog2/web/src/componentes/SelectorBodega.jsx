@@ -6,7 +6,7 @@ import { useClickFuera } from "../lib/useClickFuera.js";
 export default function SelectorBodega({ rol, bodegaActiva }) {
   const [abierto, setAbierto] = useState(false);
   const caja = useClickFuera(() => setAbierto(false));
-  const esAdmin = rol === "admin";
+  const esAdmin = rol === "admin" || rol === "admin_ext";
 
   return (
     <div ref={caja} data-tour="bodega" className="selector-bodega">

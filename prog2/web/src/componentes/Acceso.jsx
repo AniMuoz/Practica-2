@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { apiFetch } from "../lib/api.js";
 import { fijarBodega } from "../lib/bodega.js";
 
@@ -309,7 +309,7 @@ export default function Acceso({ children }) {
           if (res.ok) {
             const data = await res.json();
             if (data && data.rol === "desactivado") return "desactivada";
-            if (data && (data.rol || "operador") !== "admin") fijarBodega(data.bodega);
+            if (data && (data.rol || "operador") !== "admin" && data.rol !== "admin_ext") fijarBodega(data.bodega);
             return data ? { usuario: data.usuario, rol: data.rol || "operador", bodega: data.bodega } : null;
           }
           if (res.status === 401) return null;

@@ -15,7 +15,9 @@ import SelectorBodega from "./SelectorBodega.jsx";
 
 export default function Navbar({ buzonNovedades = 0 }) {
   const { rol, usuario, bodega: bodegaUsuario } = useSesion();
-  const esAdminM501 = rol === "admin" && (bodegaUsuario || "M501") === "M501";
+  const esAdminVista = rol === "admin" || rol === "admin_ext";
+  // Auditoria: admin de M501 o admin externo.
+  const esAdminM501 = rol === "admin_ext" || (esAdminVista && (bodegaUsuario || "M501") === "M501");
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [parametros, setParametros] = useSearchParams();
@@ -99,7 +101,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
   // y pasa el total via prop buzonNovedades — aquí solo rastreamos los mensajes pendientes.
   const leerPendientes = useRef(() => Promise.resolve());
   useEffect(() => {
-    if (rol !== "admin") return undefined;
+    if (!esAdminVista) return undefined;
     let activo = true;
     let pendienteSse = 0;
     function leer() {
@@ -139,7 +141,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
     };
   }, [rol, pathname, usuario]);
   // Declarado despues del efecto que asigna `leerPendientes`, para que la primera lectura use la funcion real.
-  useSondeo(() => leerPendientes.current(), 60000, rol === "admin");
+  useSondeo(() => leerPendientes.current(), 60000, esAdminVista);
 
   // Polling de novedades para operador (respuestas del admin en sus mensajes).
   // Solo corre cuando buzonNovedades no viene de prop (es decir, cuando NO estamos en /buzon).
@@ -147,7 +149,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
   const prevNovedadesOp = useRef(0);
   const leerNovedades = useRef(() => Promise.resolve());
   useEffect(() => {
-    if (rol === "admin") return undefined;
+    if (esAdminVista) return undefined;
     // Si ya estamos en /buzon Buzon.jsx gestiona todo, pero aun así mostramos el badge
     // usando la prop. El polling aquí sirve para las OTRAS páginas.
     if (pathname === "/buzon") return undefined;
@@ -176,7 +178,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
       leerNovedades.current = () => Promise.resolve();
     };
   }, [rol, pathname, usuario]);
-  useSondeo(() => leerNovedades.current(), 45000, rol !== "admin" && pathname !== "/buzon");
+  useSondeo(() => leerNovedades.current(), 45000, !esAdminVista && pathname !== "/buzon");
 
   function cerrarSesion() {
     limpiarBorradores();
@@ -213,7 +215,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
   //              · en otras   → usa novedadesOperador (polling propio del Navbar)
   const novedadesEfectivas = pathname === "/buzon" ? buzonNovedades : novedadesOperador;
   const mostrarBadgeBuzon =
-    rol === "admin" ? pendientes > 0 || buzonNovedades > 0 : novedadesEfectivas > 0;
+    esAdminVista ? pendientes > 0 || buzonNovedades > 0 : novedadesEfectivas > 0;
 
   return (
     <header
@@ -557,7 +559,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
             <span
               role="status"
               aria-label={
-                rol === "admin" && pendientes > 0
+                esAdminVista && pendientes > 0
                   ? `${pendientes} mensajes sin revisar`
                   : `${buzonNovedades} respuestas nuevas`
               }
@@ -566,7 +568,7 @@ export default function Navbar({ buzonNovedades = 0 }) {
           )}
         </Link>
       )}
-      {rol === "admin" && menuVisible && (
+      {esAdminVista && menuVisible && (
         <>
           <Link to="/personal" className="barra-enlace" style={{ padding: "8px 14px", borderRadius: 6, background: "var(--boton)", color: "var(--sobre)", fontSize: 14, textDecoration: "none" }}>
             Personal

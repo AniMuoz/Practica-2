@@ -1,5 +1,5 @@
 const { supabase } = require("../supabase/supabase");
-const { exigirAdmin, buscarUsuario } = require("../seguridad/auth");
+const { exigirAdmin, exigirAdminVer, buscarUsuario } = require("../seguridad/auth");
 const { emitir } = require("../utils/compartido");
 const { bodegaActual, bodegaValida } = require("../servicios/nucleoDatos");
 
@@ -52,7 +52,7 @@ module.exports = function rutasBuzon(app) {
   // Cantidad de mensajes sin revisar de la bodega activa (solo admin).
   app.get("/api/buzon/pendientes", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminVer(req);
       const { count, error } = await mensajesDeBodega("id", { count: "exact", head: true }).eq("estado", "sin revisar");
       if (error) throw error;
       res.json({ pendientes: count || 0 });
@@ -68,7 +68,7 @@ module.exports = function rutasBuzon(app) {
   app.get("/api/buzon/novedades", async (req, res) => {
     try {
       const registro = await buscarUsuario(req.usuario);
-      const esAdmin = registro && registro.rol === "admin";
+      const esAdmin = registro && (registro.rol === "admin" || registro.rol === "admin_ext");
 
       if (esAdmin) {
         const { data, error } = await supabase
@@ -118,7 +118,7 @@ module.exports = function rutasBuzon(app) {
   // Todos los mensajes de la bodega activa (solo admin).
   app.get("/api/buzon", async (req, res) => {
     try {
-      await exigirAdmin(req);
+      await exigirAdminVer(req);
       const { data, error } = await mensajesDeBodega(CAMPOS)
         .order("creado_en", { ascending: false });
       if (error) throw error;
@@ -202,7 +202,7 @@ module.exports = function rutasBuzon(app) {
     try {
       const id = req.params.id;
       const registro = await buscarUsuario(req.usuario);
-      const esAdmin = registro && registro.rol === "admin";
+      const esAdmin = registro && (registro.rol === "admin" || registro.rol === "admin_ext");
 
       const { data: msg, error: errMsg } = await supabase
         .from("buzon")

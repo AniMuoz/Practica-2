@@ -389,7 +389,8 @@ function Formulario({ alEnviar }) {
 
 export default function Buzon() {
   const { rol, usuario, bodega: bodegaDelUsuario } = useSesion();
-  const admin = rol === "admin";
+  const esExt = rol === "admin_ext"; // ve todos los buzones, sin interactuar
+  const admin = rol === "admin" || esExt;
   const bodegaPropia = bodegaDelUsuario || "M501";
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState("");
@@ -509,7 +510,7 @@ export default function Buzon() {
               key={m.id}
               m={m}
               admin={admin}
-              soloLectura={admin && m.bodega !== bodegaPropia}
+              soloLectura={admin && (esExt || m.bodega !== bodegaPropia)}
               usuario={usuario}
               onEstado={cambiarEstado}
               onEliminar={eliminar}

@@ -466,7 +466,7 @@ const ACCIONES_USUARIOS = {
   cambiar_rol: "Cambió el rol",
 };
 
-const ROLES = { admin: "administrador", operador: "operador", desactivado: "desactivado" };
+const ROLES = { admin: "administrador", admin_ext: "administrador externo", operador: "operador", desactivado: "desactivado" };
 const rolLegible = (rol) => ROLES[rol] || rol || "—";
 
 function descripcionUsuario(e) {
@@ -580,7 +580,7 @@ function Seccion({ titulo, abiertaInicial = false, children }) {
 
 export default function Auditoria() {
   const { rol, bodega: bodegaUsuario } = useSesion();
-  const esAdminM501 = rol === "admin" && (bodegaUsuario || "M501") === "M501";
+  const esAdminM501 = rol === "admin_ext" || (rol === "admin" && (bodegaUsuario || "M501") === "M501");
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
 

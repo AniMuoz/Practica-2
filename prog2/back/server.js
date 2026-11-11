@@ -62,7 +62,7 @@ function crearApp({ proteger = true } = {}) {
     // Las marcas son por usuario: se cargan una vez y quedan en memoria (la lectura de tabla es síncrona).
     await cargarMarcados(usuario).catch((error) => console.error("No se pudieron leer las marcas:", error.message));
     const pedida = req.get("X-Bodega") || req.query.principal;
-    const esOperador = proteger && req.rol && req.rol !== "admin";
+    const esOperador = proteger && req.rol && req.rol !== "admin" && req.rol !== "admin_ext";
     if (esOperador) {
       if (!req.bodega) {
         res.status(403).json({ error: "Tu usuario no tiene bodega asignada." });

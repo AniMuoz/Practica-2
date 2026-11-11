@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useColoresPlanilla } from "../componentes/ColoresPlanilla.jsx";
 import { useNavigate } from "react-router-dom";
 import { useSesion } from "../componentes/Acceso.jsx";
@@ -76,6 +76,8 @@ export default function Admin() {
   const esBotonActivo = (nombre) => PANELES_BOTON[nombre]?.some((panel) => abierto[panel]) ?? false;
   const { rol, bodega: bodegaUsuario } = useSesion();
   const puedeEditar = rol === "admin" && (bodegaUsuario || "M501") === "M501";
+  // Admin externo: ve todo como M501 pero no modifica nada (salvo gastos, bitacora, inventario/comentario y QR).
+  const esExt = rol === "admin_ext";
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -218,6 +220,10 @@ export default function Admin() {
   });
 
   useEffect(() => {
+    if (rol === "admin_ext") {
+      setAutorizado(true);
+      return;
+    }
     if (rol !== "admin") return;
     obtenerJson("/api/acceso")
       .then(() => {
@@ -404,7 +410,8 @@ export default function Admin() {
             "Gastos",
             "Bitacora camion",
           ]
-            .filter((nombre) => (puedeEditar || !BOTONES_SOLO_M501.has(nombre)) && (rol === "admin" || !BOTONES_SOLO_ADMIN.has(nombre)))
+            .filter((nombre) => !(esExt && nombre === "Añadir/cargar datos"))
+            .filter((nombre) => ((puedeEditar || esExt) || !BOTONES_SOLO_M501.has(nombre)) && ((rol === "admin" || esExt) || !BOTONES_SOLO_ADMIN.has(nombre)))
             .map((nombre, indice, lista) => {
             const activo = esBotonActivo(nombre);
             if (esMovilCarga && botonesMinimizados) {
@@ -545,7 +552,9 @@ export default function Admin() {
       )}
       {autorizado && <PanelReserva visible={mostrarReserva} colores={colores} clasePlanilla={clasePlanilla} />}
       {autorizado && mostrarVentas && (
-        <Ventas colores={colores} listaContratistas={listaContratistas} />
+        <fieldset disabled={esExt} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <Ventas colores={colores} listaContratistas={listaContratistas} />
+        </fieldset>
       )}
       {autorizado && mostrarContratistas && (
         <PanelContratistas

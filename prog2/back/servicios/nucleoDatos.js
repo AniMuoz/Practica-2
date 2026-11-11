@@ -691,7 +691,7 @@ function exigirClave(clave) {
 // Admin con sesión: el servidor usa CLAVE_DATOS internamente; nunca se envía al navegador.
 // Operador u otras rutas: se valida la clave que viene en el cuerpo.
 function claveDe(req) {
-  if (req && req.rol === "admin") return CLAVE_DATOS;
+  if (req && (req.rol === "admin" || req.rol === "admin_ext")) return CLAVE_DATOS;
   return req && req.body && req.body.clave;
 }
 

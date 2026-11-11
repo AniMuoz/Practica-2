@@ -61,7 +61,7 @@ const enviarJson = (metodo, cuerpo) => ({
   body: JSON.stringify(cuerpo),
 });
 
-function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar, alSucio, alCambiar, alError }) {
+function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, soloVer = false, alEjecutar, alSucio, alCambiar, alError }) {
   const [clave, setClave] = useState("");
   const [repetir, setRepetir] = useState("");
 
@@ -128,12 +128,13 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar
     <tr>
       <td>{persona.usuario}</td>
       <td>
-        {propia || protegido ? (
+        {propia || protegido || soloVer ? (
           persona.rol
         ) : (
           <select value={persona.rol} disabled={ocupado} onChange={(e) => cambiarRol(e.target.value)} style={campo}>
             <option value="operador">Operador</option>
             <option value="admin">Admin</option>
+            <option value="admin_ext">Admin ext</option>
             <option value="desactivado">Desactivado</option>
           </select>
         )}
@@ -151,7 +152,7 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar
       </td>
       <td>{persona.creado_en ? new Date(persona.creado_en).toLocaleDateString() : ""}</td>
       <td>
-        {!propia && !protegido && (
+        {!propia && !protegido && !soloVer && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <input type="password" autoComplete="new-password" placeholder="Nueva contraseña" value={clave} disabled={ocupado} onChange={(e) => setClave(e.target.value)} style={{ ...campo, width: 150 }} />
             <input type="password" autoComplete="new-password" placeholder="Repetir" value={repetir} disabled={ocupado} onChange={(e) => setRepetir(e.target.value)} style={{ ...campo, width: 110 }} />
@@ -169,9 +170,11 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, alEjecutar
 }
 
 export default function Personal() {
-  const { usuario: yo, bodega: bodegaUsuario } = useSesion();
+  const { usuario: yo, bodega: bodegaUsuario, rol: rolSesion } = useSesion();
   const bodegaPropia = bodegaUsuario || "M501";
-  const esAdminM501 = bodegaPropia === "M501";
+  // Admin externo: solo ve la lista y crea operadores eligiendo la bodega.
+  const esExt = rolSesion === "admin_ext";
+  const esAdminM501 = !esExt && bodegaPropia === "M501";
   const [personas, setPersonas] = useState([]);
   const [errorCarga, setErrorCarga] = useState("");
   const [error, setError] = useState("");
@@ -250,7 +253,7 @@ export default function Personal() {
     await alEjecutar(async () => {
       try {
         const rolCrear = esAdminM501 ? rol : "operador";
-        const bodegaCrear = esAdminM501 ? bodegaNueva : bodegaPropia;
+        const bodegaCrear = esAdminM501 || esExt ? bodegaNueva : bodegaPropia;
         await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol: rolCrear, bodega: bodegaCrear }));
         setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
         setNombre("");
@@ -295,11 +298,12 @@ export default function Personal() {
                 <select value={rol} disabled={ocupado} onChange={(e) => setRol(e.target.value)} style={campo}>
                   <option value="operador">Operador</option>
                   <option value="admin">Admin</option>
+                  <option value="admin_ext">Admin ext</option>
                 </select>
               ) : (
                 <span style={{ ...campo, background: "transparent", display: "inline-flex", alignItems: "center" }}>Operador</span>
               )}
-              {esAdminM501 ? (
+              {esAdminM501 || esExt ? (
                 <select value={bodegaNueva} disabled={ocupado} onChange={(e) => setBodegaNueva(e.target.value)} style={campo} aria-label="Bodega">
                   {BODEGAS.map((b) => (
                     <option key={b} value={b}>{b}</option>
@@ -349,6 +353,7 @@ export default function Personal() {
                       propia={persona.usuario === yo}
                       ocupado={ocupado}
                       puedeCambiarBodega={esAdminM501}
+                      soloVer={esExt}
                       alEjecutar={alEjecutar}
                       alSucio={alSucio}
                       alCambiar={tras}

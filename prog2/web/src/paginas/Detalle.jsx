@@ -5,10 +5,13 @@ import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.j
 import { useEsMovil } from "../lib/useEsMovil.js";
 import { estadoInventario as estadoDeInventario, textoCampo } from "../lib/reglasPlanilla.js";
 import { apiFetch } from "../lib/api.js";
+import { useSesion } from "../componentes/Acceso.jsx";
 
 export default function Detalle() {
   const { codigo } = useParams();
   const navigate = useNavigate();
+  // Admin externo: solo ve; unicamente puede tocar inventario, comentario y QR.
+  const esExt = useSesion().rol === "admin_ext";
   const [columnas, setColumnas] = useState([]);
   const [fila, setFila] = useState(null);
   const [bodegas, setBodegas] = useState([]);
@@ -152,6 +155,7 @@ export default function Detalle() {
   const datosSinGuardar = Boolean(
     editando &&
       fila &&
+      !esExt &&
       soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna]))
   );
   const hayCambiosSinGuardar = inventarioSinGuardar || comentarioSinGuardar || datosSinGuardar;
@@ -396,7 +400,7 @@ export default function Detalle() {
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
                   {campo}
-                  {editando && (
+                  {editando && (!esExt || campo === "QR") && (
                     <>
                       <input
                         type="file"
@@ -513,6 +517,11 @@ export default function Detalle() {
                 onClick={() => {
                   setAvisoDatos("");
                   setClave("");
+                  if (esExt) {
+                    setDatos({});
+                    setEditando(true);
+                    return;
+                  }
                   // Un admin con sesión no necesita contraseña: el servidor la aplica solo.
                   apiFetch("/api/acceso")
                     .then((res) => {
@@ -641,7 +650,7 @@ export default function Detalle() {
                 <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                   Stock
                 </span>
-                {editando ? (
+                {editando && !esExt ? (
                   <input
                     value={datos.Stock ?? ""}
                     onChange={(event) =>
@@ -685,7 +694,7 @@ export default function Detalle() {
                 <div key={columna} style={{ minWidth: 0 }}>
                   <dt style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>{columna}</dt>
                   <dd style={{ margin: 0, fontSize: 15 }}>
-                    {editando ? (
+                    {editando && !esExt ? (
                       <input
                         value={datos[columna] ?? ""}
                         onChange={(event) => {
@@ -714,7 +723,12 @@ export default function Detalle() {
                 </div>
               ))}
             </dl>
-            {editando && (
+            {editando && esExt && (
+              <button type="button" onClick={() => setEditando(false)} style={{ justifySelf: "start", padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", fontSize: 14, cursor: "pointer" }}>
+                Terminar edición de QR
+              </button>
+            )}
+            {editando && !esExt && (
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <button
                   type="button"
