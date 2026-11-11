@@ -1,7 +1,7 @@
 const { supabase } = require("../supabase/supabase");
 const { exigirAdmin, buscarUsuario } = require("../seguridad/auth");
 const { emitir } = require("../utils/compartido");
-const { bodegaActual } = require("../servicios/nucleoDatos");
+const { bodegaActual, bodegaValida } = require("../servicios/nucleoDatos");
 
 const URGENCIAS = ["leve", "media", "alta", "urgente"];
 const ESTADOS = ["sin revisar", "revisando", "cerrado"];
@@ -17,6 +17,18 @@ function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
   error.status = status;
   return error;
+}
+
+// Bodega propia del usuario (la asignada en su cuenta), sin importar la bodega que mira en la barra.
+function bodegaPropia(req) {
+  return bodegaValida(req.bodega);
+}
+
+// Un admin puede mirar otros buzones, pero solo escribe (responder, cambiar estado, borrar) en el de su bodega.
+function exigirBuzonPropio(req, bodegaMensaje) {
+  if (bodegaMensaje !== bodegaPropia(req)) {
+    throw errorHttp(403, "Solo puedes gestionar el buzón de tu propia bodega.");
+  }
 }
 
 module.exports = function rutasBuzon(app) {
@@ -125,8 +137,8 @@ module.exports = function rutasBuzon(app) {
       if (!titulo || titulo.length > 120) throw errorHttp(400, "El título es obligatorio (máximo 120 caracteres).");
       if (!descripcion || descripcion.length > MAX_DESC) throw errorHttp(400, `La descripción es obligatoria (máximo ${MAX_DESC} caracteres).`);
       if (!URGENCIAS.includes(urgencia)) throw errorHttp(400, "Nivel de urgencia no válido.");
-      // Operador: middleware fuerza su bodega asignada. Admin: usa la bodega activa de la barra.
-      const bodega = bodegaActual();
+      // Siempre en la bodega propia del usuario (operador o admin), nunca en la que mira en la barra.
+      const bodega = bodegaPropia(req);
       const { data, error } = await supabase
         .from("buzon")
         .insert({ usuario: req.usuario, titulo, descripcion, urgencia, bodega })
@@ -145,11 +157,16 @@ module.exports = function rutasBuzon(app) {
       await exigirAdmin(req);
       const estado = String((req.body && req.body.estado) || "");
       if (!ESTADOS.includes(estado)) throw errorHttp(400, "Estado no válido.");
+      const propia = bodegaPropia(req);
+      const { data: actual, error: errActual } = await supabase.from("buzon").select("bodega").eq("id", req.params.id).maybeSingle();
+      if (errActual) throw errActual;
+      if (!actual) throw errorHttp(404, "Mensaje no encontrado.");
+      exigirBuzonPropio(req, actual.bodega);
       const { data, error } = await supabase
         .from("buzon")
         .update({ estado })
         .eq("id", req.params.id)
-        .eq("bodega", bodegaActual())
+        .eq("bodega", propia)
         .select(CAMPOS)
         .maybeSingle();
       if (error) throw error;
@@ -167,8 +184,9 @@ module.exports = function rutasBuzon(app) {
       const { data, error } = await mensajesDeBodega("estado, bodega").eq("id", req.params.id).maybeSingle();
       if (error) throw error;
       if (!data) throw errorHttp(404, "Mensaje no encontrado.");
+      exigirBuzonPropio(req, data.bodega);
       if (data.estado !== "cerrado") throw errorHttp(400, "Solo se pueden eliminar mensajes cerrados.");
-      const borrado = await supabase.from("buzon").delete().eq("id", req.params.id).eq("bodega", bodegaActual());
+      const borrado = await supabase.from("buzon").delete().eq("id", req.params.id).eq("bodega", bodegaPropia(req));
       if (borrado.error) throw borrado.error;
       emitir({ tipo: "buzon", bodega: data.bodega });
       res.json({ ok: true });
@@ -229,7 +247,7 @@ module.exports = function rutasBuzon(app) {
       if (errMsg) throw errMsg;
       if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
       if (esAdmin) {
-        if (msg.bodega !== bodegaActual()) throw errorHttp(404, "Mensaje no encontrado.");
+        exigirBuzonPropio(req, msg.bodega);
       } else if (msg.usuario !== req.usuario) {
         throw errorHttp(403, "No tienes permiso para responder este mensaje.");
       }

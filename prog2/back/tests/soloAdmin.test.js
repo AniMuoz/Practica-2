@@ -55,6 +55,17 @@ test("ver, filtrar, descargar, Gastos/Buzón y el conteo de material quedan abie
   for (const [metodo, ruta] of LIBRES) assert.equal(requiereAdmin(metodo, ruta), false, `${metodo} ${ruta}`);
 });
 
+test("cambiar mayusculas o añadir / final no salta la exigencia de admin", () => {
+  for (const [metodo, ruta] of [
+    ["PATCH", "/Ventas/filas/1"],
+    ["POST", "/ventas/"],
+    ["DELETE", "/movimientos/"],
+    ["PUT", "/Stock-Detallado"],
+    ["POST", "/tabla/Excel"],
+    ["PUT", "/Contratistas/"],
+  ]) assert.equal(requiereAdmin(metodo, ruta), true, `${metodo} ${ruta}`);
+});
+
 test("las lecturas nunca exigen admin aunque la ruta sea de escritura", () => {
   for (const metodo of ["GET", "HEAD", "OPTIONS"]) assert.equal(requiereAdmin(metodo, "/stock-detallado"), false);
 });

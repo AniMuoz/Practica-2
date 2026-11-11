@@ -135,7 +135,8 @@ test.beforeEach(() => {
   eventos = [];
 });
 
-async function pedir(metodo, ruta, { cuerpo, bodega, usuario, rol } = {}) {
+// `propia` = bodega asignada al usuario (por defecto la misma que mira en la barra).
+async function pedir(metodo, ruta, { cuerpo, bodega, usuario, rol, propia } = {}) {
   const respuesta = await fetch(base + ruta, {
     method: metodo,
     headers: {
@@ -143,6 +144,7 @@ async function pedir(metodo, ruta, { cuerpo, bodega, usuario, rol } = {}) {
       ...(bodega ? { "X-Bodega": bodega } : {}),
       ...(usuario ? { "X-Usuario": usuario } : {}),
       ...(rol ? { "X-Rol": rol } : {}),
+      ...(propia ? { "X-Bodega-Usuario": propia } : {}),
     },
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
   });
@@ -195,9 +197,35 @@ test("el admin no puede cambiar estado de un mensaje de otra bodega", async () =
     { id: 9, usuario: "op502", titulo: "X", descripcion: "x", urgencia: "leve", estado: "sin revisar", bodega: "M502", creado_en: "2026-01-01" },
   ];
   const r = await pedir("PUT", "/api/buzon/9/estado", {
-    bodega: "M501",
+    bodega: "M502",
+    propia: "M501",
     cuerpo: { estado: "revisando" },
   });
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 403);
   assert.equal(mensajes[0].estado, "sin revisar");
+});
+
+test("un admin mira el buzón de otra bodega pero no puede responder ni borrar ahí", async () => {
+  mensajes = [
+    { id: 9, usuario: "op502", titulo: "X", descripcion: "x", urgencia: "leve", estado: "cerrado", bodega: "M502", creado_en: "2026-01-01" },
+  ];
+  const lectura = await pedir("GET", "/api/buzon", { bodega: "M502" });
+  assert.equal(lectura.status, 200);
+  assert.equal(lectura.data.mensajes.length, 1);
+
+  const respuesta = await pedir("POST", "/api/buzon/9/respuestas", { bodega: "M502", propia: "M501", cuerpo: { texto: "hola" } });
+  assert.equal(respuesta.status, 403);
+  const borrado = await pedir("DELETE", "/api/buzon/9", { bodega: "M502", propia: "M501" });
+  assert.equal(borrado.status, 403);
+  assert.equal(mensajes.length, 1);
+});
+
+test("un admin crea mensajes siempre en su propia bodega, no en la que mira", async () => {
+  const r = await pedir("POST", "/api/buzon", {
+    bodega: "M503",
+    propia: "M501",
+    cuerpo: { titulo: "Aviso", descripcion: "Texto", urgencia: "leve" },
+  });
+  assert.equal(r.status, 201);
+  assert.equal(r.data.mensaje.bodega, "M501");
 });

@@ -119,7 +119,7 @@ function useBuzonNovedades(usuario, admin) {
 
 // ── Hilo de conversación ─────────────────────────────────────────────────────
 
-function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pulso }) {
+function Conversacion({ buzonId, cerrado, soloLectura = false, usuario, tieneNovedad, marcarVisto, pulso }) {
   const [respuestas, setRespuestas] = useState(null);
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
@@ -225,7 +225,7 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pu
             ))}
           <div ref={finRef} />
 
-          {!cerrado && (
+          {!cerrado && !soloLectura && (
             <form onSubmit={enviar} className="buzon-conv-form">
               <div className="buzon-conv-input-wrap">
                 <textarea
@@ -246,6 +246,11 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pu
               </button>
             </form>
           )}
+          {soloLectura && !cerrado && (
+            <p className="buzon-vacio" style={{ fontSize: 12 }}>
+              Solo lectura · solo el administrador de esta bodega puede responder.
+            </p>
+          )}
           {cerrado && (
             <p className="buzon-vacio" style={{ fontSize: 12 }}>
               Mensaje cerrado · no se aceptan más respuestas.
@@ -259,7 +264,7 @@ function Conversacion({ buzonId, cerrado, usuario, tieneNovedad, marcarVisto, pu
 
 // ── Tarjeta de mensaje ───────────────────────────────────────────────────────
 
-function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcarVisto, pulso }) {
+function Mensaje({ m, admin, soloLectura = false, usuario, onEstado, onEliminar, tieneNovedad, marcarVisto, pulso }) {
   const [minimizado, setMinimizado] = useState(false);
   const color = COLOR_URGENCIA[m.urgencia];
   return (
@@ -291,13 +296,14 @@ function Mensaje({ m, admin, usuario, onEstado, onEliminar, tieneNovedad, marcar
           <Conversacion
             buzonId={m.id}
             cerrado={m.estado === "cerrado"}
+            soloLectura={soloLectura}
             usuario={usuario}
             tieneNovedad={tieneNovedad}
             marcarVisto={marcarVisto}
             pulso={pulso}
           />
 
-          {admin && (
+          {admin && !soloLectura && (
             <div className="buzon-acciones">
               {ESTADOS.filter((e) => e !== m.estado).map((e) => (
                 <button key={e} type="button" className="buzon-btn" onClick={() => onEstado(m.id, e)}>
@@ -382,8 +388,9 @@ function Formulario({ alEnviar }) {
 // ── Vista principal ──────────────────────────────────────────────────────────
 
 export default function Buzon() {
-  const { rol, usuario } = useSesion();
+  const { rol, usuario, bodega: bodegaDelUsuario } = useSesion();
   const admin = rol === "admin";
+  const bodegaPropia = bodegaDelUsuario || "M501";
   const [mensajes, setMensajes] = useState([]);
   const [error, setError] = useState("");
   const [seccion, setSeccion] = useState("sin revisar");
@@ -502,6 +509,7 @@ export default function Buzon() {
               key={m.id}
               m={m}
               admin={admin}
+              soloLectura={admin && m.bodega !== bodegaPropia}
               usuario={usuario}
               onEstado={cambiarEstado}
               onEliminar={eliminar}

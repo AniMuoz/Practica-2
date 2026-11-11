@@ -23,8 +23,15 @@ const LIMPIEZA_PROPIA = /^\/tabla\/limpiar-inventario$/;
 // Solo nombres sin sufijo de bodega: el servidor los traduce a las columnas de la bodega activa.
 const CAMPO_LIBRE = /^(ubicaci[oó]n|sub-ubicaci[oó]n|inventario|comentario)$/i;
 
-function requiereAdmin(metodo, ruta) {
+// Express enruta sin distinguir mayusculas ni la "/" final: se normaliza igual para no saltarse la lista.
+function normalizarRuta(ruta) {
+  const limpia = String(ruta || "").toLowerCase().replace(/\/+$/, "");
+  return limpia || "/";
+}
+
+function requiereAdmin(metodo, rutaOriginal) {
   if (METODOS_LECTURA.has(metodo)) return false;
+  const ruta = normalizarRuta(rutaOriginal);
   if (metodo === "PUT" && CONTEO_MATERIAL.test(ruta)) return false;
   return ESCRITURAS_ADMIN.some((patron) => patron.test(ruta));
 }
@@ -43,14 +50,15 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
     if (!requiereAdmin(req.method, req.path)) return next();
     try {
       await exigirAdmin(req);
+      const ruta = normalizarRuta(req.path);
       const bodega = req.bodega || "M501";
       // Un admin de otra bodega solo edita campos libres y solo en su propia bodega (no con X-Bodega ajeno).
       const ajena = req.bodegaActiva && req.bodegaActiva !== bodega;
-      if (req.method === "POST" && LIMPIEZA_PROPIA.test(req.path)) {
+      if (req.method === "POST" && LIMPIEZA_PROPIA.test(ruta)) {
         if (ajena && req.usuario !== SUPERUSUARIO) throw Object.assign(new Error("Solo puedes limpiar el inventario y comentarios de tu propia bodega."), { status: 403 });
         return next();
       }
-      if (bodega !== "M501" && (ajena || !soloCamposLibres(req.method, req.path, req.body))) {
+      if (bodega !== "M501" && (ajena || !soloCamposLibres(req.method, ruta, req.body))) {
         const error = new Error("Tu bodega solo puede ver y descargar planillas.");
         error.status = 403;
         throw error;
