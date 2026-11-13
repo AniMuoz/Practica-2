@@ -11,7 +11,10 @@ export default function Detalle() {
   const { codigo } = useParams();
   const navigate = useNavigate();
   // Admin externo: solo ve; unicamente puede tocar inventario, comentario y QR.
-  const esExt = useSesion().rol === "admin_ext";
+  const sesion = useSesion();
+  const esExt = sesion.rol === "admin_ext";
+  // Usuario (admin u operador) de otra bodega: solo agrega foto, rombo y observaciones.
+  const limitado = !esExt && (sesion.bodega || "M501") !== "M501";
   const [columnas, setColumnas] = useState([]);
   const [fila, setFila] = useState(null);
   const [bodegas, setBodegas] = useState([]);
@@ -96,7 +99,7 @@ export default function Detalle() {
     apiFetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clave, datos, reemplazar }),
+      body: JSON.stringify({ clave, datos: limitado ? { Observaciones: datos.Observaciones ?? "" } : datos, reemplazar }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -402,7 +405,7 @@ export default function Detalle() {
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
                   {campo}
-                  {editando && (!esExt || campo === "QR") && (
+                  {editando && (esExt || limitado ? (esExt ? campo === "QR" : campo !== "QR" || sesion.rol === "admin") : true) && (
                     <>
                       <input
                         type="file"
@@ -550,7 +553,7 @@ export default function Detalle() {
                   cursor: "pointer",
                 }}
               >
-                Cambiar datos de material
+                {limitado ? "Añadir imagen y observaciones" : "Cambiar datos de material"}
               </button>
               </div>
             )}
@@ -654,7 +657,7 @@ export default function Detalle() {
                 <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                   Stock
                 </span>
-                {editando && !esExt ? (
+                {editando && !esExt && !limitado ? (
                   <input
                     value={datos.Stock ?? ""}
                     onChange={(event) =>
@@ -698,7 +701,7 @@ export default function Detalle() {
                 <div key={columna} style={{ minWidth: 0 }}>
                   <dt style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>{columna}</dt>
                   <dd style={{ margin: 0, fontSize: 15 }}>
-                    {editando && !esExt ? (
+                    {editando && !esExt && !limitado ? (
                       <input
                         value={datos[columna] ?? ""}
                         onChange={(event) => {
@@ -792,7 +795,7 @@ export default function Detalle() {
                 >
                   {guardandoDatos ? "Guardando..." : "Guardar datos"}
                 </button>
-                <button
+                {!limitado && <button
                   type="button"
                   disabled={guardandoDatos || eliminando}
                   onClick={() => setConfirmarEliminar(true)}
@@ -807,7 +810,7 @@ export default function Detalle() {
                   }}
                 >
                   Eliminar material
-                </button>
+                </button>}
               </div>
             )}
             {avisoDatos && <p style={{ margin: 0, fontSize: 14 }}>{avisoDatos}</p>}

@@ -7,6 +7,14 @@ const { uploadXlsx, upload, emitir, esImagenReal, esHeicReal, convertirHeicAJpeg
 const { subirImagen } = require("../supabase/imagenesSupabase");
 const { exigirAdmin, exigirAdminVer } = require("../seguridad/auth");
 
+// El QR lo gestionan los admins de cualquier bodega y los admins externos (no los operadores).
+function exigirPermisoQr(req, campo) {
+  if (campo !== "QR" || req.rol === "admin_ext") return;
+  if (req.rol !== "admin") {
+    throw Object.assign(new Error("Tu bodega solo puede ver y descargar planillas."), { status: 403 });
+  }
+}
+
 module.exports = function rutasMateriales(app) {
   // Una sola importación masiva a la vez: evita que dos cargas se pisen en Supabase.
   let importacionEnCurso = false;
@@ -223,6 +231,7 @@ module.exports = function rutasMateriales(app) {
   app.delete("/api/material/:codigo/imagen", async (req, res) => {
     try {
       if (req.rol === "admin_ext" && req.body.campo !== "QR") throw Object.assign(new Error("Tu rol solo puede ver."), { status: 403 });
+      exigirPermisoQr(req, req.body.campo);
       const resultado = await guardarImagen(req.params.codigo, req.body.campo, "", claveDe(req));
       if (!resultado) {
         res.status(404).json({ error: "Material no encontrado." });
@@ -247,8 +256,10 @@ module.exports = function rutasMateriales(app) {
         return;
       }
       try {
-        if (req.body.campo === "QR") await exigirAdminVer(req);
-        else if (req.rol === "admin_ext") throw Object.assign(new Error("Tu rol solo puede ver."), { status: 403 });
+        if (req.body.campo === "QR") {
+          await exigirAdminVer(req);
+          exigirPermisoQr(req, "QR");
+        } else if (req.rol === "admin_ext") throw Object.assign(new Error("Tu rol solo puede ver."), { status: 403 });
         let contenido = await fs.promises.readFile(req.file.path);
         let mimetype = req.file.mimetype;
         if (esHeicReal(contenido)) {

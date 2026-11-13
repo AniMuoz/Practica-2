@@ -144,6 +144,24 @@ test("un admin de otra bodega solo puede editar ubicacion y sub-ubicacion", asyn
   assert.deepEqual(await correr("POST", "/bitacora/folios", {}), { bloqueado: true, status: 403 });
 });
 
+test("otra bodega (admin u operador): foto, rombo y observaciones abiertos; M501 sigue solo admin", async () => {
+  const sinAdmin = async () => { throw Object.assign(new Error("no admin"), { status: 403 }); };
+  const correr = (bodega, metodo, ruta, body, extra = {}) =>
+    new Promise((resolve) => {
+      const mw = soloAdminEnEscrituras(sinAdmin, (_res, error) => resolve({ bloqueado: true, status: error.status }));
+      mw({ method: metodo, path: ruta, bodega, body, ...extra }, {}, () => resolve({ bloqueado: false }));
+    });
+  const libre = { bloqueado: false };
+  const cerrado = { bloqueado: true, status: 403 };
+  assert.deepEqual(await correr("M502", "POST", "/material/1/imagen", {}), libre);
+  assert.deepEqual(await correr("M502", "DELETE", "/material/1/imagen", { campo: "Foto" }), libre);
+  assert.deepEqual(await correr("M502", "PUT", "/material/1/datos", { datos: { Observaciones: "ok" } }), libre);
+  assert.deepEqual(await correr("M502", "PUT", "/material/1/datos", { datos: { Observaciones: "x", Precio: 1 } }), cerrado);
+  assert.deepEqual(await correr("M502", "POST", "/material/1/imagen", {}, { bodegaActiva: "M501" }), cerrado);
+  assert.deepEqual(await correr("M501", "POST", "/material/1/imagen", {}), cerrado);
+  assert.deepEqual(await correr("M501", "PUT", "/material/1/datos", { datos: { Observaciones: "ok" } }), cerrado);
+});
+
 
 
 test("admin ext: solo ve; escribe unicamente en gastos, bitacora, QR, inventario/comentario y alta de personal", async () => {

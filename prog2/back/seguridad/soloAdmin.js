@@ -44,6 +44,21 @@ function soloCamposLibres(metodo, ruta, body) {
   return claves.length > 0 && claves.every((clave) => CAMPO_LIBRE.test(clave));
 }
 
+// Fotos, rombo y observaciones: admin u operador (con contraseña) de una bodega que no es M501.
+// La contraseña la valida el servicio; el QR se restringe en la ruta (solo M501 y admin externo).
+const IMAGEN_MATERIAL = /^\/material\/[^/]+\/imagen$/;
+function abiertoOtraBodega(metodo, rutaOriginal, body, bodega) {
+  if ((bodega || "M501") === "M501") return false;
+  const ruta = normalizarRuta(rutaOriginal);
+  if ((metodo === "POST" || metodo === "DELETE") && IMAGEN_MATERIAL.test(ruta)) return true;
+  if (metodo === "PUT" && DATOS_MATERIAL.test(ruta)) {
+    if (!body || body.reemplazar === true || !body.datos || typeof body.datos !== "object") return false;
+    const claves = Object.keys(body.datos);
+    return claves.length > 0 && claves.every((clave) => clave === "Observaciones");
+  }
+  return false;
+}
+
 // Admin externo (rol admin_ext): solo ve. Unicas escrituras permitidas (lista blanca):
 // gastos, bitacora de camiones, QR, crear operadores, inventario/comentario y utilidades que no guardan datos.
 const EXT_RUTAS_LIBRES = [
@@ -82,6 +97,12 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
       if (permitidoAdminExt(req.method, req.path, req.body)) return next();
       return responderError(res, Object.assign(new Error("Tu rol solo puede ver."), { status: 403 }), "No se pudo verificar el rol.");
     }
+    if (abiertoOtraBodega(req.method, req.path, req.body, req.bodega)) {
+      if (req.bodegaActiva && req.bodegaActiva !== req.bodega) {
+        return responderError(res, Object.assign(new Error("Solo puedes editar los materiales desde tu propia bodega."), { status: 403 }), "No se pudo verificar el rol.");
+      }
+      return next();
+    }
     if (!requiereAdmin(req.method, req.path)) return next();
     try {
       await exigirAdmin(req);
@@ -105,4 +126,4 @@ function soloAdminEnEscrituras(exigirAdmin, responderError) {
   };
 }
 
-module.exports = { requiereAdmin, permitidoAdminExt, soloAdminEnEscrituras };
+module.exports = { requiereAdmin, abiertoOtraBodega, permitidoAdminExt, soloAdminEnEscrituras };

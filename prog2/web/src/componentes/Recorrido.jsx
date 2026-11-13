@@ -65,7 +65,8 @@ const PASOS = {
     {
       id: "editar-material",
       titulo: "Editar datos",
-      texto: "Con la contraseña de acceso se pueden editar los datos del material que se ve.",
+      texto:
+        "Con la contraseña de acceso se pueden editar los datos del material que se ve. En las bodegas distintas de M501 este botón permite añadir o cambiar la foto, el rombo y las observaciones del material (el resto de los datos los gestiona M501). Los administradores también pueden subir el QR.",
     },
   ],
   admin: [
