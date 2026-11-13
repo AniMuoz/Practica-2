@@ -726,7 +726,6 @@ export default function Detalle() {
                   </dd>
                 </div>
               ))}
-            </dl>
             {(() => {
               const abierto = !movil || verObservaciones || (editando && !esExt);
               const cuerpo = editando && !esExt ? (
@@ -754,7 +753,7 @@ export default function Detalle() {
                 </>
               );
               return (
-                <div className="observaciones-material">
+                <div className="observaciones-material" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
                   {movil && !(editando && !esExt) && (
                     <button
                       type="button"
@@ -769,6 +768,7 @@ export default function Detalle() {
                 </div>
               );
             })()}
+            </dl>
             {editando && esExt && (
               <button type="button" onClick={() => setEditando(false)} style={{ justifySelf: "start", padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", fontSize: 14, cursor: "pointer" }}>
                 Terminar edición de QR
