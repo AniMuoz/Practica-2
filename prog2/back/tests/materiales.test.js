@@ -269,11 +269,11 @@ test("actualizarDatos valida clave y datos", async () => {
   assert.equal(llamadas.length, 0);
 });
 
-test("actualizarDatos limita Observaciones a 50 caracteres", async () => {
+test("actualizarDatos limita Observaciones a 200 caracteres", async () => {
   const nucleo = await cargar();
-  await assert.rejects(nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(51) }), { status: 400, message: /50 caracteres/ });
-  const ok = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(50) });
-  assert.equal(ok.fila.Observaciones, "x".repeat(50));
+  await assert.rejects(nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(201) }), { status: 400, message: /200 caracteres/ });
+  const ok = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(200) });
+  assert.equal(ok.fila.Observaciones, "x".repeat(200));
 });
 
 test("actualizarDatos cambia los campos permitidos e ignora inventario, comentario, imágenes y marcado", async () => {

@@ -759,8 +759,8 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
-  if (String(datos.Observaciones ?? "").length > 50) {
-    const error = new Error("Las observaciones admiten como máximo 50 caracteres.");
+  if (String(datos.Observaciones ?? "").length > 200) {
+    const error = new Error("Las observaciones admiten como máximo 200 caracteres.");
     error.status = 400;
     throw error;
   }

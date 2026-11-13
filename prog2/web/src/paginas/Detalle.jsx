@@ -732,14 +732,14 @@ export default function Detalle() {
                 <>
                   <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-suave)" }}>
                     Observaciones
-                    <span>{String(datos.Observaciones ?? "").length}/50</span>
+                    <span>{String(datos.Observaciones ?? "").length}/200</span>
                   </span>
                   <textarea
                     value={datos.Observaciones ?? ""}
-                    maxLength={50}
+                    maxLength={200}
                     rows={2}
                     onChange={(event) =>
-                      setDatos((actual) => ({ ...actual, Observaciones: event.target.value.slice(0, 50) }))
+                      setDatos((actual) => ({ ...actual, Observaciones: event.target.value.slice(0, 200) }))
                     }
                     style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, resize: "none" }}
                   />

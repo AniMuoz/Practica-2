@@ -259,6 +259,28 @@ export default function Navbar({ buzonNovedades = 0 }) {
           <path d="M6.3 6.8a8 8 0 1 0 11.4 0" />
         </svg>
       </button>
+      {usuario && (
+        <span
+          className="barra-usuario"
+          title={`Usuario activo: ${usuario}`}
+          style={{
+            maxWidth: 140,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "var(--interruptor)",
+            color: "var(--texto)",
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1.2,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          {usuario}
+        </span>
+      )}
       <SelectorBodega rol={rol} bodegaActiva={bodegaActiva} />
       <Link
         data-tour="titulo"
