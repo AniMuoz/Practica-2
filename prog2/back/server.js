@@ -9,12 +9,19 @@ const { subirImagen, bajarImagen, asegurarCubo, listarImagenes } = require("./su
 const { middlewareCors, cabecerasSeguras, limitarPeticiones, exigirProxy, verificarEntorno, MAX_EVENTOS } = require("./seguridad/seguridad");
 const { conIpDeClave } = require("./seguridad/limiteClave");
 const { contextoBodega, bodegaValida, bodegaEsValida, cargarMarcados } = require("./servicios/nucleoDatos");
+const { registrar: registrarPresencia } = require("./servicios/presencia");
 const { comprobarBase } = require("./utils/salud");
 const { programarLimpieza } = require("./servicios/logsAuditoria");
 const { carpetaImagenes, clientesEventos, conColores } = require("./utils/compartido");
 
 // Los nombres de imagen son unicos (nunca se reemplaza el contenido de un nombre), asi que 24 h es seguro.
 const CACHE_IMAGENES = "private, max-age=86400, must-revalidate";
+
+// Anota quien esta activo; consultar la lista o el canal SSE no cuenta como actividad.
+function anotarPresencia(req) {
+  if (!req.usuario || req.path === "/eventos" || req.path === "/presencia") return;
+  registrarPresencia(req.usuario, req.rol, req.bodegaActiva);
+}
 
 function respuestaConexion(error) {
   if (error && error.code !== "PGRST205" && error.code !== "42P01") {
@@ -70,6 +77,7 @@ function crearApp({ proteger = true } = {}) {
       }
       req.bodega = bodegaValida(req.bodega);
       req.bodegaActiva = req.bodega;
+      anotarPresencia(req);
       contextoBodega.run({ bodega: req.bodega, usuario }, next);
       return;
     }
@@ -78,6 +86,7 @@ function crearApp({ proteger = true } = {}) {
       return;
     }
     req.bodegaActiva = bodegaValida(pedida);
+    anotarPresencia(req);
     contextoBodega.run({ bodega: req.bodegaActiva, usuario }, next);
   });
   if (proteger) app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
@@ -151,6 +160,7 @@ function crearApp({ proteger = true } = {}) {
   require("./rutas/usuarios")(app);
   require("./rutas/gastos")(app);
   require("./rutas/buzon")(app);
+  require("./rutas/presencia")(app);
 
   app.locals.port = PORT;
   return app;
