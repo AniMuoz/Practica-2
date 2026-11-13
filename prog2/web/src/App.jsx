@@ -10,6 +10,7 @@ import { apiFetch } from "./lib/api.js";
 import {
   aplicarFilaRecibida,
   bodegasDe,
+  caracteristicasDe,
   colorCelda as colorDeCelda,
   columnasSinImagen,
   consultaExcel,
@@ -108,8 +109,7 @@ export default function App() {
   }, [filas, subUbicacion, subUbicaciones]);
 
   const caracteristicas = useMemo(
-    () => [...new Set(filas.map((fila) => String(fila.Caracteristica ?? "").trim()).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, "es")),
+    () => caracteristicasDe(filas),
     [filas]
   );
 

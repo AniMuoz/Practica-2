@@ -66,11 +66,18 @@ export function subUbicacionesDe(filas, bodega) {
   return [...valores].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
 }
 
+export function normalizarCaracteristica(valor) {
+  return String(valor ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export function caracteristicasDe(filas) {
-  const valores = new Set(
-    filas.map((fila) => String(fila.Caracteristica ?? "").trim()).filter(Boolean)
-  );
-  return [...valores].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  const porClave = new Map();
+  for (const fila of filas) {
+    const texto = String(fila.Caracteristica ?? "").trim().replace(/\s+/g, " ");
+    const clave = normalizarCaracteristica(texto);
+    if (clave && !porClave.has(clave)) porClave.set(clave, texto);
+  }
+  return [...porClave.values()].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
 }
 
 export function filtrarFilas(filas, filtros) {
@@ -101,7 +108,8 @@ export function filtrarFilas(filas, filtros) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
   }
   if (caracteristica) {
-    lista = lista.filter((fila) => String(fila.Caracteristica ?? "").trim() === caracteristica);
+    const buscada = normalizarCaracteristica(caracteristica);
+    lista = lista.filter((fila) => normalizarCaracteristica(fila.Caracteristica) === buscada);
   }
   if (String(stockMinimo).trim() !== "") {
     const minimo = Number(stockMinimo);
