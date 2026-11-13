@@ -20,6 +20,12 @@ function notificar(nombre, dato) {
 function abrir() {
   fuente = new EventSource("/api/eventos");
   fuente.onopen = () => notificar("alAbrir");
+  // Un 401 (sesion vencida) hace fallar la conexion de forma permanente: se cierra para no reintentar en bucle.
+  fuente.onerror = () => {
+    if (fuente && fuente.readyState === 2) {
+      fuente = null;
+    }
+  };
   fuente.onmessage = (evento) => {
     let data;
     try {

@@ -6,8 +6,10 @@ const { ipDe: clienteDe } = require("./seguridad");
 
 const ARCHIVO_SECRETO = path.join(__dirname, "..", ".sesion-secreto");
 const NOMBRE_COOKIE = "sesion";
-const DURACION_MS = 7 * 24 * 60 * 60 * 1000;
-const RENOVAR_BAJO_MS = 6 * 24 * 60 * 60 * 1000;
+// Tope absoluto de la sesion desde el login (no se extiende con el uso).
+const DURACION_MS = 8 * 60 * 60 * 1000;
+// Sin actividad real del usuario durante este tiempo la sesion se cierra.
+const INACTIVIDAD_MS = 60 * 60 * 1000;
 const MAX_INTENTOS = 10;
 // Limite por nombre de usuario (frena ataques repartidos entre muchas IPs); mas alto para que
 // un tercero no pueda bloquear facilmente a un usuario legitimo.
@@ -133,9 +135,10 @@ function contadorDe(registro) {
   return Number(registro.sesion_version) || 0;
 }
 
-function crearToken(registro) {
+// `ini` fija el tope de 8h y no cambia al renovar; `act` es la ultima actividad real del usuario.
+function crearToken(registro, ini = Date.now()) {
   const cuerpo = Buffer.from(
-    JSON.stringify({ u: registro.usuario, v: versionDe(registro), s: contadorDe(registro), exp: Date.now() + DURACION_MS })
+    JSON.stringify({ u: registro.usuario, v: versionDe(registro), s: contadorDe(registro), ini, act: Date.now() })
   ).toString("base64url");
   return `${cuerpo}.${firmar(cuerpo)}`;
 }
@@ -148,7 +151,9 @@ function leerToken(token) {
   if (esperada.length !== recibida.length || !crypto.timingSafeEqual(esperada, recibida)) return null;
   try {
     const datos = JSON.parse(Buffer.from(cuerpo, "base64url").toString("utf8"));
-    if (typeof datos.u !== "string" || typeof datos.exp !== "number" || datos.exp < Date.now()) return null;
+    if (typeof datos.u !== "string" || typeof datos.ini !== "number" || typeof datos.act !== "number") return null;
+    const ahora = Date.now();
+    if (ahora - datos.ini > DURACION_MS || ahora - datos.act > INACTIVIDAD_MS) return null;
     return datos;
   } catch {
     return null;
@@ -250,8 +255,10 @@ async function protegerApi(req, res, next) {
     req.usuario = sesion.registro.usuario;
     req.rol = sesion.registro.rol;
     req.bodega = sesion.registro.bodega || "M501";
-    if (sesion.datos.exp - Date.now() < RENOVAR_BAJO_MS) {
-      ponerCookie(req, res, crearToken(sesion.registro), DURACION_MS);
+    // Solo las peticiones con actividad real del usuario renuevan; sondeos y SSE no.
+    if (req.headers["x-actividad"] === "1") {
+      const restante = Math.max(0, sesion.datos.ini + DURACION_MS - Date.now());
+      ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), restante);
     }
     next();
   } catch (error) {
@@ -374,6 +381,10 @@ function rutasAuth(app) {
     try {
       const sesion = await sesionDe(req);
       if (!sesion) throw errorHttp(401, "Sesión no iniciada.");
+      if (req.headers["x-actividad"] === "1" && sesion.registro.rol !== "desactivado") {
+        const restante = Math.max(0, sesion.datos.ini + DURACION_MS - Date.now());
+        ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), restante);
+      }
       res.json({ usuario: sesion.registro.usuario, rol: sesion.registro.rol || "operador", bodega: sesion.registro.bodega || "M501" });
     } catch (error) {
       responderError(res, error, "No se pudo verificar la sesión.");

@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch } from "../lib/api.js";
+import { apiFetch, marcarInteraccion, msDesdeInteraccion } from "../lib/api.js";
+
+const INACTIVIDAD_MS = 60 * 60 * 1000;
 import { fijarBodega } from "../lib/bodega.js";
 
 const SesionContext = createContext({ usuario: "", rol: "operador" });
@@ -286,7 +288,7 @@ function Login({ alEntrar, avisoInicial = "" }) {
         <button type="button" onClick={() => setCambiando(true)} style={estiloEnlace}>
           Cambiar contraseña
         </button>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>La sesión se mantiene iniciada durante 7 días.</p>
+        <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>La sesión dura 8 horas y se cierra tras 1 hora sin uso.</p>
       </form>
       )}
     </main>
@@ -297,6 +299,7 @@ export default function Acceso({ children }) {
   const [sesion, setSesion] = useState(null);
   const [verificando, setVerificando] = useState(true);
   const [desactivada, setDesactivada] = useState(false);
+  const [avisoCierre, setAvisoCierre] = useState("");
   useEffect(() => {
     let cancelado = false;
     const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -333,8 +336,35 @@ export default function Acceso({ children }) {
     };
   }, []);
 
+  // Con sesion iniciada: cierra por 1h sin interaccion y, cada 5 min, hace un ping que renueva la
+  // actividad (si hubo interaccion) o detecta que se cumplieron las 8h (401 -> login).
   useEffect(() => {
-    const vencida = () => setSesion(null);
+    if (!sesion) return undefined;
+    marcarInteraccion();
+    const id = setInterval(() => {
+      if (msDesdeInteraccion() >= INACTIVIDAD_MS) {
+        setAvisoCierre("Sesión cerrada por inactividad.");
+        fetch("/api/logout", { method: "POST" }).catch(() => {});
+        setSesion(null);
+        return;
+      }
+      apiFetch("/api/sesion", { cache: "no-store" })
+        .then((res) => {
+          if (res.status === 401) {
+            setAvisoCierre("Sesión vencida. Vuelve a iniciar sesión.");
+            setSesion(null);
+          }
+        })
+        .catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [sesion]);
+
+  useEffect(() => {
+    const vencida = (e) => {
+      if (e?.detail?.aviso) setAvisoCierre((previo) => previo || "Sesión vencida. Vuelve a iniciar sesión.");
+      setSesion(null);
+    };
     const desactivar = () => {
       setDesactivada(true);
       setSesion(null);
@@ -348,7 +378,19 @@ export default function Acceso({ children }) {
   }, []);
 
   if (verificando) return null;
-  if (!sesion) return <Login key={desactivada ? "d" : "n"} alEntrar={setSesion} avisoInicial={desactivada ? MENSAJE_DESACTIVADA : ""} />;
+  if (!sesion) {
+    const aviso = desactivada ? MENSAJE_DESACTIVADA : avisoCierre;
+    return (
+      <Login
+        key={desactivada ? "d" : avisoCierre || "n"}
+        alEntrar={(u) => {
+          setAvisoCierre("");
+          setSesion(u);
+        }}
+        avisoInicial={aviso}
+      />
+    );
+  }
 
   return <SesionContext.Provider value={sesion}>{children}</SesionContext.Provider>;
 }

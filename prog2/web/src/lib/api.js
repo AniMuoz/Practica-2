@@ -19,17 +19,36 @@ async function avisarSesion(input, respuesta) {
   }
   if (respuesta.status === 401) {
     if (!/\/api\/(login|logout|sesion)/.test(urlDe(input))) {
-      window.dispatchEvent(new Event("sesion-vencida"));
+      window.dispatchEvent(new CustomEvent("sesion-vencida", { detail: { aviso: true } }));
     }
+  }
+}
+
+// Ultima interaccion real del usuario (mouse, teclado, toque, scroll). Los sondeos no cuentan.
+let ultimaInteraccion = Date.now();
+const VENTANA_ACTIVIDAD_MS = 60 * 1000;
+
+export function marcarInteraccion() {
+  ultimaInteraccion = Date.now();
+}
+
+export function msDesdeInteraccion() {
+  return Date.now() - ultimaInteraccion;
+}
+
+if (typeof window !== "undefined") {
+  for (const nombre of ["pointerdown", "pointermove", "keydown", "touchstart", "scroll", "wheel"]) {
+    window.addEventListener(nombre, marcarInteraccion, { passive: true, capture: true });
   }
 }
 
 /** fetch de la API con avisos de sesion; usar en lugar de window.fetch para /api. */
 export async function apiFetch(input, init) {
   const bodega = bodegaPrincipal();
-  if (bodega !== "M501" && /^\/api\//.test(urlDe(input))) {
+  if (/^\/api\//.test(urlDe(input))) {
     const cabeceras = new Headers(init?.headers);
-    cabeceras.set("X-Bodega", bodega);
+    if (bodega !== "M501") cabeceras.set("X-Bodega", bodega);
+    if (msDesdeInteraccion() < VENTANA_ACTIVIDAD_MS) cabeceras.set("X-Actividad", "1");
     init = { ...init, headers: cabeceras };
   }
   const respuesta = await fetch(input, init);

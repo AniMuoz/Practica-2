@@ -149,13 +149,13 @@ async function pedir(metodo, ruta, { cuerpo, cookie, cliente, cabeceras } = {}) 
   };
 }
 
-function tokenManual({ u, v, exp }) {
-  const cuerpo = Buffer.from(JSON.stringify({ u, v, exp })).toString("base64url");
+function tokenManual({ u, v, ini, act }) {
+  const cuerpo = Buffer.from(JSON.stringify({ u, v, ini, act })).toString("base64url");
   const firma = crypto.createHmac("sha256", process.env.SESSION_SECRET).update(cuerpo).digest("base64url");
   return `${cuerpo}.${firma}`;
 }
 
-const DIA = 24 * 60 * 60 * 1000;
+const HORA = 60 * 60 * 1000;
 
 test("guardarUsuario normaliza el nombre, guarda un hash y no la clave", async () => {
   const nombre = await guardarUsuario("  Ana ", "clave-segura-1");
@@ -203,7 +203,7 @@ test("login correcto responde el usuario y entrega una cookie HttpOnly", async (
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /SameSite=Lax/);
   assert.match(cookie, /Path=\//);
-  assert.match(cookie, new RegExp(`Max-Age=${7 * 24 * 60 * 60}`));
+  assert.match(cookie, new RegExp(`Max-Age=${8 * 60 * 60}`));
   assert.doesNotMatch(cookie, /Secure/);
 });
 
@@ -292,7 +292,7 @@ test("un token alterado o firmado con otro secreto se rechaza", async () => {
   await guardarUsuario("alterado", "clave-segura-1");
   const login = await pedir("POST", "/api/login", { cuerpo: { usuario: "alterado", clave: "clave-segura-1" } });
   const [cuerpo, firma] = login.cookie.replace("sesion=", "").split(".");
-  const otroCuerpo = Buffer.from(JSON.stringify({ u: "admin", v: "x", exp: Date.now() + DIA })).toString("base64url");
+  const otroCuerpo = Buffer.from(JSON.stringify({ u: "admin", v: "x", ini: Date.now(), act: Date.now() })).toString("base64url");
   const cambiado = await pedir("GET", "/api/privado", { cookie: `sesion=${otroCuerpo}.${firma}` });
   assert.equal(cambiado.status, 401);
   const ajeno = crypto.createHmac("sha256", "otro-secreto").update(cuerpo).digest("base64url");
@@ -303,33 +303,42 @@ test("un token alterado o firmado con otro secreto se rechaza", async () => {
 test("un token vencido se rechaza", async () => {
   await guardarUsuario("vencido", "clave-segura-1");
   const version = usuarios.get("vencido").split(":")[0];
-  const vigente = tokenManual({ u: "vencido", v: version, exp: Date.now() + DIA });
-  const vencido = tokenManual({ u: "vencido", v: version, exp: Date.now() - 1000 });
+  const ahora = Date.now();
+  const vigente = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - 1000 });
+  const pasaron8h = tokenManual({ u: "vencido", v: version, ini: ahora - 8 * HORA - 1000, act: ahora });
+  const inactivo = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - HORA - 1000 });
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${vigente}` })).status, 200);
-  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${vencido}` })).status, 401);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${pasaron8h}` })).status, 401);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${inactivo}` })).status, 401);
 });
 
 test("un token con datos inválidos se rechaza aunque esté bien firmado", async () => {
-  const sinUsuario = tokenManual({ u: 5, v: "x", exp: Date.now() + DIA });
-  const sinExp = tokenManual({ u: "ana", v: "x", exp: "mañana" });
+  const sinUsuario = tokenManual({ u: 5, v: "x", ini: Date.now(), act: Date.now() });
+  const sinExp = tokenManual({ u: "ana", v: "x", ini: "ayer", act: "hoy" });
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${sinUsuario}` })).status, 401);
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${sinExp}` })).status, 401);
 });
 
 test("un token de un usuario que ya no existe se rechaza", async () => {
-  const token = tokenManual({ u: "fantasma", v: "x", exp: Date.now() + DIA });
+  const token = tokenManual({ u: "fantasma", v: "x", ini: Date.now(), act: Date.now() });
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${token}` })).status, 401);
 });
 
-test("una sesión con poco tiempo restante se renueva", async () => {
+test("solo la petición con X-Actividad renueva la actividad y conserva el inicio", async () => {
   await guardarUsuario("renueva", "clave-segura-1");
   const version = usuarios.get("renueva").split(":")[0];
-  const token = tokenManual({ u: "renueva", v: version, exp: Date.now() + DIA });
-  const respuesta = await pedir("GET", "/api/privado", { cookie: `sesion=${token}` });
-  assert.equal(respuesta.status, 200);
-  assert.equal(respuesta.cookies.length, 1);
-  assert.notEqual(respuesta.cookie, `sesion=${token}`);
-  assert.equal((await pedir("GET", "/api/privado", { cookie: respuesta.cookie })).status, 200);
+  const ini = Date.now() - 3 * HORA;
+  const token = tokenManual({ u: "renueva", v: version, ini, act: Date.now() - 30 * 60 * 1000 });
+  const pasiva = await pedir("GET", "/api/privado", { cookie: `sesion=${token}` });
+  assert.equal(pasiva.status, 200);
+  assert.equal(pasiva.cookies.length, 0);
+  const activa = await pedir("GET", "/api/privado", { cookie: `sesion=${token}`, cabeceras: { "x-actividad": "1" } });
+  assert.equal(activa.status, 200);
+  assert.equal(activa.cookies.length, 1);
+  const nuevo = JSON.parse(Buffer.from(activa.cookie.replace("sesion=", "").split(".")[0], "base64url").toString());
+  assert.equal(nuevo.ini, ini);
+  assert.ok(Date.now() - nuevo.act < 5000);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: activa.cookie })).status, 200);
 });
 
 test("las rutas públicas no piden sesión", async () => {
