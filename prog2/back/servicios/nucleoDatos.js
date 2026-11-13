@@ -32,6 +32,7 @@ const CAMPOS_MATERIAL = [
   ["Cons.Prom.Mensual", "cons_prom_mensual"],
   ["Stock Max", "stock_max"],
   ["INDICADOR", "indicador"],
+  ["Observaciones", "observaciones"],
 ];
 
 // Ubicación, sub-ubicación, inventario y comentario existen por bodega: M501 usa las columnas
@@ -172,7 +173,7 @@ const ENCABEZADO_MATERIALES = [
   "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio",
   "Caracteristica", "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario", "Editor",
   "Marcado", "M502", "M503", "M504", "M505",
-  "Cons.Prom.Mensual", "Stock Max", "INDICADOR",
+  "Cons.Prom.Mensual", "Stock Max", "INDICADOR", "Observaciones",
 ];
 
 const BODEGAS_EXTRA = ["M502", "M503", "M504", "M505"];
@@ -182,7 +183,7 @@ const COLUMNA_MARCADO = "Marcado";
 // también salen en la planilla principal; el resto se oculta ahí.
 const COLUMNAS_LOCALES_DETALLADO = ["Cons.Prom.Mensual", "Stock Max", "INDICADOR"];
 const COLUMNAS_DETALLADO = ["Caracteristica", "Stock critico", ...COLUMNAS_LOCALES_DETALLADO];
-const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_LOCALES_DETALLADO]);
+const COLUMNAS_OCULTAS = new Set([...BODEGAS_EXTRA, COLUMNA_MARCADO, ...COLUMNAS_LOCALES_DETALLADO.filter((c) => c !== "Stock Max")]);
 const COLUMNAS_BODEGAS_EXTRA = CAMPOS_BODEGAS_EXTRA.map(([titulo]) => titulo);
 ENCABEZADO_MATERIALES.push(...COLUMNAS_BODEGAS_EXTRA);
 COLUMNAS_BODEGAS_EXTRA.forEach((titulo) => COLUMNAS_OCULTAS.add(titulo));
@@ -754,6 +755,12 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
   exigirClave(clave);
   if (!datos || typeof datos !== "object") {
     const error = new Error("No hay datos para guardar.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (String(datos.Observaciones ?? "").length > 50) {
+    const error = new Error("Las observaciones admiten como máximo 50 caracteres.");
     error.status = 400;
     throw error;
   }

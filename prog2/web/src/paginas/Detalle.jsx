@@ -83,8 +83,9 @@ export default function Detalle() {
   }, [cargando, error, fila]);
 
   const soloLectura = columnas.filter(
-    (columna) => !["Inventario", "Comentario", "Editor", "Rombo", "QR", "Foto"].includes(columna)
+    (columna) => !["Inventario", "Comentario", "Editor", "Rombo", "QR", "Foto", "Observaciones"].includes(columna)
   );
+  const [verObservaciones, setVerObservaciones] = useState(false);
 
   const estadoInventario = estadoDeInventario(fila);
 
@@ -156,7 +157,8 @@ export default function Detalle() {
     editando &&
       fila &&
       !esExt &&
-      soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna]))
+      (soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna])) ||
+        textoCampo(datos.Observaciones) !== textoCampo(fila.Observaciones))
   );
   const hayCambiosSinGuardar = inventarioSinGuardar || comentarioSinGuardar || datosSinGuardar;
   hayCambiosRef.current = hayCambiosSinGuardar;
@@ -530,6 +532,7 @@ export default function Detalle() {
                       soloLectura.forEach((columna) => {
                         iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
                       });
+                      iniciales.Observaciones = fila.Observaciones == null ? "" : String(fila.Observaciones);
                       setDatos(iniciales);
                       setEditando(true);
                     })
@@ -568,6 +571,7 @@ export default function Detalle() {
                       soloLectura.forEach((columna) => {
                         iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
                       });
+                      iniciales.Observaciones = fila.Observaciones == null ? "" : String(fila.Observaciones);
                       setDatos(iniciales);
                       setPidiendoClave(false);
                       setEditando(true);
@@ -723,6 +727,48 @@ export default function Detalle() {
                 </div>
               ))}
             </dl>
+            {(() => {
+              const abierto = !movil || verObservaciones || (editando && !esExt);
+              const cuerpo = editando && !esExt ? (
+                <>
+                  <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-suave)" }}>
+                    Observaciones
+                    <span>{String(datos.Observaciones ?? "").length}/50</span>
+                  </span>
+                  <textarea
+                    value={datos.Observaciones ?? ""}
+                    maxLength={50}
+                    rows={2}
+                    onChange={(event) =>
+                      setDatos((actual) => ({ ...actual, Observaciones: event.target.value.slice(0, 50) }))
+                    }
+                    style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14, resize: "none" }}
+                  />
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>Observaciones</div>
+                  <div style={{ fontSize: 15, overflowWrap: "anywhere" }}>
+                    {fila.Observaciones === "" || fila.Observaciones == null ? "—" : fila.Observaciones}
+                  </div>
+                </>
+              );
+              return (
+                <div className="observaciones-material">
+                  {movil && !(editando && !esExt) && (
+                    <button
+                      type="button"
+                      aria-expanded={abierto}
+                      onClick={() => setVerObservaciones((v) => !v)}
+                      style={{ width: "100%", textAlign: "left", padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", color: "inherit", fontSize: 14, cursor: "pointer" }}
+                    >
+                      {abierto ? "▾" : "▸"} Observaciones
+                    </button>
+                  )}
+                  {abierto && <div style={{ marginTop: movil && !(editando && !esExt) ? 8 : 0 }}>{cuerpo}</div>}
+                </div>
+              );
+            })()}
             {editando && esExt && (
               <button type="button" onClick={() => setEditando(false)} style={{ justifySelf: "start", padding: "8px 14px", border: "1px solid var(--borde)", borderRadius: 6, background: "var(--superficie)", fontSize: 14, cursor: "pointer" }}>
                 Terminar edición de QR

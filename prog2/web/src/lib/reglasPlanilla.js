@@ -300,7 +300,7 @@ export function rangoPagina(pagina, tamano, total) {
 }
 
 export function columnasSinImagen(columnas) {
-  return columnas.filter((columna) => !["Rombo", "QR", "Foto"].includes(columna));
+  return columnas.filter((columna) => !["Rombo", "QR", "Foto", "Observaciones", "Stock Max"].includes(columna));
 }
 
 export function rutaExcel(ruta, colores) {

@@ -96,7 +96,7 @@ test("leerTabla muestra solo las columnas visibles y conserva el marcado en cada
   const { columnas, filas } = nucleo.leerTabla();
   assert.deepEqual(columnas, [
     "Codigo", "Descripcion", "Ubicación", "Sub-ubicación", "Stock", "Peso", "Precio", "Caracteristica",
-    "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario", "Editor",
+    "Stock critico", "Rombo", "QR", "Foto", "Inventario", "Comentario", "Editor", "Stock Max", "Observaciones",
   ]);
   assert.equal(filas.length, 3);
   assert.equal(filas[0].Descripcion, "Perno");
@@ -267,6 +267,13 @@ test("actualizarDatos valida clave y datos", async () => {
   }
   assert.equal(await nucleo.actualizarDatos("999", CLAVE, { Descripcion: "x" }), null);
   assert.equal(llamadas.length, 0);
+});
+
+test("actualizarDatos limita Observaciones a 50 caracteres", async () => {
+  const nucleo = await cargar();
+  await assert.rejects(nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(51) }), { status: 400, message: /50 caracteres/ });
+  const ok = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "x".repeat(50) });
+  assert.equal(ok.fila.Observaciones, "x".repeat(50));
 });
 
 test("actualizarDatos cambia los campos permitidos e ignora inventario, comentario, imágenes y marcado", async () => {
