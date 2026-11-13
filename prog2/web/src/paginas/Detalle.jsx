@@ -747,7 +747,7 @@ export default function Detalle() {
               ) : (
                 <>
                   <div style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>Observaciones</div>
-                  <div style={{ fontSize: 15, overflowWrap: "anywhere" }}>
+                  <div style={{ fontSize: 15, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
                     {fila.Observaciones === "" || fila.Observaciones == null ? "—" : fila.Observaciones}
                   </div>
                 </>
