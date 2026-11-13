@@ -113,7 +113,7 @@ const upload = multer({
       // El rombo lleva marca de tiempo para que cambiarlo cambie siempre su nombre.
       // El QR lleva la marca del rombo que incrusta (rombo_usado) para detectar QR desactualizados.
       let sufijo = "";
-      if (req.body.campo === "Rombo") sufijo = `-${Date.now().toString(36)}`;
+      if (req.body.campo === "Rombo" || req.body.campo === "Foto") sufijo = `-${Date.now().toString(36)}`;
       else if (req.body.campo === "QR" && req.body.rombo_usado) {
         sufijo = `-r${String(req.body.rombo_usado).replace(/[^\w]/g, "").slice(-24)}`;
       }
