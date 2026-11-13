@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "practica-2",
+  "name": "inventariom501",
   "compatibility_date": "2026-10-12",
   "main": "worker.js",
   "triggers": { "crons": ["*/14 * * * *", "0 12 * * *"] },
