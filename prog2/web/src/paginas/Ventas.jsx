@@ -135,7 +135,7 @@ function Preview({ colores, recarga }) {
   const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [busqueda, setBusqueda] = useEstadoPersistente("admin:ventas:busqueda", "");
-  const [ordenFilas, setOrdenFilas] = useEstadoPersistente("admin:ventas:ordenFilas", "");
+  const [ordenFilas, setOrdenFilas] = useEstadoPersistente("admin:ventas:ordenFilas", "descripcion-asc");
   const [anioAnual, setAnioAnual] = useState(hoy.getFullYear());
   const [aniosConDatos, setAniosConDatos] = useState([]);
   const [editando, setEditando] = useState(false);

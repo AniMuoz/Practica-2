@@ -152,10 +152,8 @@ async function listarMeses() {
 
 function calcularFilas(items, { materiales, contratista, mov, almacenFila, codcomp, fecha, posInicial }) {
   const descripcionDe = (item) => String(materiales.get(String(item.codigo ?? ""))?.Descripcion || item.descripcion || "").trim();
-  const ordenados = items
-    .map((item) => ({ item, desc: descripcionDe(item) }))
-    .sort((a, b) => a.desc.localeCompare(b.desc, "es", { sensitivity: "base" }))
-    .map(({ item }) => item);
+  // Se guardan en el orden en que se añadieron; el orden alfabético se elige como filtro.
+  const ordenados = items;
 
   let pos = posInicial;
   return ordenados.map((item) => {
@@ -191,7 +189,7 @@ function calcularFilas(items, { materiales, contratista, mov, almacenFila, codco
     const desc = descripcionDe(item);
     let tiras = null;
     if (/^ca[ñn]er[ií]a/i.test(desc)) {
-      tiras = Math.round(numero(cant) / 6);
+      tiras = Math.round(entregar / 6);
     } else if (/^\s*kgs?\.?\s*$/i.test(String(item.unidad ?? ""))) {
       const mg = desc.match(/(\d+(?:[.,]\d+)?)\s*GRS?\b/i);
       const mk = desc.match(/(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)\s*KGS?\b|(\d+(?:[.,]\d+)?)\s*KGS?\b/i);
@@ -199,7 +197,7 @@ function calcularFilas(items, { materiales, contratista, mov, almacenFila, codco
       if (mg) kilosUnidad = Number(mg[1].replace(",", ".")) / 1000;
       else if (mk) kilosUnidad = mk[2] ? Number(mk[1] || 0) + Number(mk[2]) / Number(mk[3]) : Number(mk[4].replace(",", "."));
       if (kilosUnidad != null) {
-        const total = kilosUnidad * numero(cant);
+        const total = kilosUnidad * entregar;
         if (Number.isFinite(total)) tiras = Math.round(total * 1000) / 1000;
       }
     }

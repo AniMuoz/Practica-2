@@ -93,7 +93,7 @@ test("anadirVenta crea la planilla del mes y guarda las filas ordenadas por desc
   assert.deepEqual([r.anio, r.mes, r.agregadas], [hoy.anio, hoy.mes, 3]);
   assert.equal(tablas.ventas_planillas.length, 1);
   const filas = tablas.ventas_filas;
-  assert.deepEqual(filas.map((f) => f.codigo), ["999", "200", "100"]);
+  assert.deepEqual(filas.map((f) => f.codigo), ["100", "200", "999"]);
   assert.deepEqual(filas.map((f) => f.pos), [10, 20, 30]);
   const perno = filas.find((f) => f.codigo === "100");
   assert.equal(perno.entregar, 4);
@@ -105,7 +105,7 @@ test("anadirVenta crea la planilla del mes y guarda las filas ordenadas por desc
   const caneria = filas.find((f) => f.codigo === "200");
   assert.equal(caneria.ubicacion, "CONCON");
   assert.equal(caneria.rojo, true);
-  assert.equal(caneria.tiras, 2);
+  assert.equal(caneria.tiras, 0);
   assert.equal(caneria.entregar, 0);
   assert.deepEqual(tablas.ventas_log.map((l) => [l.accion, l.usuario]), [["crear_planilla", "ana"], ["anadir_venta", "ana"]]);
 });

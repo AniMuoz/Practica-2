@@ -15,7 +15,7 @@ const DEFINICION_ORDENES = [
 
 const ORDENES_FILAS = Object.fromEntries(DEFINICION_ORDENES.map(([clave, campo, sentido]) => [clave, [campo, sentido]]));
 
-const OPCIONES_ORDEN = [["", "Sin orden extra"], ...DEFINICION_ORDENES.map(([clave, , , etiqueta]) => [clave, etiqueta])];
+const OPCIONES_ORDEN = [["", "Orden en que se añadieron los códigos"], ...DEFINICION_ORDENES.map(([clave, , , etiqueta]) => [clave, etiqueta])];
 
 function comparar(campo, sentido) {
   return (a, b) => {
