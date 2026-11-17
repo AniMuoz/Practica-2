@@ -7,6 +7,7 @@ import { crearQrPng, estadoQr, marcaRombo, revisarFilaQr, resumenRevisionQr, sin
 import { filtrarFilas } from "../lib/reglasPlanilla.js";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
+import { esAdminExt, esAdminVista } from "../lib/permisos.js";
 
 const boton = {
   padding: "8px 14px",
@@ -19,7 +20,8 @@ const boton = {
 };
 
 export default function GeneradorQr() {
-  const { rol } = useSesion();
+  const sesion = useSesion();
+  const { rol } = sesion;
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -43,8 +45,8 @@ export default function GeneradorQr() {
   }
 
   useEffect(() => {
-    if (rol === "admin_ext") setDesbloqueado(true); // el servidor aplica la clave de datos
-    if (rol === "admin" || rol === "admin_ext") {
+    if (esAdminExt(sesion)) setDesbloqueado(true); // el servidor aplica la clave de datos
+    if (esAdminVista(sesion)) {
       cargar();
       if (recorridoPendiente("qr")) iniciarRecorrido("qr");
     }
@@ -56,7 +58,7 @@ export default function GeneradorQr() {
   const pendientes = useMemo(() => [...faltantes, ...desactualizados], [faltantes, desactualizados]);
   const romboDe = (fila) => (tieneRombo(fila) ? String(fila.Rombo).trim() : "");
 
-  if (rol !== "admin" && rol !== "admin_ext") return <Navigate to="/" replace />;
+  if (!esAdminVista(sesion)) return <Navigate to="/" replace />;
 
   function aceptarClave(event) {
     event.preventDefault();
@@ -75,7 +77,7 @@ export default function GeneradorQr() {
   }
 
   async function generarYSubir() {
-    if (!clave && rol !== "admin_ext") return setAviso("Escribe la contraseña de datos.");
+    if (!clave && !esAdminExt(sesion)) return setAviso("Escribe la contraseña de datos.");
     if (!pendientes.length) return setAviso("No hay QR faltantes ni desactualizados con estos filtros.");
     if (!window.confirm(`¿Generar y subir ${pendientes.length} QR (${faltantes.length} nuevos, ${desactualizados.length} a regenerar por rombo nuevo/cambiado)?`)) return;
     cancelar.current = false;

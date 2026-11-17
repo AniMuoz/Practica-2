@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { supabase } = require("../supabase/supabase");
 const { ipDe: clienteDe } = require("./seguridad");
+const { esAdmin, esAdminVista, esAdminM501, esAdminM501oExt } = require("./capacidades");
 
 const ARCHIVO_SECRETO = path.join(__dirname, "..", ".sesion-secreto");
 const NOMBRE_COOKIE = "sesion";
@@ -269,7 +270,7 @@ async function protegerApi(req, res, next) {
 async function exigirAdmin(req) {
   if (!req.usuario) throw errorHttp(401, "Sesión no iniciada.");
   const registro = await buscarUsuario(req.usuario);
-  if (!registro || registro.rol !== "admin") throw errorHttp(403, "Solo un administrador puede hacer esto.");
+  if (!registro || !esAdmin(registro)) throw errorHttp(403, "Solo un administrador puede hacer esto.");
   return registro;
 }
 
@@ -277,7 +278,7 @@ async function exigirAdmin(req) {
 async function exigirAdminVer(req) {
   if (!req.usuario) throw errorHttp(401, "Sesión no iniciada.");
   const registro = await buscarUsuario(req.usuario);
-  if (!registro || (registro.rol !== "admin" && registro.rol !== "admin_ext")) {
+  if (!registro || !esAdminVista(registro)) {
     throw errorHttp(403, "Solo un administrador puede hacer esto.");
   }
   return registro;
@@ -286,7 +287,7 @@ async function exigirAdminVer(req) {
 // M501 o admin externo (bitacora de camiones, auditoria).
 async function exigirAdminM501oExt(req) {
   const registro = await exigirAdminVer(req);
-  if (registro.rol !== "admin_ext" && (registro.bodega || "M501") !== "M501") {
+  if (!esAdminM501oExt(registro)) {
     throw errorHttp(403, "Solo un administrador de M501 puede hacer esto.");
   }
   return registro;
@@ -294,7 +295,7 @@ async function exigirAdminM501oExt(req) {
 
 async function exigirAdminM501(req) {
   const registro = await exigirAdmin(req);
-  if ((registro.bodega || "M501") !== "M501") {
+  if (!esAdminM501(registro)) {
     throw errorHttp(403, "Solo un administrador de M501 puede hacer esto.");
   }
   return registro;

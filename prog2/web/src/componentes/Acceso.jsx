@@ -316,6 +316,12 @@ export default function Acceso({ children }) {
             return data ? { usuario: data.usuario, rol: data.rol || "operador", bodega: data.bodega } : null;
           }
           if (res.status === 401) return null;
+          if (res.status === 429) {
+            // Limite de peticiones: respeta Retry-After (con un minimo) en vez de insistir.
+            const seg = Number(res.headers.get("Retry-After")) || 0;
+            await espera(Math.min(Math.max(seg, 10), 60) * 1000);
+            continue;
+          }
         } catch {
           // error de red: reintentar
         }
@@ -377,7 +383,7 @@ export default function Acceso({ children }) {
     };
   }, []);
 
-  if (verificando) return null;
+  if (verificando) return <main style={{ padding: 24, textAlign: "center" }}>Cargando...</main>;
   if (!sesion) {
     const aviso = desactivada ? MENSAJE_DESACTIVADA : avisoCierre;
     return (

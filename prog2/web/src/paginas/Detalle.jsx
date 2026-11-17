@@ -5,16 +5,15 @@ import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.j
 import { useEsMovil } from "../lib/useEsMovil.js";
 import { estadoInventario as estadoDeInventario, textoCampo } from "../lib/reglasPlanilla.js";
 import { apiFetch } from "../lib/api.js";
+import { permisosDetalle } from "../lib/permisos.js";
 import { useSesion } from "../componentes/Acceso.jsx";
 
 export default function Detalle() {
   const { codigo } = useParams();
   const navigate = useNavigate();
-  // Admin externo: solo ve; unicamente puede tocar inventario, comentario y QR.
   const sesion = useSesion();
-  const esExt = sesion.rol === "admin_ext";
-  // Usuario (admin u operador) de otra bodega: solo agrega foto, rombo y observaciones.
-  const limitado = !esExt && (sesion.bodega || "M501") !== "M501";
+  const perm = permisosDetalle(sesion);
+  const { esExt } = perm;
   const [columnas, setColumnas] = useState([]);
   const [fila, setFila] = useState(null);
   const [bodegas, setBodegas] = useState([]);
@@ -99,7 +98,11 @@ export default function Detalle() {
     apiFetch(`/api/material/${encodeURIComponent(codigo)}/datos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clave, datos: limitado ? { Observaciones: datos.Observaciones ?? "" } : datos, reemplazar }),
+      body: JSON.stringify({
+        clave,
+        datos: perm.puedeEditarDatosCompletos ? datos : { Observaciones: datos.Observaciones ?? "" },
+        reemplazar,
+      }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -159,8 +162,9 @@ export default function Detalle() {
   const datosSinGuardar = Boolean(
     editando &&
       fila &&
-      !esExt &&
-      (soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna])) ||
+      perm.puedeEditarObservaciones &&
+      ((perm.puedeEditarDatosCompletos &&
+        soloLectura.some((columna) => textoCampo(datos[columna]) !== textoCampo(fila[columna]))) ||
         textoCampo(datos.Observaciones) !== textoCampo(fila.Observaciones))
   );
   const hayCambiosSinGuardar = inventarioSinGuardar || comentarioSinGuardar || datosSinGuardar;
@@ -405,7 +409,7 @@ export default function Detalle() {
                 </div>
                 <div style={{ display: "grid", gap: 8, fontSize: 14, fontWeight: 600 }}>
                   {campo}
-                  {editando && (esExt || limitado ? (esExt ? campo === "QR" : campo !== "QR" || sesion.rol === "admin") : true) && (
+                  {editando && perm.puedeSubirImagen(campo) && (
                     <>
                       <input
                         type="file"
@@ -532,9 +536,11 @@ export default function Detalle() {
                     .then((res) => {
                       if (!res.ok) throw new Error("clave");
                       const iniciales = {};
-                      soloLectura.forEach((columna) => {
-                        iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
-                      });
+                      if (perm.puedeEditarDatosCompletos) {
+                        soloLectura.forEach((columna) => {
+                          iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
+                        });
+                      }
                       iniciales.Observaciones = fila.Observaciones == null ? "" : String(fila.Observaciones);
                       setDatos(iniciales);
                       setEditando(true);
@@ -553,7 +559,7 @@ export default function Detalle() {
                   cursor: "pointer",
                 }}
               >
-                {limitado ? "Añadir imagen y observaciones" : "Cambiar datos de material"}
+                {perm.etiquetaEdicion}
               </button>
               </div>
             )}
@@ -571,9 +577,11 @@ export default function Detalle() {
                       const data = await res.json().catch(() => ({}));
                       if (!res.ok) throw new Error(data.error || "Contraseña incorrecta.");
                       const iniciales = {};
-                      soloLectura.forEach((columna) => {
-                        iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
-                      });
+                      if (perm.puedeEditarDatosCompletos) {
+                        soloLectura.forEach((columna) => {
+                          iniciales[columna] = fila[columna] == null ? "" : String(fila[columna]);
+                        });
+                      }
                       iniciales.Observaciones = fila.Observaciones == null ? "" : String(fila.Observaciones);
                       setDatos(iniciales);
                       setPidiendoClave(false);
@@ -657,7 +665,7 @@ export default function Detalle() {
                 <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                   Stock
                 </span>
-                {editando && !esExt && !limitado ? (
+                {editando && perm.puedeEditarDatosCompletos ? (
                   <input
                     value={datos.Stock ?? ""}
                     onChange={(event) =>
@@ -701,7 +709,7 @@ export default function Detalle() {
                 <div key={columna} style={{ minWidth: 0 }}>
                   <dt style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>{columna}</dt>
                   <dd style={{ margin: 0, fontSize: 15 }}>
-                    {editando && !esExt && !limitado ? (
+                    {editando && perm.puedeEditarDatosCompletos ? (
                       <input
                         value={datos[columna] ?? ""}
                         onChange={(event) => {
@@ -730,11 +738,12 @@ export default function Detalle() {
                 </div>
               ))}
             {(() => {
-              const abierto = !movil || verObservaciones || (editando && !esExt);
-              const cuerpo = editando && !esExt ? (
+              const editandoObs = editando && perm.puedeEditarObservaciones;
+              const abierto = !movil || verObservaciones || editandoObs;
+              const cuerpo = editandoObs ? (
                 <>
                   <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-suave)" }}>
-                    Observaciones
+                    Observaciones (de esta bodega)
                     <span>{String(datos.Observaciones ?? "").length}/200</span>
                   </span>
                   <textarea
@@ -749,7 +758,7 @@ export default function Detalle() {
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>Observaciones</div>
+                  <div style={{ fontSize: 12, color: "var(--texto-suave)", marginBottom: 2 }}>Observaciones (de esta bodega)</div>
                   <div style={{ fontSize: 15, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
                     {fila.Observaciones === "" || fila.Observaciones == null ? "—" : fila.Observaciones}
                   </div>
@@ -757,7 +766,7 @@ export default function Detalle() {
               );
               return (
                 <div className="observaciones-material" style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-                  {movil && !(editando && !esExt) && (
+                  {movil && !editandoObs && (
                     <button
                       type="button"
                       aria-expanded={abierto}
@@ -767,7 +776,7 @@ export default function Detalle() {
                       {abierto ? "▾" : "▸"} Observaciones
                     </button>
                   )}
-                  {abierto && <div style={{ marginTop: movil && !(editando && !esExt) ? 8 : 0 }}>{cuerpo}</div>}
+                  {abierto && <div style={{ marginTop: movil && !editandoObs ? 8 : 0 }}>{cuerpo}</div>}
                 </div>
               );
             })()}
@@ -777,7 +786,7 @@ export default function Detalle() {
                 Terminar edición de QR
               </button>
             )}
-            {editando && !esExt && (
+            {editando && perm.puedeEditarObservaciones && (
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <button
                   type="button"
@@ -795,7 +804,7 @@ export default function Detalle() {
                 >
                   {guardandoDatos ? "Guardando..." : "Guardar datos"}
                 </button>
-                {!limitado && <button
+                {perm.puedeEliminarMaterial && <button
                   type="button"
                   disabled={guardandoDatos || eliminando}
                   onClick={() => setConfirmarEliminar(true)}

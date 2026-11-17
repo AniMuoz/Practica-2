@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { BODEGAS, elegirBodega, nombreBodega } from "../lib/bodega.js";
 import { useClickFuera } from "../lib/useClickFuera.js";
+import { esAdminVista } from "../lib/permisos.js";
 
 // Botón de la barra con la bodega activa; los admins despliegan la lista para cambiarla.
 export default function SelectorBodega({ rol, bodegaActiva }) {
   const [abierto, setAbierto] = useState(false);
   const caja = useClickFuera(() => setAbierto(false));
-  const esAdmin = rol === "admin" || rol === "admin_ext";
+  const esAdmin = esAdminVista({ rol });
 
   return (
     <div ref={caja} data-tour="bodega" className="selector-bodega">

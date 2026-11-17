@@ -45,7 +45,8 @@ function soloCamposLibres(metodo, ruta, body) {
 }
 
 // Fotos, rombo y observaciones: admin u operador (con contraseña) de una bodega que no es M501.
-// La contraseña la valida el servicio; el QR se restringe en la ruta (solo M501 y admin externo).
+// La contraseña la valida el servicio; el QR por imagen lo restringe materiales.js (admin o admin_ext).
+// Observaciones se guardan por bodega en una sola columna JSON (ver nucleoDatos).
 const IMAGEN_MATERIAL = /^\/material\/[^/]+\/imagen$/;
 function abiertoOtraBodega(metodo, rutaOriginal, body, bodega) {
   if ((bodega || "M501") === "M501") return false;

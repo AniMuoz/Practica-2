@@ -220,6 +220,7 @@ alter table public.materiales add column if not exists cons_prom_mensual text no
 alter table public.materiales add column if not exists stock_max text not null default '';
 alter table public.materiales add column if not exists indicador text not null default '';
 alter table public.materiales drop column if exists cambio_de_ubicacion;
+-- Observaciones por bodega en una sola columna: texto plano = legado M501; JSON {"M501":"...","M502":"..."} = mapa.
 alter table public.materiales add column if not exists observaciones text not null default '';
 
 -- Contador de sesion: al cerrar sesion sube y anula los tokens anteriores.

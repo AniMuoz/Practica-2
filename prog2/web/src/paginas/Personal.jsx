@@ -4,6 +4,7 @@ import Navbar from "../componentes/Navbar.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
 import { BODEGAS } from "../lib/bodega.js";
+import { esAdminExt, esAdminM501 } from "../lib/permisos.js";
 
 const campo = {
   padding: "8px 10px",
@@ -170,11 +171,12 @@ function FilaPersonal({ persona, propia, ocupado, puedeCambiarBodega, soloVer = 
 }
 
 export default function Personal() {
-  const { usuario: yo, bodega: bodegaUsuario, rol: rolSesion } = useSesion();
+  const sesion = useSesion();
+  const { usuario: yo, bodega: bodegaUsuario } = sesion;
   const bodegaPropia = bodegaUsuario || "M501";
-  // Admin externo: solo ve la lista y crea operadores eligiendo la bodega.
-  const esExt = rolSesion === "admin_ext";
-  const esAdminM501 = !esExt && bodegaPropia === "M501";
+  // Admin externo: ve la lista, crea operadores y resetea claves; no cambia rol/bodega ni borra.
+  const esExt = esAdminExt(sesion);
+  const soyAdminM501 = esAdminM501(sesion);
   const [personas, setPersonas] = useState([]);
   const [errorCarga, setErrorCarga] = useState("");
   const [error, setError] = useState("");
@@ -252,8 +254,8 @@ export default function Personal() {
     }
     await alEjecutar(async () => {
       try {
-        const rolCrear = esAdminM501 ? rol : "operador";
-        const bodegaCrear = esAdminM501 || esExt ? bodegaNueva : bodegaPropia;
+        const rolCrear = soyAdminM501 ? rol : "operador";
+        const bodegaCrear = soyAdminM501 || esExt ? bodegaNueva : bodegaPropia;
         await pedir("/api/usuarios", enviarJson("POST", { usuario: nombre, clave, rol: rolCrear, bodega: bodegaCrear }));
         setAviso(`Usuario ${nombre.trim().toLowerCase()} creado.`);
         setNombre("");
@@ -294,7 +296,7 @@ export default function Personal() {
               <input value={nombre} disabled={ocupado} placeholder="Nombre de usuario" autoComplete="off" onChange={(e) => setNombre(e.target.value)} style={campo} />
               <input type="password" value={clave} disabled={ocupado} placeholder="Contraseña inicial" autoComplete="new-password" onChange={(e) => setClave(e.target.value)} style={campo} />
               <input type="password" value={repetir} disabled={ocupado} placeholder="Repetir contraseña" autoComplete="new-password" onChange={(e) => setRepetir(e.target.value)} style={campo} />
-              {esAdminM501 ? (
+              {soyAdminM501 ? (
                 <select value={rol} disabled={ocupado} onChange={(e) => setRol(e.target.value)} style={campo}>
                   <option value="operador">Operador</option>
                   <option value="admin">Admin</option>
@@ -303,7 +305,7 @@ export default function Personal() {
               ) : (
                 <span style={{ ...campo, background: "transparent", display: "inline-flex", alignItems: "center" }}>Operador</span>
               )}
-              {esAdminM501 || esExt ? (
+              {soyAdminM501 || esExt ? (
                 <select value={bodegaNueva} disabled={ocupado} onChange={(e) => setBodegaNueva(e.target.value)} style={campo} aria-label="Bodega">
                   {BODEGAS.map((b) => (
                     <option key={b} value={b}>{b}</option>
@@ -352,7 +354,7 @@ export default function Personal() {
                       persona={persona}
                       propia={persona.usuario === yo}
                       ocupado={ocupado}
-                      puedeCambiarBodega={esAdminM501}
+                      puedeCambiarBodega={soyAdminM501}
                       soloVer={esExt}
                       alEjecutar={alEjecutar}
                       alSucio={alSucio}

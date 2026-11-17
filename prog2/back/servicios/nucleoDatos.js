@@ -449,14 +449,50 @@ function datosDeBodega(datos, bodega = bodegaActual()) {
   return resultado;
 }
 
+// Observaciones: una sola columna TEXT. Texto plano = legado de M501; JSON {"M501":"...","M502":"..."} = por bodega.
+// No se añaden columnas observaciones_m502… (evita ensanchar materiales).
+function mapaObservaciones(raw) {
+  const texto = String(raw ?? "");
+  if (!texto.trim()) return {};
+  if (texto.trimStart().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(texto);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return { ...parsed };
+    } catch {
+      /* legado: texto que empieza con { pero no es JSON */
+    }
+  }
+  return { M501: texto };
+}
+
+function observacionesDeBodega(raw, bodega = bodegaActual()) {
+  return String(mapaObservaciones(raw)[bodega] ?? "");
+}
+
+function serializarObservaciones(mapa) {
+  const limpio = {};
+  Object.entries(mapa || {}).forEach(([clave, valor]) => {
+    const t = String(valor ?? "");
+    if (t) limpio[clave] = t;
+  });
+  const claves = Object.keys(limpio);
+  if (claves.length === 0) return "";
+  if (claves.length === 1 && claves[0] === "M501") return limpio.M501;
+  return JSON.stringify(limpio);
+}
+
 // Fila completa (con las columnas de todas las bodegas) vista desde la bodega principal: su stock,
-// ubicación, sub-ubicación, inventario y comentario pasan a las columnas base.
+// ubicación, sub-ubicación, inventario, comentario y observaciones pasan a las columnas base.
 function vistaFilaBodega(fila, bodega = bodegaActual()) {
-  if (bodega === "M501" || !fila) return fila;
+  if (!fila) return fila;
+  if (bodega === "M501") {
+    return { ...fila, Observaciones: observacionesDeBodega(fila.Observaciones, "M501") };
+  }
   const copia = { ...fila, Stock: fila[bodega] ?? "" };
   CAMPOS_POR_BODEGA.forEach(([titulo]) => {
     copia[titulo] = fila[nombreCampoBodega(titulo, bodega)] ?? "";
   });
+  copia.Observaciones = observacionesDeBodega(fila.Observaciones, bodega);
   return copia;
 }
 
@@ -495,13 +531,13 @@ function leerTabla() {
 function leerTablaBase() {
   const actual = materialesEnCache();
   const bodega = bodegaActual();
-  if (bodega === "M501") return actual.tabla;
   if (!actual.vistas) actual.vistas = new Map();
   if (actual.vistas.has(bodega)) return actual.vistas.get(bodega);
   const filas = actual.tabla.filas.map((fila) => {
-    const completa = actual.porFilaBodega.get(String(fila.Codigo ?? "")) || {};
+    const completa = actual.porFilaBodega.get(String(fila.Codigo ?? "")) || fila;
     const vista = vistaFilaBodega(completa, bodega);
-    const registro = { ...fila, Stock: vista.Stock ?? "" };
+    if (bodega === "M501") return { ...fila, Observaciones: vista.Observaciones ?? "" };
+    const registro = { ...fila, Stock: vista.Stock ?? "", Observaciones: vista.Observaciones ?? "" };
     CAMPOS_POR_BODEGA.forEach(([titulo]) => {
       if (titulo in fila) registro[titulo] = vista[titulo] ?? "";
     });
@@ -540,16 +576,10 @@ function stockPorBodega(codigo) {
 }
 
 function buscarMaterial(codigo) {
-  const { porFila } = materialesEnCache();
   const { columnas, filas } = leerTabla();
   const buscado = String(codigo);
-  const original = porFila.get(buscado) || null;
   const bodegaPrincipal = bodegaActual();
-  const propia = original == null
-    ? null
-    : bodegaPrincipal === "M501"
-      ? original
-      : filas.find((f) => String(f.Codigo ?? "") === buscado) || null;
+  const propia = filas.find((f) => String(f.Codigo ?? "") === buscado) || null;
   const fila = propia == null ? null : { ...propia, Marcado: marcasDe(usuarioActual()).set.has(buscado) ? "1" : "" };
   const bodegas = fila == null ? [] : stockPorBodega(buscado).filter((item) => item.bodega !== bodegaPrincipal);
   return { columnas, fila, bodegas };
@@ -759,13 +789,17 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
     throw error;
   }
 
-  if (String(datos.Observaciones ?? "").length > 200) {
+  const conObservaciones = Object.prototype.hasOwnProperty.call(datos, "Observaciones");
+  const textoObs = conObservaciones ? String(datos.Observaciones ?? "") : "";
+  if (conObservaciones && textoObs.length > 200) {
     const error = new Error("Las observaciones admiten como máximo 200 caracteres.");
     error.status = 400;
     throw error;
   }
 
-  const valores = { ...datosDeBodega(datos) };
+  const datosSinObs = { ...datos };
+  delete datosSinObs.Observaciones;
+  const valores = { ...datosDeBodega(datosSinObs) };
   const columnaUbicacion = nombreCampoBodega("Ubicación");
   if (columnaUbicacion in valores) {
     valores[nombreCampoBodega("Sub-ubicación")] = String(valores[columnaUbicacion] ?? "").slice(0, 4);
@@ -782,6 +816,14 @@ async function actualizarDatos(codigo, clave, datos, reemplazar) {
 
   const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
+
+  if (conObservaciones) {
+    const indiceObs = columnas.indexOf("Observaciones");
+    const rawActual = indiceObs >= 0 ? matriz[indiceFila][indiceObs] : "";
+    const mapa = mapaObservaciones(rawActual);
+    mapa[bodegaActual()] = textoObs;
+    valores.Observaciones = serializarObservaciones(mapa);
+  }
 
   columnas.forEach((columna, indice) => {
     if (COLUMNAS_BLOQUEADAS.has(columna) || !(columna in valores)) return;
@@ -1007,6 +1049,9 @@ module.exports = {
   campoBdBodega,
   datosDeBodega,
   CAMPOS_POR_BODEGA,
+  mapaObservaciones,
+  observacionesDeBodega,
+  serializarObservaciones,
   contextoBodega,
   bodegaActual,
   usuarioActual,

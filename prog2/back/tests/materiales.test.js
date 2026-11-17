@@ -276,6 +276,25 @@ test("actualizarDatos limita Observaciones a 200 caracteres", async () => {
   assert.equal(ok.fila.Observaciones, "x".repeat(200));
 });
 
+test("Observaciones se guardan por bodega en la misma columna (sin columnas nuevas)", async () => {
+  const nucleo = await cargar();
+  await nucleo.contextoBodega.run({ bodega: "M501" }, () =>
+    nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "nota M501" })
+  );
+  await nucleo.contextoBodega.run({ bodega: "M502" }, () =>
+    nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, { Observaciones: "nota M502" })
+  );
+  const m501 = nucleo.contextoBodega.run({ bodega: "M501" }, () => nucleo.buscarMaterial("100"));
+  const m502 = nucleo.contextoBodega.run({ bodega: "M502" }, () => nucleo.buscarMaterial("100"));
+  assert.equal(m501.fila.Observaciones, "nota M501");
+  assert.equal(m502.fila.Observaciones, "nota M502");
+  const crudo = String(nucleo.materialesEnCache().porFilaBodega.get("100").Observaciones);
+  assert.match(crudo, /M501/);
+  assert.match(crudo, /M502/);
+  assert.equal(nucleo.mapaObservaciones(crudo).M501, "nota M501");
+  assert.equal(nucleo.mapaObservaciones(crudo).M502, "nota M502");
+});
+
 test("actualizarDatos cambia los campos permitidos e ignora inventario, comentario, imágenes y marcado", async () => {
   const nucleo = await cargar();
   const resultado = await nucleo.actualizarDatos("100", nucleo.CLAVE_DATOS, {

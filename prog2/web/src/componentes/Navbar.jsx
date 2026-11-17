@@ -13,12 +13,14 @@ import { bodegaPrincipal, tituloBodega } from "../lib/bodega.js";
 import { useClickFuera } from "../lib/useClickFuera.js";
 import SelectorBodega from "./SelectorBodega.jsx";
 import BurbujaUsuario from "./BurbujaUsuario.jsx";
+import { esAdminM501oExt, esAdminVista as rolAdminVista } from "../lib/permisos.js";
 
 export default function Navbar({ buzonNovedades = 0 }) {
-  const { rol, usuario, bodega: bodegaUsuario } = useSesion();
-  const esAdminVista = rol === "admin" || rol === "admin_ext";
+  const sesion = useSesion();
+  const { rol, usuario } = sesion;
+  const esAdminVista = rolAdminVista(sesion);
   // Auditoria: admin de M501 o admin externo.
-  const esAdminM501 = rol === "admin_ext" || (esAdminVista && (bodegaUsuario || "M501") === "M501");
+  const esAdminM501 = esAdminM501oExt(sesion);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [parametros, setParametros] = useSearchParams();

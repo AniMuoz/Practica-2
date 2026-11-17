@@ -4,6 +4,7 @@ import Navbar from "../componentes/Navbar.jsx";
 import { useSesion } from "../componentes/Acceso.jsx";
 import { iniciarRecorrido, recorridoPendiente } from "../componentes/Recorrido.jsx";
 import { apiFetch } from "../lib/api.js";
+import { esAdminM501oExt } from "../lib/permisos.js";
 
 async function leer(url) {
   const res = await apiFetch(url);
@@ -579,20 +580,20 @@ function Seccion({ titulo, abiertaInicial = false, children }) {
 }
 
 export default function Auditoria() {
-  const { rol, bodega: bodegaUsuario } = useSesion();
-  const esAdminM501 = rol === "admin_ext" || (rol === "admin" && (bodegaUsuario || "M501") === "M501");
+  const sesion = useSesion();
+  const autorizado = esAdminM501oExt(sesion);
   const [listos, setListos] = useState(0);
   const sumar = useCallback(() => setListos((n) => n + 1), []);
 
   useEffect(() => {
-    if (!esAdminM501 || listos < 2) return;
+    if (!autorizado || listos < 2) return;
     const espera = setTimeout(() => {
       if (recorridoPendiente("auditoria")) iniciarRecorrido("auditoria");
     }, 300);
     return () => clearTimeout(espera);
-  }, [esAdminM501, listos]);
+  }, [autorizado, listos]);
 
-  if (!esAdminM501) return <Navigate to="/" replace />;
+  if (!autorizado) return <Navigate to="/" replace />;
 
   return (
     <main style={{ minHeight: "100vh", boxSizing: "border-box", margin: 0, padding: 16, fontFamily: "Segoe UI, sans-serif", background: "var(--fondo)", color: "var(--texto)" }}>

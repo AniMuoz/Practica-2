@@ -22,6 +22,7 @@ import DialogoConfirmacion from "../componentes/DialogoConfirmacion.jsx";
 import PanelCarga from "./admin/paneles/PanelCarga.jsx";
 import PanelFormulario from "./admin/paneles/PanelFormulario.jsx";
 import { useEsMovil } from "../lib/useEsMovil.js";
+import { esAdmin, esAdminExt, esAdminM501, esAdminVista } from "../lib/permisos.js";
 import { useCargaPlanilla } from "./admin/hooks/useCargaPlanilla.js";
 import { useDetallado } from "./admin/hooks/useDetallado.js";
 import { useContratistas } from "./admin/hooks/useContratistas.js";
@@ -74,10 +75,11 @@ export default function Admin() {
   const esMovilCarga = useEsMovil();
   const [botonesMinimizados, setBotonesMinimizados] = useState(false);
   const esBotonActivo = (nombre) => PANELES_BOTON[nombre]?.some((panel) => abierto[panel]) ?? false;
-  const { rol, bodega: bodegaUsuario } = useSesion();
-  const puedeEditar = rol === "admin" && (bodegaUsuario || "M501") === "M501";
-  // Admin externo: ve todo como M501 pero no modifica nada (salvo gastos, bitacora, inventario/comentario y QR).
-  const esExt = rol === "admin_ext";
+  const sesion = useSesion();
+  const { rol } = sesion;
+  const puedeEditar = esAdminM501(sesion);
+  // Admin externo: ve paneles de M501; escrituras acotadas en servidor (gastos, bitácora, inventario/comentario, QR).
+  const esExt = esAdminExt(sesion);
   const [autorizado, setAutorizado] = useState(false);
   const [clave, setClave] = useState("");
   const [columnas, setColumnas] = useState([]);
@@ -220,11 +222,11 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    if (rol === "admin_ext") {
+    if (esExt) {
       setAutorizado(true);
       return;
     }
-    if (rol !== "admin") return;
+    if (!esAdmin(sesion)) return;
     obtenerJson("/api/acceso")
       .then(() => {
         setAutorizado(true);
@@ -411,7 +413,7 @@ export default function Admin() {
             "Bitacora camion",
           ]
             .filter((nombre) => !(esExt && nombre === "Añadir/cargar datos"))
-            .filter((nombre) => ((puedeEditar || esExt) || !BOTONES_SOLO_M501.has(nombre)) && ((rol === "admin" || esExt) || !BOTONES_SOLO_ADMIN.has(nombre)))
+            .filter((nombre) => ((puedeEditar || esExt) || !BOTONES_SOLO_M501.has(nombre)) && (esAdminVista(sesion) || !BOTONES_SOLO_ADMIN.has(nombre)))
             .map((nombre, indice, lista) => {
             const activo = esBotonActivo(nombre);
             if (esMovilCarga && botonesMinimizados) {

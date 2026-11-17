@@ -1,5 +1,6 @@
 const { supabase } = require("../supabase/supabase");
 const { exigirAdmin, exigirAdminVer, buscarUsuario } = require("../seguridad/auth");
+const { puedeVerBuzonAdmin, puedeGestionarBuzon } = require("../seguridad/capacidades");
 const { emitir } = require("../utils/compartido");
 const { bodegaActual, bodegaValida } = require("../servicios/nucleoDatos");
 
@@ -68,9 +69,9 @@ module.exports = function rutasBuzon(app) {
   app.get("/api/buzon/novedades", async (req, res) => {
     try {
       const registro = await buscarUsuario(req.usuario);
-      const esAdmin = registro && (registro.rol === "admin" || registro.rol === "admin_ext");
+      const veComoAdmin = registro && puedeVerBuzonAdmin(registro);
 
-      if (esAdmin) {
+      if (veComoAdmin) {
         const { data, error } = await supabase
           .from("buzon_respuestas")
           .select("id, buzon_id, buzon:buzon_id!inner(estado, bodega)")
@@ -202,7 +203,7 @@ module.exports = function rutasBuzon(app) {
     try {
       const id = req.params.id;
       const registro = await buscarUsuario(req.usuario);
-      const esAdmin = registro && (registro.rol === "admin" || registro.rol === "admin_ext");
+      const veComoAdmin = registro && puedeVerBuzonAdmin(registro);
 
       const { data: msg, error: errMsg } = await supabase
         .from("buzon")
@@ -211,7 +212,7 @@ module.exports = function rutasBuzon(app) {
         .maybeSingle();
       if (errMsg) throw errMsg;
       if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
-      if (esAdmin) {
+      if (veComoAdmin) {
         if (msg.bodega !== bodegaActual()) throw errorHttp(404, "Mensaje no encontrado.");
       } else if (msg.usuario !== req.usuario) {
         throw errorHttp(403, "No tienes permiso para ver este mensaje.");
@@ -237,7 +238,11 @@ module.exports = function rutasBuzon(app) {
       if (!texto || texto.length > MAX_DESC) throw errorHttp(400, `La respuesta es obligatoria (máximo ${MAX_DESC} caracteres).`);
 
       const registro = await buscarUsuario(req.usuario);
-      const esAdmin = registro && registro.rol === "admin";
+      // admin_ext ve el buzón pero no responde; no cae al camino de operador.
+      if (registro && puedeVerBuzonAdmin(registro) && !puedeGestionarBuzon(registro)) {
+        throw errorHttp(403, "Tu rol solo puede ver el buzón.");
+      }
+      const gestiona = registro && puedeGestionarBuzon(registro);
 
       const { data: msg, error: errMsg } = await supabase
         .from("buzon")
@@ -246,7 +251,7 @@ module.exports = function rutasBuzon(app) {
         .maybeSingle();
       if (errMsg) throw errMsg;
       if (!msg) throw errorHttp(404, "Mensaje no encontrado.");
-      if (esAdmin) {
+      if (gestiona) {
         exigirBuzonPropio(req, msg.bodega);
       } else if (msg.usuario !== req.usuario) {
         throw errorHttp(403, "No tienes permiso para responder este mensaje.");
@@ -255,12 +260,12 @@ module.exports = function rutasBuzon(app) {
 
       const { data, error } = await supabase
         .from("buzon_respuestas")
-        .insert({ buzon_id: id, autor: req.usuario, es_admin: esAdmin, texto })
+        .insert({ buzon_id: id, autor: req.usuario, es_admin: Boolean(gestiona), texto })
         .select("id, creado_en, autor, es_admin, texto")
         .single();
       if (error) throw error;
 
-      if (esAdmin && msg.estado === "sin revisar") {
+      if (gestiona && msg.estado === "sin revisar") {
         await supabase.from("buzon").update({ estado: "revisando" }).eq("id", id);
       }
 

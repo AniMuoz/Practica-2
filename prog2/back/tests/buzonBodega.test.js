@@ -252,3 +252,17 @@ test("admin ext ve los buzones de cualquier bodega pero no cambia estado ni borr
   assert.equal(borrar.status, 403);
   assert.equal(mensajes.length, 1);
 });
+
+test("admin ext no responde en el buzón (solo lectura, no cae a camino de operador)", async () => {
+  mensajes = [
+    { id: 4, usuario: "op501", titulo: "A", descripcion: "a", urgencia: "leve", estado: "sin revisar", bodega: "M501", creado_en: "2026-01-01" },
+  ];
+  const r = await pedir("POST", "/api/buzon/4/respuestas", {
+    bodega: "M501",
+    usuario: "ext",
+    rol: "admin_ext",
+    cuerpo: { texto: "hola" },
+  });
+  assert.equal(r.status, 403);
+  assert.match(String(r.data.error || ""), /solo puede ver/i);
+});
