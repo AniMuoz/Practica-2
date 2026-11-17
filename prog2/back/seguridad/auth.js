@@ -7,10 +7,8 @@ const { esAdmin, esAdminVista, esAdminM501, esAdminM501oExt } = require("./capac
 
 const ARCHIVO_SECRETO = path.join(__dirname, "..", ".sesion-secreto");
 const NOMBRE_COOKIE = "sesion";
-// Tope absoluto de la sesion desde el login (no se extiende con el uso).
-const DURACION_MS = 8 * 60 * 60 * 1000;
-// Sin actividad real del usuario durante este tiempo la sesion se cierra.
-const INACTIVIDAD_MS = 60 * 60 * 1000;
+// La sesion vence 10h despues de la ultima actividad real del usuario (ventana deslizante).
+const DURACION_MS = 10 * 60 * 60 * 1000;
 const MAX_INTENTOS = 10;
 // Limite por nombre de usuario (frena ataques repartidos entre muchas IPs); mas alto para que
 // un tercero no pueda bloquear facilmente a un usuario legitimo.
@@ -136,7 +134,7 @@ function contadorDe(registro) {
   return Number(registro.sesion_version) || 0;
 }
 
-// `ini` fija el tope de 8h y no cambia al renovar; `act` es la ultima actividad real del usuario.
+// `ini` es el momento del login (informativo); `act` es la ultima actividad real y define el vencimiento.
 function crearToken(registro, ini = Date.now()) {
   const cuerpo = Buffer.from(
     JSON.stringify({ u: registro.usuario, v: versionDe(registro), s: contadorDe(registro), ini, act: Date.now() })
@@ -154,7 +152,7 @@ function leerToken(token) {
     const datos = JSON.parse(Buffer.from(cuerpo, "base64url").toString("utf8"));
     if (typeof datos.u !== "string" || typeof datos.ini !== "number" || typeof datos.act !== "number") return null;
     const ahora = Date.now();
-    if (ahora - datos.ini > DURACION_MS || ahora - datos.act > INACTIVIDAD_MS) return null;
+    if (ahora - datos.act > DURACION_MS) return null;
     return datos;
   } catch {
     return null;
@@ -258,8 +256,7 @@ async function protegerApi(req, res, next) {
     req.bodega = sesion.registro.bodega || "M501";
     // Solo las peticiones con actividad real del usuario renuevan; sondeos y SSE no.
     if (req.headers["x-actividad"] === "1") {
-      const restante = Math.max(0, sesion.datos.ini + DURACION_MS - Date.now());
-      ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), restante);
+      ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), DURACION_MS);
     }
     next();
   } catch (error) {
@@ -383,8 +380,7 @@ function rutasAuth(app) {
       const sesion = await sesionDe(req);
       if (!sesion) throw errorHttp(401, "Sesión no iniciada.");
       if (req.headers["x-actividad"] === "1" && sesion.registro.rol !== "desactivado") {
-        const restante = Math.max(0, sesion.datos.ini + DURACION_MS - Date.now());
-        ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), restante);
+        ponerCookie(req, res, crearToken(sesion.registro, sesion.datos.ini), DURACION_MS);
       }
       res.json({ usuario: sesion.registro.usuario, rol: sesion.registro.rol || "operador", bodega: sesion.registro.bodega || "M501" });
     } catch (error) {

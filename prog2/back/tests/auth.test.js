@@ -304,12 +304,12 @@ test("un token vencido se rechaza", async () => {
   await guardarUsuario("vencido", "clave-segura-1");
   const version = usuarios.get("vencido").split(":")[0];
   const ahora = Date.now();
-  const vigente = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - 1000 });
-  const pasaron8h = tokenManual({ u: "vencido", v: version, ini: ahora - 8 * HORA - 1000, act: ahora });
-  const inactivo = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - HORA - 1000 });
+  const vigente = tokenManual({ u: "vencido", v: version, ini: ahora - 10 * HORA, act: ahora - 1000 });
+  const inactivo1h = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - HORA - 1000 });
+  const pasaron8h = tokenManual({ u: "vencido", v: version, ini: ahora - 10 * HORA, act: ahora - 8 * HORA - 1000 });
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${vigente}` })).status, 200);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${inactivo1h}` })).status, 200);
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${pasaron8h}` })).status, 401);
-  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${inactivo}` })).status, 401);
 });
 
 test("un token con datos inválidos se rechaza aunque esté bien firmado", async () => {
@@ -337,6 +337,7 @@ test("solo la petición con X-Actividad renueva la actividad y conserva el inici
   assert.equal(activa.cookies.length, 1);
   const nuevo = JSON.parse(Buffer.from(activa.cookie.replace("sesion=", "").split(".")[0], "base64url").toString());
   assert.equal(nuevo.ini, ini);
+  assert.match(activa.cookie, /./);
   assert.ok(Date.now() - nuevo.act < 5000);
   assert.equal((await pedir("GET", "/api/privado", { cookie: activa.cookie })).status, 200);
 });

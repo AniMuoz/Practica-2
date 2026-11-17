@@ -1,7 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch, marcarInteraccion, msDesdeInteraccion } from "../lib/api.js";
-
-const INACTIVIDAD_MS = 60 * 60 * 1000;
+import { apiFetch, marcarInteraccion } from "../lib/api.js";
 import { fijarBodega } from "../lib/bodega.js";
 
 const SesionContext = createContext({ usuario: "", rol: "operador" });
@@ -342,18 +340,12 @@ export default function Acceso({ children }) {
     };
   }, []);
 
-  // Con sesion iniciada: cierra por 1h sin interaccion y, cada 5 min, hace un ping que renueva la
-  // actividad (si hubo interaccion) o detecta que se cumplieron las 8h (401 -> login).
+  // Con sesion iniciada: cada 5 min hace un ping que renueva la actividad (si hubo interaccion)
+  // o detecta que pasaron 8h sin uso (401 -> login).
   useEffect(() => {
     if (!sesion) return undefined;
     marcarInteraccion();
     const id = setInterval(() => {
-      if (msDesdeInteraccion() >= INACTIVIDAD_MS) {
-        setAvisoCierre("Sesión cerrada por inactividad.");
-        fetch("/api/logout", { method: "POST" }).catch(() => {});
-        setSesion(null);
-        return;
-      }
       apiFetch("/api/sesion", { cache: "no-store" })
         .then((res) => {
           if (res.status === 401) {
