@@ -90,11 +90,14 @@ function crearApp({ proteger = true } = {}) {
     contextoBodega.run({ bodega: req.bodegaActiva, usuario }, next);
   });
   if (proteger) app.use("/api", soloAdminEnEscrituras(exigirAdmin, responderError));
-  rutasAuth(app);
+  // no-store ANTES de rutasAuth: /api/sesion y /api/login nunca deben cachearse
+  // (un proxy/CDN podria servir la sesion de otro usuario).
   app.use("/api", (_req, res, next) => {
     res.set("Cache-Control", "no-store");
+    res.vary("Cookie");
     next();
   });
+  rutasAuth(app);
 
   app.get("/api/imagenes/:nombre", async (req, res) => {
     const nombre = path.basename(req.params.nombre);
