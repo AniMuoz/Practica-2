@@ -488,7 +488,7 @@ function Preview({ colores, recarga }) {
                     </td>
                   </tr>
                   {grupo.filas.map((fila, i) => (
-                    <tr key={fila.id} style={{ color: colores && fila.rojo ? "#d00" : undefined, fontWeight: 600 }}>
+                    <tr key={fila.id} style={{ color: colores && (fila.rojo || Number(fila.entregar) < Number(fila.solicitado) || String(fila.ubicacion ?? "").trim().toUpperCase() === "CONCON") ? "#d00" : undefined, fontWeight: 600 }}>
                       {/* <td data-sin-copia="1" style={TD}>{i + 1}</td> */}
                       {COLUMNAS.map(([clave, , editable]) => (
                         <td key={clave} style={TD}>

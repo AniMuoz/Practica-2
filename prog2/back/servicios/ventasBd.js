@@ -455,7 +455,8 @@ async function armarExcel(filas, colores = true) {
   lotes.forEach((grupo) => {
     const primera = n;
     grupo.filas.forEach((fila) => {
-      const rojo = fila.rojo ? "FFFF0000" : null;
+      const esRojo = fila.rojo || numero(fila.entregar) < numero(fila.solicitado) || String(fila.ubicacion ?? "").trim().toUpperCase() === "CONCON";
+      const rojo = esRojo ? "FFFF0000" : null;
       const valores = [
         fila.pos, fila.codigo, fila.descripcion, fila.ubicacion,
         fila.m501, fila.m502, fila.m503, fila.m504, fila.m505,
@@ -525,7 +526,7 @@ async function armarExcelReservar(filas, colores = true) {
       const celda = hoja.getCell(n, i + 1);
       if (valor !== null && valor !== undefined && valor !== "") celda.value = valor;
       celda.border = borde;
-      celda.font = colores && fila.rojo ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
+      celda.font = colores && (fila.rojo || numero(fila.entregar) < numero(fila.solicitado) || String(fila.ubicacion ?? "").trim().toUpperCase() === "CONCON") ? { bold: true, color: { argb: "FFFF0000" } } : { bold: true };
     });
     n += 1;
   });
