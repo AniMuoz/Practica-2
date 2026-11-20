@@ -5,6 +5,9 @@ const { supabase } = require("../supabase/supabase");
 const {
   CAMPOS_RESERVA,
   cargarMateriales,
+  BODEGAS_EXPORT,
+  bodegaActual,
+  vistaFilaBodega,
   exigirClave,
   falloSupabase,
   indiceCampo,
@@ -293,7 +296,7 @@ function deduplicarFilasRevision(filas) {
   };
 }
 
-function marcadosCodigoRevision(filas, indiceCodigo = 3) {
+function marcadosCodigoRevision(filas, indiceCodigo = 2) {
   if (filas.length < 2) return filas.map(() => false);
   const porCodigo = new Map();
   filas.forEach((fila) => {
@@ -350,7 +353,6 @@ function revisionReservas(reserva, por = "reserva") {
   const iNecesaria = indice(/cantidad necesaria/i);
   const iUnidad = indice(/unidad medida base/i);
   const iFecha = indice(/fecha de necesidad/i);
-  const iReducida = indice(/cantid\.?reducidas/i);
   const iDiferencia = indice(/cantidad diferencia/i);
   const iUsuario = indice(/nombre del usuario|solicitante/i);
   const iMovimiento = indice(/^clase de movimiento$/i);
@@ -360,41 +362,40 @@ function revisionReservas(reserva, por = "reserva") {
     materiales.set(String(fila.Codigo ?? "").trim(), fila);
   });
 
+  // La bodega elegida va en la columna de stock; las demás, siempre de menor a mayor (como en Stock detallado).
+  const principal = bodegaActual();
+  const otras = BODEGAS_EXPORT.filter((bodega) => bodega !== principal);
+  const stockDe = (material, bodega) => (material ? numeroReserva(bodega === "M501" ? material.Stock : material[bodega]) : 0);
   const salida = [
     "N°",
-    "N° Orden",
     "N° Reserva",
     "Código",
     "Descripción",
     "Centro",
     "Almacen",
-    "Stock",
+    principal,
     "Reserva",
     "UN",
     "Ubicación",
     "Sub Ubicación",
     "Fecha de necesidad",
     "Estado",
-    "M502",
-    "M503",
-    "M504",
-    "M505",
-    "Reducido",
+    ...otras,
     "Diferencia",
   ];
   const { filas: filasRevision, repeticiones } = deduplicarFilasRevision(
     coinciden.map((fila, posicion) => {
       const codigo = String(celdaReserva(fila, iMaterial)).trim();
       const material = materiales.get(codigo);
-      const ubicacion = material ? String(material["Ubicación"] ?? "") : "";
-      const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? material["Ubicación"] : "No se encontro ubicación";
-      const stock = material ? numeroReserva(material.Stock) : 0;
+      const vista = material ? vistaFilaBodega(material, principal) : null;
+      const ubicacion = vista ? String(vista["Ubicación"] ?? "") : "";
+      const lugar = ubicacion.trim() !== "" && ubicacion !== "          " ? vista["Ubicación"] : "No se encontro ubicación";
+      const stock = stockDe(material, principal);
       const cantidad = numeroReserva(celdaReserva(fila, iNecesaria));
       const descripcionInventario = material ? String(material.Descripcion ?? "").trim() : "";
       const descripcion = descripcionInventario || String(celdaReserva(fila, iTexto)).trim() || "Sin descripción";
       return [
         posicion + 1,
-        celdaReserva(fila, iOrden),
         celdaReserva(fila, indiceReserva),
         codigo,
         descripcion,
@@ -404,18 +405,22 @@ function revisionReservas(reserva, por = "reserva") {
         cantidad,
         celdaReserva(fila, iUnidad),
         lugar,
-        material ? material["Sub-ubicación"] ?? "" : "",
+        vista ? vista["Sub-ubicación"] ?? "" : "",
         celdaReserva(fila, iFecha),
         cantidad <= stock ? "Disponible" : "No disponible",
-        material ? numeroReserva(material.M502) : 0,
-        material ? numeroReserva(material.M503) : 0,
-        material ? numeroReserva(material.M504) : 0,
-        material ? numeroReserva(material.M505) : 0,
-        numeroReserva(celdaReserva(fila, iReducida)),
+        ...otras.map((bodega) => stockDe(material, bodega)),
         numeroReserva(celdaReserva(fila, iDiferencia)),
       ];
     })
   );
+  salida.splice(8, 0, "Reserva total");
+  salida.push("Diferencia total");
+  filasRevision.forEach((fila, indice) => {
+    const veces = repeticiones[indice] || 1;
+    const diferencia = fila[fila.length - 1];
+    fila.splice(8, 0, numeroReserva(fila[7]) * veces);
+    fila.push(numeroReserva(diferencia) * veces);
+  });
   const marcadosCodigo = marcadosCodigoRevision(filasRevision);
   const primera = coinciden[0] || [];
   return {
@@ -545,8 +550,8 @@ async function exportarRevisionPorReserva(reserva, colores = true, por = "reserv
   hoja.autoFilter = `C3:V${ultima}`;
   hoja.getColumn(1).width = 24;
   hoja.getColumn(3).width = 6;
-  hoja.getColumn(7).width = 18;
-  hoja.getColumn(9).width = 42;
+  hoja.getColumn(6).width = 18;
+  hoja.getColumn(8).width = 42;
   hoja.getColumn(15).width = 26;
   compactarPlanilla(hoja);
   return libro.xlsx.writeBuffer();

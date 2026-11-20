@@ -216,16 +216,16 @@ async function revisar(reserva) {
 
 test("revisionReservas cruza cada línea con el stock y arma el estado", async () => {
   const revision = await revisar("9001");
-  assert.equal(revision.columnas.length, 20);
+  assert.equal(revision.columnas.length, 18);
   assert.equal(revision.total, 3);
   assert.equal(revision.filas.length, 2);
-  assert.deepEqual(revision.filas[0], [1, "6001", "9001", "100", "Perno", "C1", "M501", 10, 5, "UN", "0102-A", "0102", "05/10/2026", "Disponible", 3, 0, 0, 0, 1, 2]);
+  assert.deepEqual(revision.filas[0], [1, "9001", "100", "Perno", "C1", "M501", 10, 5, 5, "UN", "0102-A", "0102", "05/10/2026", "Disponible", 3, 0, 0, 0, 2, 2]);
   const sinStock = revision.filas[1];
-  assert.equal(sinStock[3], "200");
-  assert.equal(sinStock[7], 2);
-  assert.equal(sinStock[8], 30);
-  assert.equal(sinStock[10], "No se encontro ubicación");
-  assert.equal(sinStock[13], "No disponible");
+  assert.equal(sinStock[2], "200");
+  assert.equal(sinStock[6], 2);
+  assert.equal(sinStock[7], 30);
+  assert.equal(sinStock[9], "No se encontro ubicación");
+  assert.equal(sinStock[12], "No disponible");
   assert.equal(revision.fecha, "05/10/2026");
   assert.equal(revision.solicitante, "jperez");
   assert.equal(revision.movimiento, "201");
@@ -233,10 +233,10 @@ test("revisionReservas cruza cada línea con el stock y arma el estado", async (
 
 test("revisionReservas usa el texto de la reserva si el material no está en el inventario", async () => {
   const fila = (await revisar("9002")).filas[0];
-  assert.equal(fila[4], "Desconocido");
-  assert.equal(fila[7], 0);
-  assert.equal(fila[8], 1.5);
-  assert.equal(fila[13], "No disponible");
+  assert.equal(fila[3], "Desconocido");
+  assert.equal(fila[6], 0);
+  assert.equal(fila[7], 1.5);
+  assert.equal(fila[12], "No disponible");
 });
 
 test("revisionReservas busca por coincidencia parcial, sin importar mayúsculas, y sin término no devuelve filas", async () => {
@@ -291,10 +291,10 @@ test("revisionReservas omite la copia incompleta cuando hay otra completa de la 
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 2);
   assert.deepEqual(
-    revision.filas.map((fila) => [fila[1], fila[3], fila[5], fila[6]]),
+    revision.filas.map((fila) => [fila[1], fila[2], fila[4], fila[5]]),
     [
-      ["6001", "100", "C1", "M501"],
-      ["6001", "200", "C1", "M501"],
+      ["9001", "100", "C1", "M501"],
+      ["9001", "200", "C1", "M501"],
     ]
   );
   assert.deepEqual(revision.marcadosCodigo, [false, false]);
@@ -314,7 +314,7 @@ test("revisionReservas deja una sola fila cuando hay copias exactamente iguales"
   const { revisionReservas } = await conReservas({ reservas: [linea, { ...linea }, linea] });
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 1);
-  assert.equal(revision.filas[0][3], "100");
+  assert.equal(revision.filas[0][2], "100");
   assert.deepEqual(revision.marcadosCodigo, [false]);
 });
 
@@ -337,7 +337,7 @@ test("revisionReservas colapsa filas iguales en pantalla aunque cambie la posici
   const revision = revisionReservas("1573425");
   assert.equal(revision.filas.length, 1);
   assert.equal(revision.filas[0][0], 1);
-  assert.equal(revision.filas[0][3], "60000390");
+  assert.equal(revision.filas[0][2], "60000390");
   assert.deepEqual(revision.marcadosCodigo, [false]);
   assert.deepEqual(revision.repeticiones, [2]);
 });
@@ -376,7 +376,7 @@ test("revisionReservas marca el código cuando el mismo material aparece con dat
   assert.equal(revision.filas.length, 3);
   assert.deepEqual(revision.marcadosCodigo, [true, true, false]);
   assert.deepEqual(
-    revision.filas.map((fila) => [fila[3], fila[8]]),
+    revision.filas.map((fila) => [fila[2], fila[7]]),
     [
       ["100", 5],
       ["100", 8],
@@ -405,11 +405,11 @@ test("revisionReservas prioriza la completa y no marca conflicto si la incomplet
   const revision = revisionReservas("9001");
   assert.equal(revision.filas.length, 1);
   assert.deepEqual(revision.marcadosCodigo, [false]);
-  assert.equal(revision.filas[0][1], "6001");
+  assert.equal(revision.filas[0][4], "C1");
 });
 
 test("buscarReservas pagina, limita el tamaño y corrige valores inválidos", async () => {
-  const muchas = Array.from({ length: 600 }, (_, i) => registro({ orden: String(i), n_reserva: "7", material: "100", cantidad_necesaria: "1" }));
+  const muchas = Array.from({ length: 600 }, (_, i) => registro({ orden: String(i), n_reserva: "7", material: "100", cantidad_necesaria: String(i + 1) }));
   const { buscarReservas } = await conReservas({ reservas: muchas });
   const pagina1 = buscarReservas("7", 1, 2);
   assert.equal(pagina1.filas.length, 2);
@@ -452,16 +452,16 @@ test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados 
   assert.equal(hoja.getCell(5, 2).value, "jperez");
   assert.equal(hoja.getCell(7, 2).value, "201");
   assert.equal(hoja.getCell(3, 3).value, "N°");
-  assert.equal(hoja.getCell(4, 6).value, "100");
-  assert.equal(hoja.getCell(4, 16).value, "Disponible");
-  assert.equal(hoja.getCell(4, 16).fill.fgColor.argb, "FF73C883");
-  assert.equal(hoja.getCell(5, 16).value, "No disponible");
-  assert.equal(hoja.getCell(5, 16).fill.fgColor.argb, "FFF9E37C");
+  assert.equal(hoja.getCell(4, 5).value, "100");
+  assert.equal(hoja.getCell(4, 15).value, "Disponible");
+  assert.equal(hoja.getCell(4, 15).fill.fgColor.argb, "FF73C883");
+  assert.equal(hoja.getCell(5, 15).value, "No disponible");
+  assert.equal(hoja.getCell(5, 15).fill.fgColor.argb, "FFF9E37C");
   assert.equal(hoja.getCell(6, 3).value, null);
 
   const sinColores = new ExcelJS.Workbook();
   await sinColores.xlsx.load(await (await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("9001", false));
-  assert.equal(sinColores.worksheets[0].getCell(4, 16).fill?.fgColor, undefined);
+  assert.equal(sinColores.worksheets[0].getCell(4, 15).fill?.fgColor, undefined);
 });
 
 test("exportarRevisionPorReserva pinta de amarillo el código con variantes", async () => {
@@ -481,9 +481,9 @@ test("exportarRevisionPorReserva pinta de amarillo el código con variantes", as
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
-  assert.equal(hoja.getCell(4, 6).value, "100");
-  assert.equal(hoja.getCell(4, 6).fill.fgColor.argb, "FFF9E37C");
-  assert.equal(hoja.getCell(5, 6).fill.fgColor.argb, "FFF9E37C");
+  assert.equal(hoja.getCell(4, 5).value, "100");
+  assert.equal(hoja.getCell(4, 5).fill.fgColor.argb, "FFF9E37C");
+  assert.equal(hoja.getCell(5, 5).fill.fgColor.argb, "FFF9E37C");
 });
 
 // ---------- últimas cargas ----------
