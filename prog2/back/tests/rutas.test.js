@@ -607,10 +607,10 @@ test("POST /api/tabla/limpiar-inventario entrega la tabla o el error", async () 
 
 test("DELETE /api/material/:codigo/imagen quita la imagen del campo indicado", async () => {
   responder({ guardarImagen: { fila: { Codigo: "1" } } });
-  await pedir("DELETE", "/api/material/1/imagen", { json: { clave: "k", campo: "QR" } });
-  assert.deepEqual(llamadasA("guardarImagen")[0].args, ["1", "QR", "", "k"]);
+  await pedir("DELETE", "/api/material/1/imagen", { json: { clave: "k", campo: "Foto" } });
+  assert.deepEqual(llamadasA("guardarImagen")[0].args, ["1", "Foto", "", "k"]);
   responder({ guardarImagen: null });
-  assert.equal((await pedir("DELETE", "/api/material/9/imagen", { json: { campo: "QR" } })).status, 404);
+  assert.equal((await pedir("DELETE", "/api/material/9/imagen", { json: { campo: "Foto" } })).status, 404);
   responder({ guardarImagen: fallar(400, "La imagen debe ser Rombo, QR o Foto.") });
   assert.equal((await pedir("DELETE", "/api/material/1/imagen", { json: { campo: "X" } })).status, 400);
 });
@@ -621,14 +621,19 @@ test("POST /api/material/:codigo/imagen valida el archivo, lo sube y lo asocia a
   const noImagen = await pedir("POST", "/api/material/1/imagen", { form: formulario({ campo: "QR" }, { archivo: { contenido: "x", archivo: "a.txt", tipo: "text/plain" } }) });
   assert.deepEqual([noImagen.status, noImagen.json.error], [400, "Solo se aceptan imágenes PNG, JPG, WEBP, GIF o HEIC."]);
 
-  const nombre = `zz${process.pid}-foto.png`;
-  const local = path.join(__dirname, "..", "imagenes", nombre);
+  // Foto y Rombo llevan un sufijo con la hora (base 36) para no reutilizar el nombre.
+  const patronNombre = new RegExp(`^zz${process.pid}-foto-[a-z0-9]+\\.png$`);
+  let nombre = "";
+  const local = () => path.join(__dirname, "..", "imagenes", nombre);
   try {
     responder({ guardarImagen: { fila: { Codigo: `zz${process.pid}` } } });
     const bien = await pedir("POST", `/api/material/zz${process.pid}/imagen`, {
       form: formulario({ campo: "Foto", clave: "k" }, { archivo: { contenido: "GIF89a-DATOS", archivo: "Cualquiera.PNG", tipo: "image/png" } }),
     });
     assert.equal(bien.status, 200);
+    assert.equal(subidas.length, 1);
+    nombre = subidas[0].nombre;
+    assert.match(nombre, patronNombre);
     assert.deepEqual(subidas, [{ nombre, contenido: "GIF89a-DATOS", tipo: "image/png" }]);
 
     const falsa = await pedir("POST", `/api/material/zz${process.pid}/imagen`, {
@@ -637,9 +642,11 @@ test("POST /api/material/:codigo/imagen valida el archivo, lo sube y lo asocia a
     assert.deepEqual([falsa.status, falsa.json.error], [400, "El archivo no es una imagen válida."]);
     assert.equal(subidas.length, 1);
     assert.deepEqual(llamadasA("guardarImagen")[0].args, [`zz${process.pid}`, "Foto", nombre, "k"]);
-    assert.equal(fs.existsSync(local), false);
+    // El archivo falso se borra del disco; solo queda el de la subida válida (lo limpia el finally).
+    const restantes = fs.readdirSync(path.dirname(local())).filter((archivo) => archivo.startsWith(`zz${process.pid}-`));
+    assert.deepEqual(restantes, [nombre]);
   } finally {
-    fs.rmSync(local, { force: true });
+    if (nombre) fs.rmSync(local(), { force: true });
   }
 });
 
@@ -738,10 +745,13 @@ test("/api/eventos avisa a los clientes conectados cuando cambia un material", a
     responder({ eliminarMaterial: { codigo: "1" }, marcarMaterial: { fila: { Codigo: "1", Marcado: "1" } } });
     await pedir("DELETE", "/api/material/1", { json: { clave: "k" } });
     await leerHasta(/"tipo":"recarga"/);
+    // La marca es personal: marcar no emite evento. Un segundo borrado sirve de testigo para
+    // comprobar que entre ambos recargas no llegó ninguna fila (antes esperaba un evento que nunca llega).
     await pedir("PUT", "/api/material/1/marcado", { json: { marcado: true } });
-    await leerHasta(/"tipo":"fila"/);
+    await pedir("DELETE", "/api/material/1", { json: { clave: "k" } });
+    await leerHasta(/"tipo":"recarga"[\s\S]*"tipo":"recarga"/);
     assert.match(texto, /data: \{"tipo":"recarga"\}/);
-    assert.match(texto, /data: \{"tipo":"fila","fila":\{"Codigo":"1","Marcado":"1"\}\}/);
+    assert.doesNotMatch(texto, /"tipo":"fila"/);
   } finally {
     control.abort();
   }
