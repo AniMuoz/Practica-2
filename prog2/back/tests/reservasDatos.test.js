@@ -216,7 +216,7 @@ async function revisar(reserva) {
 
 test("revisionReservas cruza cada línea con el stock y arma el estado", async () => {
   const revision = await revisar("9001");
-  assert.equal(revision.columnas.length, 18);
+  assert.equal(revision.columnas.length, 20);
   assert.equal(revision.total, 3);
   assert.equal(revision.filas.length, 2);
   assert.deepEqual(revision.filas[0], [1, "9001", "100", "Perno", "C1", "M501", 10, 5, 5, "UN", "0102-A", "0102", "05/10/2026", "Disponible", 3, 0, 0, 0, 2, 2]);
@@ -224,8 +224,8 @@ test("revisionReservas cruza cada línea con el stock y arma el estado", async (
   assert.equal(sinStock[2], "200");
   assert.equal(sinStock[6], 2);
   assert.equal(sinStock[7], 30);
-  assert.equal(sinStock[9], "No se encontro ubicación");
-  assert.equal(sinStock[12], "No disponible");
+  assert.equal(sinStock[10], "No se encontro ubicación");
+  assert.equal(sinStock[13], "No disponible");
   assert.equal(revision.fecha, "05/10/2026");
   assert.equal(revision.solicitante, "jperez");
   assert.equal(revision.movimiento, "201");
@@ -236,7 +236,7 @@ test("revisionReservas usa el texto de la reserva si el material no está en el 
   assert.equal(fila[3], "Desconocido");
   assert.equal(fila[6], 0);
   assert.equal(fila[7], 1.5);
-  assert.equal(fila[12], "No disponible");
+  assert.equal(fila[13], "No disponible");
 });
 
 test("revisionReservas busca por coincidencia parcial, sin importar mayúsculas, y sin término no devuelve filas", async () => {
@@ -453,15 +453,15 @@ test("exportarRevisionPorReserva escribe datos laterales, encabezados y estados 
   assert.equal(hoja.getCell(7, 2).value, "201");
   assert.equal(hoja.getCell(3, 3).value, "N°");
   assert.equal(hoja.getCell(4, 5).value, "100");
-  assert.equal(hoja.getCell(4, 15).value, "Disponible");
-  assert.equal(hoja.getCell(4, 15).fill.fgColor.argb, "FF73C883");
-  assert.equal(hoja.getCell(5, 15).value, "No disponible");
-  assert.equal(hoja.getCell(5, 15).fill.fgColor.argb, "FFF9E37C");
+  assert.equal(hoja.getCell(4, 16).value, "Disponible");
+  assert.equal(hoja.getCell(4, 16).fill.fgColor.argb, "FF73C883");
+  assert.equal(hoja.getCell(5, 16).value, "No disponible");
+  assert.equal(hoja.getCell(5, 16).fill.fgColor.argb, "FFF9E37C");
   assert.equal(hoja.getCell(6, 3).value, null);
 
   const sinColores = new ExcelJS.Workbook();
   await sinColores.xlsx.load(await (await conReservas({ reservas: RESERVAS })).exportarRevisionPorReserva("9001", false));
-  assert.equal(sinColores.worksheets[0].getCell(4, 15).fill?.fgColor, undefined);
+  assert.equal(sinColores.worksheets[0].getCell(4, 16).fill?.fgColor, undefined);
 });
 
 test("exportarRevisionPorReserva pinta de amarillo el código con variantes", async () => {

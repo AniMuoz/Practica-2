@@ -7,6 +7,8 @@ const test = require("node:test");
 const fs = require("node:fs");
 const path = require("node:path");
 const ExcelJS = require("exceljs");
+// Sin red: cargarMarcados consultaría Supabase (127.0.0.1:1) y cada petición esperaría ~7 s de reintentos.
+require("../servicios/nucleoDatos").cargarMarcados = async () => new Set();
 const { crearApp } = require("../server");
 const app = crearApp({ proteger: false });
 delete process.env.SECRETO_PROXY;

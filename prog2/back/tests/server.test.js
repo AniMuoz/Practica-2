@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+// Sin red: cargarMarcados consultaría Supabase (127.0.0.1:1) y cada petición esperaría ~7 s de reintentos.
+require("../servicios/nucleoDatos").cargarMarcados = async () => new Set();
 const { crearApp, conColores, respuestaConexion } = require("../server");
 const app = crearApp({ proteger: false });
 delete process.env.SECRETO_PROXY;

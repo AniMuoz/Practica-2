@@ -203,7 +203,7 @@ test("login correcto responde el usuario y entrega una cookie HttpOnly", async (
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /SameSite=Lax/);
   assert.match(cookie, /Path=\//);
-  assert.match(cookie, new RegExp(`Max-Age=${8 * 60 * 60}`));
+  assert.match(cookie, new RegExp(`Max-Age=${10 * 60 * 60}`));
   assert.doesNotMatch(cookie, /Secure/);
 });
 
@@ -306,10 +306,10 @@ test("un token vencido se rechaza", async () => {
   const ahora = Date.now();
   const vigente = tokenManual({ u: "vencido", v: version, ini: ahora - 10 * HORA, act: ahora - 1000 });
   const inactivo1h = tokenManual({ u: "vencido", v: version, ini: ahora - 2 * HORA, act: ahora - HORA - 1000 });
-  const pasaron8h = tokenManual({ u: "vencido", v: version, ini: ahora - 10 * HORA, act: ahora - 8 * HORA - 1000 });
+  const pasaron10h = tokenManual({ u: "vencido", v: version, ini: ahora - 12 * HORA, act: ahora - 10 * HORA - 1000 });
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${vigente}` })).status, 200);
   assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${inactivo1h}` })).status, 200);
-  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${pasaron8h}` })).status, 401);
+  assert.equal((await pedir("GET", "/api/privado", { cookie: `sesion=${pasaron10h}` })).status, 401);
 });
 
 test("un token con datos inválidos se rechaza aunque esté bien firmado", async () => {

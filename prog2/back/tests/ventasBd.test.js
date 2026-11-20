@@ -125,7 +125,8 @@ test("obtenerPlanilla distingue meses: un mes sin planilla vuelve vacío y no se
   const actual = await ventasBd.obtenerPlanilla(anio, mes);
   assert.equal(actual.existe, true);
   assert.equal(actual.filas.length, 3);
-  assert.equal(actual.filas[0].comp, "FALSO");
+  // El primer producto (100) se entrega completo (4 de 4), por eso comp es VERDADERO.
+  assert.equal(actual.filas[0].comp, "VERDADERO");
   const otra = await ventasBd.obtenerPlanilla(2020, 1);
   assert.deepEqual([otra.existe, otra.filas.length], [false, 0]);
   assert.equal(tablas.ventas_planillas.length, 1);
@@ -207,7 +208,7 @@ test("exportarPlanilla arma el Excel desde la BD, con totales y registra la desc
   await libro.xlsx.load(buffer);
   const hoja = libro.worksheets[0];
   assert.equal(hoja.getCell(1, 1).value, "Pos");
-  assert.deepEqual([2, 3, 4].map((f) => hoja.getCell(f, 2).value), ["999", "200", "100"]);
+  assert.deepEqual([2, 3, 4].map((f) => hoja.getCell(f, 2).value), ["100", "200", "999"]);
   assert.equal(hoja.getCell(4, 20).value, "Ana");
   assert.equal(hoja.getCell(4, 17).value.formula, "P4*K4");
   assert.equal(hoja.getCell(5, 17).value.formula, "SUM(Q2:Q4)");
