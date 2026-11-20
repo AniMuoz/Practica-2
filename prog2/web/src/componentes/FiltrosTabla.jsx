@@ -1,4 +1,4 @@
-import { bodegasDe, caracteristicasDe, subUbicacionesDe } from "../lib/reglasPlanilla.js";
+import { bodegasDe, editoresDe, caracteristicasDe, subUbicacionesDe } from "../lib/reglasPlanilla.js";
 
 const campo = { padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 };
 
@@ -29,6 +29,7 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
   const bodegas = bodegasDe(filas);
   const subUbicaciones = subUbicacionesDe(filas, filtros.bodega);
   const caracteristicas = caracteristicasDe(filas);
+  const editores = editoresDe(filas);
   return (
     <div className={centrado ? `filtros-panel filtros-centrado${sinOrden ? " filtros-2col" : ""}` : "filtros-panel"}>
       {!sinOrden && (
@@ -61,6 +62,13 @@ export default function FiltrosTabla({ filas, filtros, onChange, centrado = fals
           <select value={filtros.caracteristica} onChange={(e) => poner("caracteristica", e.target.value)} style={campo}>
             <option value="">Todas</option>
             {caracteristicas.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+          Editor
+          <select value={filtros.editor ?? ""} onChange={(e) => poner("editor", e.target.value)} style={campo}>
+            <option value="">Todos</option>
+            {editores.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </label>
         <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
@@ -98,6 +106,7 @@ export const FILTROS_INICIALES = {
   bodega: "",
   subUbicacion: "",
   caracteristica: "",
+  editor: "",
   stockMinimo: "",
   soloConPrecio: false,
   soloConUbicacion: false,

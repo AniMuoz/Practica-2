@@ -70,6 +70,16 @@ export function normalizarCaracteristica(valor) {
   return String(valor ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+// El campo Editor guarda "nombre · fecha"; se filtra por el nombre.
+export function nombreEditor(valor) {
+  return String(valor ?? "").split("·")[0].trim();
+}
+
+export function editoresDe(filas) {
+  const nombres = new Set(filas.map((fila) => nombreEditor(fila.Editor)).filter(Boolean));
+  return [...nombres].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+}
+
 export function caracteristicasDe(filas) {
   const porClave = new Map();
   for (const fila of filas) {
@@ -85,6 +95,7 @@ export function filtrarFilas(filas, filtros) {
     orden = "",
     bodega = "",
     subUbicacion = "",
+    editor = "",
     caracteristica = "",
     stockMinimo = "",
     soloConPrecio = false,
@@ -106,6 +117,9 @@ export function filtrarFilas(filas, filtros) {
   }
   if (subUbicacion) {
     lista = lista.filter((fila) => String(fila["Sub-ubicación"] ?? "").trim() === subUbicacion);
+  }
+  if (editor) {
+    lista = lista.filter((fila) => nombreEditor(fila.Editor) === editor);
   }
   if (caracteristica) {
     const buscada = normalizarCaracteristica(caracteristica);
@@ -255,6 +269,7 @@ export function normalizarBusqueda(valor) {
 export function pasaFiltrosFilaMovimiento(fila, filtros = {}) {
   const {
     bodega = "",
+    editor = "",
     subUbicacion = "",
     caracteristica = "",
     stockMinimo = "",
@@ -280,6 +295,7 @@ export function pasaFiltrosFilaMovimiento(fila, filtros = {}) {
   if (subUbicacion && sub !== subUbicacion) return false;
   // Sin dato de característica en la fila de movimientos: si hay filtro, no pasa.
   if (caracteristica) return false;
+  if (editor) return false;
   if (String(stockMinimo).trim() !== "") {
     const minimo = Number(stockMinimo);
     const n = Number(stock);
