@@ -5,7 +5,6 @@ import {
   filasInventarioVisibles,
   filtrarFilas,
   numerarFilas,
-  pasaFiltrosFilaMovimiento,
   POSICIONES_MOVIMIENTOS,
 } from "../../../lib/reglasPlanilla.js";
 import { filtrarYOrdenarPorCodigo } from "../utilidades.js";
@@ -119,7 +118,9 @@ export function useFiltrosStock({ activo, detallado, inventario, movimientos, co
   const filasMovimientosFiltradas = movimientos.filas.filter((fila) => {
     const codigo = String(fila[1]);
     if (codigosEnMaestro.has(codigo)) return codigosFiltrados.has(codigo);
-    return pasaFiltrosFilaMovimiento(fila, filtrosStock);
+    // Un código añadido a mano que aún no está en el maestro debe verse siempre;
+    // si no, los filtros persistentes lo ocultan y parece que no se guardó.
+    return true;
   });
   const filasMovimientosVisibles = filasInventarioVisibles(
     filasMovimientosFiltradas,

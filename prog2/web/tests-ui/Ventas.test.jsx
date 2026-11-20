@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../src/lib/eventos.js", () => ({ suscribirEventos: () => () => {} }));
 import Ventas, { nombreDescarga, nombreDescargaAnual } from "../src/paginas/Ventas.jsx";
 
 const HOY = new Date();

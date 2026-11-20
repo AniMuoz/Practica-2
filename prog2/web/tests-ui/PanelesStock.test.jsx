@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
+vi.mock("../src/lib/eventos.js", () => ({ suscribirEventos: () => () => {} }));
 import PanelReserva from "../src/paginas/admin/paneles/PanelReserva.jsx";
 import PanelMovimientos from "../src/paginas/admin/paneles/PanelMovimientos.jsx";
 import PanelInventario from "../src/paginas/admin/paneles/PanelInventario.jsx";

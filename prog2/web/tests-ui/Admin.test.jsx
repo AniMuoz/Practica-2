@@ -3,12 +3,16 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Tests de caracterizacion de Admin: fijan el comportamiento actual antes de dividir el archivo.
-let oyenteSse;
+// Varios componentes se suscriben (Admin, reservas, ventas): el aviso llega a todos.
+const oyentesSse = vi.hoisted(() => new Set());
+const oyenteSse = {
+  alMensaje: (data) => oyentesSse.forEach((o) => o.alMensaje?.(data)),
+};
 vi.mock("../src/lib/eventos.js", () => ({
   suscribirEventos: (oyente) => {
-    oyenteSse = oyente;
+    oyentesSse.add(oyente);
     return () => {
-      oyenteSse = null;
+      oyentesSse.delete(oyente);
     };
   },
 }));
@@ -42,7 +46,7 @@ function montar() {
 beforeEach(() => {
   sessionStorage.clear();
   llamadas = [];
-  oyenteSse = null;
+  oyentesSse.clear();
   window.confirm = vi.fn(() => true);
   window.matchMedia = vi.fn((consulta) => ({
     matches: false,

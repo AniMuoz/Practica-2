@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Planilla from "./Planilla.jsx";
 import { useEstadoPersistente } from "../lib/persistencia.js";
 import { apiFetch } from "../lib/api.js";
+import { useRefrescoSse } from "./admin/hooks/useRefrescoSse.js";
 import { OPCIONES_ORDEN, ordenarFilasVentas } from "../lib/ordenFilasVentas.js";
 
 export { ordenarFilasVentas };
@@ -165,6 +166,16 @@ function Preview({ colores, recarga }) {
   useEffect(() => {
     cargar();
   }, [anio, mes, recarga]);
+
+  // Si otro usuario carga datos, se vuelve a leer la planilla sin pisar lo que se esta editando.
+  useRefrescoSse(() => {
+    if (editando) return;
+    cargar();
+    apiFetch("/api/ventas/meses", { cache: "no-store" })
+      .then((res) => leerJson(res, "No se pudieron leer los años."))
+      .then((data) => setAniosConDatos([...new Set((data.meses || []).map((m) => m.anio))]))
+      .catch(() => {});
+  });
 
   function cambiar(fila, campo, valor) {
     setBorradores((b) => ({ ...b, [fila.id]: { ...b[fila.id], [campo]: valor } }));

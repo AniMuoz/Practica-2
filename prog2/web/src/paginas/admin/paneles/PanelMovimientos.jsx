@@ -152,7 +152,7 @@ export default function PanelMovimientos({
                   <button
                     type="button"
                     onClick={vaciarPlanilla}
-                    disabled={guardandoFilaMovimiento || filasMovimientos.length === 0}
+                    disabled={guardandoFilaMovimiento || movimientos.filas.length === 0}
                     style={{ padding: "8px 14px", border: 0, borderRadius: 6, background: "#d32f2f", color: "#fff", fontSize: 14, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     Borrar planilla

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useEstadoPersistente } from "../../../lib/persistencia.js";
+import { useRefrescoSse } from "../hooks/useRefrescoSse.js";
 import VistaPrevia from "./VistaPrevia.jsx";
 import { obtenerJson, enviarFormulario, descargarBlob, guardarBlob } from "../../../lib/api.js";
 
@@ -61,6 +62,13 @@ export default function PanelReserva({ visible, colores, clasePlanilla }) {
     restaurada.current = true;
     if (consultaGuardada?.numero) buscar(consultaGuardada.numero, consultaGuardada.por);
   }, [visible]);
+
+  // Si otro usuario carga datos, se repite la busqueda activa para mostrar las reservas nuevas.
+  useRefrescoSse(() => {
+    if (!visible || buscandoReserva) return;
+    const { consulta, por } = busquedaReserva;
+    if (consulta) buscar(consulta, por);
+  });
 
   if (!visible) return null;
 
