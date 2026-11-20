@@ -244,7 +244,7 @@ test("limpiarInventarioComentarios exige la clave y vacía ambas columnas en tod
 test("actualizarMaterial guarda el editor y la limpieza lo vacía", async () => {
   const nucleo = await cargar();
   const guardado = await nucleo.actualizarMaterial("100", { inventario: "7", comentario: "ok", editor: "ana" });
-  assert.equal(guardado.fila.Editor, "ana");
+  assert.match(guardado.fila.Editor, /^ana · \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
   const tabla = await nucleo.limpiarInventarioComentarios(nucleo.CLAVE_DATOS);
   assert.deepEqual(tabla.filas.map((fila) => fila.Editor), ["", "", ""]);
 });

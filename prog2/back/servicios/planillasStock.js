@@ -503,7 +503,7 @@ async function exportarTabla(colores = true, filtros = {}) {
   const indiceInventario = columnas.indexOf("Inventario");
   const indiceComentario = columnas.indexOf("Comentario");
   const indiceEditor = columnas.indexOf("Editor");
-  const hasta = indiceEditor >= 0 ? indiceEditor + 1 : indiceComentario >= 0 ? indiceComentario + 1 : columnas.length;
+  const hasta = columnas.length;
   filas.forEach((fila) => {
     const filaHoja = hoja.addRow(columnas.map((columna) => fila[columna] ?? ""));
     if (String(fila.Codigo ?? "").trim() !== "") {

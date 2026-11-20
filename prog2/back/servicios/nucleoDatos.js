@@ -644,14 +644,30 @@ async function actualizarMaterial(codigo, { inventario, comentario, editor }) {
   const indiceFila = indicePorCodigo(porCodigo, String(codigo));
   if (indiceFila < 0) return null;
 
+  const previaInventario = String(matriz[indiceFila][indiceInventario] ?? "").trim();
+  const previaComentario = String(matriz[indiceFila][indiceComentario] ?? "");
+  const hayCambio =
+    (textoInventario !== "" && textoInventario !== previaInventario) || textoComentario !== previaComentario;
+
   if (textoInventario !== "") {
     matriz[indiceFila][indiceInventario] = Number(textoInventario);
   }
   matriz[indiceFila][indiceComentario] = textoComentario;
   const indiceEditor = columnas.indexOf(nombreCampoBodega("Editor"));
-  if (indiceEditor >= 0) {
+  if (indiceEditor >= 0 && hayCambio) {
     while (matriz[indiceFila].length <= indiceEditor) matriz[indiceFila].push("");
-    matriz[indiceFila][indiceEditor] = String(editor ?? "");
+    // La fecha del cambio va junto al editor: se ve en la tabla, el detalle y la planilla.
+    const fecha = new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date()).replace(",", "").replace(/(\d{2})-(\d{2})-(\d{4})/, "$1/$2/$3");
+    const nombre = String(editor ?? "").trim();
+    matriz[indiceFila][indiceEditor] = nombre ? `${nombre} · ${fecha}` : fecha;
   }
   await guardarFila(matriz, indiceFila);
 

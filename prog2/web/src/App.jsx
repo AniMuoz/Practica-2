@@ -710,7 +710,7 @@ export default function App() {
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
                         background: colores ? colorCelda(columna, fila) : undefined,
-                        ...(columna === "Editor" ? { maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", fontSize: 12 } : {}),
+                        ...(columna === "Editor" ? { fontSize: 12 } : {}),
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}
@@ -738,7 +738,7 @@ export default function App() {
                         borderBottom: "1px solid var(--borde-suave)",
                         whiteSpace: "nowrap",
                         background: colores ? colorCelda(columna, fila) : undefined,
-                        ...(columna === "Editor" ? { maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", fontSize: 12 } : {}),
+                        ...(columna === "Editor" ? { fontSize: 12 } : {}),
                       }}
                     >
                       {fila[columna] === "" || fila[columna] == null ? "—" : fila[columna]}
