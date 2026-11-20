@@ -224,8 +224,8 @@ test("aplicarFilaRecibida no modifica la lista y al renombrar elimina el duplica
   const copia = JSON.parse(JSON.stringify(actuales));
   const resultado = aplicarFilaRecibida(actuales, { fila: { Codigo: "3", nota: "nueva" }, codigoAnterior: "1" });
   assert.deepEqual(actuales, copia);
-  assert.deepEqual(resultado, [{ Codigo: "3", nota: "nueva" }, { Codigo: "2" }]);
-  assert.deepEqual(aplicarFilaRecibida([{ Codigo: 5 }], { fila: { Codigo: "5", x: 1 } }), [{ Codigo: "5", x: 1 }]);
+  assert.deepEqual(resultado, [{ Codigo: "3", nota: "nueva", Marcado: "" }, { Codigo: "2" }]);
+  assert.deepEqual(aplicarFilaRecibida([{ Codigo: 5 }], { fila: { Codigo: "5", x: 1 } }), [{ Codigo: "5", x: 1, Marcado: "" }]);
   assert.deepEqual(aplicarFilaRecibida(actuales, { fila: { Codigo: "9" }, codigoAnterior: "77" }).length, 4);
 });
 

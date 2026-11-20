@@ -31,7 +31,7 @@ test("enviarJson manda cuerpo JSON con el metodo indicado", async () => {
   const llamadas = simularFetch(ok({ ok: true }));
   await enviarJson("/api/x", { clave: "k" }, "m", "PUT");
   assert.equal(llamadas[0].opciones.method, "PUT");
-  assert.equal(llamadas[0].opciones.headers["Content-Type"], "application/json");
+  assert.equal(new Headers(llamadas[0].opciones.headers).get("Content-Type"), "application/json");
   assert.equal(llamadas[0].opciones.body, JSON.stringify({ clave: "k" }));
 });
 
@@ -40,7 +40,7 @@ test("enviarFormulario no fija Content-Type (lo pone el navegador)", async () =>
   const formulario = { fake: true };
   await enviarFormulario("/api/x", formulario);
   assert.equal(llamadas[0].opciones.body, formulario);
-  assert.equal(llamadas[0].opciones.headers, undefined);
+  assert.equal(new Headers(llamadas[0].opciones.headers).has("Content-Type"), false);
 });
 
 test("descargarBlob devuelve el blob y propaga errores JSON", async () => {
