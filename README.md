@@ -1,4 +1,4 @@
-# Practica-2
+﻿# Practica-2
 Proyectos y programas realizados durante la práctica 2 UNAB para digitalizar inventario, gastos y bitácoras.
 
 Detalle técnico (endpoints, esquema, comandos): ver [`DOCUMENTACION.md`](DOCUMENTACION.md). Manuales de usuario en `manual de uso/`.
@@ -12,15 +12,17 @@ Detalle técnico (endpoints, esquema, comandos): ver [`DOCUMENTACION.md`](DOCUME
 Aplicación web para marcar y revisar el inventario de forma compartida, sin papel. Todos los usuarios ven los cambios al instante (SSE).
 
 **Qué permite hacer**
-- Ver, buscar y filtrar el inventario por bodega, sub-ubicación, stock, precio y materiales marcados.
-- Editar materiales, marcarlos, subir fotos, QR y rombo.
+- Ver, buscar y filtrar el inventario por bodega, sub-ubicación, característica, stock (mínimo y crítico), precio, inventario y materiales marcados. La búsqueda ignora acentos y mayúsculas.
+- Trabajar con las cinco bodegas (M501 a M505): cada usuario tiene una bodega y los administradores pueden cambiar la bodega que miran.
+- Editar materiales, marcarlos (la marca es personal de cada usuario), subir fotos, QR y rombo, y registrar inventario y comentarios.
 - Importar planillas Excel (SAP, precios, ubicaciones, reservas) y exportar planillas de stock, bodega, inventario, movimientos, stock detallado y reservas.
 - Revisar reservas desde un PDF, registrar ventas mensuales y administrar contratistas.
 - Llevar la bitácora de camión con folios, filas, firmas e historial.
 - Generar códigos QR por material (`/qr`).
 - Armar la planilla de gastos mensual (panel en `/admin`; la ruta `/gastos` redirige ahí).
 - Buzón de mensajes entre operadores y administradores (`/buzon`).
-- Gestionar usuarios y roles (`admin`, `operador`, `desactivado`) en `/personal`, con auditoría en `/auditoria`.
+- Gestionar usuarios, roles y bodegas en `/personal`, con auditoría en `/auditoria`.
+- Ver qué usuarios están activos, cambiar entre modo claro y oscuro, activar o quitar los colores de las planillas, silenciar los avisos sonoros y repetir la ayuda guiada con el botón `?`.
 
 **Cómo está armado**
 - **Web (`prog2/web`):** React 19 + Vite, publicada en Cloudflare Pages. El Worker reenvía lo que empieza con `/api` al servidor.
@@ -41,8 +43,9 @@ El flujo es: el navegador pide todo a Cloudflare, que reenvía `/api` al servido
 | `/:codigo` | Ficha de un material |
 
 **Inicio de sesión y seguridad**
-- Hay que iniciar sesión con usuario y contraseña. La sesión dura 7 días.
-- Roles: el operador puede ver, filtrar y descargar; las escrituras delicadas (salvo gastos y buzón) exigen rol `admin`.
+- Hay que iniciar sesión con usuario y contraseña. La sesión se cierra tras 10 horas sin actividad.
+- Roles: `operador` (ve, filtra, descarga, edita inventario y comentario, y usa gastos y buzón), `admin` (escrituras delicadas), `admin_ext` (administrador externo: solo ve, salvo gastos, bitácora, QR, inventario y comentario, y alta de personal) y `desactivado` (sin acceso).
+- Un admin de M501 gestiona todo; un admin de otra bodega solo administra la suya (imágenes, observaciones, ubicación y sub-ubicación). La auditoría es para el admin de M501 y el admin externo.
 - Las acciones delicadas piden además la clave compartida (`CLAVE_DATOS`).
 - El servidor limita los intentos de login y la cantidad de peticiones por minuto.
 - La clave compartida se bloquea por IP durante 15 minutos tras 3 intentos fallidos (`prog2/back/seguridad/limiteClave.js`).
