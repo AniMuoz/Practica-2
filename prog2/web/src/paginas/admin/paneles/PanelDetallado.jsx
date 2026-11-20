@@ -226,7 +226,7 @@ export default function PanelDetallado({
                             }}
                             style={{
                               width: "100%",
-                              minWidth: nombreColumna === "INDICADOR" ? 180 : 72,
+                              minWidth: nombreColumna === "INDICADOR" || nombreColumna === "Caracteristica" ? 180 : 72,
                               boxSizing: "border-box",
                               padding: "4px 6px",
                               border: "1px solid var(--borde)",
@@ -258,7 +258,7 @@ export default function PanelDetallado({
                           background: colores ? "#a9e5e5" : "var(--superficie)",
                           border: "1px solid var(--borde)",
                           whiteSpace: "nowrap",
-                          minWidth: columna === "INDICADOR" ? 180 : undefined,
+                          minWidth: columna === "INDICADOR" || columna === "Caracteristica" ? 180 : undefined,
                         }}
                       >
                         {columna}
