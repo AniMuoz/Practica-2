@@ -11,6 +11,7 @@ import {
   aplicarFilaRecibida,
   bodegasDe,
   caracteristicasDe,
+  editoresDe,
   colorCelda as colorDeCelda,
   columnasSinImagen,
   consultaExcel,
@@ -62,6 +63,7 @@ export default function App() {
   const [bodega, setBodega] = useFiltroPersistente("bodega", "");
   const [subUbicacion, setSubUbicacion] = useFiltroPersistente("subUbicacion", "");
   const [caracteristica, setCaracteristica] = useFiltroPersistente("caracteristica", "");
+  const [editor, setEditor] = useFiltroPersistente("editor", "");
   const [stockMinimo, setStockMinimo] = useFiltroPersistente("stockMinimo", "");
   const [soloConPrecio, setSoloConPrecio] = useFiltroPersistente("soloConPrecio", false);
   const [soloConUbicacion, setSoloConUbicacion] = useFiltroPersistente("soloConUbicacion", false);
@@ -113,12 +115,15 @@ export default function App() {
     [filas]
   );
 
+  const editores = useMemo(() => editoresDe(filas), [filas]);
+
   const visibles = useMemo(
     () => filtrarFilas(filas, {
       orden,
       bodega,
       subUbicacion,
       caracteristica,
+      editor,
       stockMinimo,
       soloConPrecio,
       soloConUbicacion,
@@ -130,12 +135,12 @@ export default function App() {
       ignorarNulo,
       texto,
     }),
-    [filas, orden, bodega, subUbicacion, caracteristica, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]
+    [filas, orden, bodega, subUbicacion, caracteristica, editor, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]
   );
 
   useEffect(() => {
     setPagina(0);
-  }, [orden, bodega, subUbicacion, caracteristica, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]);
+  }, [orden, bodega, subUbicacion, caracteristica, editor, stockMinimo, soloConPrecio, soloConUbicacion, soloStockCritico, soloStockCero, soloInventarioOComentario, soloMarcados, soloConRombo, ignorarNulo, texto]);
 
   function cargarTabla() {
     const headers = {};
@@ -509,6 +514,21 @@ export default function App() {
                   </select>
                 </label>
                 <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+                  Editor
+                  <select
+                    value={editor}
+                    onChange={(event) => setEditor(event.target.value)}
+                    style={{ padding: "8px 10px", border: "1px solid var(--borde)", borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">Todos</option>
+                    {editores.map((valor) => (
+                      <option key={valor} value={valor}>
+                        {valor}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
                   Stock igual o mayor a
                   <input
                     inputMode="decimal"
@@ -596,6 +616,7 @@ export default function App() {
                   setBodega("");
                   setSubUbicacion("");
                   setCaracteristica("");
+                  setEditor("");
                   setStockMinimo("");
                   setSoloConPrecio(false);
                   setSoloConUbicacion(false);
